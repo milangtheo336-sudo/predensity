@@ -49,13 +49,29 @@ async function settleTradeWithRetry(
     return { success: true, txHash: 'off-chain-only' };
   }
 
+  // Get buyer and seller wallets (use proxy wallet addresses)
+  const buyerWallet = await convex.query(api.users.getManagedWalletByUserId, { 
+    userId: trade.buyerUserId 
+  });
+  const sellerWallet = await convex.query(api.users.getManagedWalletByUserId, { 
+    userId: trade.sellerUserId 
+  });
+
+  if (!buyerWallet || !sellerWallet) {
+    return { success: false, error: 'Wallet not found' };
+  }
+
+  // Use proxy wallet addresses (non-custodial)
+  const buyerAddress = buyerWallet.proxyWalletAddress;
+  const sellerAddress = sellerWallet.proxyWalletAddress;
+
   const outcomeToken = market.outcomeTokenAddresses[trade.outcomeIndex];
   const tradeIdBytes = ethers.utils.id(trade.tradeId);
   const callData = EXCHANGE_ABI.encodeFunctionData('settleOperatorTrade', [
     tradeIdBytes,
     outcomeToken,
-    OPERATOR_ID,
-    OPERATOR_ID,
+    buyerAddress,
+    sellerAddress,
     trade.price,
     trade.quantity,
   ]);
