@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useUser, useClerk } from '@clerk/nextjs';
+import { useMagic } from '@/context/MagicContext';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Header } from '@/components/header';
@@ -15,7 +15,9 @@ import { getAvatarPalette } from '@/lib/utils';
 type Tab = 'profile' | 'account' | 'notifications';
 
 export default function SettingsPage() {
-  const { user, isSignedIn, isLoaded } = useUser();
+  const { user, isLoading, logout } = useMagic();
+  const isSignedIn = !!user;
+  const isLoaded = !isLoading;
   const [activeTab, setActiveTab] = useState<Tab>('profile');
 
   if (!isLoaded) {
@@ -72,7 +74,7 @@ export default function SettingsPage() {
 
         {/* Tab content */}
         {activeTab === 'profile' && <ProfileTab user={user} />}
-        {activeTab === 'account' && <AccountTab user={user} />}
+        {activeTab === 'account' && <AccountTab user={user} logout={logout} />}
         {activeTab === 'notifications' && <NotificationsTab />}
       </main>
     </div>
@@ -247,16 +249,16 @@ function ProfileTab({ user }: { user: any }) {
 }
 
 // Account Tab
-function AccountTab({ user }: { user: any }) {
+function AccountTab({ user, logout }: { user: any; logout: () => Promise<void> }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const { signOut } = useClerk();
 
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
-      await user.delete();
-      await signOut();
+      // TODO: Implement account deletion API
+      // For now, just logout
+      await logout();
     } catch (err) {
       console.error('Account deletion failed:', err);
       setDeleting(false);
