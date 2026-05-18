@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { loginWithMagic } from '@/lib/magic';
+import { loginWithEmail } from '@/lib/magic';
 
 export default function MagicSignUpExample() {
   const [email, setEmail] = useState('');
@@ -25,20 +25,27 @@ export default function MagicSignUpExample() {
     try {
       // Step 1: Authenticate with Magic Link
       setStep('email');
-      const { address: magicEOAAddress, email: userEmail } = await loginWithMagic(email);
+      const didToken = await loginWithEmail(email);
       
-      console.log('Magic Link authenticated:', magicEOAAddress);
+      // Get user info from Magic
+      const { getUserInfo } = await import('@/lib/magic');
+      const userInfo = await getUserInfo();
+      
+      console.log('Magic Link authenticated:', userInfo?.publicAddress);
 
       // Step 2: Create non-custodial wallet
       setStep('creating-wallet');
       const walletResponse = await fetch('/api/wallet/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${didToken}`,
+        },
         body: JSON.stringify({
-          userId: magicEOAAddress, // Use Magic EOA as userId
-          email: userEmail,
+          userId: userInfo?.issuer,
+          email: userInfo?.email,
           phoneNumber: phoneNumber || undefined,
-          magicEOAAddress,
+          magicEOAAddress: userInfo?.publicAddress,
         }),
       });
 
@@ -48,7 +55,7 @@ export default function MagicSignUpExample() {
       }
 
       const { wallet } = await walletResponse.json();
-      console.log('Proxy wallet created:', wallet.proxyWalletAddress);
+      console.log('Proxy wallet created:', (wallet as any).proxyWalletAddress);
 
       // Step 3: Redirect to dashboard
       router.push('/dashboard');
