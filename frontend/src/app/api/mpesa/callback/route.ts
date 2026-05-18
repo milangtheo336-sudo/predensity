@@ -71,8 +71,7 @@ export async function POST(request: NextRequest) {
       amountUSDC,
     });
 
-    // If deposit succeeded, credit the user's USDC balance in Convex
-    // In production, this is where the treasury would transfer actual USDC on-chain
+    // If deposit succeeded, transfer USDC from treasury to user's proxy wallet (NON-CUSTODIAL)
     if (result.status === 'completed' && amountUSDC) {
       const normalizedPhone = phoneNumber
         ? `+${phoneNumber}`
@@ -84,6 +83,22 @@ export async function POST(request: NextRequest) {
         });
 
         if (wallet) {
+          // Transfer USDC from treasury to user's proxy wallet
+          const transferResponse = await fetch(`${request.nextUrl.origin}/api/wallet/bridge-mpesa`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              proxyWalletAddress: wallet.proxyWalletAddress,
+              amountUSDC,
+              mpesaReceiptNumber,
+            }),
+          });
+
+          if (!transferResponse.ok) {
+            throw new Error('USDC transfer to user wallet failed');
+          }
+
+          // Update cached balance in Convex
           const currentBalance = parseFloat(wallet.usdcBalance || '0');
           const newBalance = (currentBalance + parseFloat(amountUSDC)).toFixed(6);
 
@@ -93,12 +108,8 @@ export async function POST(request: NextRequest) {
           });
 
           console.log(
-            `[mpesa/callback] Credited ${amountUSDC} USDC to ${normalizedPhone} (new balance: ${newBalance})`
+            `[mpesa/callback] Bridged ${amountUSDC} USDC to ${wallet.proxyWalletAddress} (new balance: ${newBalance})`
           );
-
-          // Trigger background split into outcome tokens for all open CLOB markets
-          const { triggerAutoSplit } = await import('@/lib/clob-auto-split');
-          triggerAutoSplit(amountUSDC);
         }
       } catch (balanceError) {
         // Log but don't fail the callback -- Safaricom needs a 200 response
