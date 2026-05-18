@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { Category, CATEGORIES } from '@/lib/types/categories';
 import { cn } from '@/lib/utils';
 import { HelpCircle, X, ChevronRight, Info } from 'lucide-react';
-import { SignUpButton, useUser } from '@clerk/nextjs';
+import { useMagic } from '@/context/MagicContext';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
 
@@ -89,11 +89,11 @@ function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 
           {/* Action button */}
           {isLast ? (
-            <SignUpButton mode="modal">
+            <Link href="/auth">
               <button className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors">
                 Get Started
               </button>
-            </SignUpButton>
+            </Link>
           ) : (
             <button onClick={() => setStep(s => s + 1)} className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors">
               Next
@@ -188,7 +188,9 @@ function StepThreeCard() {
 export function CategoryTabs({ activeCategory, onCategoryChange }: CategoryTabsProps) {
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const { isSignedIn, isLoaded } = useUser();
+  const { user, isLoading } = useMagic();
+  const isSignedIn = !!user;
+  const isLoaded = !isLoading;
 
   // Only show when Clerk has loaded AND user is not signed in
   const showHowItWorks = isLoaded && !isSignedIn && !dismissed;
