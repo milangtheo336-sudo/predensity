@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     // Require authentication -- only logged-in users should trigger syncs
-    const authResult = await requireAuth();
+    const authResult = await requireAuth(request);
     if (authResult instanceof NextResponse) return authResult;
 
     const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
