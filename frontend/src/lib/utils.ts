@@ -47,8 +47,8 @@ export function getLocalTimezoneAbbr(): string {
 }
 
 export function formatTinybarsToHbar(tinybars: number | string, fractionDigits = 6) {
-  const hbar = Number(tinybars) / 100000000;
-  return hbar.toFixed(fractionDigits);
+  const USDC  = Number(tinybars) / 100000000;
+  return USDC .toFixed(fractionDigits);
 }
 
 export function formatPriceByAsset(value: number | string, asset: string = 'HBAR', fractionDigits?: number): string {
