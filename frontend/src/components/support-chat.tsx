@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, ArrowLeft, Check, Home, MessageSquare, MoreHorizontal, Download, Maximize2, Minimize2 } from 'lucide-react';
-import { useUser } from '@clerk/nextjs';
+import { useMagic } from '@/context/MagicContext';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -111,7 +111,7 @@ export function SupportChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { user } = useUser();
+  const { user } = useMagic();
 
   // Listen for external open requests (from profile dropdown)
   useEffect(() => {
