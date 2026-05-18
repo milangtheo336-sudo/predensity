@@ -649,7 +649,7 @@ export function PredictionCard({
 
               {/* Token identity: logo + name + live price */}
               <div className="flex gap-3 items-center mb-3">
-                <Image src={tokenLogo} alt={tokenName} width={40} height={40} className="rounded-full border border-gray-200 dark:border-white/[0.06] flex-shrink-0" />
+                <Image src={tokenLogo} alt={tokenName} width={40} height={40} className="rounded-lg border border-gray-200 dark:border-white/[0.06] flex-shrink-0" />
                 <div className="min-w-0">
                   <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-light-gray leading-tight truncate">
                     Predict {tokenSymbol} Price
