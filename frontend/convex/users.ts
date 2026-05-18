@@ -460,7 +460,7 @@ export const getUserActivity = query({
       if (b.category && b.category !== "crypto") nonCryptoCategories.add(b.category);
     }
     const eventImageMap = new Map<string, { imageUrl: string; eventName: string }>();
-    for (const cat of nonCryptoCategories) {
+    for (const cat of Array.from(nonCryptoCategories)) {
       const events = await ctx.db
         .query("events")
         .withIndex("by_category", (q) => q.eq("category", cat))
