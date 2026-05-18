@@ -93,7 +93,7 @@ function ProfileTab({ user }: { user: any }) {
 
   const managedWallet = useQuery(
     api.users.getManagedWalletByUserId,
-    user ? { userId: user.id } : 'skip'
+    user ? { userId: user.issuer } : 'skip'
   );
 
   // The EVM address: from connected wallet or managed wallet
@@ -155,7 +155,7 @@ function ProfileTab({ user }: { user: any }) {
                 {user.imageUrl && !user.imageUrl.includes('gravatar') ? (
                   <img src={user.imageUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <Avatar size={80} name={user.id} variant="marble" colors={getAvatarPalette(user.id)} square={false} />
+                  <Avatar size={80} name={user.issuer} variant="marble" colors={getAvatarPalette(user.issuer)} square={false} />
                 )}
               </div>
               <label
@@ -189,7 +189,7 @@ function ProfileTab({ user }: { user: any }) {
       <Card>
         <CardContent className="p-6">
           <h3 className="text-sm font-medium text-muted-foreground mb-2">Email</h3>
-          <p className="text-sm">{user.primaryEmailAddress?.emailAddress || 'No email set'}</p>
+          <p className="text-sm">{user.email || 'No email set'}</p>
         </CardContent>
       </Card>
 
