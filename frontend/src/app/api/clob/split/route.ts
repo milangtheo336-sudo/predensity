@@ -36,7 +36,7 @@ function getHederaClient(): Client {
  */
 export async function POST(request: NextRequest) {
   try {
-    const adminResult = await requireAdmin();
+    const adminResult = await requireAdmin(request);
     if (adminResult instanceof NextResponse) return adminResult;
 
     const rateLimitResponse = rateLimit(request, { maxRequests: 5, windowMs: 60_000 });
