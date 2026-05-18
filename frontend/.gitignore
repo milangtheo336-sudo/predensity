@@ -33,4 +33,30 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts 
+next-env.d.ts
+
+# Documentation and notes (except README)
+*.md
+!README.md
+
+# Scripts and utilities
+/scripts/
+check-*.js
+find-*.js
+test-*.js
+fix-*.js
+deploy-*.js
+mint-*.js
+send-*.js
+update-*.js
+debug-*.js
+chart.js
+
+# Test files
+jest.config.js
+jest.setup.js
+**/__tests__/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx 
