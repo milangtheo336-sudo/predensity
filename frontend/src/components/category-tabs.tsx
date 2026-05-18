@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { HelpCircle, X, ChevronRight, Info } from 'lucide-react';
 import { SignUpButton, useUser } from '@clerk/nextjs';
 import Image from 'next/image';
+import { useTheme } from 'next-themes';
 
 interface CategoryTabsProps {
   activeCategory: Category | 'all';
@@ -19,6 +20,8 @@ interface CategoryTabsProps {
 function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [step, setStep] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== 'light';
   useEffect(() => setMounted(true), []);
   // Reset step when opened
   useEffect(() => { if (isOpen) setStep(0); }, [isOpen]);
@@ -28,7 +31,7 @@ function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     {
       title: '1. Pick a Market',
       description: 'Browse prediction markets across crypto, politics, sports, and technology. Choose an event you have a view on and want to trade.',
-      image: '/first images .webp',
+      image: isDark ? '/black theme .avif' : '/white theme.avif',
     },
     {
       title: '2. Fund & Set Your Prediction',
@@ -48,22 +51,22 @@ function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
   const modal = (
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/70" onClick={onClose}>
       <div
-        className="bg-[#111111] border-t sm:border border-white/[0.08] rounded-t-2xl sm:rounded-2xl w-full sm:w-[480px] sm:max-w-[92vw] max-h-[90vh] overflow-y-auto relative shadow-2xl"
+        className="bg-white dark:bg-[#111111] border-t sm:border border-gray-200 dark:border-white/[0.08] rounded-t-2xl sm:rounded-2xl w-full sm:w-[480px] sm:max-w-[92vw] max-h-[90vh] overflow-y-auto relative shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drag handle on mobile */}
         <div className="sm:hidden flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-neutral-700" />
+          <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-neutral-700" />
         </div>
 
         {/* Close button */}
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors z-10">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors z-10">
           <X className="w-5 h-5" />
         </button>
 
         <div className="p-5 sm:p-6">
           {/* Image / Widget / Card area */}
-          <div className="rounded-xl overflow-hidden mb-5 bg-black/40 flex items-center justify-center" style={{ minHeight: 200 }}>
+          <div className="rounded-xl overflow-hidden mb-5 bg-gray-100 dark:bg-black/40 flex items-center justify-center" style={{ minHeight: 200 }}>
             {current.image && (
               <Image src={current.image} alt={current.title} width={440} height={260} className="w-full h-auto object-cover rounded-xl" />
             )}
@@ -72,15 +75,15 @@ function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
           </div>
 
           {/* Title */}
-          <h3 className="text-lg font-bold text-white mb-2">{current.title}</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{current.title}</h3>
 
           {/* Description */}
-          <p className="text-sm text-gray-400 leading-relaxed mb-6">{current.description}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6">{current.description}</p>
 
           {/* Dot indicators */}
           <div className="flex items-center justify-center gap-2 mb-5">
             {steps.map((_, i) => (
-              <button key={i} onClick={() => setStep(i)} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-blue-500' : 'bg-neutral-700'}`} />
+              <button key={i} onClick={() => setStep(i)} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-blue-500' : 'bg-gray-300 dark:bg-neutral-700'}`} />
             ))}
           </div>
 
@@ -107,37 +110,37 @@ function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 // Step 2: Prediction Widget Preview
 function StepTwoWidget() {
   return (
-    <div className="w-full flex flex-col sm:flex-row" style={{ borderRadius: 14, overflow: 'hidden', background: '#111111', border: '1px solid rgba(255,255,255,0.07)' }}>
-      <div style={{ minWidth: 180, padding: 16, fontSize: 11, color: '#fff', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ color: '#82828b', fontSize: 10, marginBottom: 8 }}>Resolution</div>
-        <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+    <div className="w-full flex flex-col sm:flex-row rounded-[14px] overflow-hidden bg-gray-50 dark:bg-[#111111] border border-gray-200 dark:border-white/[0.07]">
+      <div className="min-w-[180px] p-4 text-[11px] text-gray-900 dark:text-white" style={{ fontFamily: 'Arial, sans-serif' }}>
+        <div className="text-gray-500 dark:text-[#82828b] text-[10px] mb-2">Resolution</div>
+        <div className="flex gap-1 mb-3">
           {['1D', '3D', '1W', '2W', '1M'].map(t => (
-            <span key={t} style={{ flex: 1, textAlign: 'center', padding: '5px 0', borderRadius: 6, fontSize: 10, fontWeight: 700, background: t === '3D' ? '#2563eb' : '#222', color: t === '3D' ? '#fff' : '#9f9fa8' }}>{t}</span>
+            <span key={t} className={`flex-1 text-center py-[5px] rounded-md text-[10px] font-bold ${t === '3D' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-[#222] text-gray-500 dark:text-[#9f9fa8]'}`}>{t}</span>
           ))}
         </div>
-        <div style={{ background: '#141414', border: '1px solid #222', borderRadius: 6, padding: '6px 10px', marginBottom: 8, display: 'flex', justifyContent: 'center', gap: 12, fontSize: 12, fontWeight: 700 }}>
-          <span>Mar 31</span><span style={{ color: '#82828b' }}>|</span><span>14:00</span>
+        <div className="bg-gray-100 dark:bg-[#141414] border border-gray-200 dark:border-[#222] rounded-md px-2.5 py-1.5 mb-2 flex justify-center gap-3 text-xs font-bold">
+          <span>Mar 31</span><span className="text-gray-400 dark:text-[#82828b]">|</span><span>14:00</span>
         </div>
-        <div style={{ color: '#82828b', fontSize: 10, marginBottom: 6 }}>Price Range</div>
-        <div style={{ background: '#141414', borderRadius: 6, padding: '6px 10px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-          <span>$0.18</span><span style={{ color: '#82828b' }}>to</span><span>$0.22</span>
+        <div className="text-gray-500 dark:text-[#82828b] text-[10px] mb-1.5">Price Range</div>
+        <div className="bg-gray-100 dark:bg-[#141414] rounded-md px-2.5 py-1.5 mb-2 flex justify-between text-[11px]">
+          <span>$0.18</span><span className="text-gray-400 dark:text-[#82828b]">to</span><span>$0.22</span>
         </div>
-        <div style={{ color: '#82828b', fontSize: 10, marginBottom: 6 }}>Stake</div>
-        <div style={{ background: '#141414', borderRadius: 6, padding: '6px 10px', fontSize: 12, fontWeight: 700 }}>1.00 USDC</div>
+        <div className="text-gray-500 dark:text-[#82828b] text-[10px] mb-1.5">Stake</div>
+        <div className="bg-gray-100 dark:bg-[#141414] rounded-md px-2.5 py-1.5 text-xs font-bold">1.00 USDC</div>
       </div>
-      <div style={{ flex: 1, padding: '16px 18px', borderTop: '1px solid rgba(255,255,255,0.06)', fontFamily: 'Arial, sans-serif' }} className="sm:border-t-0 sm:border-l sm:border-white/[0.06]">
-        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.22)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 14 }}>How to place a bet</div>
+      <div className="flex-1 p-4 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-white/[0.06]" style={{ fontFamily: 'Arial, sans-serif' }}>
+        <div className="text-[9px] text-gray-400 dark:text-white/20 tracking-[0.14em] uppercase mb-3.5">How to place a bet</div>
         {[
           { n: 1, label: 'Fund your account', sub: 'Deposit with crypto or fiat' },
           { n: 2, label: 'Resolution date & time', sub: 'Pick a duration and exact date/time' },
           { n: 3, label: 'Price range', sub: 'Drag handles to set your min - max' },
           { n: 4, label: 'Stake amount', sub: 'Enter how much USDC to wager' },
         ].map(h => (
-          <div key={h.n} style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.18)', width: 12, flexShrink: 0 }}>{h.n}</span>
+          <div key={h.n} className="flex gap-2.5 mb-3">
+            <span className="text-[10px] text-gray-300 dark:text-white/20 w-3 flex-shrink-0">{h.n}</span>
             <div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 500, lineHeight: 1, marginBottom: 3 }}>{h.label}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', lineHeight: 1 }}>{h.sub}</div>
+              <div className="text-[11px] text-gray-900 dark:text-white/90 font-medium leading-none mb-0.5">{h.label}</div>
+              <div className="text-[10px] text-gray-400 dark:text-white/35 leading-none">{h.sub}</div>
             </div>
           </div>
         ))}
@@ -149,27 +152,27 @@ function StepTwoWidget() {
 // Step 3: Results Card Preview
 function StepThreeCard() {
   return (
-    <div style={{ width: 280, background: '#121212', borderRadius: 16, border: '1px solid #1f1f1f', boxShadow: 'inset 1px 1px 1px rgba(255,255,255,0.05), 0 8px 0 #050505', fontFamily: 'Arial, sans-serif', margin: '16px auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 16px 14px' }}>
-        <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#F7931A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#fff', flexShrink: 0 }}>B</div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', lineHeight: 1.3 }}>Predict Where Bitcoin&apos;s Price Will Land</div>
+    <div className="w-[280px] bg-white dark:bg-[#121212] rounded-2xl border border-gray-200 dark:border-[#1f1f1f] shadow-md dark:shadow-[inset_1px_1px_1px_rgba(255,255,255,0.05),0_8px_0_#050505] my-4 mx-auto" style={{ fontFamily: 'Arial, sans-serif' }}>
+      <div className="flex items-center gap-3 px-4 pt-5 pb-3.5">
+        <div className="w-10 h-10 rounded-full bg-[#F7931A] flex items-center justify-center text-lg font-bold text-white flex-shrink-0">B</div>
+        <div className="text-sm font-bold text-gray-900 dark:text-white leading-snug">Predict Where Bitcoin&apos;s Price Will Land</div>
       </div>
-      <div style={{ padding: '6px 16px 18px' }}>
+      <div className="px-4 pb-5">
         {[
           { label: 'Sharpness', value: '--', muted: true },
           { label: 'Lead Time', value: '--', muted: true },
           { label: 'Total Quality', value: '--', muted: false },
         ].map(r => (
-          <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, fontSize: 13 }}>
-            <span style={{ color: r.muted ? '#8b8f98' : '#fff', fontWeight: r.muted ? 400 : 500 }}>{r.label}</span>
-            <span style={{ color: r.muted ? '#8b8f98' : '#2563eb', fontFamily: 'monospace' }}>{r.value}</span>
+          <div key={r.label} className="flex justify-between mb-3 text-[13px]">
+            <span className={r.muted ? 'text-gray-400 dark:text-[#8b8f98]' : 'text-gray-900 dark:text-white font-medium'}>{r.label}</span>
+            <span className={r.muted ? 'text-gray-400 dark:text-[#8b8f98] font-mono' : 'text-blue-600 font-mono'}>{r.value}</span>
           </div>
         ))}
-        <div style={{ borderTop: '1px solid #1f1f1f', paddingTop: 12, marginBottom: 16, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-          <span style={{ color: '#8b8f98' }}>Est. Profit</span>
-          <span style={{ color: '#fff', fontWeight: 500 }}>+0.0000 USDC (1.00x)</span>
+        <div className="border-t border-gray-200 dark:border-[#1f1f1f] pt-3 mb-4 flex justify-between text-[13px]">
+          <span className="text-gray-400 dark:text-[#8b8f98]">Est. Profit</span>
+          <span className="text-gray-900 dark:text-white font-medium">+0.0000 USDC (1.00x)</span>
         </div>
-        <button style={{ width: '100%', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 600, cursor: 'default', boxShadow: 'inset 1px 1px 1px rgba(255,255,255,0.2), 0 6px 0 #1d4ed8' }}>
+        <button className="w-full bg-blue-600 text-white border-none rounded-[10px] py-3 text-sm font-semibold cursor-default shadow-[inset_1px_1px_1px_rgba(255,255,255,0.2),0_6px_0_#1d4ed8]">
           Cash Out
         </button>
       </div>
@@ -234,7 +237,7 @@ export function CategoryTabs({ activeCategory, onCategoryChange }: CategoryTabsP
 
       {/* Mobile: sticky bottom bar (only when not signed in) */}
       {showHowItWorks && (
-        <div className="sm:hidden fixed bottom-16 left-0 right-0 z-50 flex items-center justify-center px-4 py-2.5 bg-[#111111]/95 backdrop-blur border-t border-white/[0.06]">
+        <div className="sm:hidden fixed bottom-16 left-0 right-0 z-50 flex items-center justify-center px-4 py-2.5 bg-white/95 dark:bg-[#111111]/95 backdrop-blur border-t border-gray-200 dark:border-white/[0.06]">
           <button
             onClick={() => setHowItWorksOpen(true)}
             className="flex items-center gap-2 text-sm font-medium text-blue-500"
