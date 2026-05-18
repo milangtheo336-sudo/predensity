@@ -165,7 +165,7 @@ export default function OnboardingPage() {
                   transition={{ duration: 0.45, ease: 'easeInOut' }}
                   className="absolute flex items-center justify-center gap-3"
                 >
-                  <span className="text-3xl">{CATEGORIES[activeIndex].icon}</span>
+                  <Image src={CATEGORIES[activeIndex].image} alt={CATEGORIES[activeIndex].name} width={44} height={44} className="w-11 h-11 object-contain" />
                   <span className="text-3xl font-bold text-white">
                     {CATEGORIES[activeIndex].name}
                   </span>
