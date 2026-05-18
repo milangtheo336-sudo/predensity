@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
-    const { marketId, question, category, outcomeNames, imageUrl, description, resolutionTimestamp,
+    const { marketId, question, category, outcomeNames, outcomesData, imageUrl, description, resolutionTimestamp,
             team1, team2, candidate, sportType, outcomeTokenAddresses, onChainMarketId } = body;
 
     if (!marketId || !question || !category || !outcomeNames || !imageUrl || !description || !resolutionTimestamp) {
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     await convex.mutation(api.clob.createClobMarket, {
-      marketId, question, category, outcomeNames, imageUrl, description,
+      marketId, question, category, outcomeNames, outcomesData, imageUrl, description,
       resolutionTimestamp: Number(resolutionTimestamp),
       team1, team2, candidate, sportType, outcomeTokenAddresses, onChainMarketId,
     });
