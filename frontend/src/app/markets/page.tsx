@@ -21,6 +21,7 @@ export default function MarketsPage() {
   const [status, setStatus] = useState<MarketStatus>(MarketStatus.OPEN);
   const [sortBy, setSortBy] = useState<SortOption>(SortOption.MOST_ACTIVE_24H);
   const [searchQuery, setSearchQuery] = useState('');
+  const [hiddenCategories, setHiddenCategories] = useState<Set<Category>>(new Set());
 
   const convexEvents = useQuery(api.events.getEvents, {});
   const cryptoMarkets = useQuery(api.events.getCryptoMarkets, {});
@@ -97,8 +98,26 @@ export default function MarketsPage() {
     router.push(`/markets/${market.id}`);
   };
 
+  const toggleCategory = (cat: Category) => {
+    setHiddenCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
+
+  const clearFilters = () => {
+    setHiddenCategories(new Set());
+    setStatus(MarketStatus.OPEN);
+    setSortBy(SortOption.MOST_ACTIVE_24H);
+  };
+
   const filteredMarkets = markets.filter((market) => {
     if (searchQuery && !market.question.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    if (hiddenCategories.has(market.category)) {
       return false;
     }
     return true;
@@ -117,38 +136,18 @@ export default function MarketsPage() {
           />
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search market"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-gray-100 dark:bg-neutral-900 text-gray-900 dark:text-white px-4 py-2.5 pl-10 rounded-lg border border-gray-200 dark:border-gray-800 focus:border-gray-400 dark:focus:border-gray-700 focus:outline-none text-sm"
-              />
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-          </div>
-
+        <div className="mb-6">
           <MarketFilters
             status={status}
             sortBy={sortBy}
             onStatusChange={setStatus}
             onSortChange={setSortBy}
             markets={markets}
+            hiddenCategories={hiddenCategories}
+            onToggleCategory={toggleCategory}
+            onClearFilters={clearFilters}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
           />
         </div>
 
