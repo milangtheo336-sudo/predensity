@@ -52,7 +52,7 @@ async function readOnChainBet(client: Client, contractIdStr: string, betId: numb
 export async function POST(request: NextRequest) {
   try {
     // Admin auth check
-    const adminResult = await requireAdmin();
+    const adminResult = await requireAdmin(request);
     if (adminResult instanceof NextResponse) return adminResult;
 
     const rateLimitResponse = rateLimit(request, { maxRequests: 10, windowMs: 60_000 });
