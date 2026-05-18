@@ -179,7 +179,7 @@ export default function OnboardingPage() {
                 style={{ top: '65%' }}
                 animate={{ opacity: 0.18 }}
               >
-                <span className="text-lg">{CATEGORIES[(activeIndex + 1) % CATEGORIES.length].icon}</span>
+                <Image src={CATEGORIES[(activeIndex + 1) % CATEGORIES.length].image} alt="" width={24} height={24} className="w-6 h-6 object-contain opacity-20" />
                 <span className="text-lg font-bold text-white/20">
                   {CATEGORIES[(activeIndex + 1) % CATEGORIES.length].name}
                 </span>
