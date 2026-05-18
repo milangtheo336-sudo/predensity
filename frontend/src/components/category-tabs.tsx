@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { Category, CATEGORIES } from '@/lib/types/categories';
 import { cn } from '@/lib/utils';
 import { HelpCircle, X, ChevronRight, Info } from 'lucide-react';
