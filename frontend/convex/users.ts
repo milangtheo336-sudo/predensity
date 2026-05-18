@@ -453,6 +453,23 @@ export const getUserActivity = query({
         .take(limit);
     }
 
+    // Build event image lookup for non-crypto bets (politics, sports, technology)
+    // Match events by category + targetTimestamp
+    const nonCryptoCategories = new Set<string>();
+    for (const b of allBets) {
+      if (b.category && b.category !== "crypto") nonCryptoCategories.add(b.category);
+    }
+    const eventImageMap = new Map<string, { imageUrl: string; eventName: string }>();
+    for (const cat of nonCryptoCategories) {
+      const events = await ctx.db
+        .query("events")
+        .withIndex("by_category", (q) => q.eq("category", cat))
+        .collect();
+      for (const ev of events) {
+        eventImageMap.set(`${cat}-${ev.eventTimestamp}`, { imageUrl: ev.imageUrl, eventName: ev.eventName });
+      }
+    }
+
     // Build unified activity items
     type ActivityItem = {
       type: "bet_placed" | "bet_won" | "bet_lost" | "deposit" | "withdrawal";
@@ -464,6 +481,10 @@ export const getUserActivity = query({
       details?: string;
       betId?: string;
       txHash?: string;
+      priceMin?: string;
+      priceMax?: string;
+      eventImageUrl?: string;
+      eventName?: string;
     };
 
     const activities: ActivityItem[] = [];
@@ -471,38 +492,43 @@ export const getUserActivity = query({
     for (const bet of allBets) {
       if (bet.status === "failed") continue;
 
+      const evKey = `${bet.category}-${bet.targetTimestamp}`;
+      const eventInfo = eventImageMap.get(evKey);
+
+      const base = {
+        category: bet.category,
+        asset: bet.asset,
+        betId: bet.betId,
+        txHash: bet.transactionHash,
+        priceMin: bet.priceMin,
+        priceMax: bet.priceMax,
+        eventImageUrl: eventInfo?.imageUrl,
+        eventName: eventInfo?.eventName,
+      };
+
       if (bet.finalized && bet.won) {
         activities.push({
+          ...base,
           type: "bet_won",
           timestamp: bet.timestamp,
           amount: bet.payout || bet.expectedPayout || bet.stake,
-          category: bet.category,
-          asset: bet.asset,
           status: "completed",
-          betId: bet.betId,
-          txHash: bet.transactionHash,
         });
       } else if (bet.finalized && !bet.won) {
         activities.push({
+          ...base,
           type: "bet_lost",
           timestamp: bet.timestamp,
           amount: bet.stake,
-          category: bet.category,
-          asset: bet.asset,
           status: "completed",
-          betId: bet.betId,
-          txHash: bet.transactionHash,
         });
       } else {
         activities.push({
+          ...base,
           type: "bet_placed",
           timestamp: bet.timestamp,
           amount: bet.stake,
-          category: bet.category,
-          asset: bet.asset,
           status: bet.status || "pending",
-          betId: bet.betId,
-          txHash: bet.transactionHash,
         });
       }
     }
