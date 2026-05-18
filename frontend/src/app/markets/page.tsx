@@ -37,9 +37,13 @@ export default function MarketsPage() {
           if (status === MarketStatus.OPEN && e.resolved) {
             return false;
           }
+          if (status === MarketStatus.CLOSED && !e.resolved) {
+            return false;
+          }
           if (status === MarketStatus.RESOLVED && !e.resolved) {
             return false;
           }
+          // MarketStatus.ALL passes everything through
           return true;
         })
         .map((e) => {
@@ -113,15 +117,32 @@ export default function MarketsPage() {
     setSortBy(SortOption.MOST_ACTIVE_24H);
   };
 
-  const filteredMarkets = markets.filter((market) => {
-    if (searchQuery && !market.question.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-    if (hiddenCategories.has(market.category)) {
-      return false;
-    }
-    return true;
-  });
+  const filteredMarkets = markets
+    .filter((market) => {
+      if (searchQuery && !market.question.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      if (hiddenCategories.has(market.category)) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case SortOption.NEWEST:
+          // Higher timestamp = newer, show first
+          return (b.targetTimestamp ?? 0) - (a.targetTimestamp ?? 0);
+        case SortOption.MOST_ACTIVE_24H:
+        case SortOption.HIGH_VOLUME:
+          // Higher volume first
+          return parseFloat(b.totalVolume || '0') - parseFloat(a.totalVolume || '0');
+        case SortOption.CLOSING_SOON:
+          // Lower timestamp = ending sooner, show first
+          return (a.targetTimestamp ?? Infinity) - (b.targetTimestamp ?? Infinity);
+        default:
+          return 0;
+      }
+    });
 
 
   return (
