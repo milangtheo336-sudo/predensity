@@ -7,12 +7,12 @@ import { ArrowLeft, Clock, Share2, Twitter, Link2, Check as CheckIcon, Loader2, 
 import { Button } from '@/components/ui/button';
 import { PredictionCardSkeleton } from '@/components/prediction-card-skeleton';
 import { useQuery as useConvexQuery, useMutation } from 'convex/react';
-import { useUser } from '@clerk/nextjs';
+import { useMagic } from '@/context/MagicContext';
+import { signTypedData, getDIDToken } from '@/lib/magic';
 import { api } from '../../convex/_generated/api';
 import { useBalanceVisibility } from '@/components/header';
 import BoringAvatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
-
 // User Avatar component
 function UserAvatar({ addr, size = 28, imageUrl }: { addr: string; avatar?: string; size?: number; imageUrl?: string }) {
   if (imageUrl && !imageUrl.includes('gravatar')) {
@@ -99,7 +99,8 @@ function ClobActivitySection({
   currentUser?: { id: string; name: string; imageUrl?: string };
 }) {
   const [activeTab, setActiveTab] = useState<'ideas' | 'positions' | 'activity'>('ideas');
-  const { user, isSignedIn } = useUser();
+  const { user } = useMagic();
+  const isSignedIn = !!user;
 
   // Comments/Ideas
   const comments = useConvexQuery(api.social.getMarketComments, { marketId });
@@ -590,7 +591,8 @@ function OrderBookView({ marketId, outcomeIndex }: { marketId: string; outcomeIn
 // Main CLOB Prediction Card
 // ---------------------------------------------------------------------------
 export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
-  const { user, isSignedIn } = useUser();
+  const { user } = useMagic();
+  const isSignedIn = !!user;
   const { balancesHidden } = useBalanceVisibility();
 
   // Market data
@@ -706,16 +708,54 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
     setOrderError(null);
     setOrderSuccess(false);
     try {
+      // Generate nonce for replay protection
+      const nonce = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+      
+      // Sign order with Magic Link
+      const domain = {
+        name: 'Predensity CLOB',
+        version: '1',
+        chainId: 296, // Hedera testnet
+      };
+
+      const types = {
+        Order: [
+          { name: 'marketId', type: 'string' },
+          { name: 'outcomeIndex', type: 'uint256' },
+          { name: 'side', type: 'string' },
+          { name: 'price', type: 'uint256' },
+          { name: 'quantity', type: 'uint256' },
+          { name: 'nonce', type: 'uint256' },
+        ],
+      };
+
+      const message = {
+        marketId,
+        outcomeIndex: selectedOutcome,
+        side: orderSide,
+        price,
+        quantity: parseInt(orderQuantity),
+        nonce,
+      };
+
+      const signature = await signTypedData(domain, types, message);
+      const didToken = await getDIDToken();
+      
       const res = await fetch('/api/clob/order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${didToken}`,
+        },
         body: JSON.stringify({
-          userId: user.id,
+          userId: user.issuer,
           marketId,
           outcomeIndex: selectedOutcome,
           side: orderSide,
           price,
           quantity: parseInt(orderQuantity),
+          signature,
+          nonce,
         }),
       });
       const data = await res.json();
@@ -734,10 +774,39 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const handleCancelOrder = async (orderId: string) => {
     if (!user) return;
     try {
+      // Generate nonce for replay protection
+      const nonce = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+      
+      // Sign cancellation with Magic Link
+      const domain = {
+        name: 'Predensity CLOB',
+        version: '1',
+        chainId: 296,
+      };
+
+      const types = {
+        CancelOrder: [
+          { name: 'orderId', type: 'string' },
+          { name: 'nonce', type: 'uint256' },
+        ],
+      };
+
+      const message = { orderId, nonce };
+      const signature = await signTypedData(domain, types, message);
+      const didToken = await getDIDToken();
+      
       await fetch('/api/clob/order', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, orderId }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${didToken}`,
+        },
+        body: JSON.stringify({
+          userId: user.issuer,
+          orderId,
+          signature,
+          nonce,
+        }),
       });
     } catch { /* ignore */ }
   };
