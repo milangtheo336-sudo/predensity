@@ -21,7 +21,7 @@ const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || process.env.OPE
 const HEDERA_NETWORK = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
 
 // Initial HBAR funding for gas (1 HBAR covers thousands of transactions)
-const INITIAL_HBAR_FUNDING = 1;
+const INITIAL_HBAR_FUNDING = 0.1;
 
 // Convex client for storing wallet data
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
