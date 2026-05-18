@@ -1,22 +1,53 @@
 // Shared authentication and rate limiting utilities for API routes
-import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { Magic } from '@magic-sdk/admin';
 
-// Authenticate the request and return the userId, or an error response
-export async function requireAuth(): Promise<{ userId: string } | NextResponse> {
-  const { userId } = await auth();
-  if (!userId) {
+// Initialize Magic Admin SDK
+const magic = new Magic(process.env.MAGIC_SECRET_KEY!);
+
+// Authenticate the request using Magic DID token and return the userId (issuer), or an error response
+export async function requireAuth(request: NextRequest): Promise<{ userId: string; publicAddress: string } | NextResponse> {
+  try {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please sign in.' },
+        { status: 401 }
+      );
+    }
+
+    const didToken = authHeader.substring(7);
+    
+    // Validate DID token with Magic
+    magic.token.validate(didToken);
+    const metadata = await magic.users.getMetadataByToken(didToken);
+    
+    if (!metadata.issuer || !metadata.publicAddress) {
+      return NextResponse.json(
+        { error: 'Invalid authentication token.' },
+        { status: 401 }
+      );
+    }
+
+    return { 
+      userId: metadata.issuer,
+      publicAddress: metadata.publicAddress 
+    };
+  } catch (error) {
+    console.error('[requireAuth] Error:', error);
     return NextResponse.json(
-      { error: 'Authentication required. Please sign in.' },
+      { error: 'Authentication failed. Please sign in again.' },
       { status: 401 }
     );
   }
-  return { userId };
 }
 
 // Verify the authenticated user matches the requested userId (prevents IDOR)
-export async function requireAuthMatchingUser(requestedUserId: string): Promise<{ userId: string } | NextResponse> {
-  const result = await requireAuth();
+export async function requireAuthMatchingUser(
+  request: NextRequest,
+  requestedUserId: string
+): Promise<{ userId: string; publicAddress: string } | NextResponse> {
+  const result = await requireAuth(request);
   if (result instanceof NextResponse) return result;
 
   if (result.userId !== requestedUserId) {
@@ -28,15 +59,19 @@ export async function requireAuthMatchingUser(requestedUserId: string): Promise<
   return result;
 }
 
-// Verify the authenticated user has admin role in Clerk publicMetadata
-export async function requireAdmin(): Promise<{ userId: string } | NextResponse> {
-  const result = await requireAuth();
+// Verify the authenticated user has admin role
+// Admin emails are configured in ADMIN_EMAILS environment variable
+export async function requireAdmin(request: NextRequest): Promise<{ userId: string; publicAddress: string } | NextResponse> {
+  const result = await requireAuth(request);
   if (result instanceof NextResponse) return result;
 
   try {
-    const client = await clerkClient();
-    const user = await client.users.getUser(result.userId);
-    if (user.publicMetadata?.role !== 'admin') {
+    const didToken = request.headers.get('authorization')!.substring(7);
+    const metadata = await magic.users.getMetadataByToken(didToken);
+    
+    const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim());
+    
+    if (!metadata.email || !adminEmails.includes(metadata.email)) {
       return NextResponse.json(
         { error: 'Forbidden: admin access required.' },
         { status: 403 }
