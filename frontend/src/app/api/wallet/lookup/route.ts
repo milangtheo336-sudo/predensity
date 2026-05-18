@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     // Require authentication -- wallet data should not be publicly queryable
-    const authResult = await requireAuth();
+    const authResult = await requireAuth(request);
     if (authResult instanceof NextResponse) return authResult;
 
     const { searchParams } = new URL(request.url);
