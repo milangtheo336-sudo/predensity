@@ -291,6 +291,7 @@ export default defineSchema({
     question: v.string(),           // "Who will win the 2026 World Cup?"
     category: v.string(),           // "politics", "sports", "technology"
     outcomeNames: v.array(v.string()), // ["Spain", "England", "France", ...]
+    outcomesData: v.optional(v.array(v.object({ name: v.string(), imageUrl: v.string() }))), // Outcome names with individual images
     outcomeTokenAddresses: v.optional(v.array(v.string())), // HTS token addresses
     numOutcomes: v.number(),
     imageUrl: v.string(),
