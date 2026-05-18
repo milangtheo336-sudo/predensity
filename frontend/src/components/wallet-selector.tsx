@@ -77,7 +77,7 @@ export function WalletSelector() {
   // Use library's hooks directly
   const { isConnected, disconnect, connector } = useWallet();
   const { data: accountId } = useAccountId();
-  const { data: balanceData, isLoading: balanceLoading } = useBalance({ autoFetch: isConnected });
+  const { data: balanceData, isLoading: balanceLoading } = useBalance({ autoFetch: false });
 
   // Parse balance data
   const balance = React.useMemo(() => {
