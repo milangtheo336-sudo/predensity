@@ -39,33 +39,33 @@ torch-subgraph/
 predensity-subgraph/
 
 # Personal notes / planning docs (root-level .md except README)
-CONTRACT_SCALABILITY_COMPARISON.md
-DESIGN_TOKEN_STRUCTURE.md
-MULTI_CATEGORY_ADMIN_COMPLETE.md
-MULTI_CATEGORY_ADMIN_IMPLEMENTATION_PLAN.md
-SUBGRAPH_DEPLOYMENT_GUIDE.md
-SUBGRAPH_SETUP_GUIDE.md
-cryptoevent based way.md
-currentstage.md
-plan to actual data.md
-what a database solves.md
+*.md
+!README.md
+!frontend/README.md
+!backend/README.md
+!smartContracts/README.md
 
 # PowerShell scripts
 *.ps1
 
-# Frontend utility/debug/test scripts
-frontend/chart.js
+# Scripts and test files
+frontend/scripts/
 frontend/check-*.js
-frontend/find-*.md
+frontend/find-*.js
 frontend/test-*.js
 frontend/fix-*.js
-frontend/find-*.js
 frontend/deploy-*.js
 frontend/mint-*.js
 frontend/send-*.js
 frontend/update-*.js
+frontend/debug-*.js
+frontend/chart.js
 
 # Frontend test files
 frontend/jest.config.js
 frontend/jest.setup.js
 frontend/src/**/__tests__/
+frontend/**/*.test.ts
+frontend/**/*.test.tsx
+frontend/**/*.spec.ts
+frontend/**/*.spec.tsx
