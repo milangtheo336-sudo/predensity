@@ -8,37 +8,41 @@ import GamePlay from '@/components/game-play';
 import WinnerPage from '@/components/winner-page';
 
 const CATEGORIES = [
-  { id: 'crypto', name: 'Crypto', icon: '₿' },
-  { id: 'sports', name: 'Sports', icon: '⚽' },
-  { id: 'politics', name: 'Politics', icon: '🗳' },
-  { id: 'finance', name: 'Finance', icon: '📈' },
-  { id: 'tech', name: 'Tech & Science', icon: '🔬' },
-  { id: 'elections', name: 'Elections', icon: '🗳' },
-  { id: 'entertainment', name: 'Entertainment', icon: '🎬' },
-  { id: 'culture', name: 'Culture', icon: '🎭' },
-  { id: 'climate', name: 'Climate', icon: '🌍' },
-  { id: 'commodities', name: 'Commodities', icon: '�' },
-  { id: 'companies', name: 'Companies', icon: '🏢' },
+  { id: 'crypto',        name: 'Crypto',          icon: '\u20BF' },
+  { id: 'sports',        name: 'Sports',           icon: '\u26BD' },
+  { id: 'politics',      name: 'Politics',         icon: '\uD83D\uDDF3\uFE0F' },
+  { id: 'finance',       name: 'Finance',          icon: '\uD83D\uDCC8' },
+  { id: 'tech',          name: 'Tech & Science',   icon: '\uD83D\uDD2C' },
+  { id: 'elections',     name: 'Elections',        icon: '\uD83C\uDFF7\uFE0F' },
+  { id: 'entertainment', name: 'Entertainment',    icon: '\uD83C\uDFAC' },
+  { id: 'culture',       name: 'Culture',          icon: '\uD83C\uDFAD' },
+  { id: 'climate',       name: 'Climate',          icon: '\uD83C\uDF0D' },
+  { id: 'commodities',   name: 'Commodities',      icon: '\uD83D\uDEE2\uFE0F' },
+  { id: 'companies',     name: 'Companies',        icon: '\uD83C\uDFE2' },
 ];
 
 const MATCH = {
   home: { name: 'USA', flag: '/us flag .avif' },
-  away: { name: 'UK', flag: '/uk flag.avif' },
+  away: { name: 'UK',  flag: '/uk flag.avif'  },
   odds: { home: '38%', draw: 'Draw 29%', away: '33%' },
 };
 
 const OUTCOMES = [
-  { name: 'USA', flag: '/us flag .avif', yesPrice: 38, noPrice: 62 },
-  { name: 'Draw', flag: null, yesPrice: 29, noPrice: 71 },
-  { name: 'UK', flag: '/uk flag.avif', yesPrice: 33, noPrice: 67 },
+  { name: 'USA',  flag: '/us flag .avif', yesPrice: 38, noPrice: 62 },
+  { name: 'Draw', flag: null,             yesPrice: 29, noPrice: 71 },
+  { name: 'UK',   flag: '/uk flag.avif',  yesPrice: 33, noPrice: 67 },
 ];
 
 const AMOUNT_OPTIONS = ['5', '15', '50', '100'];
 
+const STEP_ORDER = ['categories', 'trade', 'modal', 'gameplay', 'result'] as const;
+type Step = typeof STEP_ORDER[number];
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [step, setStep] = useState<'categories' | 'trade' | 'modal' | 'gameplay' | 'result'>('categories');
+  const [prevIndex, setPrevIndex] = useState<number | null>(null);
+  const [step, setStep] = useState<Step>('categories');
   const [selectedOutcomeIndex, setSelectedOutcomeIndex] = useState(0);
   const [selectedAmount, setSelectedAmount] = useState('5');
   const [selectedSide, setSelectedSide] = useState<'yes' | 'no'>('yes');
@@ -50,8 +54,11 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (step !== 'categories') return;
     const interval = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % CATEGORIES.length);
-    }, 1400);
+      setActiveIndex((prev) => {
+        setPrevIndex(prev);
+        return (prev + 1) % CATEGORIES.length;
+      });
+    }, 1600);
     return () => clearInterval(interval);
   }, [step]);
 
@@ -72,6 +79,8 @@ export default function OnboardingPage() {
     (selectedSide === 'yes' ? currentOutcome.yesPrice : currentOutcome.noPrice)
   ).toFixed(2);
 
+  const currentStepIdx = STEP_ORDER.indexOf(step);
+
   return (
     <div className="min-h-screen overflow-hidden relative flex flex-col font-sans bg-[#1e3a5f]">
 
@@ -82,20 +91,24 @@ export default function OnboardingPage() {
         Skip
       </button>
 
+      {/* Progress bars */}
       <div className="absolute top-8 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-        {(['categories', 'trade', 'modal', 'gameplay'] as const).map((s, i) => {
-          const stepOrder = ['categories', 'trade', 'modal', 'gameplay', 'result'];
-          const currentIdx = stepOrder.indexOf(step);
-          const isPast = i < currentIdx;
-          const isActive = i === currentIdx;
+        {[0, 1, 2, 3].map((i) => {
+          const isPast   = i < currentStepIdx;
+          const isActive = i === currentStepIdx;
           return (
-            <div key={s} className="h-0.5 w-10 rounded-full overflow-hidden bg-white/20">
-              {(isPast || isActive) && (
+            <div key={i} className="h-0.5 w-10 rounded-full overflow-hidden bg-white/20">
+              {isPast && <div className="h-full w-full bg-white rounded-full" />}
+              {isActive && (
                 <motion.div
+                  key={step}
                   className="h-full bg-white rounded-full"
-                  initial={{ width: isPast ? '100%' : '0%' }}
+                  initial={{ width: '0%' }}
                   animate={{ width: '100%' }}
-                  transition={isActive ? { duration: step === 'categories' ? CATEGORIES.length * 1.4 : 2, ease: 'linear' } : { duration: 0 }}
+                  transition={{
+                    duration: step === 'categories' ? CATEGORIES.length * 1.6 : 3,
+                    ease: 'linear',
+                  }}
                 />
               )}
             </div>
@@ -115,38 +128,61 @@ export default function OnboardingPage() {
             transition={{ duration: 0.4 }}
             className="flex-1 flex flex-col justify-between items-center py-24 px-6"
           >
+            {/* Infinite-loop carousel: each item fades/slides in individually */}
             <div
-              className="relative h-64 w-full max-w-xs flex items-center justify-center overflow-hidden mt-8"
+              className="relative h-48 w-full max-w-xs flex items-center justify-center mt-8"
               style={{
-                maskImage: 'linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)',
-                WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)',
+                maskImage: 'linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)',
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)',
               }}
             >
+              {/* Previous item — slides out upward */}
+              <AnimatePresence>
+                {prevIndex !== null && prevIndex !== activeIndex && (
+                  <motion.div
+                    key={`prev-${prevIndex}`}
+                    initial={{ opacity: 0.4, y: 0 }}
+                    animate={{ opacity: 0, y: -40 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.45, ease: 'easeInOut' }}
+                    className="absolute flex items-center justify-center gap-3"
+                  >
+                    <span className="text-xl">{CATEGORIES[prevIndex].icon}</span>
+                    <span className="text-2xl font-bold text-white/40">
+                      {CATEGORIES[prevIndex].name}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Active item — slides in from below */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`active-${activeIndex}`}
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -40 }}
+                  transition={{ duration: 0.45, ease: 'easeInOut' }}
+                  className="absolute flex items-center justify-center gap-3"
+                >
+                  <span className="text-3xl">{CATEGORIES[activeIndex].icon}</span>
+                  <span className="text-3xl font-bold text-white">
+                    {CATEGORIES[activeIndex].name}
+                  </span>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Next item preview — faint, below */}
               <motion.div
-                className="absolute flex flex-col items-center gap-6 w-full"
-                animate={{ y: `calc(50% - ${activeIndex * 5}rem - 1.75rem)` }}
-                transition={{ type: 'spring', damping: 28, stiffness: 180, mass: 0.8 }}
+                key={`next-${(activeIndex + 1) % CATEGORIES.length}`}
+                className="absolute flex items-center justify-center gap-3"
+                style={{ top: '65%' }}
+                animate={{ opacity: 0.18 }}
               >
-                {CATEGORIES.map((cat, idx) => {
-                  const isActive = idx === activeIndex;
-                  const isAdjacent = Math.abs(idx - activeIndex) === 1;
-                  return (
-                    <motion.div
-                      key={cat.id}
-                      animate={{
-                        opacity: isActive ? 1 : isAdjacent ? 0.35 : 0.08,
-                        scale: isActive ? 1.12 : isAdjacent ? 0.92 : 0.85,
-                      }}
-                      transition={{ duration: 0.3 }}
-                      className="flex items-center justify-center gap-3 h-14 w-full"
-                    >
-                      {isActive && <span className="text-2xl">{cat.icon}</span>}
-                      <span className={`text-2xl font-bold ${isActive ? 'text-white' : 'text-white/20'}`}>
-                        {cat.name}
-                      </span>
-                    </motion.div>
-                  );
-                })}
+                <span className="text-lg">{CATEGORIES[(activeIndex + 1) % CATEGORIES.length].icon}</span>
+                <span className="text-lg font-bold text-white/20">
+                  {CATEGORIES[(activeIndex + 1) % CATEGORIES.length].name}
+                </span>
               </motion.div>
             </div>
 
@@ -208,7 +244,7 @@ export default function OnboardingPage() {
           </motion.div>
         )}
 
-        {/* STEP 3: Simple trading panel */}
+        {/* STEP 3: Trading panel */}
         {step === 'modal' && (
           <motion.div
             key="trading"
@@ -338,7 +374,7 @@ export default function OnboardingPage() {
                   onClick={handlePlaceTrade}
                   className="w-full bg-[#0d1b2a] text-white font-bold py-4 rounded-2xl hover:bg-[#1a2f45] transition-colors text-sm"
                 >
-                  Trade
+                  Predict
                 </button>
               </div>
             </div>
