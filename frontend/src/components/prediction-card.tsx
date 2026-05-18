@@ -22,7 +22,7 @@ import {
 } from '@buidlerlabs/hashgraph-react-wallets';
 
 import { useQuery as useConvexQuery, useMutation } from 'convex/react';
-import { useUser } from '@clerk/nextjs';
+import { useMagic } from '@/context/MagicContext';
 import { api } from '../../convex/_generated/api';
 import BoringAvatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
@@ -186,7 +186,8 @@ function CryptoActivitySection({
   const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
   const hashscanBase = hederaNetwork === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
 
-  const { user, isSignedIn } = useUser();
+  const { user } = useMagic();
+  const isSignedIn = !!user;
 
   // Ideas (comments)
   const marketIdForComments = `crypto-${tokenSymbol.toLowerCase()}`;
@@ -608,10 +609,11 @@ export function PredictionCard({
   const contractAddress = getContractAddress(Category.CRYPTO);
 
   //  all users use platform balance
-  const { user, isSignedIn } = useUser();
+  const { user } = useMagic();
+  const isSignedIn = !!user;
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    isSignedIn && user ? { userId: user.id } : 'skip'
+    isSignedIn && user ? { userId: user.issuer } : 'skip'
   );
   const platformBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
   const { balancesHidden } = useBalanceVisibility();
