@@ -38,7 +38,8 @@ import {
   useWriteContract,
   useWatchTransactionReceipt,
 } from '@buidlerlabs/hashgraph-react-wallets';
-import { SignInButton, SignUpButton, useUser, useClerk } from '@clerk/nextjs';
+import { useMagic } from '@/context/MagicContext';
+import { getDIDToken, getUserInfo } from '@/lib/magic';
 import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { getStakingCurrency, getStakingTokenId, isTokenMode } from '@/lib/contracts/contract-config';
@@ -268,7 +269,7 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
 
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    user ? { userId: user.id } : 'skip'
+    user ? { userId: user.issuer } : 'skip'
   );
   const depositAddress = managedWallet?.hederaAccountId || '';
   const evmAddr = managedWallet?.evmAddress || '';
@@ -311,7 +312,7 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
           if (user && managedWallet) {
             const currentStored = parseFloat(managedWallet.usdcBalance || '0');
             const newBal = (currentStored + parseFloat(diff)).toFixed(6);
-            updateWallet({ userId: user.id, usdcBalance: newBal });
+            updateWallet({ userId: user.issuer, usdcBalance: newBal });
           }
         }
       } catch { /* ignore polling errors */ }
@@ -608,7 +609,7 @@ function MpesaDepositView({ onBack, onClose }: { onBack: () => void; onClose: ()
         body: JSON.stringify({
           phoneNumber: phone.startsWith('254') ? phone : `254${phone.replace(/^0/, '')}`,
           amount: parseFloat(kesAmount),
-          userId: user?.id,
+          userId: user?.issuer,
         }),
       });
       const data = await res.json();
@@ -777,7 +778,7 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user?.id,
+          userId: user?.issuer,
           transactionId: transferTxId,
           expectedAmount: parseFloat(amount),
         }),
@@ -902,7 +903,7 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
   // Pre-fill with connected wallet address or managed wallet address
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    user ? { userId: user.id } : 'skip'
+    user ? { userId: user.issuer } : 'skip'
   );
   const defaultAddress = evmAddress || managedWallet?.evmAddress || '';
 
@@ -943,7 +944,7 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
         const res = await fetch('/api/wallet/withdraw-crypto', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user?.id, destinationAddress: address, amountUsdc: amount }),
+          body: JSON.stringify({ userId: user?.issuer, destinationAddress: address, amountUsdc: amount }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Withdrawal failed');
@@ -953,7 +954,7 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId: user?.id,
+            userId: user?.issuer,
             phoneNumber: phone.startsWith('254') ? phone : `254${phone.replace(/^0/, '')}`,
             amountUSDC: amount,
           }),
@@ -1190,8 +1191,8 @@ function GuestHamburgerMenu({
 export function Header({ children }: { children?: React.ReactNode }) {
   const { isConnected, disconnect } = useWallet();
   const { data: accountId } = useAccountId();
-  const { user, isSignedIn } = useUser();
-  const { signOut } = useClerk();
+  const { user, logout } = useMagic();
+  const isSignedIn = !!user;
 
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositInitialView, setDepositInitialView] = useState<DepositView>('crypto');
@@ -1220,7 +1221,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
   // Managed wallet balance from Convex
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    isSignedIn && user ? { userId: user.id } : 'skip'
+    isSignedIn && user ? { userId: user.issuer } : 'skip'
   );
   const platformBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
 
@@ -1256,7 +1257,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
   }, []);
 
   // Query user bets to calculate portfolio value (positions + unrealized P&L)
-  const managedUserAddress = isSignedIn && user ? `managed:${user.id}`.toLowerCase() : null;
+  const managedUserAddress = isSignedIn && user ? `managed:${user.issuer}`.toLowerCase() : null;
   const managedEvmAddress = managedWallet?.evmAddress?.toLowerCase() || null;
   const { data: evmAddr } = useEvmAddress();
   const walletAddress = evmAddr?.toLowerCase() || null;
@@ -1315,33 +1316,51 @@ export function Header({ children }: { children?: React.ReactNode }) {
     if (managedWallet !== null || walletCreationAttempted.current) return; // already exists or already tried
 
     walletCreationAttempted.current = true;
-    fetch('/api/wallet/create-turnkey', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: user.id,
-        email: user.primaryEmailAddress?.emailAddress || undefined,
-      }),
-    })
-      .then((res) => {
-        if (!res.ok) return res.json().then((d) => console.warn('[auto-wallet] Creation skipped:', d.error));
+    
+    // Get DID token and create wallet
+    (async () => {
+      try {
+        const didToken = await getDIDToken();
+        const userInfo = await getUserInfo();
+        
+        const res = await fetch('/api/wallet/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${didToken}`,
+          },
+          body: JSON.stringify({
+            userId: userInfo?.issuer,
+            email: userInfo?.email,
+            magicEOAAddress: userInfo?.publicAddress,
+          }),
+        });
+        
+        if (!res.ok) {
+          const data = await res.json();
+          console.warn('[auto-wallet] Creation skipped:', data.error);
+          return;
+        }
+        
         console.log('[auto-wallet] Managed wallet created for new user');
-      })
-      .catch((err) => console.error('[auto-wallet] Error:', err));
+      } catch (err) {
+        console.error('[auto-wallet] Error:', err);
+      }
+    })();
   }, [isSignedIn, user, managedWallet]);
 
-  // Auto-sync Clerk profile data to Convex userProfiles (for public profiles)
+  // Auto-sync user profile data to Convex userProfiles (for public profiles)
   const updateProfile = useConvexMutation(api.social.updateProfile);
   const profileSyncAttempted = useRef(false);
   useEffect(() => {
     if (!isSignedIn || !user || profileSyncAttempted.current) return;
     profileSyncAttempted.current = true;
-    const addr = `managed:${user.id}`.toLowerCase();
+    const addr = `managed:${user.issuer}`.toLowerCase();
     updateProfile({
       userAddress: addr,
-      displayName: user.firstName || user.primaryEmailAddress?.emailAddress?.split('@')[0] || undefined,
-      avatar: user.imageUrl || undefined,
-      bio: (user.unsafeMetadata as any)?.bio || undefined,
+      displayName: user.email?.split('@')[0] || undefined,
+      avatar: undefined,
+      bio: undefined,
     }).catch(() => { /* ignore sync errors */ });
   }, [isSignedIn, user]);
 
@@ -1379,7 +1398,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
           const depositAmount = onChain - lastOnChainBalance.current;
           const currentStored = parseFloat(managedWallet.usdcBalance || '0');
           const newBalance = (currentStored + depositAmount).toFixed(6);
-          updateWalletBalance({ userId: user.id, usdcBalance: newBalance });
+          updateWalletBalance({ userId: user.issuer, usdcBalance: newBalance });
         }
         lastOnChainBalance.current = onChain;
       } catch { /* ignore */ }
@@ -1388,16 +1407,16 @@ export function Header({ children }: { children?: React.ReactNode }) {
     const interval = setInterval(checkBalance, 30000);
     checkBalance(); // immediate first check to set baseline
     return () => clearInterval(interval);
-  }, [isSignedIn, user?.id, managedWallet?.hederaAccountId]);
+  }, [isSignedIn, user?.issuer, managedWallet?.hederaAccountId]);
 
   // Notifications
   const notifications = useConvexQuery(
     api.notifications.getUserNotifications,
-    isSignedIn && user ? { userId: user.id } : 'skip'
+    isSignedIn && user ? { userId: user.issuer } : 'skip'
   );
   const unreadCount = useConvexQuery(
     api.notifications.getUnreadCount,
-    isSignedIn && user ? { userId: user.id } : 'skip'
+    isSignedIn && user ? { userId: user.issuer } : 'skip'
   );
   const markAllRead = useConvexMutation(api.notifications.markAllNotificationsRead);
   const hasNotifications = (unreadCount ?? 0) > 0;
@@ -1479,7 +1498,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                     onClick={() => {
                       setNotifOpen(o => !o);
                       if (!notifOpen && hasNotifications && user) {
-                        markAllRead({ userId: user.id });
+                        markAllRead({ userId: user.issuer });
                       }
                     }}
                     aria-label="Notifications"
@@ -1543,10 +1562,10 @@ export function Header({ children }: { children?: React.ReactNode }) {
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   >
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-                      {user?.imageUrl && !user.imageUrl.includes('gravatar') ? (
-                        <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      {undefined && !undefined.includes('gravatar') ? (
+                        <img src={undefined} alt="" className="w-8 h-8 rounded-full object-cover" />
                       ) : (
-                        <Avatar size={32} name={user?.id || 'default'} variant="marble" colors={getAvatarPalette(user?.id || 'default')} square={false} />
+                        <Avatar size={32} name={user?.issuer || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || 'default')} square={false} />
                       )}
                     </div>
                     <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform duration-200', profileDropdownOpen && 'rotate-180')} />
@@ -1558,18 +1577,18 @@ export function Header({ children }: { children?: React.ReactNode }) {
             {/* Non-signed-in: Sign In, Sign Up, hamburger (hover) */}
             {!isSignedIn && mounted && (
               <>
-                <SignInButton mode="modal">
+                <Link href="/auth">
                   <Button variant="ghost" size="sm" className="text-sm text-gray-300 hover:text-white flex items-center gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                     Log in
                   </Button>
-                </SignInButton>
-                <SignUpButton mode="modal">
+                </Link>
+                <Link href="/auth">
                   <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg px-5 py-2 flex items-center gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
                     Sign up
                   </Button>
-                </SignUpButton>
+                </Link>
                 <div
                   className="relative"
                   onMouseEnter={() => {
@@ -1603,7 +1622,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                     onClick={() => {
                       setNotifOpen(o => !o);
                       if (!notifOpen && hasNotifications && user) {
-                        markAllRead({ userId: user.id });
+                        markAllRead({ userId: user.issuer });
                       }
                     }}
                     aria-label="Notifications"
@@ -1667,10 +1686,10 @@ export function Header({ children }: { children?: React.ReactNode }) {
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   >
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-                      {user?.imageUrl && !user.imageUrl.includes('gravatar') ? (
-                        <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      {undefined && !undefined.includes('gravatar') ? (
+                        <img src={undefined} alt="" className="w-8 h-8 rounded-full object-cover" />
                       ) : (
-                        <Avatar size={32} name={user?.id || 'default'} variant="marble" colors={getAvatarPalette(user?.id || 'default')} square={false} />
+                        <Avatar size={32} name={user?.issuer || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || 'default')} square={false} />
                       )}
                     </div>
                     <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform duration-200', profileDropdownOpen && 'rotate-180')} />
@@ -1680,18 +1699,18 @@ export function Header({ children }: { children?: React.ReactNode }) {
             )}
             {!isSignedIn && mounted && (
               <>
-                <SignInButton mode="modal">
+                <Link href="/auth">
                   <Button variant="ghost" size="sm" className="text-xs text-gray-300 hover:text-white flex items-center gap-1">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                     Log in
                   </Button>
-                </SignInButton>
-                <SignUpButton mode="modal">
+                </Link>
+                <Link href="/auth">
                   <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg px-3 py-1.5 flex items-center gap-1">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
                     Sign up
                   </Button>
-                </SignUpButton>
+                </Link>
               </>
             )}
           </div>
@@ -1714,7 +1733,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
         accountId={accountId}
         evmAddress={managedWallet?.evmAddress || undefined}
         disconnect={disconnect}
-        signOut={signOut}
+        logout={logout}
       />
       <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} platformBalance={platformBalance} />
     </DepositModalContext.Provider>
@@ -1737,7 +1756,7 @@ function ProfileDropdownPortal({
   accountId,
   evmAddress,
   disconnect,
-  signOut,
+  logout,
 }: {
   buttonRef: React.RefObject<HTMLButtonElement | null>;
   mobileButtonRef: React.RefObject<HTMLButtonElement | null>;
@@ -1749,7 +1768,7 @@ function ProfileDropdownPortal({
   accountId: string | undefined;
   evmAddress: string | undefined;
   disconnect: () => Promise<any>;
-  signOut: () => Promise<any>;
+  logout: () => Promise<void>;
 }) {
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -1817,10 +1836,10 @@ function ProfileDropdownPortal({
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-            {user?.imageUrl && !user.imageUrl.includes('gravatar') ? (
-              <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+            {undefined && !undefined.includes('gravatar') ? (
+              <img src={undefined} alt="" className="w-8 h-8 rounded-full object-cover" />
             ) : (
-              <Avatar size={32} name={user?.id || 'default'} variant="marble" colors={getAvatarPalette(user?.id || 'default')} square={false} />
+              <Avatar size={32} name={user?.issuer || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || 'default')} square={false} />
             )}
           </div>
           {displayAddress ? (
@@ -1899,7 +1918,7 @@ function ProfileDropdownPortal({
           </button>
         )}
         <button
-          onClick={() => { signOut(); onClose(); }}
+          onClick={() => { logout(); onClose(); }}
           className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
         >
           <LogOut className="w-4 h-4" />
@@ -1910,4 +1929,6 @@ function ProfileDropdownPortal({
     document.body
   );
 }
+
+
 
