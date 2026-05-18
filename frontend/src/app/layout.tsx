@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { MobileBottomNav } from '@/components/mobile-bottom-nav';
+import { SiteFooter } from '@/components/site-footer';
 import { SupportChat } from '@/components/support-chat';
 import { WalletErrorSuppressor } from '@/components/wallet-error-suppressor';
 import { HydrationErrorBoundary } from '@/components/hydration-error-boundary';
@@ -106,6 +107,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     disableTransitionOnChange
                   >
                     {children}
+                    <SiteFooter />
                     <MobileBottomNav />
                     <SupportChat />
                     <Analytics />
