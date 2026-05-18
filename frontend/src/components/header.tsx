@@ -1956,8 +1956,8 @@ export function Header({ children }: { children?: React.ReactNode }) {
       <header className="border-b border-gray-200 dark:border-border bg-white dark:bg-neutral-950 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-background/60 relative z-50">
         <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
           {/* Logo */}
-          <Link href="/markets" className="flex items-center space-x-1 flex-shrink-0">
-            <Image src="/predensity logo.svg" alt="Predensity" width={50} height={50} className="sm:w-13 sm:h-11 rounded-md invert dark:invert-0" />
+          <Link href="/markets" className="flex items-center gap-1.5 flex-shrink-0">
+            <Image src="/predensity logo.svg" alt="Predensity" width={28} height={28} className="w-7 h-7 rounded-md invert dark:invert-0" />
             <span className="text-base sm:text-xl font-bold text-light-gray">Predensity</span>
           </Link>
 
