@@ -767,13 +767,15 @@ function ClobMarketsDisplay({ category }: { category: Category }) {
                   <span>${market.totalVolume.toFixed(2)} vol</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  {market.outcomeNames.map((name: string, idx: number) => {
+                  {(market.outcomesData || market.outcomeNames.map((name: string) => ({ name, imageUrl: '' }))).map((outcome: any, idx: number) => {
                     const isEliminated = eliminated.includes(idx);
                     const isWinner = market.resolved && market.winningOutcome === idx;
+                    const outcomeName = typeof outcome === 'string' ? outcome : outcome.name;
+                    const outcomeImage = typeof outcome === 'object' ? outcome.imageUrl : '';
                     return (
                       <span
                         key={idx}
-                        className={`text-xs px-2 py-1 rounded ${
+                        className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded ${
                           isWinner
                             ? 'bg-green-500 text-white font-semibold'
                             : isEliminated
@@ -781,9 +783,18 @@ function ClobMarketsDisplay({ category }: { category: Category }) {
                             : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
                         }`}
                       >
-                        {name}
-                        {isEliminated && ' ✕'}
-                        {isWinner && ' ✓'}
+                        {outcomeImage && (
+                          <img 
+                            src={outcomeImage} 
+                            alt={outcomeName} 
+                            className={`w-4 h-4 rounded-sm object-cover ${isEliminated ? 'grayscale opacity-50' : ''}`} 
+                          />
+                        )}
+                        <span>
+                          {outcomeName}
+                          {isEliminated && ' ✕'}
+                          {isWinner && ' ✓'}
+                        </span>
                       </span>
                     );
                   })}
@@ -1488,10 +1499,17 @@ function AdminPage() {
 
   // CLOB market creation handler
   const handleCreateClobMarket = async () => {
-    if (!clobMarketForm.question || !clobMarketForm.imageUrl || !clobMarketForm.resolutionTimestamp) {
+    if (!clobMarketForm.question || !clobMarketForm.marketImageUrl || !clobMarketForm.resolutionTimestamp) {
       toast({ variant: 'destructive', title: 'Missing fields', description: 'Fill in all required fields' });
       return;
     }
+
+    const validOutcomes = clobMarketForm.outcomes.filter(o => o.name.trim() !== '');
+    if (validOutcomes.length < 2) {
+      toast({ variant: 'destructive', title: 'Outcomes Required', description: 'Provide at least 2 outcomes.' });
+      return;
+    }
+
     setIsCreatingClobMarket(true);
     try {
       const marketId = `clob-${clobMarketForm.category}-${Date.now()}`;
@@ -1502,8 +1520,9 @@ function AdminPage() {
           marketId,
           question: clobMarketForm.question,
           category: clobMarketForm.category,
-          outcomeNames: clobMarketForm.outcomeNames.filter(n => n.trim()),
-          imageUrl: clobMarketForm.imageUrl,
+          outcomeNames: validOutcomes.map(o => o.name),
+          outcomesData: validOutcomes,
+          imageUrl: clobMarketForm.marketImageUrl,
           description: clobMarketForm.description,
           resolutionTimestamp: Math.floor(new Date(clobMarketForm.resolutionTimestamp).getTime() / 1000),
         }),
@@ -2977,12 +2996,65 @@ function AdminPage() {
                 <input type="text" value={clobMarketForm.question} onChange={(e) => setClobMarketForm({ ...clobMarketForm, question: e.target.value })} placeholder="Who will win the 2026 World Cup?" className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm placeholder:text-gray-400" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Outcomes (one per line, min 2) *</label>
-                <textarea value={clobMarketForm.outcomeNames.join('\n')} onChange={(e) => setClobMarketForm({ ...clobMarketForm, outcomeNames: e.target.value.split('\n') })} rows={4} placeholder={"Yes\nNo"} className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm placeholder:text-gray-400 resize-none" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Outcomes (Minimum 2) *</label>
+                <div className="space-y-3">
+                  {clobMarketForm.outcomes.map((outcome, index) => (
+                    <div key={index} className="flex gap-2 items-start p-3 bg-gray-50 dark:bg-neutral-900 rounded border border-gray-200 dark:border-neutral-700">
+                      <div className="flex-1 space-y-2">
+                        <input 
+                          type="text" 
+                          placeholder="Outcome Name (e.g., France)" 
+                          value={outcome.name}
+                          onChange={(e) => {
+                            const newOutcomes = [...clobMarketForm.outcomes];
+                            newOutcomes[index].name = e.target.value;
+                            setClobMarketForm({ ...clobMarketForm, outcomes: newOutcomes });
+                          }}
+                          className="w-full px-3 py-1.5 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-sm text-gray-900 dark:text-white"
+                        />
+                        <input 
+                          type="url" 
+                          placeholder="Image URL (Flag/Avatar)" 
+                          value={outcome.imageUrl}
+                          onChange={(e) => {
+                            const newOutcomes = [...clobMarketForm.outcomes];
+                            newOutcomes[index].imageUrl = e.target.value;
+                            setClobMarketForm({ ...clobMarketForm, outcomes: newOutcomes });
+                          }}
+                          className="w-full px-3 py-1.5 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-sm text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      {clobMarketForm.outcomes.length > 2 && (
+                        <button 
+                          type="button"
+                          className="mt-1 px-2 py-1 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
+                          onClick={() => {
+                            const newOutcomes = clobMarketForm.outcomes.filter((_, i) => i !== index);
+                            setClobMarketForm({ ...clobMarketForm, outcomes: newOutcomes });
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button 
+                    type="button"
+                    className="w-full mt-2 px-3 py-2 border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded text-sm text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-neutral-500 hover:text-gray-700 dark:hover:text-gray-300"
+                    onClick={() => {
+                      setClobMarketForm({
+                        ...clobMarketForm,
+                        outcomes: [...clobMarketForm.outcomes, { name: '', imageUrl: '' }]
+                      });
+                    }}
+                  >
+                    + Add Another Outcome
+                  </button>
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image URL *</label>
-                <input type="url" value={clobMarketForm.imageUrl} onChange={(e) => setClobMarketForm({ ...clobMarketForm, imageUrl: e.target.value })} placeholder="https://..." className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm placeholder:text-gray-400" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Market Image URL *</label>
+                <input type="url" value={clobMarketForm.marketImageUrl} onChange={(e) => setClobMarketForm({ ...clobMarketForm, marketImageUrl: e.target.value })} placeholder="https://..." className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm placeholder:text-gray-400" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
