@@ -48,8 +48,21 @@ export default function OnboardingPage() {
   const [selectedSide, setSelectedSide] = useState<'yes' | 'no'>('yes');
   const [gameWinnings, setGameWinnings] = useState('0');
   const [showOutcomeDropdown, setShowOutcomeDropdown] = useState(false);
+  const [isAllowed, setIsAllowed] = useState(false);
 
   const currentOutcome = OUTCOMES[selectedOutcomeIndex];
+
+  // Guard: only new users (coming from auth callback) may view onboarding
+  useEffect(() => {
+    const isNewUser = sessionStorage.getItem('predensity-new-user') === 'true';
+    if (!isNewUser) {
+      router.replace('/markets');
+      return;
+    }
+    // Consume the flag so refreshing the page redirects away
+    sessionStorage.removeItem('predensity-new-user');
+    setIsAllowed(true);
+  }, [router]);
 
   useEffect(() => {
     if (step !== 'categories') return;
@@ -80,6 +93,9 @@ export default function OnboardingPage() {
   ).toFixed(2);
 
   const currentStepIdx = STEP_ORDER.indexOf(step);
+
+  // Don't render anything until the guard check completes
+  if (!isAllowed) return null;
 
   return (
     <div className="min-h-screen overflow-hidden relative flex flex-col font-sans bg-[#1e3a5f]">
