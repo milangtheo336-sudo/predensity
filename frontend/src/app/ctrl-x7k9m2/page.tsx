@@ -2478,42 +2478,15 @@ function AdminPage() {
           </Card>
         )}
 
-        {/* Event Creation Section - REMOVED: Politics/Sports/Tech now use CLOB system only */}
-        {/* Legacy event creation is only available for Crypto category */}
-        {selectedCategory === Category.CRYPTO && (
-          <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Event Management</h2>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Create events for users to place bets on
-                  </p>
-                </div>
-                <Button
-                  variant="predensity"
-                  onClick={() => setShowEventModal(true)}
-                  className="flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Create Event
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Event Creation Section - REMOVED for Politics/Sports/Tech */}
+        {/* These categories now use CLOB-only system */}
+        {/* Legacy event creation kept only if you need range-based betting */}
 
-        {/* Events List - Only for Crypto */}
-        {selectedCategory === Category.CRYPTO && (
-          <EventsList category={selectedCategory} />
-        )}
+        {/* Events List - REMOVED for Politics/Sports/Tech */}
+        {/* These categories use CLOB markets only */}
 
-        {/* Event Resolution Section - Only for Crypto */}
-        {selectedCategory === Category.CRYPTO && (
-          <EventResolutionSection category={selectedCategory} contractId={currentContractId} />
-        )}
+        {/* Event Resolution Section - REMOVED for Politics/Sports/Tech */}
+        {/* These categories use CLOB markets only */}
 
         {/* Controls Card */}
         {selectedCategory === Category.CRYPTO && (
@@ -2688,37 +2661,12 @@ function AdminPage() {
                       const isManual = manualPrices.has(betPriceKey);
                       const isCrypto = selectedCategory === Category.CRYPTO;
 
-                      // Format range values based on category
-                      let displayMin: string;
-                      let displayMax: string;
-                      let rangeMin: number;
-                      let rangeMax: number;
-
-                      if (selectedCategory === Category.POLITICS) {
-                        // Politics: BPS values (0-10000) -> percentage
-                        rangeMin = Number(bet.priceMin);
-                        rangeMax = Number(bet.priceMax);
-                        displayMin = (rangeMin / 100).toFixed(1) + '%';
-                        displayMax = (rangeMax / 100).toFixed(1) + '%';
-                      } else if (selectedCategory === Category.SPORTS || selectedCategory === Category.TECHNOLOGY) {
-                        // Sports/Tech: raw numeric values
-                        rangeMin = Number(bet.priceMin);
-                        rangeMax = Number(bet.priceMax);
-                        displayMin = rangeMin.toLocaleString();
-                        displayMax = rangeMax.toLocaleString();
-                      } else if (selectedCategory === Category.CRYPTO) {
-                        // Crypto: 8-decimal format -> dollar price
-                        rangeMin = parseFloat(formatTinybarsToHbar(bet.priceMin));
-                        rangeMax = parseFloat(formatTinybarsToHbar(bet.priceMax));
-                        displayMin = '$' + rangeMin.toFixed(4);
-                        displayMax = '$' + rangeMax.toFixed(4);
-                      } else {
-                        // Fallback for any other category
-                        rangeMin = Number(bet.priceMin);
-                        rangeMax = Number(bet.priceMax);
-                        displayMin = rangeMin.toString();
-                        displayMax = rangeMax.toString();
-                      }
+                      // Format range values - we're in CRYPTO category block
+                      // Crypto: 8-decimal format -> dollar price
+                      const rangeMin = parseFloat(formatTinybarsToHbar(bet.priceMin));
+                      const rangeMax = parseFloat(formatTinybarsToHbar(bet.priceMax));
+                      const displayMin = '$' + rangeMin.toFixed(4);
+                      const displayMax = '$' + rangeMax.toFixed(4);
 
                       const isInRange =
                         finalPrice !== null && finalPrice >= rangeMin && finalPrice <= rangeMax;
@@ -2812,7 +2760,7 @@ function AdminPage() {
             {filteredBets && filteredBets.length > 0 && selectedCategory !== Category.CRYPTO && (
               <div className="mt-4 p-3 bg-gray-100 dark:bg-neutral-800/50 rounded border border-white/10">
                 <p className="text-sm text-gray-400">
-                  {CATEGORIES[selectedCategory].name} bets are resolved via the Event Resolution section above.
+                  {CATEGORIES[selectedCategory as Category].name} bets are resolved via the Event Resolution section above.
                   Submit the actual result for the event to trigger bet settlement.
                 </p>
               </div>
