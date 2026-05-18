@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="80%" r="90%">
+      <stop offset="0%" stop-color="#1a3a5c"/>
+      <stop offset="100%" stop-color="#050e1a"/>
+    </radialGradient>
+  </defs>
+  <rect width="32" height="32" rx="6" fill="url(#bg)"/>
+  <!-- Outer arch (left leg + top curve + right leg) -->
+  <path
+    d="M5 27 C5 27 5 16 16 7 C27 16 27 27 27 27"
+    fill="none"
+    stroke="url(#arch)"
+    stroke-width="3.8"
+    stroke-linecap="round"
+  />
+  <!-- Inner arch cutout -->
+  <path
+    d="M9.5 27 C9.5 27 9.5 18 16 11.5 C22.5 18 22.5 27 22.5 27"
+    fill="none"
+    stroke="url(#bg)"
+    stroke-width="3.2"
+    stroke-linecap="round"
+  />
+  <!-- Crossbar on right leg -->
+  <path
+    d="M19.5 21.5 L24.5 21.5"
+    stroke="url(#arch)"
+    stroke-width="3.2"
+    stroke-linecap="round"
+  />
+  <defs>
+    <linearGradient id="arch" x1="5" y1="7" x2="27" y2="27" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#d0d8e8"/>
+      <stop offset="100%" stop-color="#a0aec0"/>
+    </linearGradient>
+  </defs>
+</svg>
