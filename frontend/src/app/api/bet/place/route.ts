@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate and verify the caller owns this userId (prevents IDOR)
-    const authResult = await requireAuthMatchingUser(userId);
+    const authResult = await requireAuthMatchingUser(request, userId);
     if (authResult instanceof NextResponse) return authResult;
 
     // Whitelist allowed categories
