@@ -664,10 +664,10 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
 
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    isPublicView ? 'skip' : (isSignedIn && user ? { userId: user.id } : 'skip')
+    isPublicView ? 'skip' : (isSignedIn && user ? { userId: user.issuer } : 'skip')
   );
 
-  const effectiveUserId = isPublicView ? publicViewUserId : (isSignedIn && user ? user.id : null);
+  const effectiveUserId = isPublicView ? publicViewUserId : (isSignedIn && user ? user.issuer : null);
   const managedUserAddress = effectiveUserId ? `managed:${effectiveUserId}`.toLowerCase() : null;
   const walletAddress = isPublicView ? null : (evmAddress?.toLowerCase() || null);
   const managedEvmAddress = isPublicView ? null : (managedWallet?.evmAddress?.toLowerCase() || null);
@@ -735,7 +735,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     setRepairAttempted(true);
     reassignOperatorBets({
       operatorAddress: treasuryAddress,
-      userId: user.id,
+      userId: user.issuer,
     }).catch(() => {
       // Silently ignore repair errors
     });
@@ -870,7 +870,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
         }
       : (isSignedIn && user
         ? {
-            userId: user.id,
+            userId: user.issuer,
             userAddress: walletAddress || '',
             phoneNumber: managedWallet?.phoneNumber || undefined,
             managedEvmAddress: managedEvmAddress || undefined,
@@ -1069,7 +1069,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
       const res = await fetch('/api/bet/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, betId, category }),
+        body: JSON.stringify({ userId: user.issuer, betId, category }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1102,7 +1102,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   };
 
   const handleShareToX = () => {
-    const displayName = user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Trader';
+    const displayName = user?.email?.split('@')[0] || 'Trader';
     const pnlSign = totalPnl >= 0 ? '+' : '';
     const pnlStr = `${pnlSign}${formatUsd(totalPnl)}`;
     const winStr = biggestWin > 0 ? `Biggest win: ${formatUsd(biggestWin)}` : '';
@@ -1111,9 +1111,9 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
       pnl: pnlStr,
       predictions: String(totalPredictions),
       win: formatUsd(biggestWin),
-      seed: user?.id || 'default',
+      seed: user?.issuer || 'default',
     });
-    const profileUrl = `${window.location.origin}/profile/${user?.id || ''}?${ogParams.toString()}`;
+    const profileUrl = `${window.location.origin}/profile/${user?.issuer || ''}?${ogParams.toString()}`;
     const lines = [
       `@${displayName.toLowerCase()} on Predensity`,
       `P&L: ${pnlStr}`,
@@ -1128,7 +1128,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   };
 
   const handleShareToWhatsApp = () => {
-    const displayName = user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Trader';
+    const displayName = user?.email?.split('@')[0] || 'Trader';
     const pnlSign = totalPnl >= 0 ? '+' : '';
     const pnlStr = `${pnlSign}${formatUsd(totalPnl)}`;
     const winStr = biggestWin > 0 ? `Biggest win: ${formatUsd(biggestWin)}` : '';
@@ -1137,9 +1137,9 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
       pnl: pnlStr,
       predictions: String(totalPredictions),
       win: formatUsd(biggestWin),
-      seed: user?.id || 'default',
+      seed: user?.issuer || 'default',
     });
-    const profileUrl = `${window.location.origin}/profile/${user?.id || ''}?${ogParams.toString()}`;
+    const profileUrl = `${window.location.origin}/profile/${user?.issuer || ''}?${ogParams.toString()}`;
     const lines = [
       `*@${displayName.toLowerCase()} on Predensity*`,
       `P&L: ${pnlStr}`,
@@ -1188,8 +1188,8 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  const joinDate = user?.createdAt
-    ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+  const joinDate = managedWallet?.createdAt
+    ? new Date(managedWallet.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
     : '';
 
   if (!isSignedIn && !isPublicView) {
@@ -1221,9 +1221,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
             <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-                  {!isPublicView && user?.imageUrl && !user.imageUrl.includes('gravatar') ? (
-                    <img src={user.imageUrl} alt="" className="w-14 h-14 rounded-full object-cover" />
-                  ) : publicProfile?.avatar ? (
+                  {publicProfile?.avatar ? (
                     <img src={publicProfile.avatar} alt="" className="w-14 h-14 rounded-full object-cover" />
                   ) : (
                     <Avatar
@@ -1239,19 +1237,14 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
                   <div className="text-base font-bold text-gray-900 dark:text-white">
                     {isPublicView
                       ? (publicProfile?.displayName || `User ${(publicViewUserId || '').slice(0, 8)}`)
-                      : (user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Trader')}
+                      : (user?.email?.split('@')[0] || 'Trader')}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-neutral-500 flex items-center gap-1 mt-0.5">
                     {isPublicView
                       ? (publicProfile?.createdAt ? `Joined ${new Date(publicProfile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : 'Trader')
                       : `Joined ${joinDate}`}
                   </div>
-                  {!isPublicView && (user?.unsafeMetadata as any)?.bio && (
-                    <div className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5 max-w-[200px] truncate">
-                      {(user?.unsafeMetadata as any)?.bio}
-                    </div>
-                  )}
-                  {isPublicView && publicProfile?.bio && (
+                  {publicProfile?.bio && (
                     <div className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5 max-w-[200px] truncate">
                       {publicProfile.bio}
                     </div>
