@@ -2706,12 +2706,18 @@ function AdminPage() {
                         rangeMax = Number(bet.priceMax);
                         displayMin = rangeMin.toLocaleString();
                         displayMax = rangeMax.toLocaleString();
-                      } else {
+                      } else if (selectedCategory === Category.CRYPTO) {
                         // Crypto: 8-decimal format -> dollar price
                         rangeMin = parseFloat(formatTinybarsToHbar(bet.priceMin));
                         rangeMax = parseFloat(formatTinybarsToHbar(bet.priceMax));
                         displayMin = '$' + rangeMin.toFixed(4);
                         displayMax = '$' + rangeMax.toFixed(4);
+                      } else {
+                        // Fallback for any other category
+                        rangeMin = Number(bet.priceMin);
+                        rangeMax = Number(bet.priceMax);
+                        displayMin = rangeMin.toString();
+                        displayMax = rangeMax.toString();
                       }
 
                       const isInRange =
