@@ -680,16 +680,21 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
 // ---------------------------------------------------------------------------
 // Order Book Display
 // ---------------------------------------------------------------------------
-function OrderBookView({ marketId, outcomeIndex }: { marketId: string; outcomeIndex: number }) {
+function OrderBookView({ marketId, outcomeIndex, side }: { marketId: string; outcomeIndex: number; side: 'yes' | 'no' }) {
   const orderBook = useConvexQuery(api.clob.getOrderBook, { marketId, outcomeIndex });
 
   if (!orderBook) return <div className="py-4 text-center text-xs text-[#888888]"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>;
 
   type OrderLevel = { price: number; quantity: number };
 
+  const displayBook = side === 'yes' ? orderBook : {
+    bids: [...orderBook.asks].map((a: OrderLevel) => ({ price: 100 - a.price, quantity: a.quantity })).sort((a,b)=>b.price-a.price),
+    asks: [...orderBook.bids].map((b: OrderLevel) => ({ price: 100 - b.price, quantity: b.quantity })).sort((a,b)=>b.price-a.price),
+  };
+
   const maxQty = Math.max(
-    ...orderBook.bids.map((b: OrderLevel) => b.quantity),
-    ...orderBook.asks.map((a: OrderLevel) => a.quantity),
+    ...displayBook.bids.map((b: OrderLevel) => b.quantity),
+    ...displayBook.asks.map((a: OrderLevel) => a.quantity),
     1
   );
 
@@ -699,17 +704,17 @@ function OrderBookView({ marketId, outcomeIndex }: { marketId: string; outcomeIn
   return (
     <div className="space-y-1">
       {/* Ask rows (sell orders) - red background */}
-      {orderBook.asks.length === 0 ? (
+      {displayBook.asks.length === 0 ? (
         <div className="text-center text-[#888888] py-2 text-xs">No asks</div>
       ) : (
-        orderBook.asks.slice(0, 4).map((a: OrderLevel, i: number) => (
+        displayBook.asks.slice(0, 4).map((a: OrderLevel, i: number) => (
           <div key={i} className="grid grid-cols-3 items-center py-1.5 px-1.5 rounded bg-[#2a1010] relative">
-            {i === orderBook.asks.length - 1 && (
+            {i === displayBook.asks.length - 1 && (
               <div className="absolute left-[-2px] top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-[#e8520a] text-white text-[10px] font-bold">
                 Asks
               </div>
             )}
-            <span className={`text-[#ff6b35] font-medium ${i === orderBook.asks.length - 1 ? 'pl-12' : ''}`}>{a.price}¢</span>
+            <span className={`text-[#ff6b35] font-medium ${i === displayBook.asks.length - 1 ? 'pl-12' : ''}`}>{a.price}¢</span>
             <span className="text-white text-center">{a.quantity.toLocaleString()}</span>
             <span className="text-[#888888] text-right">{calculateTotal(a.price, a.quantity)} USDC</span>
           </div>
@@ -717,18 +722,18 @@ function OrderBookView({ marketId, outcomeIndex }: { marketId: string; outcomeIn
       )}
 
       {/* Separator with last price and spread */}
-      {orderBook.asks.length > 0 && orderBook.bids.length > 0 && (
+      {displayBook.asks.length > 0 && displayBook.bids.length > 0 && (
         <div className="flex justify-between items-center py-1.5 px-1.5 text-[11px] border-t border-b border-[#2a2a2a] my-1">
-          <span className="text-[#ff6b35]">Last: NO {orderBook.asks[orderBook.asks.length - 1].price}¢</span>
-          <span className="text-[#888888]">Spread {Math.abs(orderBook.bids[0]?.price - orderBook.asks[orderBook.asks.length - 1]?.price).toFixed(1)}¢</span>
+          <span className="text-[#ff6b35]">Last: {side === 'yes' ? 'YES' : 'NO'} {displayBook.asks[displayBook.asks.length - 1].price}¢</span>
+          <span className="text-[#888888]">Spread {Math.abs(displayBook.bids[0]?.price - displayBook.asks[displayBook.asks.length - 1]?.price).toFixed(1)}¢</span>
         </div>
       )}
 
       {/* Bid rows (buy orders) - green background */}
-      {orderBook.bids.length === 0 ? (
+      {displayBook.bids.length === 0 ? (
         <div className="text-center text-[#888888] py-2 text-xs">No bids</div>
       ) : (
-        orderBook.bids.slice(0, 3).map((b: OrderLevel, i: number) => (
+        displayBook.bids.slice(0, 3).map((b: OrderLevel, i: number) => (
           <div key={i} className="grid grid-cols-3 items-center py-1.5 px-1.5 rounded bg-[#0e2218] relative">
             {i === 0 && (
               <div className="absolute left-[-2px] top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-[#1a6b3c] text-white text-[10px] font-bold">
@@ -791,6 +796,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const [inputMode, setInputMode] = useState<'contracts' | 'dollars'>('contracts');
   const [outcomeTab, setOutcomeTab] = useState<'orderbook' | 'probability' | 'orders' | 'positions'>('orderbook');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [orderBookSide, setOrderBookSide] = useState<'yes' | 'no'>('yes');
 
   // Read balance from blockchain (non-custodial)
   const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(user?.publicAddress);
@@ -1124,24 +1130,32 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
                       {/* YES/NO buttons */}
                       {!isEliminated && !isLoser && (
-                        <div className="grid grid-cols-2 border-t border-[#2a2a2a]">
+                        <div className="grid grid-cols-2 gap-2 mt-1 px-3.5 pb-3.5">
                           <button
                             onClick={() => {
                               setSelectedOutcome(i);
                               setOrderSide('buy');
                             }}
-                            className="py-2.5 text-center text-[13px] font-semibold text-[#3fdc8c] hover:bg-[#0e2218] transition-colors border-r border-[#2a2a2a]"
+                            className={`py-2 text-center text-[13px] font-semibold transition-colors rounded-lg ${
+                              selectedOutcome === i && orderSide === 'buy'
+                                ? 'bg-[#3fdc8c] text-[#141414]'
+                                : 'bg-transparent border border-[#3fdc8c] text-[#3fdc8c] hover:bg-[#3fdc8c]/10'
+                            }`}
                           >
-                            Yes {o.price}¢
+                            YES {o.price}¢
                           </button>
                           <button
                             onClick={() => {
                               setSelectedOutcome(i);
                               setOrderSide('sell');
                             }}
-                            className="py-2.5 text-center text-[13px] font-semibold bg-[#e8520a] text-white hover:bg-[#d14808] transition-colors"
+                            className={`py-2 text-center text-[13px] font-semibold transition-colors rounded-lg ${
+                              selectedOutcome === i && orderSide === 'sell'
+                                ? 'bg-[#e8520a] text-white'
+                                : 'bg-transparent border border-[#e8520a] text-[#e8520a] hover:bg-[#e8520a]/10'
+                            }`}
                           >
-                            No {(100 - o.price).toFixed(1)}¢
+                            NO {(100 - o.price).toFixed(1)}¢
                           </button>
                         </div>
                       )}
@@ -1222,9 +1236,9 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                                 </div>
 
                                 {/* YES/NO toggle */}
-                                <div className="flex w-fit mb-3 bg-[#1c1c1c] rounded-lg overflow-hidden">
-                                  <button className="px-5 py-1.5 text-xs font-semibold bg-white text-black rounded-md">YES</button>
-                                  <button className="px-5 py-1.5 text-xs font-semibold text-[#888888]">NO</button>
+                                <div className="flex w-fit mb-3 bg-[#1c1c1c] rounded-lg overflow-hidden border border-[#2a2a2a]">
+                                  <button onClick={() => setOrderBookSide('yes')} className={`px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${orderBookSide === 'yes' ? 'bg-white text-black' : 'text-[#888888] hover:text-white'}`}>YES</button>
+                                  <button onClick={() => setOrderBookSide('no')} className={`px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${orderBookSide === 'no' ? 'bg-white text-black' : 'text-[#888888] hover:text-white'}`}>NO</button>
                                 </div>
 
                                 {/* Order book table */}
@@ -1237,7 +1251,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                                   </div>
 
                                   {/* Order book rows */}
-                                  <OrderBookView marketId={marketId} outcomeIndex={i} />
+                                  <OrderBookView marketId={marketId} outcomeIndex={i} side={orderBookSide} />
                                 </div>
                               </div>
                             )}
@@ -1446,16 +1460,27 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               </div>
 
               {/* YES/NO buttons */}
-              <div className="px-4 py-3.5">
-                {orderSide === 'buy' ? (
-                  <button className="w-full py-3 rounded-xl bg-[#1f4d32] border border-[#3fdc8c] text-[#3fdc8c] text-sm font-bold">
-                    YES {selectedOutcomeData?.price}¢
-                  </button>
-                ) : (
-                  <button className="w-full py-3 rounded-xl bg-[#e8520a] border border-[#e8520a] text-white text-sm font-bold">
-                    NO {selectedOutcomeData ? (100 - selectedOutcomeData.price).toFixed(1) : 84}¢
-                  </button>
-                )}
+              <div className="grid grid-cols-2 gap-2 px-4 py-3.5">
+                <button
+                  onClick={() => setOrderSide('buy')}
+                  className={`py-3 rounded-xl text-sm font-bold transition-colors ${
+                    orderSide === 'buy'
+                      ? 'bg-[#3fdc8c] text-[#141414]'
+                      : 'bg-[#141414] border border-[#3fdc8c] text-[#3fdc8c] hover:bg-[#3fdc8c]/10'
+                  }`}
+                >
+                  YES {selectedOutcomeData?.price}¢
+                </button>
+                <button
+                  onClick={() => setOrderSide('sell')}
+                  className={`py-3 rounded-xl text-sm font-bold transition-colors ${
+                    orderSide === 'sell'
+                      ? 'bg-[#e8520a] text-white'
+                      : 'bg-[#141414] border border-[#e8520a] text-[#e8520a] hover:bg-[#e8520a]/10'
+                  }`}
+                >
+                  NO {selectedOutcomeData ? (100 - selectedOutcomeData.price).toFixed(1) : 84}¢
+                </button>
               </div>
 
               {/* Market Order Format */}
