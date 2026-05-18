@@ -7,8 +7,7 @@ import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 import { SupportChat } from '@/components/support-chat';
 import ContextProvider from '../../context';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
-import { ClerkProvider } from '@clerk/nextjs';
-import { dark } from '@clerk/themes';
+import { MagicProvider } from '@/context/MagicContext';
 import { Analytics } from '@vercel/analytics/react';
 
 
@@ -80,12 +79,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             `,
           }}
         />
-        <ClerkProvider
-          appearance={{
-            baseTheme: dark,
-            variables: { colorPrimary: '#7c3aed' },
-          }}
-        >
+        <MagicProvider>
           <ConvexProvider client={convex}>
               <ContextProvider>
                 <ThemeProvider
@@ -101,7 +95,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </ThemeProvider>
               </ContextProvider>
           </ConvexProvider>
-        </ClerkProvider>
+        </MagicProvider>
       </body>
     </html>
   );
