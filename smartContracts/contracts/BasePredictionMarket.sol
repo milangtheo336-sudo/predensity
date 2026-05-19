@@ -512,6 +512,48 @@ abstract contract BasePredictionMarket is Ownable {
         return _createBet(msg.sender, targetTimestamp, rangeMin, rangeMax, stakeNet, qualityBps, weight);
     }
 
+    /**
+     * @notice Place a bet with tokens that have already been transferred to this contract.
+     * Used by proxy wallets that transfer tokens via HTS before calling this function.
+     * 
+     * @param bettor The address to credit the bet to (usually the proxy wallet)
+     * @param targetTimestamp The target timestamp for the prediction
+     * @param rangeMin The minimum value in the range
+     * @param rangeMax The maximum value in the range
+     * @param amount The amount of tokens (already transferred)
+     * @return betId The ID of the placed bet
+     */
+    function placeBetWithPreTransferredToken(
+        address bettor,
+        uint256 targetTimestamp,
+        uint256 rangeMin,
+        uint256 rangeMax,
+        uint256 amount
+    ) external validTimeRange(targetTimestamp) returns (uint256) {
+        require(address(stakingToken) != address(0), "Token mode not enabled");
+        require(amount > 0, "Amount must be > 0");
+        require(rangeMin < rangeMax, "Invalid range");
+        require(rangeMin > 0 && rangeMax > 0, "Values must be positive");
+        require(targetTimestamp > block.timestamp, "Cannot bet on past");
+        require(bettor != address(0), "Invalid bettor address");
+
+        // Tokens should already be in this contract (transferred via HTS)
+        // No transfer needed here
+
+        // Calculate fee and net stake
+        uint256 fee = (amount * FEE_BPS) / BPS_DENOM;
+        uint256 stakeNet = amount - fee;
+
+        totalFeesCollected += fee;
+        emit FeeCollected(fee);
+
+        // Compute quality and weight
+        uint256 qualityBps = (getSharpnessMultiplier(rangeMin, rangeMax) * getTimeMultiplier(targetTimestamp)) / BPS_DENOM;
+        uint256 weight = (stakeNet * qualityBps) / BPS_DENOM;
+
+        return _createBet(bettor, targetTimestamp, rangeMin, rangeMax, stakeNet, qualityBps, weight);
+    }
+
     // ==============================================================
     // |                    Helper Functions                          |
     // ==============================================================
