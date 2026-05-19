@@ -622,11 +622,33 @@ export function PredictionCard({
     if (!user?.publicAddress) return;
     
     const fetchProxyWallet = async () => {
+      // Check cache first
+      try {
+        const cached = localStorage.getItem(`predensity_proxy_wallet_${user.publicAddress}`);
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (Date.now() - data.timestamp < 86400000) { // 24 hour cache
+            setProxyWalletAddress(data.proxyWallet);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('[prediction-card] Cache read error:', e);
+      }
+      
       try {
         const response = await fetch(`/api/proxy-wallet/create?userAddress=${user.publicAddress}`);
         const data = await response.json();
         if (data.exists && data.proxyWalletAddress) {
           setProxyWalletAddress(data.proxyWalletAddress);
+          // Cache it
+          localStorage.setItem(
+            `predensity_proxy_wallet_${user.publicAddress}`,
+            JSON.stringify({
+              proxyWallet: data.proxyWalletAddress,
+              timestamp: Date.now(),
+            })
+          );
         }
       } catch (err) {
         console.error('[prediction-card] Failed to fetch proxy wallet:', err);
@@ -648,6 +670,7 @@ export function PredictionCard({
 
   const [selectedRange, setSelectedRange] = useState({ min: 0.01, max: 0.2843 });
   const [depositAmount, setDepositAmount] = useState('');
+  const [currentPriceRange, setCurrentPriceRange] = useState({ min: '0', max: '0' });
   const [resolutionDate, setResolutionDate] = useState(new Date(Date.now() + 24 * 60 * 60 * 1000));
   const [resolutionTime, setResolutionTime] = useState(() => {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -926,6 +949,9 @@ export function PredictionCard({
       const minStr = limitDecimals(selectedRange.min, decimals);
       const maxStr = limitDecimals(selectedRange.max, decimals);
       
+      // Update current price range for modal display
+      setCurrentPriceRange({ min: minStr, max: maxStr });
+      
       console.log('[handlePlaceBet] Starting bet placement...', {
         category: Category.CRYPTO,
         targetTimestamp: startUnix,
@@ -1029,6 +1055,9 @@ export function PredictionCard({
       // Create short, readable message to sign
       const message = `Bet ${depositAmount} USDC on ${tokenSymbol} for ${new Date(startUnix * 1000).toLocaleString()}`;
       
+      console.log('[handlePlaceBet] Message to sign:', message);
+      console.log('[handlePlaceBet] Message length:', message.length);
+      
       // Sign message with Magic Link (no popup, uses personal_sign)
       const { signMessage } = await import('@/lib/magic');
       const signature = await signMessage(message);
@@ -1065,9 +1094,18 @@ export function PredictionCard({
       console.log('[handlePlaceBet] Bet placed successfully:', result);
       
       // Immediately update balance optimistically (subtract bet amount)
-      if (typeof window !== 'undefined' && (window as any).adjustBalance) {
-        console.log('[handlePlaceBet] Updating balance immediately (optimistic)');
-        (window as any).adjustBalance(-parseFloat(depositAmount));
+      if (typeof window !== 'undefined') {
+        if ((window as any).adjustBalance) {
+          console.log('[handlePlaceBet] Updating balance immediately (optimistic)');
+          (window as any).adjustBalance(-parseFloat(depositAmount));
+        } else {
+          console.warn('[handlePlaceBet] adjustBalance function not available yet');
+          // Trigger a page refresh after a short delay to show updated balance
+          setTimeout(() => {
+            console.log('[handlePlaceBet] Refreshing page to show updated balance');
+            window.location.reload();
+          }, 2000);
+        }
       }
       
       setTransactionId(result.txHash);
@@ -1077,7 +1115,11 @@ export function PredictionCard({
     } catch (err) {
       console.error('[handlePlaceBet] Error placing bet:', err);
       setIsPlacingBet(false);
-      setBetError(err instanceof Error ? err.message : 'Failed to place bet');
+      
+      // Import error handler
+      const { handleError } = await import('@/lib/error-handler');
+      const friendlyError = handleError(err, 'handlePlaceBet');
+      setBetError(friendlyError);
     }
   };
 
@@ -1448,7 +1490,13 @@ export function PredictionCard({
         </div>
       </div>
 
-      <BetPlacingModal isOpen={isPlacingBet} onClose={() => { setIsPlacingBet(false); setBetError(null); }} />
+      <BetPlacingModal 
+        isOpen={isPlacingBet} 
+        onClose={() => { setIsPlacingBet(false); setBetError(null); }}
+        amount={depositAmount}
+        priceRange={currentPriceRange}
+        asset={tokenSymbol}
+      />
       <BetPlacedModal isOpen={isBetPlaced} onClose={() => { setIsBetPlaced(false); setTransactionId(null); setDepositAmount(''); }} onViewExplorer={() => {
         const url = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase() === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
         window.open(transactionId ? `${url}/transaction/${transactionId}` : url, '_blank');
