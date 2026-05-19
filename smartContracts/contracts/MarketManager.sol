@@ -191,14 +191,17 @@ contract MarketManager is Ownable, ReentrancyGuard, Pausable {
         uint256 netAmount = usdcAmount - fee;
         totalFees += fee;
 
-        // Transfer USDC from operator to this contract
-        require(
-            IERC20(usdcToken).transferFrom(msg.sender, address(this), usdcAmount),
-            "USDC transfer failed"
+        // Transfer USDC from operator to this contract using HTS
+        IHederaTokenService hts = IHederaTokenService(HTS_PRECOMPILE);
+        int64 rc = hts.transferToken(
+            usdcToken,
+            msg.sender,
+            address(this),
+            int64(int256(usdcAmount))
         );
+        require(rc == 22, "USDC transfer failed");
 
         // Mint equal amount of each outcome token to the operator
-        IHederaTokenService hts = IHederaTokenService(HTS_PRECOMPILE);
         bytes[] memory empty = new bytes[](0);
 
         for (uint256 i = 0; i < m.numOutcomes; i++) {
@@ -265,11 +268,14 @@ contract MarketManager is Ownable, ReentrancyGuard, Pausable {
             require(responseCode == 22, "Burn failed");
         }
 
-        // Return USDC to operator
-        require(
-            IERC20(usdcToken).transfer(msg.sender, tokenAmount),
-            "USDC transfer failed"
+        // Return USDC to operator using HTS
+        int64 rc2 = hts.transferToken(
+            usdcToken,
+            address(this),
+            msg.sender,
+            int64(int256(tokenAmount))
         );
+        require(rc2 == 22, "USDC transfer failed");
 
         m.totalCollateral -= tokenAmount;
 
@@ -335,11 +341,14 @@ contract MarketManager is Ownable, ReentrancyGuard, Pausable {
         );
         require(responseCode == 22, "Burn failed");
 
-        // Pay out USDC 1:1
-        require(
-            IERC20(usdcToken).transfer(msg.sender, tokenAmount),
-            "USDC transfer failed"
+        // Pay out USDC 1:1 using HTS
+        int64 rc2 = hts.transferToken(
+            usdcToken,
+            address(this),
+            msg.sender,
+            int64(int256(tokenAmount))
         );
+        require(rc2 == 22, "USDC transfer failed");
 
         m.totalCollateral -= tokenAmount;
 
@@ -359,7 +368,17 @@ contract MarketManager is Ownable, ReentrancyGuard, Pausable {
         require(totalFees > 0, "No fees to withdraw");
         uint256 amount = totalFees;
         totalFees = 0;
-        require(IERC20(usdcToken).transfer(to, amount), "Fee withdrawal failed");
+        
+        // Transfer fees using HTS
+        IHederaTokenService hts = IHederaTokenService(HTS_PRECOMPILE);
+        int64 rc = hts.transferToken(
+            usdcToken,
+            address(this),
+            to,
+            int64(int256(amount))
+        );
+        require(rc == 22, "Fee withdrawal failed");
+        
         emit FeesWithdrawn(to, amount);
     }
 
