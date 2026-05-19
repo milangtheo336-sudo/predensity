@@ -14,7 +14,6 @@ import React, {
 } from 'react';
 import * as d3 from 'd3';
 import { cn, formatPriceByAsset } from '@/lib/utils';
-import { Maximize2 } from 'lucide-react';
 import { KDEChartModal } from './kde-chart-modal';
 import { useTheme } from 'next-themes';
 
@@ -571,15 +570,6 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
               </button>
             ))}
           </div>
-          {showControls && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-300 dark:border-neutral-600 text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
-              aria-label="Expand chart"
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-            </button>
-          )}
         </div>
         {/* Chart area -- uses fixed height by default, inherits from parent className if set */}
         <div ref={chartContainerRef} className={cn('w-full relative', className?.includes('h-full') ? 'h-[calc(100%-3rem)]' : 'h-64 sm:h-80')}>
