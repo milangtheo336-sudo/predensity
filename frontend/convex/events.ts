@@ -19,6 +19,8 @@ export const createEvent = mutation({
     sportType: v.optional(v.string()),
     company: v.optional(v.string()),
     decimals: v.optional(v.number()),
+    sport: v.optional(v.string()),
+    league: v.optional(v.string()),
     _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -39,6 +41,8 @@ export const createEvent = mutation({
       sportType: args.sportType,
       company: args.company,
       decimals: args.decimals,
+      sport: args.sport,
+      league: args.league,
       createdAt: Date.now(),
     });
     return eventId;

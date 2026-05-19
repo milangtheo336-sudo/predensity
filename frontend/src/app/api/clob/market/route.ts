@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { marketId, question, category, outcomeNames, outcomesData, imageUrl, description, resolutionTimestamp,
-            team1, team2, candidate, sportType, outcomeTokenAddresses, onChainMarketId } = body;
+            team1, team2, candidate, sportType, outcomeTokenAddresses, onChainMarketId, sport, league } = body;
 
     if (!marketId || !question || !category || !outcomeNames || !imageUrl || !description || !resolutionTimestamp) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     await convex.adminMutation(api.clob.createClobMarket, {
       marketId, question, category, outcomeNames, outcomesData, imageUrl, description,
       resolutionTimestamp: Number(resolutionTimestamp),
-      team1, team2, candidate, sportType, outcomeTokenAddresses, onChainMarketId,
+      team1, team2, candidate, sportType, outcomeTokenAddresses, onChainMarketId, sport, league,
     });
 
     return NextResponse.json({ success: true, marketId });

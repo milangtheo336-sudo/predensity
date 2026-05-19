@@ -8,6 +8,7 @@ import { Header } from '@/components/header';
 import { CategoryTabs } from '@/components/category-tabs';
 import { MarketFilters } from '@/components/market-filters';
 import { GenericMarketCard } from '@/components/generic-market-card';
+import { MarketsSidebar, SidebarSelection } from '@/components/markets-sidebar';
 import {
   Category,
   MarketStatus,
@@ -22,6 +23,7 @@ export default function MarketsPage() {
   const [sortBy, setSortBy] = useState<SortOption>(SortOption.MOST_ACTIVE_24H);
   const [searchQuery, setSearchQuery] = useState('');
   const [hiddenCategories, setHiddenCategories] = useState<Set<Category>>(new Set());
+  const [sidebarSelection, setSidebarSelection] = useState<SidebarSelection | null>(null);
 
   const convexEvents = useQuery(api.events.getEvents, {});
   const cryptoMarkets = useQuery(api.events.getCryptoMarkets, {});
@@ -78,6 +80,8 @@ export default function MarketsPage() {
             priceMax: '',
             status: e.resolved ? 'resolved' : 'open',
             imageUrl: e.imageUrl,
+            sport: (e as any).sport,
+            league: (e as any).league,
           };
         })
     : [];
@@ -144,6 +148,8 @@ export default function MarketsPage() {
           isClob: true,
           outcomes,
           numOutcomes: cm.numOutcomes,
+          sport: (cm as any).sport,
+          league: (cm as any).league,
         };
       });
     markets.push(...clobCards);
@@ -176,6 +182,12 @@ export default function MarketsPage() {
       if (hiddenCategories.has(market.category)) {
         return false;
       }
+      if (sidebarSelection?.sport && market.sport !== sidebarSelection.sport) {
+        return false;
+      }
+      if (sidebarSelection?.league && market.league !== sidebarSelection.league) {
+        return false;
+      }
       return true;
     })
     .sort((a, b) => {
@@ -200,30 +212,37 @@ export default function MarketsPage() {
     <div className="min-h-screen bg-white dark:bg-black flex flex-col">
       <Header />
       
-      <main className="container mx-auto px-4 py-8 flex-1 flex flex-col">
-        <div className="mb-6">
-          <CategoryTabs
-            activeCategory={activeCategory}
-            onCategoryChange={setActiveCategory}
-          />
-        </div>
+      <main className="container mx-auto px-4 py-8 flex-1 flex gap-6">
+        <MarketsSidebar
+          markets={markets}
+          selection={sidebarSelection}
+          onSelect={setSidebarSelection}
+        />
 
-        <div className="mb-6">
-          <MarketFilters
-            status={status}
-            sortBy={sortBy}
-            onStatusChange={setStatus}
-            onSortChange={setSortBy}
-            markets={markets}
-            hiddenCategories={hiddenCategories}
-            onToggleCategory={toggleCategory}
-            onClearFilters={clearFilters}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-          />
-        </div>
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="mb-6">
+            <CategoryTabs
+              activeCategory={activeCategory}
+              onCategoryChange={setActiveCategory}
+            />
+          </div>
 
-        <div className="flex-1">
+          <div className="mb-6">
+            <MarketFilters
+              status={status}
+              sortBy={sortBy}
+              onStatusChange={setStatus}
+              onSortChange={setSortBy}
+              markets={markets}
+              hiddenCategories={hiddenCategories}
+              onToggleCategory={toggleCategory}
+              onClearFilters={clearFilters}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+            />
+          </div>
+
+          <div className="flex-1">
           {loading ? (
             <div className="text-center py-12">
               <p className="text-gray-400 text-lg">Loading markets...</p>
@@ -250,9 +269,8 @@ export default function MarketsPage() {
               )}
             </>
           )}
+          </div>
         </div>
-
-
       </main>
 
     </div>
