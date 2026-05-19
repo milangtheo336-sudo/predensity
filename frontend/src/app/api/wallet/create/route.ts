@@ -52,12 +52,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (!PROXY_WALLET_FACTORY_ID) {
-      return NextResponse.json({ 
-        error: 'Proxy wallet factory not configured' 
-      }, { status: 500 });
-    }
-
     // Check for existing wallet
     const existing = await convex.query(api.users.getManagedWalletByUserId, { userId });
     if (existing) {
@@ -67,51 +61,58 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Deploy proxy wallet via factory
-    const client = getHederaClient();
-    const keyHex = OPERATOR_KEY.startsWith('0x') ? OPERATOR_KEY.slice(2) : OPERATOR_KEY;
-    const operatorKey = PrivateKey.fromStringECDSA(keyHex);
+    // For now, use Magic EOA address directly (no proxy wallet)
+    // TODO: Deploy proxy wallet when PROXY_WALLET_FACTORY_ID is configured
+    const useProxyWallet = !!PROXY_WALLET_FACTORY_ID;
+    let proxyWalletAddress = magicEOAAddress; // Default to EOA
 
-    // Call factory.createWallet(magicEOAAddress)
-    const factoryInterface = new ethers.utils.Interface([
-      'function createWallet(address owner) external returns (address)',
-    ]);
-    const callData = factoryInterface.encodeFunctionData('createWallet', [magicEOAAddress]);
+    if (useProxyWallet) {
+      // Deploy proxy wallet via factory
+      const client = getHederaClient();
+      const keyHex = OPERATOR_KEY.startsWith('0x') ? OPERATOR_KEY.slice(2) : OPERATOR_KEY;
+      const operatorKey = PrivateKey.fromStringECDSA(keyHex);
 
-    const tx = new ContractExecuteTransaction()
-      .setContractId(ContractId.fromString(PROXY_WALLET_FACTORY_ID))
-      .setGas(500000)
-      .setFunctionParameters(Buffer.from(callData.slice(2), 'hex'))
-      .freezeWith(client);
+      // Call factory.createWallet(magicEOAAddress)
+      const factoryInterface = new ethers.utils.Interface([
+        'function createWallet(address owner) external returns (address)',
+      ]);
+      const callData = factoryInterface.encodeFunctionData('createWallet', [magicEOAAddress]);
 
-    const signedTx = await tx.sign(operatorKey);
-    const response = await signedTx.execute(client);
-    const receipt = await response.getReceipt(client);
+      const tx = new ContractExecuteTransaction()
+        .setContractId(ContractId.fromString(PROXY_WALLET_FACTORY_ID))
+        .setGas(500000)
+        .setFunctionParameters(Buffer.from(callData.slice(2), 'hex'))
+        .freezeWith(client);
 
-    if (receipt.status.toString() !== 'SUCCESS') {
-      throw new Error('Proxy wallet deployment failed');
+      const signedTx = await tx.sign(operatorKey);
+      const response = await signedTx.execute(client);
+      const receipt = await response.getReceipt(client);
+
+      if (receipt.status.toString() !== 'SUCCESS') {
+        throw new Error('Proxy wallet deployment failed');
+      }
+
+      // Get proxy wallet address from factory
+      const getWalletInterface = new ethers.utils.Interface([
+        'function ownerToWallet(address) external view returns (address)',
+      ]);
+      const queryData = getWalletInterface.encodeFunctionData('ownerToWallet', [magicEOAAddress]);
+
+      const queryTx = new ContractExecuteTransaction()
+        .setContractId(ContractId.fromString(PROXY_WALLET_FACTORY_ID))
+        .setGas(100000)
+        .setFunctionParameters(Buffer.from(queryData.slice(2), 'hex'))
+        .freezeWith(client);
+
+      const queryResponse = await queryTx.execute(client);
+      const queryRecord = await queryResponse.getRecord(client);
+      proxyWalletAddress = ethers.utils.defaultAbiCoder.decode(
+        ['address'],
+        '0x' + Buffer.from(queryRecord.contractFunctionResult!.bytes).toString('hex')
+      )[0];
+
+      client.close();
     }
-
-    // Get proxy wallet address from factory
-    const getWalletInterface = new ethers.utils.Interface([
-      'function ownerToWallet(address) external view returns (address)',
-    ]);
-    const queryData = getWalletInterface.encodeFunctionData('ownerToWallet', [magicEOAAddress]);
-
-    const queryTx = new ContractExecuteTransaction()
-      .setContractId(ContractId.fromString(PROXY_WALLET_FACTORY_ID))
-      .setGas(100000)
-      .setFunctionParameters(Buffer.from(queryData.slice(2), 'hex'))
-      .freezeWith(client);
-
-    const queryResponse = await queryTx.execute(client);
-    const queryRecord = await queryResponse.getRecord(client);
-    const proxyWalletAddress = ethers.utils.defaultAbiCoder.decode(
-      ['address'],
-      '0x' + Buffer.from(queryRecord.contractFunctionResult!.bytes).toString('hex')
-    )[0];
-
-    client.close();
 
     // Store in Convex (NO private keys)
     await convex.mutation(api.users.createManagedWallet, {
@@ -137,6 +138,7 @@ export async function POST(request: NextRequest) {
         email,
         magicEOAAddress,
         proxyWalletAddress,
+        usingProxyWallet: useProxyWallet,
       },
     });
   } catch (error) {
