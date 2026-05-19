@@ -66,13 +66,35 @@ function CommunitySentiment({
   const formatVotes = (n: number) =>
     n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`;
 
+  // SVG donut params
+  const r = 7;
+  const circ = 2 * Math.PI * r;
+  const bullDash = (bullPct / 100) * circ;
+
   return (
     <div className="flex flex-col gap-2 px-1" onClick={(e) => e.stopPropagation()}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
-          Community sentiment
-        </span>
+        <div className="flex items-center gap-1.5">
+          {/* Donut chart — updates live with bullPct */}
+          <svg width="18" height="18" viewBox="0 0 18 18" className="flex-shrink-0 -rotate-90">
+            {/* background track */}
+            <circle cx="9" cy="9" r={r} fill="none" stroke="#ef4444" strokeWidth="3.5" />
+            {/* bullish arc */}
+            <circle
+              cx="9" cy="9" r={r}
+              fill="none"
+              stroke="#22c55e"
+              strokeWidth="3.5"
+              strokeDasharray={`${bullDash} ${circ - bullDash}`}
+              strokeLinecap="butt"
+              style={{ transition: 'stroke-dasharray 0.5s ease' }}
+            />
+          </svg>
+          <span className="text-[11px] font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
+            Community sentiment
+          </span>
+        </div>
         <span className="text-[11px] text-gray-400 dark:text-neutral-500">
           {formatVotes(totalVotes)} votes
         </span>
@@ -81,20 +103,20 @@ function CommunitySentiment({
       {/* Progress bar */}
       <div className="relative h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-neutral-800 flex">
         <div
-          className="h-full bg-green-500 transition-all duration-500 ease-out rounded-l-full"
+          className="h-full bg-green-500 rounded-l-full"
           style={{
             width: `${bullPct}%`,
-            transform: hoveredDir === 'bullish' ? 'scaleY(1.4)' : 'scaleY(1)',
+            transform: hoveredDir === 'bullish' ? 'scaleY(1.5)' : 'scaleY(1)',
             transformOrigin: 'center',
             transition: 'width 0.5s ease-out, transform 0.15s ease',
           }}
         />
         <div
-          className="h-full bg-red-500 transition-all duration-500 ease-out rounded-r-full flex-1"
+          className="h-full bg-red-500 rounded-r-full flex-1"
           style={{
-            transform: hoveredDir === 'bearish' ? 'scaleY(1.4)' : 'scaleY(1)',
+            transform: hoveredDir === 'bearish' ? 'scaleY(1.5)' : 'scaleY(1)',
             transformOrigin: 'center',
-            transition: 'flex 0.5s ease-out, transform 0.15s ease',
+            transition: 'transform 0.15s ease',
           }}
         />
       </div>
@@ -102,10 +124,10 @@ function CommunitySentiment({
       {/* Pct labels */}
       <div className="flex items-center justify-between text-[11px] font-medium">
         <span className="text-green-500 flex items-center gap-1">
-          <TrendingUp className="w-3 h-3" /> {bullPct}%
+          <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.8} /> {bullPct}%
         </span>
         <span className="text-red-500 flex items-center gap-1">
-          {bearPct}% <TrendingDown className="w-3 h-3" />
+          {bearPct}% <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.8} />
         </span>
       </div>
 
@@ -117,7 +139,7 @@ function CommunitySentiment({
           onClick={(e) => handleVote(e, 'bullish')}
           className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-green-500/60 text-green-500 text-xs font-semibold hover:bg-green-500/10 active:scale-95 transition-all duration-150"
         >
-          <TrendingUp className="w-3.5 h-3.5" /> Bullish
+          <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.8} /> Bullish
         </button>
         <button
           onMouseEnter={() => setHoveredDir('bearish')}
@@ -125,7 +147,7 @@ function CommunitySentiment({
           onClick={(e) => handleVote(e, 'bearish')}
           className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-red-500/60 text-red-500 text-xs font-semibold hover:bg-red-500/10 active:scale-95 transition-all duration-150"
         >
-          <TrendingDown className="w-3.5 h-3.5" /> Bearish
+          <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.8} /> Bearish
         </button>
       </div>
     </div>
