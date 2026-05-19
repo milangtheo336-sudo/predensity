@@ -116,12 +116,12 @@ export function getOnChainBucket(targetTimestamp: number, category: string): num
 // =========================================================================
 export const CLOB_CONTRACTS = {
   marketManager: {
-    address: process.env.NEXT_PUBLIC_CLOB_MARKET_MANAGER_ADDRESS || '0xBE8020EAEe3b3805b66F2d605169914856a64e18',
-    contractId: process.env.NEXT_PUBLIC_CLOB_MARKET_MANAGER_CONTRACT_ID || '0.0.8459745',
+    address: process.env.NEXT_PUBLIC_CLOB_MARKET_MANAGER_ADDRESS || '0x00000000000000000000000000000000008285a4',
+    contractId: process.env.NEXT_PUBLIC_CLOB_MARKET_MANAGER_CONTRACT_ID || '0.0.8553892',
   },
   exchange: {
-    address: process.env.NEXT_PUBLIC_CLOB_EXCHANGE_ADDRESS || '0x8a8265cef1e7f820cBB9CD3aB54f8CeF2173E458',
-    contractId: process.env.NEXT_PUBLIC_CLOB_EXCHANGE_CONTRACT_ID || '0.0.8459746',
+    address: process.env.NEXT_PUBLIC_CLOB_EXCHANGE_ADDRESS || '0x000000000000000000000000000000000082856c',
+    contractId: process.env.NEXT_PUBLIC_CLOB_EXCHANGE_CONTRACT_ID || '0.0.8553836',
   },
 };
 
