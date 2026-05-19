@@ -21,9 +21,20 @@ import {
  */
 export class MagicProvider {
   network: string;
+  client: any; // Hedera Client instance
 
-  constructor(network: 'mainnet' | 'testnet') {
+  constructor(network: 'mainnet' | 'testnet', client?: any) {
     this.network = network;
+    this.client = client;
+  }
+  
+  getClient() {
+    if (!this.client) {
+      // Create a client without operator (read-only)
+      const { Client } = require('@hashgraph/sdk');
+      this.client = this.network === 'mainnet' ? Client.forMainnet() : Client.forTestnet();
+    }
+    return this.client;
   }
 }
 
@@ -114,7 +125,16 @@ export class MagicWallet implements Signer {
     if (!transaction.nodeAccountIds || transaction.nodeAccountIds.length === 0) {
       transaction.setNodeAccountIds([new AccountId(3)]);
     }
-    return transaction.freeze() as T;
+    
+    // Set transaction ID if not already set
+    if (!transaction.transactionId) {
+      const { TransactionId } = require('@hashgraph/sdk');
+      transaction.setTransactionId(TransactionId.generate(this.accountId));
+    }
+    
+    // Get client from provider and freeze
+    const client = this.provider.getClient();
+    return transaction.freezeWith(client) as T;
   }
 
   async call(): Promise<any> {
