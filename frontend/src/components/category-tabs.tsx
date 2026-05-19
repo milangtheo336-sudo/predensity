@@ -89,13 +89,19 @@ function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
           </div>
 
           {/* Action button */}
-          {isLast ? (
-            <Link href="/auth">
-              <button className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors">
-                Get Started
-              </button>
-            </Link>
-          ) : (
+          {isLast && (
+            <button 
+              onClick={() => {
+                setHowItWorksOpen(false);
+                // Scroll to top where the sign up button is visible
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }} 
+              className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors"
+            >
+              Get Started
+            </button>
+          )}
+          {!isLast && (
             <button onClick={() => setStep(s => s + 1)} className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors">
               Next
             </button>
