@@ -1,12 +1,10 @@
 'use client';
 
-import { Header } from '@/components/header';
 import Link from 'next/link';
 
 export default function CookiePolicyPage() {
   return (
     <div className="min-h-screen bg-background">
-      <Header />
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="bg-card border border-border rounded-xl p-8 sm:p-12 shadow-sm">
           <h1 className="text-2xl font-bold text-center mb-2">Cookie Policy</h1>
