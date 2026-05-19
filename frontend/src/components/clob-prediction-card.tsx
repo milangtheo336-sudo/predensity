@@ -488,8 +488,7 @@ function formatTimeRemaining(targetMs: number): string {
 // ---------------------------------------------------------------------------
 const OUTCOME_COLORS = ['#4a9eff', '#ff7043', '#66bb6a', '#9c6cff', '#ffa726', '#ec4899'];
 
-function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: OutcomePrice[] }) {
-  const [timeRange, setTimeRange] = useState<'1H' | '6H' | '1D' | '1W' | '1M' | 'ALL'>('1W');
+function PriceChart({ marketId, outcomes, timeRange, setTimeRange }: { marketId: string; outcomes: OutcomePrice[]; timeRange: '1D' | '1W' | '1M' | 'ALL'; setTimeRange: (range: '1D' | '1W' | '1M' | 'ALL') => void }) {
   const [showOutcomeSelector, setShowOutcomeSelector] = useState(false);
   const [visibleOutcomes, setVisibleOutcomes] = useState<Set<number>>(new Set(outcomes.slice(0, 4).map((_, i) => i)));
   
@@ -668,31 +667,11 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
         )}
       </div>
 
-      {/* Row 3 (BELOW chart): X-axis labels (left) + date range toggles (right) — Polymarket style */}
-      <div className="flex items-center justify-between pt-2 pr-10">
-        {/* X-axis date labels */}
-        <div className="flex gap-3 text-[11px] text-[#888888]">
-          {generateXAxisLabels().slice(0, 3).map((label, i) => (
-            <span key={i}>{label}</span>
-          ))}
-        </div>
-
-        {/* Date range toggles — bottom right */}
-        <div className="flex items-center gap-0.5">
-          {(['1H', '6H', '1D', '1W', '1M', 'ALL'] as const).map((range) => (
-            <button
-              key={range}
-              onClick={() => setTimeRange(range)}
-              className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                timeRange === range
-                  ? 'text-white font-bold'
-                  : 'text-[#888888] hover:text-[#cccccc]'
-              }`}
-            >
-              {range}
-            </button>
-          ))}
-        </div>
+      {/* X-axis labels only */}
+      <div className="flex justify-between pt-2 pr-10 text-[11px] text-[#888888]">
+        {generateXAxisLabels().map((label, i) => (
+          <span key={i}>{label}</span>
+        ))}
       </div>
     </div>
   );
@@ -818,6 +797,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const [inputMode, setInputMode] = useState<'contracts' | 'dollars'>('contracts');
   const [outcomeTab, setOutcomeTab] = useState<'orderbook' | 'probability' | 'orders' | 'positions'>('orderbook');
   const [orderBookSide, setOrderBookSide] = useState<'yes' | 'no'>('yes');
+  const [chartTimeRange, setChartTimeRange] = useState<'1D' | '1W' | '1M' | 'ALL'>('1W');
 
   // Read balance from blockchain (non-custodial)
   const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(user?.publicAddress);
@@ -1056,15 +1036,34 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
             {/* Main Chart - Always visible at top */}
             <div className="px-4 lg:px-0">
-              <PriceChart marketId={marketId} outcomes={outcomes} />
+              <PriceChart marketId={marketId} outcomes={outcomes} timeRange={chartTimeRange} setTimeRange={setChartTimeRange} />
             </div>
 
-            {/* Volume row */}
-            <div className="flex items-center gap-1.5 text-xs sm:text-[13px] text-[#888888] mb-4 lg:mb-5 px-4 lg:px-0">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
-                <path d="M2 12l4-4 3 3 5-7"/>
-              </svg>
-              Volume <span className="text-white font-medium">{(market.totalVolume || 0).toLocaleString()} USDC</span>
+            {/* Volume row with time range buttons */}
+            <div className="flex items-center justify-between text-xs sm:text-[13px] text-[#888888] mb-4 lg:mb-5 px-4 lg:px-0">
+              <div className="flex items-center gap-1.5">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
+                  <path d="M2 12l4-4 3 3 5-7"/>
+                </svg>
+                Volume <span className="text-white font-medium">{(market.totalVolume || 0).toLocaleString()} USDC</span>
+              </div>
+              
+              {/* Time range toggles */}
+              <div className="flex items-center gap-1">
+                {(['1D', '1W', '1M', 'ALL'] as const).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setChartTimeRange(range)}
+                    className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors ${
+                      chartTimeRange === range
+                        ? 'text-white bg-[#2a2a2a]'
+                        : 'text-[#888888] hover:text-white hover:bg-[#1c1c1c]'
+                    }`}
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Outcomes header */}
@@ -1162,7 +1161,11 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                               setOrderBookSide('yes');
                               setShowMobileTradingModal(true);
                             }}
-                            className="flex-1 py-3.5 text-center text-base font-bold text-[#3fdc8c] bg-[#0d2818] rounded-xl hover:bg-[#0e3020] transition-colors"
+                            className={`flex-1 py-3.5 text-center text-base font-bold rounded-xl transition-colors ${
+                              selectedOutcome === i && orderSide === 'buy'
+                                ? 'text-white bg-[#3fdc8c]'
+                                : 'text-[#3fdc8c] bg-[#0d2818] hover:bg-[#0e3020]'
+                            }`}
                           >
                             Yes {o.price}¢
                           </button>
@@ -1173,7 +1176,11 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                               setOrderBookSide('no');
                               setShowMobileTradingModal(true);
                             }}
-                            className="flex-1 py-3.5 text-center text-base font-bold text-[#ff6b35] bg-[#2d1410] rounded-xl hover:bg-[#3d1810] transition-colors"
+                            className={`flex-1 py-3.5 text-center text-base font-bold rounded-xl transition-colors ${
+                              selectedOutcome === i && orderSide === 'sell'
+                                ? 'text-white bg-[#ff6b35]'
+                                : 'text-[#ff6b35] bg-[#2d1410] hover:bg-[#3d1810]'
+                            }`}
                           >
                             No {(100 - o.price).toFixed(1)}¢
                           </button>
@@ -1281,8 +1288,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                               </div>
                             )}
                             {outcomeTab === 'probability' && (
-                              <div className="h-64">
-                                <PriceChart marketId={marketId} outcomes={[o]} />
+                              <div className="min-h-[280px]">
+                                <PriceChart marketId={marketId} outcomes={[o]} timeRange={chartTimeRange} setTimeRange={setChartTimeRange} />
                               </div>
                             )}
                             {outcomeTab === 'orders' && (
