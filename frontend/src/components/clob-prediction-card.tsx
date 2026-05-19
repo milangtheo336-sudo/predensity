@@ -488,6 +488,9 @@ function formatTimeRemaining(targetMs: number): string {
 // ---------------------------------------------------------------------------
 const OUTCOME_COLORS = ['#4a9eff', '#ff7043', '#66bb6a', '#9c6cff', '#ffa726', '#ec4899'];
 
+// Normalize outcome names for display
+const normalizeOutcomeName = (name: string) => name.toLowerCase() === 'tie' ? 'Draw' : name;
+
 function PriceChart({ marketId, outcomes, timeRange, setTimeRange }: { marketId: string; outcomes: OutcomePrice[]; timeRange: '1D' | '1W' | '1M' | 'ALL'; setTimeRange: (range: '1D' | '1W' | '1M' | 'ALL') => void }) {
   const [showOutcomeSelector, setShowOutcomeSelector] = useState(false);
   const [visibleOutcomes, setVisibleOutcomes] = useState<Set<number>>(new Set(outcomes.slice(0, 4).map((_, i) => i)));
@@ -1291,6 +1294,11 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                         <div className="w-10 h-10 bg-gray-100 dark:bg-[#1c1c1c] rounded-lg flex items-center justify-center flex-shrink-0">
                           {outcomeImage ? (
                             <img src={outcomeImage} alt={o.name} className="w-full h-full object-cover rounded-lg" />
+                          ) : normalizeOutcomeName(o.name) === 'Draw' ? (
+                            <>
+                              <img src="/predensity-logo.png" alt="Draw" className="w-full h-full object-contain hidden dark:block" />
+                              <img src="/predensity logo.svg" alt="Draw" className="w-full h-full object-contain dark:hidden" />
+                            </>
                           ) : (
                             <span className="text-xl">🏆</span>
                           )}
@@ -1299,7 +1307,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                         {/* Name and volume */}
                         <div className="flex-1 text-left">
                           <div className={`text-base font-bold ${isEliminated || isLoser ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>
-                            {o.name}
+                            {normalizeOutcomeName(o.name)}
                           </div>
                           <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-[#888888] mt-1">
                             <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3">
@@ -1456,7 +1464,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                         <img src={market.outcomesData[selectedOutcome].imageUrl} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
                       ) : null}
                       <span className="text-base font-bold text-gray-900 dark:text-white">
-                        {outcomes[selectedOutcome]?.name}
+                        {normalizeOutcomeName(outcomes[selectedOutcome]?.name)}
                       </span>
                       <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" className={`w-3.5 h-3.5 text-gray-500 dark:text-[#888888] transition-transform flex-shrink-0 ${showTradingOutcomeDropdown ? 'rotate-180' : ''}`}>
                         <path d="M2 3.5l3 3 3-3"/>
@@ -1478,10 +1486,15 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                             >
                               {market.outcomesData?.[i]?.imageUrl ? (
                                 <img src={market.outcomesData[i].imageUrl} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                              ) : normalizeOutcomeName(outcomes[i]?.name) === 'Draw' ? (
+                                <span className="w-7 h-7 flex-shrink-0 flex items-center justify-center">
+                                  <img src="/predensity-logo.png" alt="Draw" className="w-5 h-5 object-contain hidden dark:block" />
+                                  <img src="/predensity logo.svg" alt="Draw" className="w-5 h-5 object-contain dark:hidden" />
+                                </span>
                               ) : (
                                 <span className="w-5 h-5 rounded-full flex-shrink-0 bg-gray-200 dark:bg-[#2a2a2a]" />
                               )}
-                              <span className="text-sm font-semibold text-gray-900 dark:text-white flex-1 truncate">{o.name}</span>
+                              <span className="text-sm font-semibold text-gray-900 dark:text-white flex-1 truncate">{normalizeOutcomeName(o.name)}</span>
                             </button>
                           ))}
                         </div>

@@ -1586,7 +1586,7 @@ function AdminPage() {
     const validOutcomes = clobMarketForm.marketType === 'match'
       ? [
           clobMarketForm.outcomes[0] || { name: '', imageUrl: '' },
-          { name: 'Tie', imageUrl: '' },
+          { name: 'Draw', imageUrl: '' },
           clobMarketForm.outcomes[2] || { name: '', imageUrl: '' },
         ].filter(o => o.name.trim() !== '')
       : clobMarketForm.outcomes.filter(o => o.name.trim() !== '');
@@ -3057,7 +3057,7 @@ function AdminPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setClobMarketForm({ ...clobMarketForm, marketType: 'match', outcomes: [{ name: '', imageUrl: '' }, { name: 'Tie', imageUrl: '' }, { name: '', imageUrl: '' }] })}
+                    onClick={() => setClobMarketForm({ ...clobMarketForm, marketType: 'match', outcomes: [{ name: '', imageUrl: '' }, { name: 'Draw', imageUrl: '' }, { name: '', imageUrl: '' }] })}
                     className={`flex-1 py-2 text-xs font-medium transition-colors ${
                       clobMarketForm.marketType === 'match'
                         ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
@@ -3124,7 +3124,7 @@ function AdminPage() {
                     </div>
                   ))}
                   <div className="flex items-center justify-center py-2 text-xs text-gray-400 font-medium">
-                    -- Tie (fixed middle outcome) --
+                    -- Draw (fixed middle outcome) --
                   </div>
                 </div>
               </div>
