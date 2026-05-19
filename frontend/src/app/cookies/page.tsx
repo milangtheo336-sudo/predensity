@@ -13,20 +13,17 @@ export default function CookiePolicyPage() {
           <p className="text-sm text-muted-foreground text-center mb-8">Last Updated: May 3, 2026</p>
 
           <section className="space-y-6 text-sm leading-relaxed text-foreground/90">
+
             <div>
-              <h2 className="text-lg font-semibold mb-3">Introduction</h2>
               <p className="mb-3">
                 This Cookie Policy explains how Predensity ("Predensity," "we," "us," or "our") uses cookies and similar
-                tracking technologies on our website: https://www.predensity.com and any subdomains under Predensity's
-                control (collectively, the "Site").
-              </p>
-              <p className="mb-3">
-                This Cookie Policy should be read together with our{' '}
+                tracking technologies on our website: https://www.predensity.com and any subdomains or mobile applications
+                under Predensity's control (collectively, the "Site"). This Cookie Policy should be read together with our{' '}
                 <Link href="/privacy" className="text-vibrant-purple hover:underline">Privacy Policy</Link> and{' '}
-                <Link href="/terms" className="text-vibrant-purple hover:underline">Terms of Use</Link>. By continuing
-                to browse or use our Site, you agree that we can store and access cookies and other tracking technologies
-                as described in this Policy. If you do not agree, please disable cookies in your browser settings or
-                refrain from using our Site.
+                <Link href="/terms" className="text-vibrant-purple hover:underline">Terms of Use</Link>. By continuing to
+                browse or use our Site, you agree that we can store and access cookies and other tracking technologies as
+                described in this Policy. If you do not agree, please disable cookies in your browser settings or refrain
+                from using our Site.
               </p>
             </div>
 
@@ -34,97 +31,104 @@ export default function CookiePolicyPage() {
               <h2 className="text-lg font-semibold mb-3">What Are Cookies?</h2>
               <p className="mb-3">
                 Cookies are small text files that websites place on your device's browser to store data about your
-                preferences and interactions. They help websites remember information about your visit and enable certain
-                functionality. We also use similar technologies such as web beacons, local storage objects, and scripts
-                to collect information about how you interact with our Site.
+                preferences and interactions. They help websites remember information about your visit (e.g., your language
+                settings or login status) and enable certain functionality. We also use similar technologies, such as web
+                beacons (pixel tags), local storage objects, or scripts, to collect additional information about how you
+                interact with our Site and Services.
               </p>
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold mb-3">Why We Use Cookies</h2>
-              <p className="mb-2">We use cookies and similar technologies for the following purposes:</p>
+              <h2 className="text-lg font-semibold mb-3">Why We Use Cookies and Tracking Technologies</h2>
+              <p className="mb-2">We use cookies and similar technologies for various purposes, including but not limited to:</p>
               <ul className="list-disc list-inside space-y-1 ml-2 mb-3">
-                <li><span className="font-medium">Site Functionality:</span> Enable core features including wallet authentication, session management, and market interactions.</li>
-                <li><span className="font-medium">Preferences:</span> Remember your theme settings, language preferences, and other customizations.</li>
-                <li><span className="font-medium">Analytics and Performance:</span> Understand how users navigate the platform, which markets are viewed most, and how to improve the experience.</li>
-                <li><span className="font-medium">Security:</span> Protect user sessions, detect unauthorized activity, and maintain platform integrity.</li>
+                <li><span className="font-medium">Site Functionality:</span> Enable core features (e.g., user authentication, wallet session management, market interactions).</li>
+                <li><span className="font-medium">Preferences and Personalization:</span> Remember your theme, language, and other customizations to improve your experience.</li>
+                <li><span className="font-medium">Analytics and Performance:</span> Track usage patterns, page views, clicks, and other metrics to better understand how users access and utilize our Site.</li>
+                <li><span className="font-medium">Security:</span> Protect user accounts, detect unauthorized activity, and maintain site integrity.</li>
               </ul>
             </div>
 
             <div>
               <h2 className="text-lg font-semibold mb-3">Types of Cookies We Use</h2>
+              <p className="mb-3">We may use different types of cookies and similar technologies on our Site:</p>
 
-              <h3 className="font-semibold mb-2">Strictly Necessary Cookies</h3>
-              <p className="mb-3">
-                Essential for the Site to function. These include session cookies that manage your login state and wallet
-                session keys. The Site cannot function properly without these cookies.
-              </p>
+              <h3 className="font-semibold mb-1">Strictly Necessary Cookies</h3>
+              <p className="mb-1">These are essential for the Site to function. They enable features like user logins and wallet session management.</p>
+              <p className="mb-3 text-muted-foreground italic">Example: Session cookies that manage your login state or wallet session keys.</p>
 
-              <h3 className="font-semibold mb-2">Performance Cookies</h3>
-              <p className="mb-3">
-                Collect information about how you use the Site — pages visited, time spent, navigation patterns — to help
-                us improve performance. We use Vercel Analytics for this purpose. As the site operator, Predensity is
-                solely responsible for the data collected through these analytics.
-              </p>
+              <h3 className="font-semibold mb-1">Performance Cookies</h3>
+              <p className="mb-1">These cookies collect information about how you use our Site, such as which pages are visited most frequently, and help us improve performance.</p>
+              <p className="mb-3 text-muted-foreground italic">Example: Analytics cookies that track page views and site navigation. Predensity is solely responsible for the data collected through these analytics.</p>
 
-              <h3 className="font-semibold mb-2">Functionality Cookies</h3>
-              <p className="mb-3">
-                Remember your preferences such as theme (light/dark) and language selection so you do not have to
-                reconfigure them on each visit.
-              </p>
+              <h3 className="font-semibold mb-1">Functionality Cookies</h3>
+              <p className="mb-1">These remember your preferences and choices (e.g., theme, language settings) to personalize your experience.</p>
+              <p className="mb-3 text-muted-foreground italic">Example: A cookie storing your dark/light mode preference so you don't have to choose it each visit.</p>
 
-              <h3 className="font-semibold mb-2">Third-Party Cookies</h3>
+              <h3 className="font-semibold mb-1">Third-Party Cookies</h3>
               <p className="mb-3">
-                Our Site integrates third-party services that may set their own cookies. These include:
+                Our Site integrates features or content from third parties (e.g., authentication providers). These third
+                parties may place their own cookies on your device to collect information about your online activities. We
+                do not control these third-party cookies; their use is governed by the third party's privacy or cookie policy.
               </p>
+              <p className="mb-2">Examples of third-party services we use include:</p>
               <ul className="list-disc list-inside space-y-1 ml-2 mb-3">
-                <li><span className="font-medium">Vercel Analytics:</span> Tracks page views and performance metrics.</li>
                 <li><span className="font-medium">Magic Link:</span> Manages email-based authentication sessions.</li>
               </ul>
-              <p className="mb-3">
-                We do not control third-party cookies. Their use is governed by the respective third party's privacy policy.
-              </p>
             </div>
 
             <div>
               <h2 className="text-lg font-semibold mb-3">How to Control Cookies</h2>
               <p className="mb-3">
-                You can accept, reject, or remove cookies by adjusting your browser settings. Instructions are typically
-                found in the "Help" menu of your browser (Chrome, Firefox, Safari, Edge).
+                You can accept, reject, or remove cookies by adjusting your browser settings. The steps vary depending on
+                the browser you use (e.g., Chrome, Firefox, Safari, Edge). You can typically find instructions in the
+                "Help" menu or settings of your browser.
               </p>
               <p className="mb-3">
-                Please note: disabling certain cookies may limit the functionality of our Site. Strictly necessary cookies
-                are required for authentication and market access.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="text-lg font-semibold mb-3">Do Not Track</h2>
-              <p className="mb-3">
-                Some browsers send a "Do Not Track" (DNT) signal to websites. We currently do not respond to DNT signals
-                as there is no industry-accepted standard for such requests. You can enable or disable DNT by visiting the
-                preferences or settings page of your web browser.
+                Please note: Disabling certain cookies may limit the functionality or performance of our Site. Strictly
+                necessary cookies are required for you to navigate and access certain features (e.g., wallet authentication
+                and market access).
               </p>
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold mb-3">Changes to This Policy</h2>
+              <h2 className="text-lg font-semibold mb-3">Do Not Track Signals</h2>
               <p className="mb-3">
-                We may update this Cookie Policy from time to time. Material changes will be reflected in the "Last Updated"
-                date at the top of this page. Your continued use of the Site after changes are posted constitutes your
-                acceptance of the revised Policy.
+                Some browsers have a "Do Not Track" (DNT) feature that informs websites that you do not want to have your
+                online activities tracked. We currently do not respond to DNT signals, as there is no industry-accepted
+                standard for such requests.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="text-lg font-semibold mb-3">Changes to This Cookie Policy</h2>
+              <p className="mb-3">
+                We may update this Cookie Policy from time to time. If we make material changes, we will update the
+                "Last Updated" date at the top of this page. Your continued use of our Site after changes have been posted
+                will constitute your acceptance of the revised Cookie Policy.
               </p>
             </div>
 
             <div>
               <h2 className="text-lg font-semibold mb-3">Contact Us</h2>
               <p className="mb-3">
-                If you have any questions about this Cookie Policy, please contact us at{' '}
+                If you have any questions or concerns about this Cookie Policy or our use of cookies, please contact us
+                at:{' '}
                 <a href="mailto:legal@predensity.com" className="text-vibrant-purple hover:underline">
                   legal@predensity.com
                 </a>.
               </p>
             </div>
+
+            <div className="pt-2 border-t border-border">
+              <p className="text-muted-foreground">
+                By using our Site and Services, you acknowledge that you have read and understood this Cookie Policy.
+                If you do not agree to our use of cookies, please discontinue your use of the Site or adjust your browser
+                settings accordingly.
+              </p>
+              <p className="mt-3 text-muted-foreground">Effective Date: May 3, 2026</p>
+            </div>
+
           </section>
         </div>
       </main>
