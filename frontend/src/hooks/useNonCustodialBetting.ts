@@ -83,21 +83,19 @@ export function useNonCustodialBetting() {
         priceMinBN = ethers.BigNumber.from(priceMin);
         priceMaxBN = ethers.BigNumber.from(priceMax);
       }
-
       console.log('[placeBet] Price range:', { min: priceMinBN.toString(), max: priceMaxBN.toString() });
 
-      // Get user address first
-      const { getMagicProvider } = await import('@/lib/magic');
-      const magicProvider = getMagicProvider();
+      // Get user address using getUserInfo (works with Hedera extension)
+      const { getUserInfo } = await import('@/lib/magic');
       
       console.log('[placeBet] Getting user address...');
-      const accounts = await magicProvider.request({ method: 'eth_accounts' });
-      console.log('[placeBet] Accounts response:', accounts);
+      const userInfo = await getUserInfo();
+      console.log('[placeBet] User info:', userInfo);
       
-      const userAddress = accounts[0];
+      const userAddress = userInfo?.publicAddress;
       
       if (!userAddress) {
-        console.error('[placeBet] No account found in eth_accounts response');
+        console.error('[placeBet] No address found in user info');
         throw new Error('No account found. Please log in again.');
       }
 
