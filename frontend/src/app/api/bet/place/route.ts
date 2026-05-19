@@ -12,7 +12,7 @@ import {
 import { ethers } from 'ethers';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
-import { STAKING_TOKEN_IDS, CONTRACT_IDS, CONTRACT_ADDRESSES } from '@/lib/contracts/contract-config';
+import { STAKING_TOKEN_IDS, CONTRACT_IDS, CONTRACT_ADDRESSES, STAKING_MODE } from '@/lib/contracts/contract-config';
 import { requireAuthMatchingUser, rateLimit, validateNumericRange } from '@/lib/api-auth';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
@@ -20,7 +20,6 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
 const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || process.env.NEXT_PUBLIC_OPERATOR_ID || '';
 const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || process.env.OPERATOR_PRIVATE_KEY || '';
 const HEDERA_NETWORK = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-const STAKING_MODE = (process.env.STAKING_MODE || 'testnet') as 'testnet' | 'mainnet';
 
 // Track which contracts have been seeded and approved (persists across requests in the same server process)
 const seededContracts = new Set<string>();
