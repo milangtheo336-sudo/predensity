@@ -11,8 +11,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
-import { getTokenBalance } from '@/lib/magic';
-import { getStakingTokenAddress } from '@/lib/contracts/contract-config';
+import { getStakingTokenId } from '@/lib/contracts/contract-config';
 
 // Cache key for localStorage
 const BALANCE_CACHE_KEY = 'predensity_balance_cache';
@@ -127,15 +126,34 @@ export function useBlockchainBalance(userAddress: string | undefined) {
       
       try {
         console.log('[useBlockchainBalance] Fetching balance for address:', userAddress);
-        const tokenAddress = getStakingTokenAddress();
-        const balanceWei = await getTokenBalance(tokenAddress, userAddress);
-        
+        const tokenId = getStakingTokenId();
+        const network = process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet';
+        const mirrorNodeUrl = network === 'mainnet' 
+          ? 'https://mainnet-public.mirrornode.hedera.com'
+          : 'https://testnet.mirrornode.hedera.com';
+
+        let balanceFormatted = '0';
+        try {
+          const response = await fetch(`${mirrorNodeUrl}/api/v1/accounts/${userAddress}/tokens`);
+          if (response.ok) {
+            const data = await response.json();
+            const tokenRecord = data.tokens?.find((t: any) => t.token_id === tokenId);
+            if (tokenRecord) {
+              const decimals = parseInt(tokenRecord.decimals || '6', 10);
+              // Format balance using its decimals
+              balanceFormatted = (parseInt(tokenRecord.balance, 10) / Math.pow(10, decimals)).toString();
+            }
+          } else {
+            console.warn('[useBlockchainBalance] Mirror node returned status:', response.status);
+          }
+        } catch (e) {
+          console.error('[useBlockchainBalance] Mirror node fetch failed:', e);
+        }
+
         if (isMounted) {
-          const balanceFormatted = ethers.utils.formatUnits(balanceWei, 6); // USDC has 6 decimals
-          console.log('[useBlockchainBalance] Balance fetched:', {
+          console.log('[useBlockchainBalance] Balance fetched via Mirror Node:', {
             address: userAddress,
             balance: balanceFormatted,
-            balanceWei: balanceWei.toString(),
           });
           setBalance(balanceFormatted);
           cacheBalance(userAddress, balanceFormatted); // Cache the balance
