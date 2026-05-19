@@ -164,25 +164,35 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
     nonce: string,
     walletType: 'hashpack' | 'metamask' | 'blade' | 'kabila',
   ) => {
-    const createRes = await fetch('/api/wallet/create-wallet-user', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address: normalizedAddress, signature, nonce, walletType }),
-    });
-    const createData = await createRes.json();
-    if (!createRes.ok) throw new Error(createData.error || 'Failed to create user');
-    const { userId, isNewUser } = createData;
+    // Close the auth modal immediately and show the "Redirecting..." overlay
+    // (same as Magic OAuth flow) while the slow proxy wallet creation happens
+    onClose();
+    setView('main');
+    setIsWalletAuthenticating(true);
 
-    const proxyRes = await fetch('/api/proxy-wallet/create', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userAddress: normalizedAddress }),
-    });
-    const proxyData = await proxyRes.json();
-    if (!proxyRes.ok) throw new Error(proxyData.error || 'Failed to create proxy wallet');
+    try {
+      const createRes = await fetch('/api/wallet/create-wallet-user', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: normalizedAddress, signature, nonce, walletType }),
+      });
+      const createData = await createRes.json();
+      if (!createRes.ok) throw new Error(createData.error || 'Failed to create user');
+      const { userId, isNewUser } = createData;
 
-    setWalletUser({ publicAddress: normalizedAddress, hederaAccountId: normalizedAddress, walletType, userId });
-    if (isNewUser) sessionStorage.setItem('predensity-new-user', 'true');
-    onClose(); setView('main');
-    if (isNewUser) router.push('/onboarding');
+      const proxyRes = await fetch('/api/proxy-wallet/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userAddress: normalizedAddress }),
+      });
+      const proxyData = await proxyRes.json();
+      if (!proxyRes.ok) throw new Error(proxyData.error || 'Failed to create proxy wallet');
+
+      setWalletUser({ publicAddress: normalizedAddress, hederaAccountId: normalizedAddress, walletType, userId });
+      if (isNewUser) sessionStorage.setItem('predensity-new-user', 'true');
+
+      if (isNewUser) router.push('/onboarding');
+    } finally {
+      setIsWalletAuthenticating(false);
+    }
   };
 
   // ---------------------------------------------------------------------------
