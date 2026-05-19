@@ -211,6 +211,7 @@ export interface MarketCard {
   id: string;
   category: Category;
   question: string;
+  description?: string;
   icon: string;
   targetTimestamp: number;
   totalVolume: string;
