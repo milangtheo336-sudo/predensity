@@ -1080,7 +1080,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                   <div key={ord._id} className="flex items-center justify-between text-xs bg-gray-100 dark:bg-[#1c1c1c] p-2 rounded">
                     <span className={ord.side === 'buy' ? 'text-[#3fdc8c]' : 'text-[#ff6b35]'}>{ord.side.toUpperCase()}</span>
                     <span className="text-gray-900 dark:text-white">{ord.price}c × {ord.quantity}</span>
-                    <button onClick={() => handleCancelOrder(ord._id)} className="text-[#ff6b35] hover:text-[#ff8555]">Cancel</button>
+                    <button onClick={() => handleCancelOrder(ord.orderId)} className="text-[#ff6b35] hover:text-[#ff8555]">Cancel</button>
                   </div>
                 ))}
               </div>
@@ -1202,17 +1202,14 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               {/* Binary market: exactly 2 outcomes (Yes/No) -- single card layout */}
               {outcomes.length === 2 && outcomes.every(o => ['yes', 'no'].includes(o.name.toLowerCase())) ? (
                 <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-200 dark:border-[#2a2a2a] overflow-hidden">
-                  {/* Clickable padding area toggles order book */}
-                  <div
-                    className="flex gap-2 p-4 cursor-pointer"
-                    onClick={() => setExpandedOutcome(expandedOutcome === 0 ? null : 0)}
-                  >
+                  <div className="flex gap-2 p-4">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={() => {
+                        const willExpand = expandedOutcome !== 0;
                         setSelectedOutcome(0);
                         setOrderSide('buy');
                         setOrderBookSide('yes');
+                        setExpandedOutcome(willExpand ? 0 : null);
                         setShowMobileTradingModal(true);
                       }}
                       className={`flex-1 py-3 text-center text-base font-bold rounded-xl transition-colors ${
@@ -1224,11 +1221,12 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                       Yes {outcomes[0].price}¢
                     </button>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={() => {
+                        const willExpand = expandedOutcome !== 1;
                         setSelectedOutcome(1);
                         setOrderSide('sell');
                         setOrderBookSide('no');
+                        setExpandedOutcome(willExpand ? 1 : null);
                         setShowMobileTradingModal(true);
                       }}
                       className={`flex-1 py-3 text-center text-base font-bold rounded-xl transition-colors ${
@@ -1240,32 +1238,35 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                       No {outcomes[1].price}¢
                     </button>
                   </div>
-                  {expandedOutcome === 0 && !market.resolved && outcomes[selectedOutcome] && (
-                    renderOutcomeTabs(selectedOutcome, outcomes[selectedOutcome])
+                  {/* Detail tabs — only when this card is expanded (matches multi-outcome UX) */}
+                  {expandedOutcome !== null && !market.resolved && outcomes[expandedOutcome] && (
+                    renderOutcomeTabs(expandedOutcome, outcomes[expandedOutcome])
                   )}
                 </div>
               ) : outcomes.length === 3 && outcomes[1]?.name?.toLowerCase() === 'tie' ? (
                 /* Match result: Team A / Tie / Team B */
                 <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-200 dark:border-[#2a2a2a] overflow-hidden">
-                  <div
-                    className="flex gap-2 p-4 cursor-pointer"
-                    onClick={() => setExpandedOutcome(expandedOutcome === 0 ? null : 0)}
-                  >
+                  <div className="flex gap-2 p-4">
                     {outcomes.map((o, i) => {
                       const colors = ['#3fdc8c', '#888888', '#ff8c42'];
                       const color = colors[i];
                       return (
                         <button
                           key={i}
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onClick={() => {
+                            const willExpand = expandedOutcome !== i;
                             setSelectedOutcome(i);
                             setOrderSide('buy');
                             setOrderBookSide('yes');
+                            setExpandedOutcome(willExpand ? i : null);
                             setShowMobileTradingModal(true);
                           }}
-                          className="flex-1 py-3 px-2 text-center rounded-xl transition-colors border"
-                          style={{ borderColor: `${color}40`, color: selectedOutcome === i ? undefined : color, backgroundColor: selectedOutcome === i ? `${color}20` : undefined }}
+                          className={`flex-1 py-3 px-2 text-center rounded-xl transition-colors border ${
+                            selectedOutcome === i
+                              ? `border-[${color}]/30 bg-[${color}]/20 text-gray-900 dark:text-white`
+                              : `border-[${color}]/30 text-[${color}] hover:bg-[${color}]/10 bg-white dark:bg-[#141414]`
+                          }`}
+                          style={{ borderColor: `${color}40`, color: selectedOutcome === i ? undefined : color }}
                         >
                           <div className="text-xs font-medium truncate mb-0.5">{o.name}</div>
                           <div className="text-base font-bold">{o.price}¢</div>
@@ -1273,8 +1274,9 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                       );
                     })}
                   </div>
-                  {expandedOutcome === 0 && !market.resolved && outcomes[selectedOutcome] && (
-                    renderOutcomeTabs(selectedOutcome, outcomes[selectedOutcome])
+                  {/* Detail tabs — only when a team card is expanded (matches multi-outcome UX) */}
+                  {expandedOutcome !== null && !market.resolved && outcomes[expandedOutcome] && (
+                    renderOutcomeTabs(expandedOutcome, outcomes[expandedOutcome])
                   )}
                 </div>
               ) : (
