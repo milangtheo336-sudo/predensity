@@ -6,9 +6,6 @@
  * Backend never has access to user's private key.
  */
 
-import { Magic } from 'magic-sdk';
-import { OAuthExtension } from '@magic-ext/oauth2';
-import { HederaExtension } from '@magic-ext/hedera';
 import { ethers } from 'ethers';
 
 // Singleton instance
@@ -23,14 +20,46 @@ export function getMagic(): any {
   }
 
   if (!magicInstance) {
-    magicInstance = new Magic(process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY!, {
-      extensions: [
-        new OAuthExtension(),
-        new HederaExtension({
-          network: 'testnet',
-        }),
-      ],
-    });
+    const publishableKey = process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY;
+    
+    if (!publishableKey) {
+      throw new Error('NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY is not set');
+    }
+
+    console.log('[Magic] Starting initialization...');
+    console.log('[Magic] Key:', publishableKey.substring(0, 10) + '...');
+
+    try {
+      // Dynamic imports to avoid SSR issues
+      const { Magic } = require('magic-sdk');
+      const { OAuthExtension } = require('@magic-ext/oauth2');
+      const { HederaExtension } = require('@magic-ext/hedera');
+      
+      console.log('[Magic] Packages loaded');
+      
+      // Initialize Magic with extensions as an object (not array)
+      magicInstance = new Magic(publishableKey, {
+        extensions: {
+          oauth2: new OAuthExtension(),
+          hedera: new HederaExtension({ 
+            network: 'testnet',
+            rpcUrl: 'https://testnet.hashio.io/api'
+          }),
+        },
+      });
+      
+      console.log('[Magic] Instance created');
+      console.log('[Magic] OAuth2 available:', !!magicInstance.oauth2);
+      console.log('[Magic] Hedera available:', !!magicInstance.hedera);
+      
+      if (!magicInstance.oauth2) {
+        console.error('[Magic] OAuth2 extension not found on instance');
+        console.error('[Magic] Available properties:', Object.keys(magicInstance));
+      }
+    } catch (error) {
+      console.error('[Magic] Initialization error:', error);
+      throw error;
+    }
   }
 
   return magicInstance;
