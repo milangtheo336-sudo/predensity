@@ -362,7 +362,12 @@ function CryptoActivitySection({
                 // Build profile link: own profile -> /my-bets, others -> /profile/{id}
                 const managedMatch = comment.userAddress.match(/^managed:(.+)$/i);
                 const profileLink = isCurrentUser ? '/my-bets' : (managedMatch ? `/profile/${managedMatch[1]}` : undefined);
-                const userPos = positions.find(p => p.addr === comment.userAddress);
+                
+                // Match position against original comment address OR EOA address if current user
+                const eoaAddr = user?.publicAddress ? `managed:${user.publicAddress}`.toLowerCase() : null;
+                const isCurrentUserComment = user && comment.userAddress === `managed:${user.issuer}`.toLowerCase();
+                const userPos = positions.find(p => p.addr === comment.userAddress || (isCurrentUserComment && eoaAddr && p.addr === eoaAddr));
+                
                 const replies = comments.filter((c: any) => c.parentId === comment._id);
                 return (
                   <div key={comment._id} className="py-3">
@@ -946,8 +951,9 @@ export function PredictionCard({
     
     try {
       const decimals = 8;
-      const minStr = limitDecimals(selectedRange.min, decimals);
-      const maxStr = limitDecimals(selectedRange.max, decimals);
+      const minStr = Math.floor(selectedRange.min * Math.pow(10, decimals)).toString();
+      const maxStr = Math.floor(selectedRange.max * Math.pow(10, decimals)).toString();
+      const startUnix = simulateArgsRef.current.startUnix;
       
       // Update current price range for modal display
       setCurrentPriceRange({ min: minStr, max: maxStr });
