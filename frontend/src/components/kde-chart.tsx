@@ -576,7 +576,8 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
           <div ref={chartContainerRef} className={cn('w-full', className?.includes('h-full') ? 'h-[calc(100%-3rem)]' : 'h-64 sm:h-80')} />
           {/* Predensity watermark -- top-right corner, overlaid on chart */}
           <div className="absolute top-2 right-3 flex items-center gap-2 opacity-15 pointer-events-none select-none">
-            <img src="/predensity-logo.png" alt="" width={50} height={30} />
+            <img src="/predensity-logo.png" alt="" width={50} height={30} className="hidden dark:block" />
+            <img src="/white the loading predensity logo.png" alt="" width={50} height={30} className="dark:hidden" />
             <span className="text-xl font-semibold tracking-wide text-gray-900 dark:text-white">Predensity</span>
           </div>
         </div>
