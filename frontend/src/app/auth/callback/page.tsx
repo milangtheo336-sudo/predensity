@@ -82,6 +82,49 @@ export default function AuthCallback() {
         
         // Skip auto-association - will be handled on first deposit
         console.log('[auth/callback] Wallet setup complete. Token will be associated on first deposit.');
+
+        if (!response.ok && response.status !== 409) {
+          throw new Error(data.error || 'Failed to create wallet');
+        }
+
+        // CRITICAL - Create proxy wallet BEFORE allowing user to proceed
+        // User deposits to proxy wallet, so it MUST exist before they can deposit
+        setStatus('Setting up your proxy wallet...');
+        console.log('[auth/callback] CRITICAL: Creating proxy wallet (required for deposits)...');
+        
+        const proxyResponse = await fetch('/api/proxy-wallet/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userAddress: walletAddress }),
+        });
+
+        const proxyData = await proxyResponse.json();
+
+        if (!proxyResponse.ok) {
+          throw new Error(`Failed to create proxy wallet: ${proxyData.error || 'Unknown error'}`);
+        }
+
+        if (proxyData.alreadyExists) {
+          console.log('[auth/callback] Proxy wallet already exists:', proxyData.proxyWalletAddress);
+        } else {
+          console.log('[auth/callback] Proxy wallet created successfully:', proxyData.proxyWalletAddress);
+          
+          // If address not immediately available, wait for it
+          if (!proxyData.proxyWalletAddress) {
+            console.log('[auth/callback] Waiting for proxy wallet address to be available...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            
+            // Verify it was created
+            const verifyResponse = await fetch(`/api/proxy-wallet/create?userAddress=${walletAddress}`);
+            const verifyData = await verifyResponse.json();
+            
+            if (!verifyData.exists || !verifyData.proxyWalletAddress) {
+              throw new Error('Proxy wallet created but address not available. Please try logging in again.');
+            }
+            
+            console.log('[auth/callback] Proxy wallet address confirmed:', verifyData.proxyWalletAddress);
+          }
+        }
         
         // Whether wallet was created or already exists, set user data
         // Set user data in sessionStorage for immediate UI update
@@ -97,10 +140,6 @@ export default function AuthCallback() {
           issuer,
         };
         sessionStorage.setItem('magic-user-cache', JSON.stringify(userData));
-
-        if (!response.ok && response.status !== 409) {
-          throw new Error(data.error || 'Failed to create wallet');
-        }
 
         setStatus('Success! Redirecting...');
         
