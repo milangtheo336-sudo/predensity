@@ -415,6 +415,18 @@ export default defineSchema({
     .index("by_market_outcome", ["marketId", "outcomeIndex"])
     .index("by_market_outcome_time", ["marketId", "outcomeIndex", "timestamp"]),
 
+  // =========================================================================
+  // WAITLIST
+  // =========================================================================
+  waitlist: defineTable({
+    email: v.string(),
+    referralCode: v.optional(v.string()),
+    source: v.optional(v.string()),
+    joinedAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_joined", ["joinedAt"]),
+
   // Nonce tracking for non-custodial orders (prevents replay attacks)
   orderNonces: defineTable({
     userId: v.string(),
