@@ -3,10 +3,9 @@ import { requireAdmin, rateLimit } from '@/lib/api-auth';
 import { api } from '../../../../../convex/_generated/api';
 import { getServerConvex } from '@/lib/convex-server';
 
-const convex = getServerConvex();
-
 export async function POST(request: NextRequest) {
   try {
+    const convex = getServerConvex();
     const adminResult = await requireAdmin(request);
     if (adminResult instanceof NextResponse) return adminResult;
 
