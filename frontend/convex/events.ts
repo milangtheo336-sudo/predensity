@@ -161,7 +161,8 @@ export const createCryptoMarket = mutation({
     contractId: v.string(),
   },
   handler: async (ctx, args) => {
-    const marketId = `crypto-${args.tokenSymbol.toLowerCase()}`;
+    const symbol = args.tokenSymbol.trim();
+    const marketId = `crypto-${symbol.toLowerCase()}`;
     
     // Check if market already exists
     const existing = await ctx.db
@@ -170,13 +171,13 @@ export const createCryptoMarket = mutation({
       .first();
     
     if (existing) {
-      throw new Error(`Crypto market for ${args.tokenSymbol} already exists`);
+      throw new Error(`Crypto market for ${symbol} already exists`);
     }
     
     const id = await ctx.db.insert("cryptoMarkets", {
       marketId,
-      tokenSymbol: args.tokenSymbol,
-      tokenName: args.tokenName,
+      tokenSymbol: symbol,
+      tokenName: args.tokenName.trim(),
       priceDecimals: args.priceDecimals,
       imageUrl: args.imageUrl,
       description: args.description,
@@ -261,6 +262,29 @@ export const toggleCryptoMarketStatus = mutation({
     });
     
     return market._id;
+  },
+});
+
+// Repair: trim whitespace from all crypto market fields (marketId, tokenSymbol, tokenName)
+export const trimCryptoMarketFields = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("cryptoMarkets").collect();
+    let fixed = 0;
+    for (const m of all) {
+      const trimmedSymbol = m.tokenSymbol.trim();
+      const trimmedId = `crypto-${trimmedSymbol.toLowerCase()}`;
+      const trimmedName = m.tokenName.trim();
+      if (m.marketId !== trimmedId || m.tokenSymbol !== trimmedSymbol || m.tokenName !== trimmedName) {
+        await ctx.db.patch(m._id, {
+          marketId: trimmedId,
+          tokenSymbol: trimmedSymbol,
+          tokenName: trimmedName,
+        });
+        fixed++;
+      }
+    }
+    return { fixed, total: all.length };
   },
 });
 
