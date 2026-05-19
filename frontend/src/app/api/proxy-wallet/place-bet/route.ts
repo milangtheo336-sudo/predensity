@@ -239,13 +239,13 @@ export async function POST(request: NextRequest) {
     try {
       const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
       
-      // Generate unique bet ID
-      const betId = `${proxyWalletAddress}-${Date.now()}`;
+      // Generate unique bet ID using transaction hash to prevent duplicate DB entries attacks
+      const betId = `bet-${tx.transactionId.toString()}`;
       
       await convex.mutation(api.sync.createBet, {
         betId,
         marketId: predictionContract.toLowerCase(),
-        userAddress: `managed:${userId}`.toLowerCase(), // Use managed: prefix for Magic Link users
+        userAddress: `managed:${userAddress}`.toLowerCase(), // SECURITY FIX: strictly tie it to signed userAddress instead of unauthenticated userId
         category,
         stake: tokenAmount.toString(),
         priceMin,
