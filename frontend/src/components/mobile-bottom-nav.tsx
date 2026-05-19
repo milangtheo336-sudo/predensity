@@ -2,11 +2,9 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useTheme } from 'next-themes';
 import { useMagic } from '@/context/MagicContext';
 
 export function MobileBottomNav() {
-  const { theme, setTheme } = useTheme();
   const { user } = useMagic();
   const isSignedIn = !!user;
 
