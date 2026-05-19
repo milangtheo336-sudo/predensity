@@ -341,7 +341,7 @@ export default function WaitlistPage() {
 
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.06] border border-white/10 mb-6">
-          <span className="w-2 h-2 rounded-full bg-[#c8ff00] animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           <span className="text-xs font-semibold text-gray-300 tracking-wide uppercase">{t.comingSoon}</span>
         </div>
 
