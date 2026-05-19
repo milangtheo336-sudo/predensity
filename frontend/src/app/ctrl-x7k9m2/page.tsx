@@ -2249,8 +2249,12 @@ function AdminPage() {
             Please sign in with an account that has admin privileges.
           </p>
 
-          <Button variant="predensity" className="w-48" asChild>
-            <Link href="/auth">Sign In</Link>
+          <Button 
+            variant="predensity" 
+            className="w-48"
+            onClick={() => window.location.href = '/'}
+          >
+            Go to Home
           </Button>
         </div>
       </div>
