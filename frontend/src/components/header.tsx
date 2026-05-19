@@ -1437,6 +1437,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const { walletUser, clearWalletUser } = useWalletUser();
   // Signed in = Magic user OR wallet user
   const isSignedIn = !!user || !!walletUser;
+  const { isWalletAuthenticating } = useWalletUser();
 
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositInitialView, setDepositInitialView] = useState<DepositView>('crypto');
