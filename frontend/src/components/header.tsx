@@ -1202,6 +1202,8 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const guestMenuBtnRef = useRef<HTMLButtonElement>(null);
+  const authSignupBtnRef = useRef<HTMLButtonElement>(null);
+  const authLoginBtnRef = useRef<HTMLButtonElement>(null);
   const profileBtnRef = useRef<HTMLButtonElement>(null);
   const mobileProfileBtnRef = useRef<HTMLButtonElement>(null);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -1575,18 +1577,25 @@ export function Header({ children }: { children?: React.ReactNode }) {
             {/* Non-signed-in: Sign In, Sign Up, hamburger (hover) */}
             {!isSignedIn && mounted && (
               <>
-                <button onClick={() => setAuthModalOpen(true)}>
-                  <Button variant="ghost" size="sm" className="text-sm text-gray-300 hover:text-white flex items-center gap-1.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                    Log in
-                  </Button>
-                </button>
-                <button onClick={() => setAuthModalOpen(true)}>
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg px-5 py-2 flex items-center gap-1.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                    Sign up
-                  </Button>
-                </button>
+                <Button 
+                  ref={authLoginBtnRef} 
+                  onClick={() => setAuthModalOpen(true)}
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-sm text-gray-300 hover:text-white flex items-center gap-1.5"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                  Log in
+                </Button>
+                <Button 
+                  ref={authSignupBtnRef} 
+                  onClick={() => setAuthModalOpen(true)}
+                  size="sm" 
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg px-5 py-2 flex items-center gap-1.5"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                  Sign up
+                </Button>
                 <div
                   className="relative"
                   onMouseEnter={() => {
@@ -1693,18 +1702,23 @@ export function Header({ children }: { children?: React.ReactNode }) {
             )}
             {!isSignedIn && mounted && (
               <>
-                <Link href="/auth">
-                  <Button variant="ghost" size="sm" className="text-xs text-gray-300 hover:text-white flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                    Log in
-                  </Button>
-                </Link>
-                <Link href="/auth">
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg px-3 py-1.5 flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                    Sign up
-                  </Button>
-                </Link>
+                <Button 
+                  onClick={() => setAuthModalOpen(true)}
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-xs text-gray-300 hover:text-white flex items-center gap-1"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                  Log in
+                </Button>
+                <Button 
+                  onClick={() => setAuthModalOpen(true)}
+                  size="sm" 
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg px-3 py-1.5 flex items-center gap-1"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                  Sign up
+                </Button>
               </>
             )}
           </div>
@@ -1730,7 +1744,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
         logout={logout}
       />
       <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} platformBalance={platformBalance} />
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} triggerRef={authSignupBtnRef} />
     </DepositModalContext.Provider>
     </BalanceVisibilityContext.Provider>
   );
