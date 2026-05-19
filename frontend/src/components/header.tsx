@@ -24,7 +24,7 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatAddress } from '@/lib/utils';
+import { formatAddress, cn } from '@/lib/utils';
 import { WalletSelector } from '@/components/wallet-selector';
 import {
   useWallet,
@@ -1053,6 +1053,28 @@ export function Header({ children }: { children?: React.ReactNode }) {
   );
   const platformBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
 
+  // Auto-create managed wallet for new users who don't have one yet
+  const walletCreationAttempted = useRef(false);
+  useEffect(() => {
+    if (!isSignedIn || !user || managedWallet === undefined) return; // still loading
+    if (managedWallet !== null || walletCreationAttempted.current) return; // already exists or already tried
+
+    walletCreationAttempted.current = true;
+    fetch('/api/wallet/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user.id,
+        email: user.primaryEmailAddress?.emailAddress || undefined,
+      }),
+    })
+      .then((res) => {
+        if (!res.ok) return res.json().then((d) => console.warn('[auto-wallet] Creation skipped:', d.error));
+        console.log('[auto-wallet] Managed wallet created for new user');
+      })
+      .catch((err) => console.error('[auto-wallet] Error:', err));
+  }, [isSignedIn, user, managedWallet]);
+
   // Notifications
   const notifications = useConvexQuery(
     api.notifications.getUserNotifications,
@@ -1220,7 +1242,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                         {(user?.firstName || user?.primaryEmailAddress?.emailAddress || 'U').charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <ChevronDown className="w-3 h-3 text-gray-400" />
+                    <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform duration-200', profileDropdownOpen && 'rotate-180')} />
                   </button>
                 </div>
               </>
@@ -1344,6 +1366,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                         {(user?.firstName || user?.primaryEmailAddress?.emailAddress || 'U').charAt(0).toUpperCase()}
                       </div>
                     )}
+                    <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform duration-200', profileDropdownOpen && 'rotate-180')} />
                   </button>
                 </div>
               </>
