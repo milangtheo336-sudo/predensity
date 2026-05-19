@@ -89,6 +89,24 @@ export function isCategoryDeployed(category: Category): boolean {
   return !!CONTRACT_ADDRESSES[category] && !!CONTRACT_IDS[category];
 }
 
+// Immutable startTimestamp for each deployed contract (set at deployment, never changes).
+// On-chain bucket index = Math.floor((targetTimestamp - startTimestamp) / 86400)
+export const CONTRACT_START_TIMESTAMPS: Record<string, number> = {
+  [Category.CRYPTO]: 1773940168,      // 2026-03-19T17:09:28Z
+  [Category.POLITICS]: 1773586860,    // 2026-03-15T14:01:00Z
+  [Category.SPORTS]: 1773586872,      // 2026-03-15T14:01:12Z
+  [Category.TECHNOLOGY]: 1773586888,  // 2026-03-15T14:01:28Z
+  [Category.INTERNATIONAL]: 0,
+};
+
+// Compute the correct on-chain bucket index for a given targetTimestamp and category.
+// Mirrors the Solidity: (targetTs - startTimestamp) / SECONDS_PER_DAY
+export function getOnChainBucket(targetTimestamp: number, category: string): number {
+  const start = CONTRACT_START_TIMESTAMPS[category] || 0;
+  if (start === 0 || targetTimestamp < start) return 0;
+  return Math.floor((targetTimestamp - start) / 86400);
+}
+
 // Network configuration
 export const NETWORK_CONFIG = {
   testnet: {
