@@ -40,6 +40,7 @@ contract CryptoPredictionMarket is Ownable {
     uint256 public totalFeesCollected;
     uint256 public totalObligations;  // reserved for unclaimed winning payouts
     uint256 public nextBetId;
+    uint256 public knownTokenBalance;  // Track actual token balance to prevent fake deposits
     
     // Asset identifier (e.g., "HBAR", "BTC", "ETH")
     string public assetSymbol;
@@ -299,6 +300,35 @@ contract CryptoPredictionMarket is Ownable {
     }
 
     /**
+     * @notice Place a bet with tokens that have already been transferred to this contract.
+     * Used by proxy wallets that transfer tokens via HTS before calling this function.
+     */
+    function placeBetWithPreTransferredToken(
+        address bettor,
+        uint256 targetTimestamp,
+        uint256 priceMin,
+        uint256 priceMax,
+        uint256 amount
+    ) external validTimeRange(targetTimestamp) returns (uint256) {
+        require(address(stakingToken) != address(0), "Token mode not enabled");
+        require(amount > 0, "Amount must be > 0");
+        require(priceMin < priceMax, "Invalid price range");
+        require(priceMin > 0 && priceMax > 0, "Prices must be positive");
+        require(targetTimestamp > block.timestamp, "Cannot bet on past timestamps");
+        require(bettor != address(0), "Invalid bettor address");
+
+        // SECURITY FIX: Verify that tokens were actually transferred into this contract
+        uint256 currentBalance = stakingToken.balanceOf(address(this));
+        uint256 newlyReceived = currentBalance - knownTokenBalance;
+        require(newlyReceived >= amount, "Tokens were not transferred");
+        
+        // Update the known balance for the next transaction
+        knownTokenBalance = currentBalance;
+
+        return _placeBetInternal(bettor, targetTimestamp, priceMin, priceMax, amount, assetSymbol);
+    }
+
+    /**
      * @notice Internal function to place bet (reduces stack depth)
      */
     function _placeBetInternal(
@@ -504,6 +534,19 @@ contract CryptoPredictionMarket is Ownable {
         _transferOut(owner(), surplus);
     }
 
+    /**
+     * @notice Associate with a Hedera token (required before receiving HTS tokens like USDC).
+     * On Hedera, contracts must explicitly associate with tokens.
+     * 
+     * Hedera Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
+     */
+    function associateToken(address token) external onlyOwner {
+        (bool success, ) = address(0x0000000000000000000000000000000000000167).call(
+            abi.encodeWithSelector(0x49146bde, address(this), token)
+        );
+        require(success, "Token association failed");
+    }
+
     // ==============================================================
     // |                    Helper Functions                        |
     // ==============================================================
@@ -515,6 +558,8 @@ contract CryptoPredictionMarket is Ownable {
         if (amount == 0) return;
         if (address(stakingToken) != address(0)) {
             stakingToken.safeTransfer(to, amount);
+            // Keep knownTokenBalance in sync
+            knownTokenBalance = stakingToken.balanceOf(address(this));
         } else {
             (bool success, ) = payable(to).call{value: amount}("");
             require(success, "Transfer failed");
