@@ -5,6 +5,7 @@ export interface Translations {
   portfolio: string;
   balance: string;
   deposit: string;
+  placePrediction: string;
   withdraw: string;
   notifications: string;
   settings: string;
@@ -93,6 +94,15 @@ export interface Translations {
   support: string;
   termsOfUse: string;
   close: string;
+  blog: string;
+  whitepaper: string;
+  cookiePolicy: string;
+  comingSoon: string;
+  getEarlyAccess: string;
+  waitlistTagline: string;
+  waitlistSubtagline: string;
+  joinWaitlist: string;
+  joining: string;
 
   // Header dropdown
   darkMode: string;
@@ -204,7 +214,7 @@ export function suggestLanguage(countryCode: string): LangCode {
 
 const T: Record<LangCode, Translations> = {
   en: {
-    portfolio: 'Portfolio', deposit: 'Deposit', withdraw: 'Withdraw',
+    portfolio: 'Portfolio', deposit: 'Deposit', placePrediction: 'Place Prediction', withdraw: 'Withdraw',
     notifications: 'Notifications', settings: 'Settings', myBets: 'My Bets',
     signOut: 'Sign Out', signIn: 'Sign In', location: 'Location', language: 'Language',
     switchLanguage: 'Switch Language',
@@ -230,6 +240,7 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: 'Select Language', currentLanguage: 'Current Language', cancel: 'Cancel', apply: 'Apply',
     selectYourWallet: 'Select your wallet', lastUsed: 'Last used', requestingSignature: 'Requesting Signature', pleaseSign: 'Please sign to connect.', back: 'Back',
     home: 'Home', search: 'Search', breaking: 'Breaking', more: 'More', support: 'Support', termsOfUse: 'Terms of Use', close: 'Close',
+    blog: 'Blog', whitepaper: 'Whitepaper', cookiePolicy: 'Cookie Policy', comingSoon: 'Coming Soon', getEarlyAccess: 'Get early access', waitlistTagline: "The prediction market that doesn't care if you're right or wrong.", waitlistSubtagline: 'Monetize your boldness on Predensity.', joinWaitlist: 'Join waitlist', joining: 'Joining...',
     darkMode: 'Dark Mode', helpCenter: 'Help Center', disconnectWallet: 'Disconnect Wallet', disconnectAndLogOut: 'Disconnect & Log Out', logout: 'Logout',
     hoursRemaining: '{n}h remaining', minutesRemaining: '{n}m remaining', oneDayLeft: '1 day left', oneMonthLeft: '1 month left',
     searchHints: ['Where Will HBAR Price Land?', 'Will BTC hit $150K?', 'Where will ETH price land?', 'World Cup winner?', 'Fed interest rates?', 'Tesla stock price?', 'FIFA World Cup 2026?'],
@@ -251,7 +262,7 @@ const T: Record<LangCode, Translations> = {
     market: 'Market', averagePrice: 'Average Price', alphabetically: 'Alphabetically', date: 'Date',
   },
   ko: {
-    portfolio: '포트폴리오', deposit: '입금', withdraw: '출금',
+    portfolio: '포트폴리오', deposit: '입금', placePrediction: '예측하기', withdraw: '출금',
     notifications: '알림', settings: '설정', myBets: '내 베팅',
     signOut: '로그아웃', signIn: '로그인', location: '위치', language: '언어',
     switchLanguage: '언어 변경',
@@ -277,6 +288,7 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: '언어 선택', currentLanguage: '현재 언어', cancel: '취소', apply: '적용',
     selectYourWallet: '지갑 선택', lastUsed: '최근 사용', requestingSignature: '서명 요청 중', pleaseSign: '지갑에서 서명해 주세요.', back: '뒤로',
     home: '홈', search: '검색', breaking: '속보', more: '더보기', support: '지원', termsOfUse: '이용약관', close: '닫기',
+    blog: '블로그', whitepaper: '백서', cookiePolicy: '쿠키 정책', comingSoon: '곧 출시', getEarlyAccess: '사전 등록하기', waitlistTagline: '맞든 틀리든 상관없는 예측 시장.', waitlistSubtagline: 'Predensity에서 대담함을 수익으로.', joinWaitlist: '대기자 명단 등록', joining: '등록 중...',
     darkMode: '다크 모드', helpCenter: '도움말 센터', disconnectWallet: '지갑 연결 해제', disconnectAndLogOut: '연결 해제 및 로그아웃', logout: '로그아웃',
     hoursRemaining: '{n}시간 남음', minutesRemaining: '{n}분 남음', oneDayLeft: '1일 남음', oneMonthLeft: '1개월 남음',
     searchHints: ['HBAR 가격은 어디에 착지할까요?', 'BTC가 $150K에 도달할까요?', 'ETH 가격은 어디에 착지할까요?', '월드컵 우승팀은?', '연준 금리는?', '테슬라 주가는?', 'FIFA 월드컵 2026?'],
@@ -298,7 +310,7 @@ const T: Record<LangCode, Translations> = {
     market: '마켓', averagePrice: '평균 가격', alphabetically: '알파벳순', date: '날짜',
   },
   zh: {
-    portfolio: '投资组合', deposit: '充值', withdraw: '提现',
+    portfolio: '投资组合', deposit: '充值', placePrediction: '下预测', withdraw: '提现',
     notifications: '通知', settings: '设置', myBets: '我的预测',
     signOut: '退出登录', signIn: '登录', location: '位置', language: '语言',
     switchLanguage: '切换语言',
@@ -324,6 +336,7 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: '选择语言', currentLanguage: '当前语言', cancel: '取消', apply: '应用',
     selectYourWallet: '选择钱包', lastUsed: '最近使用', requestingSignature: '请求签名', pleaseSign: '请在钱包中签名。', back: '返回',
     home: '首页', search: '搜索', breaking: '突发', more: '更多', support: '支持', termsOfUse: '使用条款', close: '关闭',
+    blog: '博客', whitepaper: '白皮书', cookiePolicy: 'Cookie 政策', comingSoon: '即将推出', getEarlyAccess: '抢先体验', waitlistTagline: '不在乎你对错的预测市场。', waitlistSubtagline: '在 Predensity 上将你的大胆变现。', joinWaitlist: '加入等候名单', joining: '加入中...',
     darkMode: '深色模式', helpCenter: '帮助中心', disconnectWallet: '断开钱包', disconnectAndLogOut: '断开并退出', logout: '退出登录',
     hoursRemaining: '{n}小时后', minutesRemaining: '{n}分钟后', oneDayLeft: '1天后结束', oneMonthLeft: '1个月后结束',
     searchHints: ['HBAR价格会落在哪里？', 'BTC会突破$150K吗？', 'ETH价格走向何方？', '世界杯冠军？', '美联储利率？', '特斯拉股价？', 'FIFA世界杯2026？'],
@@ -345,7 +358,7 @@ const T: Record<LangCode, Translations> = {
     market: '市场', averagePrice: '平均价格', alphabetically: '按字母排序', date: '日期',
   },
   ru: {
-    portfolio: 'Портфель', deposit: 'Пополнить', withdraw: 'Вывести',
+    portfolio: 'Портфель', deposit: 'Пополнить', placePrediction: 'Сделать прогноз', withdraw: 'Вывести',
     notifications: 'Уведомления', settings: 'Настройки', myBets: 'Мои ставки',
     signOut: 'Выйти', signIn: 'Войти', location: 'Местоположение', language: 'Язык',
     switchLanguage: 'Сменить язык',
@@ -371,6 +384,7 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: 'Выбор языка', currentLanguage: 'Текущий язык', cancel: 'Отмена', apply: 'Применить',
     selectYourWallet: 'Выберите кошелёк', lastUsed: 'Последний использованный', requestingSignature: 'Запрос подписи', pleaseSign: 'Подпишите запрос в кошельке.', back: 'Назад',
     home: 'Главная', search: 'Поиск', breaking: 'Срочно', more: 'Ещё', support: 'Поддержка', termsOfUse: 'Условия', close: 'Закрыть',
+    blog: 'Блог', whitepaper: 'Документация', cookiePolicy: 'Политика cookies', comingSoon: 'Скоро', getEarlyAccess: 'Получите ранний доступ', waitlistTagline: 'Рынок прогнозов, которому всё равно, правы вы или нет.', waitlistSubtagline: 'Монетизируйте свою смелость на Predensity.', joinWaitlist: 'В список ожидания', joining: 'Регистрация...',
     darkMode: 'Тёмный режим', helpCenter: 'Центр помощи', disconnectWallet: 'Отключить кошелёк', disconnectAndLogOut: 'Отключить и выйти', logout: 'Выйти',
     hoursRemaining: 'осталось {n}ч', minutesRemaining: 'осталось {n}мин', oneDayLeft: '1 день осталось', oneMonthLeft: '1 мес. осталось',
     searchHints: ['Куда пойдёт цена HBAR?', 'BTC достигнет $150K?', 'Куда пойдёт цена ETH?', 'Победитель Кубка мира?', 'Ставки ФРС?', 'Акции Tesla?', 'ЧМ FIFA 2026?'],
@@ -392,7 +406,7 @@ const T: Record<LangCode, Translations> = {
     market: 'Рынок', averagePrice: 'Средняя цена', alphabetically: 'По алфавиту', date: 'Дата',
   },
   es: {
-    portfolio: 'Portafolio', deposit: 'Depositar', withdraw: 'Retirar',
+    portfolio: 'Portafolio', deposit: 'Depositar', placePrediction: 'Hacer predicción', withdraw: 'Retirar',
     notifications: 'Notificaciones', settings: 'Configuración', myBets: 'Mis apuestas',
     signOut: 'Cerrar sesión', signIn: 'Iniciar sesión', location: 'Ubicación', language: 'Idioma',
     switchLanguage: 'Cambiar idioma',
@@ -418,6 +432,7 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: 'Seleccionar idioma', currentLanguage: 'Idioma actual', cancel: 'Cancelar', apply: 'Aplicar',
     selectYourWallet: 'Selecciona tu cartera', lastUsed: 'Último usado', requestingSignature: 'Solicitando firma', pleaseSign: 'Por favor firma en tu cartera.', back: 'Atrás',
     home: 'Inicio', search: 'Buscar', breaking: 'Urgente', more: 'Más', support: 'Soporte', termsOfUse: 'Términos de uso', close: 'Cerrar',
+    blog: 'Blog', whitepaper: 'Libro blanco', cookiePolicy: 'Política de cookies', comingSoon: 'Próximamente', getEarlyAccess: 'Obtén acceso anticipado', waitlistTagline: 'El mercado de predicciones al que no le importa si tienes razón o no.', waitlistSubtagline: 'Monetiza tu audacia en Predensity.', joinWaitlist: 'Unirse a la lista', joining: 'Uniéndose...',
     darkMode: 'Modo oscuro', helpCenter: 'Centro de ayuda', disconnectWallet: 'Desconectar cartera', disconnectAndLogOut: 'Desconectar y salir', logout: 'Cerrar sesión',
     hoursRemaining: '{n}h restantes', minutesRemaining: '{n}min restantes', oneDayLeft: '1 día restante', oneMonthLeft: '1 mes restante',
     searchHints: ['¿Dónde llegará el precio del HBAR?', '¿BTC llegará a $150K?', '¿Dónde irá el precio de ETH?', '¿Ganador del Mundial?', '¿Tasas de la Fed?', '¿Precio acción Tesla?', '¿Copa Mundial FIFA 2026?'],
@@ -439,7 +454,7 @@ const T: Record<LangCode, Translations> = {
     market: 'Mercado', averagePrice: 'Precio promedio', alphabetically: 'Alfabéticamente', date: 'Fecha',
   },
   fr: {
-    portfolio: 'Portefeuille', deposit: 'Déposer', withdraw: 'Retirer',
+    portfolio: 'Portefeuille', deposit: 'Déposer', placePrediction: 'Faire une prédiction', withdraw: 'Retirer',
     notifications: 'Notifications', settings: 'Paramètres', myBets: 'Mes paris',
     signOut: 'Se déconnecter', signIn: 'Se connecter', location: 'Localisation', language: 'Langue',
     switchLanguage: 'Changer de langue',
@@ -465,6 +480,7 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: 'Choisir la langue', currentLanguage: 'Langue actuelle', cancel: 'Annuler', apply: 'Appliquer',
     selectYourWallet: 'Choisissez votre portefeuille', lastUsed: 'Dernièrement utilisé', requestingSignature: 'Demande de signature', pleaseSign: 'Veuillez signer dans votre portefeuille.', back: 'Retour',
     home: 'Accueil', search: 'Rechercher', breaking: 'Urgent', more: 'Plus', support: 'Assistance', termsOfUse: "Conditions d'utilisation", close: 'Fermer',
+    blog: 'Blog', whitepaper: 'Livre blanc', cookiePolicy: 'Politique de cookies', comingSoon: 'Bientôt disponible', getEarlyAccess: 'Obtenez un accès anticipé', waitlistTagline: "Le marché de prédictions qui se moque que vous ayez raison ou tort.", waitlistSubtagline: 'Monétisez votre audace sur Predensity.', joinWaitlist: "Rejoindre la liste d'attente", joining: 'Inscription...',
     darkMode: 'Mode sombre', helpCenter: "Centre d'aide", disconnectWallet: 'Déconnecter le portefeuille', disconnectAndLogOut: 'Déconnecter et quitter', logout: 'Se déconnecter',
     hoursRemaining: '{n}h restantes', minutesRemaining: '{n}min restantes', oneDayLeft: '1 jour restant', oneMonthLeft: '1 mois restant',
     searchHints: ['Où ira le prix du HBAR?', 'BTC atteindra $150K?', 'Où ira le prix de l\'ETH?', 'Vainqueur de la Coupe du monde?', 'Taux de la Fed?', 'Cours Tesla?', 'FIFA Coupe du monde 2026?'],
@@ -486,7 +502,7 @@ const T: Record<LangCode, Translations> = {
     market: 'Marché', averagePrice: 'Prix moyen', alphabetically: 'Alphabétiquement', date: 'Date',
   },
   hi: {
-    portfolio: 'पोर्टफोलियो', deposit: 'जमा करें', withdraw: 'निकालें',
+    portfolio: 'पोर्टफोलियो', deposit: 'जमा करें', placePrediction: 'भविष्यवाणी करें', withdraw: 'निकालें',
     notifications: 'सूचनाएं', settings: 'सेटिंग्स', myBets: 'मेरी बेट्स',
     signOut: 'साइन आउट', signIn: 'साइन इन', location: 'स्थान', language: 'भाषा',
     switchLanguage: 'भाषा बदलें',
@@ -512,6 +528,7 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: 'भाषा चुनें', currentLanguage: 'वर्तमान भाषा', cancel: 'रद्द करें', apply: 'लागू करें',
     selectYourWallet: 'अपना वॉलेट चुनें', lastUsed: 'अंतिम उपयोग', requestingSignature: 'हस्ताक्षर का अनुरोध', pleaseSign: 'कृपया अपने वॉलेट में हस्ताक्षर करें।', back: 'वापस',
     home: 'होम', search: 'खोजें', breaking: 'ब्रेकिंग', more: 'और', support: 'सहायता', termsOfUse: 'उपयोग की शर्तें', close: 'बंद करें',
+    blog: 'ब्लॉग', whitepaper: 'श्वेतपत्र', cookiePolicy: 'कुकी नीति', comingSoon: 'जल्द आ रहा है', getEarlyAccess: 'जल्दी पहुँच पाएं', waitlistTagline: 'भविष्यवाणी बाज़ार जिसे परवाह नहीं कि आप सही हैं या गलत।', waitlistSubtagline: 'Predensity पर अपनी हिम्मत को कमाई में बदलें।', joinWaitlist: 'प्रतीक्षा सूची में शामिल हों', joining: 'शामिल हो रहे हैं...',
     darkMode: 'डार्क मोड', helpCenter: 'सहायता केंद्र', disconnectWallet: 'वॉलेट डिस्कनेक्ट करें', disconnectAndLogOut: 'डिस्कनेक्ट करें और बाहर निकलें', logout: 'लॉग आउट',
     hoursRemaining: '{n}घं. शेष', minutesRemaining: '{n}मि. शेष', oneDayLeft: '1 दिन बाकी', oneMonthLeft: '1 महीना बाकी',
     searchHints: ['HBAR की कीमत कहां जाएगी?', 'क्या BTC $150K तक पहुंचेगा?', 'ETH की कीमत कहां जाएगी?', 'विश्व कप विजेता?', 'Fed ब्याज दरें?', 'Tesla शेयर मूल्य?', 'FIFA विश्व कप 2026?'],
