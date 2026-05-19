@@ -17,6 +17,7 @@ import type * as leaderboard from "../leaderboard.js";
 import type * as markets from "../markets.js";
 import type * as notifications from "../notifications.js";
 import type * as search from "../search.js";
+import type * as sentiment from "../sentiment.js";
 import type * as sessionKeys from "../sessionKeys.js";
 import type * as social from "../social.js";
 import type * as stats from "../stats.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   markets: typeof markets;
   notifications: typeof notifications;
   search: typeof search;
+  sentiment: typeof sentiment;
   sessionKeys: typeof sessionKeys;
   social: typeof social;
   stats: typeof stats;
