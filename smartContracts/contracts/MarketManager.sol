@@ -394,6 +394,23 @@ contract MarketManager is Ownable, ReentrancyGuard, Pausable {
         _unpause();
     }
 
+
+
+    /**
+     * @notice Associate with a Hedera token (required before receiving HTS tokens).
+     * On Hedera, contracts must explicitly associate with tokens.
+     * 
+     * Hedera Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
+     */
+    function associateToken(address token) external onlyOwner {
+        // Call HTS associateToken function
+        // Function selector: 0x49146bde (associateToken(address,address))
+        (bool success, ) = address(0x0000000000000000000000000000000000000167).call(
+            abi.encodeWithSelector(0x49146bde, address(this), token)
+        );
+        require(success, "Token association failed");
+    }
+
     // =========================================================================
     // VIEW FUNCTIONS
     // =========================================================================
