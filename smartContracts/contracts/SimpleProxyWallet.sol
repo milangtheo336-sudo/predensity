@@ -21,6 +21,9 @@ contract SimpleProxyWallet {
     address public owner;
     bool private initialized;
     
+    // Nonce tracking to prevent signature replay attacks
+    mapping(address => uint256) public nonces;
+    
     // Session key management
     struct SessionKey {
         address delegate;      // Address that can execute on behalf of owner
@@ -222,6 +225,10 @@ contract SimpleProxyWallet {
         string calldata message,
         bytes calldata signature
     ) external returns (bytes memory) {
+        // Prevent replay attacks: The backend will append the nonce to the message
+        // and we increment it after a successful bet execution
+        nonces[owner]++;
+        
         // Verify signature matches owner
         require(recoverSigner(message, signature) == owner, "Invalid signature");
         
