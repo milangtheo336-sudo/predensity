@@ -68,6 +68,7 @@ export default function MarketsPage() {
             id: e.eventId,
             category: e.category as Category,
             question: e.eventName,
+            description: e.description,
             icon,
             targetTimestamp: e.eventTimestamp,
             totalVolume: '0.00',
@@ -85,7 +86,8 @@ export default function MarketsPage() {
     const cryptoMarketCards: MarketCard[] = cryptoMarkets.map((cm) => ({
       id: cm.marketId,
       category: Category.CRYPTO as Category,
-      question: cm.description,
+      question: cm.tokenSymbol,
+      description: cm.description,
       icon: 'C',
       targetTimestamp: Math.floor(Date.now() / 1000) + 86400, // Tomorrow
       totalVolume: cm.totalVolume,
