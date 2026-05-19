@@ -29,6 +29,8 @@ export const createClobMarket = mutation({
     sportType: v.optional(v.string()),
     outcomeTokenAddresses: v.optional(v.array(v.string())),
     onChainMarketId: v.optional(v.number()),
+    sport: v.optional(v.string()),
+    league: v.optional(v.string()),
     _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
