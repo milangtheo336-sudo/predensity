@@ -265,6 +265,8 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
   const [copied, setCopied] = useState(false);
   const [depositDetected, setDepositDetected] = useState(false);
   const [detectedAmount, setDetectedAmount] = useState('');
+  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
+  const [loadingProxy, setLoadingProxy] = useState(false);
   const { user } = useMagic();
   const currency = getStakingCurrency();
 
@@ -272,8 +274,34 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
     api.users.getManagedWalletByUserId,
     user ? { userId: user.issuer } : 'skip'
   );
-  const depositAddress = user?.publicAddress || '';
-  const evmAddr = user?.publicAddress || '';
+  
+  const userAddress = user?.publicAddress || '';
+  
+  // Fetch proxy wallet address
+  useEffect(() => {
+    const fetchProxyWallet = async () => {
+      if (!userAddress) return;
+      
+      setLoadingProxy(true);
+      try {
+        const response = await fetch(`/api/proxy-wallet/create?userAddress=${userAddress}`);
+        const data = await response.json();
+        if (data.exists && data.proxyWalletAddress) {
+          setProxyWalletAddress(data.proxyWalletAddress);
+        }
+      } catch (error) {
+        console.error('Failed to fetch proxy wallet:', error);
+      } finally {
+        setLoadingProxy(false);
+      }
+    };
+
+    fetchProxyWallet();
+  }, [userAddress]);
+  
+  // Use proxy wallet address for deposits, fallback to user address
+  const depositAddress = proxyWalletAddress || userAddress;
+  const evmAddr = userAddress;
 
   const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
   const mirrorBase = hederaNetwork === 'mainnet'
@@ -387,16 +415,19 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs text-gray-400">Your deposit address</label>
+              <label className="text-xs text-gray-400">Wallet Address (Proxy Wallet)</label>
               <Link href="/terms" className="text-xs text-gray-400 underline hover:text-white transition-colors">
                 Terms apply
               </Link>
             </div>
             <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10">
               <span className="text-sm text-gray-900 dark:text-white font-mono truncate flex-1">
-                {depositAddress || 'Not available'}
+                {loadingProxy ? 'Loading...' : (depositAddress || 'Not available')}
               </span>
             </div>
+            <p className="text-xs text-gray-400 mt-1.5">
+              Send USDC to this address for gasless betting. Funds are held in your smart contract wallet.
+            </p>
             <button
               onClick={handleCopy}
               disabled={!depositAddress}
@@ -713,10 +744,33 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
   const [step, setStep] = useState<'input' | 'transferring' | 'done' | 'error'>('input');
   const [errorMsg, setErrorMsg] = useState('');
   const [walletUsdcBalance, setWalletUsdcBalance] = useState<string | null>(null);
+  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
+  const [loadingProxy, setLoadingProxy] = useState(false);
 
-  const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_EVM_ADDRESS || '';
   const tokenId = getStakingTokenId();
   const currency = getStakingCurrency();
+
+  // Fetch proxy wallet address
+  useEffect(() => {
+    const fetchProxyWallet = async () => {
+      if (!user?.publicAddress) return;
+      
+      setLoadingProxy(true);
+      try {
+        const response = await fetch(`/api/proxy-wallet/create?userAddress=${user.publicAddress}`);
+        const data = await response.json();
+        if (data.exists && data.proxyWalletAddress) {
+          setProxyWalletAddress(data.proxyWalletAddress);
+        }
+      } catch (error) {
+        console.error('Failed to fetch proxy wallet:', error);
+      } finally {
+        setLoadingProxy(false);
+      }
+    };
+
+    fetchProxyWallet();
+  }, [user?.publicAddress]);
 
   // Fetch the connected wallet's USDC token balance from Hedera mirror node
   useEffect(() => {
@@ -750,11 +804,11 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
     
     // Debug logging
     console.log('[WalletTransfer] user:', user);
-    console.log('[WalletTransfer] user.publicAddress:', user?.publicAddress);
+    console.log('[WalletTransfer] proxyWalletAddress:', proxyWalletAddress);
     
-    if (!user?.publicAddress) {
+    if (!proxyWalletAddress) {
       setStep('error');
-      setErrorMsg('Please refresh the page and login again with Magic Link');
+      setErrorMsg('Proxy wallet not found. Please refresh the page and try again.');
       return;
     }
     
@@ -762,51 +816,14 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
 
     try {
       setStep('transferring');
-      setErrorMsg('Checking token association...');
+      setErrorMsg('Processing transfer to your proxy wallet...');
       
-      // Step 1: Check if Magic Link wallet has USDC token associated
-      const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-      const base = network === 'mainnet' ? 'https://mainnet.mirrornode.hedera.com' : 'https://testnet.mirrornode.hedera.com';
-      
-      let isAssociated = false;
-      try {
-        const checkRes = await fetch(`${base}/api/v1/accounts/${user.publicAddress}/tokens?token.id=${tokenId}`);
-        if (checkRes.ok) {
-          const checkData = await checkRes.json();
-          isAssociated = checkData.tokens?.some((t: any) => t.token_id === tokenId);
-        }
-      } catch (checkErr) {
-        console.error('[deposit] Token association check failed:', checkErr);
-        // Continue anyway - let the transfer fail if needed
-      }
-      
-      // Step 2: If not associated, associate the token first (user signs via Magic Link)
-      if (!isAssociated) {
-        setErrorMsg('First deposit: Please sign to enable USDC on your wallet...');
-        
-        try {
-          // Import the association function
-          const { associateTokenViaMagic } = await import('@/lib/magic');
-          await associateTokenViaMagic(tokenId);
-          
-          // Wait a moment for the association to propagate
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        } catch (associateErr: any) {
-          console.error('[deposit] Token association error:', associateErr);
-          throw new Error(`Unable to enable USDC on your wallet. ${associateErr.message}`);
-        }
-      }
-      
-      setErrorMsg('Processing transfer...');
-      
-      // Step 3: Transfer USDC to user's Magic Link wallet
-      // NON-CUSTODIAL: Transfer directly to user's Magic Link wallet address
-      // Balance will be automatically updated by useBlockchainBalance hook
+      // Transfer USDC from connected wallet to proxy wallet
       const transferTxId = await writeContract({
         contractId: tokenId,
         abi: [{ type: 'function', name: 'transfer', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'nonpayable' }] as const,
         functionName: 'transfer',
-        args: [user.publicAddress as `0x${string}`, rawAmount],
+        args: [proxyWalletAddress as `0x${string}`, rawAmount],
       });
 
       await new Promise<void>((resolve, reject) => {
@@ -816,10 +833,15 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
         });
       });
 
-      // No API call needed - balance updates automatically from blockchain
+      // Immediately update balance optimistically
+      if (typeof window !== 'undefined' && (window as any).adjustBalance) {
+        console.log('[WalletTransfer] Updating balance immediately (optimistic)');
+        (window as any).adjustBalance(parseFloat(amount));
+      }
+
+      // Balance updates automatically from blockchain
       setStep('done');
     } catch (err: any) {
-      // Provide helpful error message
       let errorMessage = err.message || 'Transfer failed';
       setErrorMsg(errorMessage);
       setStep('error');
@@ -847,19 +869,34 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
         <>
           <div className="flex items-center gap-3 p-3 rounded-xl bg-vibrant-purple/10 border border-vibrant-purple/20">
             <ArrowRightLeft className="w-5 h-5 text-vibrant-purple flex-shrink-0" />
-            <div>
+            <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-gray-900 dark:text-white">Transfer from Wallet</div>
               <div className="text-xs text-gray-400">
                 {evmAddress ? formatAddress(evmAddress, 6) : 'Connected'}
               </div>
             </div>
             {walletUsdcBalance !== null && (
-              <div className="ml-auto text-right">
+              <div className="ml-auto text-right flex-shrink-0">
                 <div className="text-sm font-semibold text-gray-900 dark:text-white">{walletUsdcBalance}</div>
                 <div className="text-[10px] text-gray-500">{currency.symbol}</div>
               </div>
             )}
           </div>
+
+          {/* Show destination (proxy wallet) */}
+          {proxyWalletAddress && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/10">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">To (Your Proxy Wallet)</div>
+                <code className="text-xs font-mono text-gray-900 dark:text-white truncate block">
+                  {proxyWalletAddress}
+                </code>
+              </div>
+            </div>
+          )}
+          {loadingProxy && !proxyWalletAddress && (
+            <div className="text-center py-2 text-xs text-gray-500">Loading proxy wallet...</div>
+          )}
 
           <div>
             <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Amount ({currency.symbol})</label>
@@ -874,7 +911,7 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
 
           <button
             onClick={handleTransfer}
-            disabled={!amount || parseFloat(amount) <= 0}
+            disabled={!amount || parseFloat(amount) <= 0 || !proxyWalletAddress}
             className="w-full py-2.5 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <ArrowRightLeft className="w-4 h-4" />
@@ -888,6 +925,7 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
           <Loader2 className="w-8 h-8 animate-spin text-vibrant-purple mx-auto mb-3" />
           <p className="text-sm text-gray-900 dark:text-white">Transferring {amount} {currency.symbol}...</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Confirm in your wallet</p>
+          {errorMsg && <p className="text-xs text-gray-400 mt-2">{errorMsg}</p>}
         </div>
       )}
       {step === 'done' && (
@@ -896,7 +934,7 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
             <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
           </div>
           <p className="text-base font-semibold text-gray-900 dark:text-white mb-1">Transfer complete</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{amount} {currency.symbol} sent to your wallet</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{amount} {currency.symbol} sent to your proxy wallet</p>
           <p className="text-xs text-gray-400 mt-2">Balance will update automatically</p>
           <button onClick={onClose} className="mt-5 px-8 py-2.5 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white text-sm font-medium transition-colors">
             Done
@@ -990,6 +1028,13 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Withdrawal failed');
       }
+      
+      // Immediately update balance optimistically (subtract withdrawal amount)
+      if (typeof window !== 'undefined' && (window as any).adjustBalance) {
+        console.log('[WithdrawView] Updating balance immediately (optimistic)');
+        (window as any).adjustBalance(-parseFloat(amount));
+      }
+      
       setStatus('success');
     } catch (err: any) {
       setErrorMsg(err.message || 'Something went wrong');
@@ -1287,8 +1332,41 @@ export function Header({ children }: { children?: React.ReactNode }) {
     };
   }, []);
 
-  // Read balance from blockchain (non-custodial)
-  const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(user?.publicAddress);
+  // Fetch proxy wallet address for balance display
+  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const fetchProxyWallet = async () => {
+      if (!user?.publicAddress) return;
+      
+      try {
+        const response = await fetch(`/api/proxy-wallet/create?userAddress=${user.publicAddress}`);
+        const data = await response.json();
+        if (data.exists && data.proxyWalletAddress) {
+          setProxyWalletAddress(data.proxyWalletAddress);
+        }
+      } catch (error) {
+        console.error('Failed to fetch proxy wallet:', error);
+      }
+    };
+
+    if (isSignedIn && user) {
+      fetchProxyWallet();
+    }
+  }, [isSignedIn, user?.publicAddress]);
+
+  // Read balance from blockchain (non-custodial) - use proxy wallet address
+  const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(proxyWalletAddress || undefined);
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('[header] Balance debug:', {
+      proxyWalletAddress,
+      platformBalance,
+      balanceLoading,
+      userPublicAddress: user?.publicAddress,
+    });
+  }, [proxyWalletAddress, platformBalance, balanceLoading, user?.publicAddress]);
   
   // Still query managed wallet for user info (but not balance)
   const managedWallet = useConvexQuery(
@@ -1859,12 +1937,34 @@ function ProfileDropdownPortal({
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
   const [comingSoonMsg, setComingSoonMsg] = useState<string | null>(null);
+  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Use whichever button ref is currently visible
   const activeRef = buttonRef.current?.offsetParent !== null ? buttonRef : mobileButtonRef;
 
   useEffect(() => setMounted(true), []);
+
+  // Fetch proxy wallet address
+  useEffect(() => {
+    const fetchProxyWallet = async () => {
+      if (!evmAddress) return;
+      
+      try {
+        const response = await fetch(`/api/proxy-wallet/create?userAddress=${evmAddress}`);
+        const data = await response.json();
+        if (data.exists && data.proxyWalletAddress) {
+          setProxyWalletAddress(data.proxyWalletAddress);
+        }
+      } catch (error) {
+        console.error('Failed to fetch proxy wallet:', error);
+      }
+    };
+
+    if (isOpen) {
+      fetchProxyWallet();
+    }
+  }, [isOpen, evmAddress]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -1879,7 +1979,8 @@ function ProfileDropdownPortal({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [isOpen, onClose, buttonRef, mobileButtonRef]);
 
-  const displayAddress = evmAddress || accountId;
+  // Show proxy wallet address if available, otherwise fallback to connected wallet or Magic Link
+  const displayAddress = proxyWalletAddress || evmAddress || accountId;
 
   const handleCopy = async () => {
     if (displayAddress) {
