@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMagic } from '@/context/MagicContext';
 import { useWalletUser } from '@/context/WalletUserContext';
 import { getDIDToken, getMagic, getUserInfo } from '@/lib/magic';
-import { useWallet, useEvmAddress } from '@buidlerlabs/hashgraph-react-wallets';
+import { useWallet, useEvmAddress, useAuthSignature } from '@buidlerlabs/hashgraph-react-wallets';
 import {
   HashpackConnector,
   MetamaskConnector,
