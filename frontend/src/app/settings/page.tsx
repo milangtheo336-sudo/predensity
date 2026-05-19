@@ -136,15 +136,38 @@ function ProfileTab({ user }: { user: any }) {
         return;
       }
       
+      // Check cache first
+      try {
+        const cached = localStorage.getItem(`predensity_proxy_wallet_${magicLinkAddress}`);
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (Date.now() - data.timestamp < 86400000) { // 24 hour cache
+            setProxyWalletAddress(data.proxyWallet);
+            setLoadingProxy(false);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('[settings] Cache read error:', e);
+      }
+      
       setLoadingProxy(true);
       try {
         const response = await fetch(`/api/proxy-wallet/create?userAddress=${magicLinkAddress}`);
         const data = await response.json();
         if (data.exists && data.proxyWalletAddress) {
           setProxyWalletAddress(data.proxyWalletAddress);
+          // Cache it
+          localStorage.setItem(
+            `predensity_proxy_wallet_${magicLinkAddress}`,
+            JSON.stringify({
+              proxyWallet: data.proxyWalletAddress,
+              timestamp: Date.now(),
+            })
+          );
         }
       } catch (error) {
-        console.error('Failed to fetch proxy wallet:', error);
+        console.error('[settings] Failed to fetch proxy wallet:', error);
       } finally {
         setLoadingProxy(false);
       }
