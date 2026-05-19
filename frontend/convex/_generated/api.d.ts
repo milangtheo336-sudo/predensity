@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as _lib_auth from "../_lib/auth.js";
 import type * as clob from "../clob.js";
 import type * as crons from "../crons.js";
 import type * as events from "../events.js";
@@ -29,6 +30,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "_lib/auth": typeof _lib_auth;
   clob: typeof clob;
   crons: typeof crons;
   events: typeof events;
