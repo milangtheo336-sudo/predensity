@@ -430,7 +430,27 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
                   )}
                 </button>
 
-                {/* WalletConnect — QR code + 300+ wallets */}
+                {/* EIP-6963 detected wallets — browser extensions */}
+                {eip6963Wallets.map((w) => (
+                  <button
+                    key={w.info.uuid}
+                    onClick={() => handleEIP6963Connect(w)}
+                    disabled={isLoading}
+                    className="w-full flex items-center gap-4 px-4 py-3.5 bg-[#0d1117] hover:bg-[#161b27] text-white border border-white/[0.07] rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="relative flex-shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={w.info.icon} alt={w.info.name} className="rounded-xl object-contain w-10 h-10" />
+                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-[#0d1117]" />
+                    </div>
+                    <span className="text-[15px] font-medium">{w.info.name}</span>
+                    {lastUsedMethod === w.info.name.toLowerCase() && (
+                      <span className="ml-auto text-[10px] text-gray-500 font-medium">Last used</span>
+                    )}
+                  </button>
+                ))}
+
+                {/* WalletConnect — always last, for mobile wallets + QR code */}
                 <button
                   onClick={handleWalletConnectConnect}
                   disabled={isLoading}
@@ -452,32 +472,6 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
                     <span className="ml-auto text-[10px] text-gray-500 font-medium">Last used</span>
                   )}
                 </button>
-
-                {/* EIP-6963 detected wallets — browser extensions */}
-                {eip6963Wallets.map((w) => (
-                  <button
-                    key={w.info.uuid}
-                    onClick={() => handleEIP6963Connect(w)}
-                    disabled={isLoading}
-                    className="w-full flex items-center gap-4 px-4 py-3.5 bg-[#0d1117] hover:bg-[#161b27] text-white border border-white/[0.07] rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <div className="relative flex-shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={w.info.icon} alt={w.info.name} className="rounded-xl object-contain w-10 h-10" />
-                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-[#0d1117]" />
-                    </div>
-                    <span className="text-[15px] font-medium">{w.info.name}</span>
-                    {lastUsedMethod === w.info.name.toLowerCase() && (
-                      <span className="ml-auto text-[10px] text-gray-500 font-medium">Last used</span>
-                    )}
-                  </button>
-                ))}
-
-                {eip6963Wallets.length === 0 && (
-                  <p className="text-center text-sm text-gray-600 py-2">
-                    No browser wallet extensions detected.
-                  </p>
-                )}
               </div>
 
               {error && <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>}
