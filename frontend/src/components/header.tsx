@@ -1905,7 +1905,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
             )}
 
             {/* Non-signed-in: Sign In, Sign Up, hamburger (hover) */}
-            {!isSignedIn && !isAuthenticating && mounted && (
+            {!isSignedIn && !isAuthenticating && !isWalletAuthenticating && mounted && (
               <>
                 <Button 
                   ref={authLoginBtnRef} 
