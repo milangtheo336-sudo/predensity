@@ -5,6 +5,7 @@ import { MarketCard, Category, CATEGORIES, PoliticsPredictionType } from '@/lib/
 import { getContractAddress } from '@/lib/contracts/contract-config';
 import { aggregateForecast } from '@/lib/forecast';
 import { cn } from '@/lib/utils';
+import { TrendingUp } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useQuery as useConvexQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -114,23 +115,25 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
   const noPercentage = isCrypto ? 50 : forecast.belowThresholdPct;
   const hasBets = betCount > 0;
 
+  const marketUrl = `/markets/${market.id}`;
+
   return (
     <div
       onClick={onClick}
       className={cn(
-        'bg-gray-50 dark:bg-neutral-900 rounded-lg p-4 cursor-pointer',
+        'group bg-gray-50 dark:bg-neutral-900 rounded-xl p-4 cursor-pointer',
         'hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all',
-        'border border-gray-300 dark:border-gray-700',
+        'border border-gray-200 dark:border-neutral-800',
         'flex flex-col gap-3'
       )}
     >
-      {/* Header with image/icon and question */}
+      {/* Header: rounded-square image + bold title + description */}
       <div className="flex items-start gap-3">
         {market.imageUrl ? (
           <img
             src={market.imageUrl}
             alt={market.question}
-            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+            className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
@@ -139,18 +142,20 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
             }}
           />
         ) : null}
-        <div 
-          className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 text-sm font-bold text-gray-700 dark:text-white"
+        <div
+          className="w-14 h-14 rounded-xl bg-gray-200 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 text-base font-bold text-gray-700 dark:text-white"
           style={{ display: market.imageUrl ? 'none' : 'flex' }}
         >
           {categoryConfig.icon}
         </div>
-        <h3 className="text-gray-900 dark:text-white text-sm font-normal leading-tight flex-1">
-          {market.question}
-        </h3>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-gray-900 dark:text-white text-[15px] font-bold leading-snug group-hover:underline group-hover:decoration-gray-400 dark:group-hover:decoration-neutral-500 underline-offset-2">
+            {market.description || market.question}
+          </h3>
+        </div>
       </div>
 
-      {/* YES/NO Progress Bars */}
+      {/* YES/NO Progress Bars (event-based only) */}
       {!isCrypto && (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -175,17 +180,17 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
         </div>
       )}
 
-      {/* Footer with volume, time, and LIVE indicator for crypto */}
-      <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1.5 text-gray-400">
-          <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span>{totalVolume > 0 ? `${totalVolume} Vol` : '0 Vol'}</span>
+      {/* Footer -- pushed to bottom */}
+      <div className="flex items-center justify-between text-xs mt-auto">
+        <div className="flex items-center gap-1 text-gray-400">
+          <TrendingUp className="w-3.5 h-3.5" />
+          <span>$ 20.00k</span>
         </div>
         <div className="flex items-center gap-2">
           {isCrypto && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 animate-heartbeat" />
+                <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 animate-ripple" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
               </span>
               <span className="text-red-500 font-semibold text-[10px] tracking-wide">LIVE</span>
