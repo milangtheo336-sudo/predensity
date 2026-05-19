@@ -223,8 +223,46 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   };
 
   // ---------------------------------------------------------------------------
-  // EIP-6963 wallets (MetaMask, Rabby, Coinbase Wallet, Phantom EVM, etc.)
+  // WalletConnect via HWCConnector — shows QR code modal or connects browser
+  // extension wallets (MetaMask, Rabby, Coinbase, etc.) + mobile wallets
   // ---------------------------------------------------------------------------
+  const handleWalletConnectConnect = async () => {
+    setIsLoading(true); setError('');
+    try {
+      localStorage.setItem('lastUsedAuthMethod', 'walletconnect');
+
+      // Opens the WalletConnect modal (QR code + injected wallet list)
+      await hwcWallet.connect();
+
+      // After user approves in their wallet, fetch the EVM address
+      const addressResult = await hwcEvmAddress.refetch();
+      const address = addressResult.data;
+      if (!address) throw new Error('Could not get wallet address. Please try again.');
+
+      const normalizedAddress = address.toLowerCase();
+      const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const message = `Sign in to Predensity\nAddress: ${normalizedAddress}\nNonce: ${nonce}`;
+
+      let signerSignature: any;
+      try {
+        signerSignature = await signHWC(message);
+      } catch (signErr: any) {
+        const msg = (signErr?.message || '').toLowerCase();
+        if (msg.includes('refused') || msg.includes('rejected') || msg.includes('cancel') || msg.includes('denied')) {
+          throw new Error('Signature cancelled. Please approve the sign-in request in your wallet.');
+        }
+        throw new Error('Failed to sign message. Please try again.');
+      }
+
+      const sigBytes = signerSignature?._signerSignature?.signature || signerSignature?.signature || signerSignature;
+      const signature = typeof sigBytes === 'string' ? sigBytes : ('0x' + Buffer.from(sigBytes).toString('hex'));
+
+      await finishWalletSignIn(normalizedAddress, signature, nonce, 'metamask');
+    } catch (err) {
+      console.error('[auth-modal] WalletConnect error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to connect wallet');
+    } finally { setIsLoading(false); }
+  };
   const handleEIP6963Connect = async (providerDetail: EIP6963ProviderDetail) => {
     setIsLoading(true); setError('');
     try {
@@ -402,7 +440,30 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
                   )}
                 </button>
 
-                {/* EIP-6963 discovered wallets */}
+                {/* WalletConnect — QR code + 300+ wallets */}
+                <button
+                  onClick={handleWalletConnectConnect}
+                  disabled={isLoading}
+                  className="w-full flex items-center gap-4 px-4 py-3.5 bg-[#0d1117] hover:bg-[#161b27] text-white border border-white/[0.07] rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed relative"
+                >
+                  <div className="relative flex-shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-[#3b99fc]/10 border border-[#3b99fc]/20 flex items-center justify-center">
+                      <svg width="22" height="14" viewBox="0 0 22 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4.51 2.88C7.97-.38 13.53-.38 17 2.88l.42.41a.43.43 0 0 1 0 .62l-1.44 1.41a.22.22 0 0 1-.31 0l-.58-.57C12.72 2.2 9.28 2.2 6.91 4.75l-.62.6a.22.22 0 0 1-.31 0L4.54 3.94a.43.43 0 0 1 0-.62l-.03-.44Zm7.97 3.73 1.28 1.26a.22.22 0 0 1 0 .31l-5.76 5.65a.45.45 0 0 1-.63 0L3.6 9.97a.22.22 0 0 1 0-.31l1.28-1.26a.22.22 0 0 1 .31 0l2.56 2.51 2.56-2.51a.22.22 0 0 1 .31 0l1.28 1.26-.03-.05 1.28-1.26a.22.22 0 0 1 .31 0l2.56 2.51 2.56-2.51a.22.22 0 0 1 .31 0l1.28 1.26a.22.22 0 0 1 0 .31l-3.83 3.76a.45.45 0 0 1-.63 0l-2.56-2.51-2.56 2.51a.45.45 0 0 1-.63 0L7.4 11.97l-1.28 1.26a.45.45 0 0 1-.63 0L1.66 9.47a.43.43 0 0 1 0-.62l3.83-3.76a.45.45 0 0 1 .63 0l2.56 2.51 2.56-2.51a.45.45 0 0 1 .63 0l.57.52Z" fill="#3b99fc"/>
+                      </svg>
+                    </div>
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-[#0d1117]" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-[15px] font-medium">WalletConnect</div>
+                    <div className="text-xs text-gray-500">300+ wallets · QR code</div>
+                  </div>
+                  {lastUsedMethod === 'walletconnect' && (
+                    <span className="ml-auto text-[10px] text-gray-500 font-medium">Last used</span>
+                  )}
+                </button>
+
+                {/* EIP-6963 detected wallets — browser extensions */}
                 {eip6963Wallets.map((w) => (
                   <button
                     key={w.info.uuid}
@@ -424,7 +485,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
 
                 {eip6963Wallets.length === 0 && (
                   <p className="text-center text-sm text-gray-600 py-2">
-                    No EVM wallets detected. Install MetaMask, Rabby, or Coinbase Wallet to see them here.
+                    No browser wallet extensions detected.
                   </p>
                 )}
               </div>
