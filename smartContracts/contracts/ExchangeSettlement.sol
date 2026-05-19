@@ -134,11 +134,14 @@ contract ExchangeSettlement is Ownable, ReentrancyGuard, Pausable, EIP712 {
         );
         require(rc1 == 22, "Token transfer failed");
 
-        // Transfer USDC: buyer -> seller (minus fee)
-        require(
-            IERC20(usdcToken).transferFrom(buyer, seller, usdcAmount - fee),
-            "USDC transfer failed"
+        // Transfer USDC: buyer -> seller (minus fee) using HTS
+        int64 rc2 = hts.transferToken(
+            usdcToken,
+            buyer,
+            seller,
+            int64(int256(usdcAmount - fee))
         );
+        require(rc2 == 22, "USDC transfer failed");
 
         emit TradeSettled(tradeId, buyer, seller, outcomeToken, price, quantity, usdcAmount);
     }
@@ -213,14 +216,17 @@ contract ExchangeSettlement is Ownable, ReentrancyGuard, Pausable, EIP712 {
         uint256 fee = (usdcAmount * feeBps) / BPS_DENOM;
         totalFees += fee;
 
-        // Outcome tokens: seller -> buyer
-        int64 rc1 = IHederaTokenService(HTS_PRECOMPILE).transferToken(
-            makerOrder.outcomeToken, seller, buyer, int64(int256(makerOrder.quantity))
-        );
-        require(rc1 == 22, "Token transfer failed");
+        IHederaTokenService hts = IHederaTokenService(HTS_PRECOMPILE);
 
-        // USDC: buyer -> seller (minus fee)
-        require(IERC20(usdcToken).transferFrom(buyer, seller, usdcAmount - fee), "USDC transfer failed");
+        // Outcome tokens: seller -> buyer
+        require(hts.transferToken(
+            makerOrder.outcomeToken, seller, buyer, int64(int256(makerOrder.quantity))
+        ) == 22, "Token transfer failed");
+
+        // USDC: buyer -> seller (minus fee) using HTS
+        require(hts.transferToken(
+            usdcToken, buyer, seller, int64(int256(usdcAmount - fee))
+        ) == 22, "USDC transfer failed");
 
         emit TradeSettled(tradeId, buyer, seller, makerOrder.outcomeToken, makerOrder.price, makerOrder.quantity, usdcAmount);
     }
