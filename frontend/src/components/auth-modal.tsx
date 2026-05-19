@@ -342,60 +342,53 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
     setError('');
     
     try {
-      // Save last used method
       localStorage.setItem('lastUsedAuthMethod', walletName.toLowerCase());
       
-      const wallets = {
-        hashpack: hashpackWallet,
-        metamask: metamaskWallet,
-        blade: bladeWallet,
-        kabila: kabilaWallet,
+      const walletMap = {
+        hashpack: { wallet: hashpackWallet, evmAddr: hashpackEvmAddress, signAuth: signHashpack },
+        metamask: { wallet: metamaskWallet, evmAddr: metamaskEvmAddress, signAuth: signMetamask },
+        blade:    { wallet: bladeWallet,    evmAddr: bladeEvmAddress,    signAuth: signBlade    },
+        kabila:   { wallet: kabilaWallet,   evmAddr: kabilaEvmAddress,   signAuth: signKabila   },
       };
       
-      const wallet = wallets[walletType];
+      const { wallet, evmAddr, signAuth } = walletMap[walletType];
 
-      // Step 1: Connect the wallet (triggers wallet popup)
+      // Step 1: Connect — triggers the wallet extension popup
       await wallet.connect();
 
-      // Step 2: Get the EVM address — poll briefly since it may not be
-      // available synchronously right after connect()
-      let address = evmAddress;
-      if (!address) {
-        for (let i = 0; i < 10; i++) {
-          await new Promise(r => setTimeout(r, 300));
-          // evmAddress is reactive; re-read from window.ethereum as fallback
-          if ((window as any).ethereum?.selectedAddress) {
-            address = (window as any).ethereum.selectedAddress;
-            break;
-          }
-        }
-      }
+      // Step 2: Fetch EVM address via the library's query (works for all connectors including HashPack)
+      const addressResult = await evmAddr.refetch();
+      const address = addressResult.data;
 
       if (!address) {
-        throw new Error('Could not get wallet address. Please try again.');
+        throw new Error('Could not get wallet address. Make sure your wallet is unlocked and try again.');
       }
 
       const normalizedAddress = address.toLowerCase();
 
-      // Step 3: Sign a challenge message to prove ownership
+      // Step 3: Sign a challenge via the library's useAuthSignature hook
+      // This works natively for HashPack (Hedera), MetaMask, Blade, and Kabila
       const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
       const message = `Sign in to Predensity\nAddress: ${normalizedAddress}\nNonce: ${nonce}`;
 
-      let signature: string;
+      let signerSignature: any;
       try {
-        // Use window.ethereum for MetaMask-style wallets; HashPack/Blade/Kabila
-        // also expose personal_sign through their injected provider
-        const provider = (window as any).ethereum;
-        if (!provider) throw new Error('No injected provider found');
-        signature = await provider.request({
-          method: 'personal_sign',
-          params: [message, normalizedAddress],
-        });
+        signerSignature = await signAuth(message);
       } catch (signErr: any) {
-        throw new Error(signErr?.message?.includes('User rejected')
-          ? 'Signature rejected. Please approve the sign-in request in your wallet.'
-          : 'Failed to sign message. Please try again.');
+        const msg = signErr?.message || '';
+        if (msg.toLowerCase().includes('refused') || msg.toLowerCase().includes('rejected') || msg.toLowerCase().includes('cancel')) {
+          throw new Error('Signature cancelled. Please approve the sign-in request in your wallet.');
+        }
+        throw new Error('Failed to sign message. Please try again.');
       }
+
+      // Extract the hex signature bytes from the SignerSignature object
+      const sigBytes = signerSignature?._signerSignature?.signature
+        || signerSignature?.signature
+        || signerSignature;
+      const signature = typeof sigBytes === 'string'
+        ? sigBytes
+        : ('0x' + Buffer.from(sigBytes).toString('hex'));
 
       // Step 4: Create / retrieve user record on the backend
       const createRes = await fetch('/api/wallet/create-wallet-user', {
@@ -408,7 +401,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
 
       const { userId, isNewUser } = createData;
 
-      // Step 5: Create proxy wallet (idempotent — safe to call for existing users)
+      // Step 5: Create proxy wallet (idempotent)
       const proxyRes = await fetch('/api/proxy-wallet/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -425,7 +418,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
         userId,
       });
 
-      // Step 7: Mark new wallet users for onboarding
+      // Step 7: New users go to onboarding
       if (isNewUser) {
         sessionStorage.setItem('predensity-new-user', 'true');
       }
