@@ -1,10 +1,8 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
-import { MobileBottomNav } from '@/components/mobile-bottom-nav';
-import { SiteFooter } from '@/components/site-footer';
-import { SupportChat } from '@/components/support-chat';
+import { LayoutChrome } from '@/components/layout-chrome';
 import { WalletErrorSuppressor } from '@/components/wallet-error-suppressor';
 import { HydrationErrorBoundary } from '@/components/hydration-error-boundary';
 import { WalletProviderClient } from '@/components/wallet-provider-client';
@@ -26,7 +24,6 @@ export const metadata: Metadata = {
   description:
     'Predensity is a decentralized prediction market . Profit from bold, early, and accurate price forecasts. Trade on crypto, politics, sports, and technology outcomes. The platform rewards boldness and sharpness of predictions.',
   manifest: '/manifest.json',
-  themeColor: '#7c3aed',
   keywords: ['prediction market', 'crypto predictions', 'decentralized','sports betting', 'politics market', 'web3'],
   openGraph: {
     title: 'Predensity - Decentralized Prediction Market',
@@ -53,6 +50,10 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://www.predensity.com',
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#7c3aed',
 };
 
 async function fetchSeoData() {
@@ -107,9 +108,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     disableTransitionOnChange
                   >
                     {children}
-                    <SiteFooter />
-                    <MobileBottomNav />
-                    <SupportChat />
+                    <LayoutChrome />
                     <Analytics />
                   </ThemeProvider>
                 </WalletProviderClient>
