@@ -822,20 +822,20 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
             </div>
             {walletUsdcBalance !== null && (
               <div className="ml-auto text-right">
-                <div className="text-sm font-semibold text-white">{walletUsdcBalance}</div>
+                <div className="text-sm font-semibold text-gray-900 dark:text-white">{walletUsdcBalance}</div>
                 <div className="text-[10px] text-gray-500">{currency.symbol}</div>
               </div>
             )}
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Amount ({currency.symbol})</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Amount ({currency.symbol})</label>
             <input
               type="number"
               placeholder="100.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+              className="w-full px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
             />
           </div>
 
@@ -853,31 +853,35 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
       {step === 'transferring' && (
         <div className="text-center py-8">
           <Loader2 className="w-8 h-8 animate-spin text-vibrant-purple mx-auto mb-3" />
-          <p className="text-sm text-white">Transferring {amount} {currency.symbol}...</p>
-          <p className="text-xs text-gray-400 mt-1">Confirm in your wallet</p>
+          <p className="text-sm text-gray-900 dark:text-white">Transferring {amount} {currency.symbol}...</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Confirm in your wallet</p>
         </div>
       )}
       {step === 'crediting' && (
         <div className="text-center py-8">
-          <Loader2 className="w-8 h-8 animate-spin text-green-400 mx-auto mb-3" />
-          <p className="text-sm text-white">Crediting your balance...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-green-500 mx-auto mb-3" />
+          <p className="text-sm text-gray-900 dark:text-white">Crediting your balance...</p>
         </div>
       )}
       {step === 'done' && (
         <div className="text-center py-8">
-          <Check className="w-8 h-8 text-green-400 mx-auto mb-3" />
-          <p className="text-sm text-white">Transfer complete</p>
-          <p className="text-xs text-gray-400 mt-1">{amount} {currency.symbol} added to your balance</p>
-          <button onClick={onClose} className="mt-4 px-6 py-2 rounded-lg bg-vibrant-purple text-white text-sm font-medium">
+          <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
+          </div>
+          <p className="text-base font-semibold text-gray-900 dark:text-white mb-1">Transfer complete</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{amount} {currency.symbol} added to your balance</p>
+          <button onClick={onClose} className="mt-5 px-8 py-2.5 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white text-sm font-medium transition-colors">
             Done
           </button>
         </div>
       )}
       {step === 'error' && (
         <div className="text-center py-8">
-          <X className="w-8 h-8 text-red-400 mx-auto mb-3" />
-          <p className="text-sm text-red-400">{errorMsg}</p>
-          <button onClick={() => { setStep('input'); setErrorMsg(''); }} className="mt-4 px-6 py-2 rounded-lg border border-white/10 text-white text-sm">
+          <div className="w-12 h-12 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="w-6 h-6 text-red-600 dark:text-red-400" />
+          </div>
+          <p className="text-sm text-red-600 dark:text-red-400 mb-1">{errorMsg}</p>
+          <button onClick={() => { setStep('input'); setErrorMsg(''); }} className="mt-4 px-6 py-2 rounded-lg border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
             Try Again
           </button>
         </div>
