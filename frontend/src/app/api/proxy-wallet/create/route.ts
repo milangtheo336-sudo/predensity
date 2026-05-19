@@ -176,8 +176,21 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('[create-proxy-wallet] Error:', error);
+    
+    // Sanitize error for user
+    let userMessage = 'Failed to create wallet. Please try again.';
+    if (error.message) {
+      if (error.message.includes('already exists')) {
+        userMessage = 'Wallet already exists for this account.';
+      } else if (error.message.includes('insufficient') || error.message.includes('balance')) {
+        userMessage = 'Insufficient balance to create wallet. Please contact support.';
+      } else if (error.message.length < 150 && !error.message.includes('at ') && !error.message.includes('stack')) {
+        userMessage = error.message;
+      }
+    }
+    
     return NextResponse.json(
-      { error: error.message || 'Failed to create proxy wallet' },
+      { error: userMessage },
       { status: 500 }
     );
   }
@@ -244,8 +257,15 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error('[get-proxy-wallet] Error:', error);
+    
+    // Sanitize error for user
+    let userMessage = 'Failed to check wallet. Please try again.';
+    if (error.message && error.message.length < 150 && !error.message.includes('at ')) {
+      userMessage = error.message;
+    }
+    
     return NextResponse.json(
-      { error: error.message || 'Failed to get proxy wallet' },
+      { error: userMessage },
       { status: 500 }
     );
   }
