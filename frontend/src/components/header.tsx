@@ -1550,6 +1550,10 @@ function GuestHamburgerMenu({
         <FileText className="w-4 h-4 text-gray-400 dark:text-gray-500" />
         {t.termsOfUse}
       </Link>
+      <Link href="/cookies" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
+        <FileText className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+        Cookie Policy
+      </Link>
 
       <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 mx-3" />
 
@@ -2613,6 +2617,10 @@ function ProfileDropdownPortal({
         <Link href="/terms" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
           <FileText className="w-4 h-4" />
           {t.termsOfUse}
+        </Link>
+        <Link href="/cookies" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
+          <FileText className="w-4 h-4" />
+          Cookie Policy
         </Link>
       </div>
 

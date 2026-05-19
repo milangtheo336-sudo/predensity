@@ -75,6 +75,7 @@ export function SiteFooter() {
               <li><a href="https://predensity.gitbook.io/predensity-whitepaper" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">Whitepaper</a></li>
               <li><Link href="/privacy" className="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">Privacy Policy</Link></li>
               <li><Link href="/terms" className="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">Terms of Use</Link></li>
+              <li><Link href="/cookies" className="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">Cookie Policy</Link></li>
             </ul>
           </div>
 
