@@ -35,7 +35,6 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const { login, refreshUser, user } = useMagic();
   const { setWalletUser } = useWalletUser();
   const { isConnected } = useWallet();
-  const { data: evmAddress } = useEvmAddress();
   
   // Log isConnected changes
   useEffect(() => {
