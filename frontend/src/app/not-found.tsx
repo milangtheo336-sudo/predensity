@@ -9,9 +9,9 @@ export default function NotFound() {
       <div className="w-72 h-72 sm:w-96 sm:h-96">
         <DotLottieReact src="/404-not-found.lottie" loop autoplay style={{ width: '100%', height: '100%' }} />
       </div>
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-4">Page Not Found</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-4">Page not found</h1>
       <p className="text-sm text-gray-500 dark:text-neutral-400 mt-2 max-w-md">
-        The page you are looking for does not exist or has been moved.
+        We can&apos;t seem to find the page you&apos;re looking for. Check to see if the link you&apos;re trying to visit is correct. If the problem persists, let us know.
       </p>
       <Link
         href="/markets"
