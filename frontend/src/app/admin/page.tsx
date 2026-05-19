@@ -16,7 +16,7 @@ import { Calendar, RefreshCw } from 'lucide-react';
 
 import type { Bet } from '@/lib/types';
 import { Category, CATEGORIES } from '@/lib/types/categories';
-import { getContractId, getContractAddress, isCategoryDeployed, getStakingCurrency, isTokenMode } from '@/lib/contracts/contract-config';
+import { getContractId, getContractAddress, isCategoryDeployed, getStakingCurrency, isTokenMode, getOnChainBucket } from '@/lib/contracts/contract-config';
 
 import { formatDateUTC, formatTinybarsToHbar, getLocalTimezoneAbbr } from '@/lib/utils';
 
@@ -725,8 +725,6 @@ function AdminPage() {
   const createCryptoMarketMutation = useMutation(api.events.createCryptoMarket);
   const finalizeBetsMutation = useMutation(api.sync.finalizeBetsForBucket);
   const updateBetOnChainIdMutation = useMutation(api.sync.updateBetOnChainId);
-  const clearOnChainIdsMutation = useMutation(api.sync.clearOnChainIds);
-  const deleteAllManagedBetsMutation = useMutation(api.sync.deleteAllManagedBets);
 
   // Protocol fee state
   const [feeData, setFeeData] = useState<Record<string, { fees: string; balance: string; isOwner: boolean; loading: boolean }>>({});
@@ -1215,10 +1213,48 @@ function AdminPage() {
 
   // Sync finalization results to Convex DB (for bets already processed on-chain)
   const [isSyncing, setIsSyncing] = useState(false);
+
   const syncResultsToConvex = async () => {
     setIsSyncing(true);
     try {
-      // Use ALL bets (including already-finalized) for re-syncing payouts
+      // Step 1: Run processBatch on-chain for all past-resolution buckets
+      const allSyncBetsForBuckets = (allConvexBetsRaw || []).map((b: any) => ({
+        bucket: b.bucket ?? getOnChainBucket(b.targetTimestamp, selectedCategory),
+        targetTimestamp: b.targetTimestamp,
+      }));
+      const nowSec = Math.floor(Date.now() / 1000);
+      const pastBets = allSyncBetsForBuckets.filter((b: any) => b.targetTimestamp <= nowSec);
+      const uniqueBucketsForProcess = Array.from(new Set(pastBets.map((b: any) => b.bucket)));
+
+      let batchProcessed = 0;
+      let batchAlreadyComplete = 0;
+      const batchErrors: string[] = [];
+
+      for (const bucket of uniqueBucketsForProcess) {
+        try {
+          const res = await fetch('/api/admin/process-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category: selectedCategory.toLowerCase(), bucket }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            batchErrors.push(`Bucket ${bucket}: ${data.error}`);
+          } else if (data.alreadyComplete) {
+            batchAlreadyComplete++;
+          } else {
+            batchProcessed += data.totalProcessed || 0;
+          }
+        } catch (err) {
+          batchErrors.push(`Bucket ${bucket}: ${err instanceof Error ? err.message : 'unknown'}`);
+        }
+      }
+
+      if (batchProcessed > 0) {
+        console.log(`[admin] processBatch: processed ${batchProcessed} bet(s), ${batchAlreadyComplete} already complete, ${batchErrors.length} error(s)`);
+      }
+
+      // Step 2: Use ALL bets (including already-finalized) for re-syncing payouts
       const allSyncBets = (allConvexBetsRaw || []).map((b: any) => ({
         id: b.betId,
         stake: b.stake,
@@ -1331,15 +1367,42 @@ function AdminPage() {
       );
 
       if (betsNeedingSync.length === 0) {
-        const idMsg = managedBetsMissingOnChainId.length > 0
-          ? `Matched on-chain IDs for managed bets.`
-          : 'No bets need payout updates.';
-        toast({ variant: 'default', title: 'Sync complete', description: idMsg });
+        // No new bets to finalize, but still auto-claim any unclaimed winners
+        const unclaimedWinners = allSyncBets.filter((b: any) => b.finalized && b.won && !b.claimed);
+        if (unclaimedWinners.length > 0) {
+          const bucketsSet = new Set(unclaimedWinners.map((b: any) => b.bucket || getOnChainBucket(b.targetTimestamp, selectedCategory)));
+          const buckets = Array.from(bucketsSet);
+          let totalClaimed = 0;
+          for (const bucket of buckets) {
+            try {
+              const claimRes = await fetch('/api/bet/auto-claim', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  marketId: contractAddr,
+                  bucket,
+                  category: selectedCategory.toLowerCase(),
+                }),
+              });
+              if (claimRes.ok) {
+                const claimData = await claimRes.json();
+                totalClaimed += claimData.claimed || 0;
+              }
+            } catch (claimErr) {
+              console.error(`[admin] Auto-claim failed for bucket ${bucket}:`, claimErr);
+            }
+          }
+          const claimMsg = totalClaimed > 0 ? ` Auto-claimed ${totalClaimed} winning bet(s).` : '';
+          toast({ variant: 'success', title: 'Sync complete', description: `Bets already finalized.${claimMsg}` });
+        } else {
+          const idMsg = managedBetsMissingOnChainId.length > 0
+            ? `Matched on-chain IDs for managed bets.`
+            : 'No bets need payout updates.';
+          toast({ variant: 'default', title: 'Sync complete', description: idMsg });
+        }
         setIsSyncing(false);
         return;
       }
-
-      const nowSec = Math.floor(Date.now() / 1000);
 
       // Group bets by bucket, only past-resolution bets with prices
       const bucketMap = new Map<number, { targetTimestamp: number; price: number }[]>();
@@ -1449,10 +1512,34 @@ function AdminPage() {
         totalUpdated += result.updated;
       }
 
+      // Auto-claim winning bets for each bucket
+      let totalClaimed = 0;
+      for (const [bucket] of bucketEntries) {
+        try {
+          const claimRes = await fetch('/api/bet/auto-claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              marketId: contractAddr,
+              bucket,
+              category: selectedCategory.toLowerCase(),
+            }),
+          });
+          if (claimRes.ok) {
+            const claimData = await claimRes.json();
+            totalClaimed += claimData.claimed || 0;
+          }
+        } catch (claimErr) {
+          console.error(`[admin] Auto-claim failed for bucket ${bucket}:`, claimErr);
+        }
+      }
+
+      const claimMsg = totalClaimed > 0 ? ` Auto-claimed ${totalClaimed} winning bet(s).` : '';
+      const batchMsg = batchProcessed > 0 ? ` Processed ${batchProcessed} bet(s) on-chain.` : '';
       toast({
         variant: 'success',
-        title: 'Synced to database',
-        description: `Finalized ${totalUpdated} bet(s) in Convex`,
+        title: 'Settle complete',
+        description: `Finalized ${totalUpdated} bet(s) in Convex.${batchMsg}${claimMsg}`,
       });
     } catch (err) {
       console.error('[admin] syncResultsToConvex error:', err);
@@ -1745,6 +1832,22 @@ function AdminPage() {
 
                     finalizeWithContractData().then((result) => {
                       console.log(`[admin] Finalized ${result.updated} bets in Convex for bucket ${bucketIndex}`);
+                      // Auto-claim winning bets
+                      fetch('/api/bet/auto-claim', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          marketId: getContractAddress(selectedCategory),
+                          bucket: bucketIndex,
+                          category: selectedCategory.toLowerCase(),
+                        }),
+                      }).then(res => res.json()).then(data => {
+                        if (data.claimed > 0) {
+                          console.log(`[admin] Auto-claimed ${data.claimed} winning bet(s) for bucket ${bucketIndex}`);
+                        }
+                      }).catch(err => {
+                        console.error(`[admin] Auto-claim failed for bucket ${bucketIndex}:`, err);
+                      });
                     }).catch((err) => {
                       console.error(`[admin] Failed to finalize bets in Convex for bucket ${bucketIndex}:`, err);
                     });
@@ -2322,58 +2425,25 @@ function AdminPage() {
               <div className="flex justify-end gap-3 mt-4">
                 {allConvexBetsRaw && allConvexBetsRaw.length > 0 && (
                   <>
+                    {filteredBets && filteredBets.length > 0 && (
+                      <Button
+                        variant="predensity"
+                        className="w-auto"
+                        onClick={submitPrices}
+                        disabled={isSubmitting || isSyncing}
+                      >
+                        {isSubmitting ? 'Submitting...' : '1. Submit Prices to Contract'}
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
-                      className="w-auto text-xs text-red-400 border-red-400/30 hover:bg-red-500/10"
-                      onClick={async () => {
-                        if (!confirm('Delete ALL managed bets from Convex? This cannot be undone.')) return;
-                        const contractAddr = getContractAddress(selectedCategory);
-                        try {
-                          const result = await deleteAllManagedBetsMutation({ marketId: contractAddr });
-                          toast({ variant: 'success', title: 'Deleted managed bets', description: `Removed ${result.deleted} bet(s) from database.` });
-                        } catch (err) {
-                          toast({ variant: 'destructive', title: 'Delete failed', description: err instanceof Error ? err.message : 'Unknown error' });
-                        }
-                      }}
-                      disabled={isSyncing || isSubmitting}
-                    >
-                      Nuke Managed Bets
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-auto text-xs"
-                      onClick={async () => {
-                        const contractAddr = getContractAddress(selectedCategory);
-                        try {
-                          const result = await clearOnChainIdsMutation({ marketId: contractAddr });
-                          toast({ variant: 'default', title: 'Cleared on-chain IDs', description: `Reset ${result.cleared} managed bet(s). Click "Sync Results to DB" to re-match.` });
-                        } catch (err) {
-                          toast({ variant: 'destructive', title: 'Failed to clear IDs', description: err instanceof Error ? err.message : 'Unknown error' });
-                        }
-                      }}
-                      disabled={isSyncing || isSubmitting}
-                    >
-                      Reset On-Chain IDs
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-48"
+                      className="w-auto"
                       onClick={syncResultsToConvex}
                       disabled={isSyncing || isSubmitting}
                     >
-                      {isSyncing ? 'Syncing...' : 'Sync Results to DB'}
+                      {isSyncing ? 'Settling...' : '2. Settle & Pay Winners'}
                     </Button>
                   </>
-                )}
-                {filteredBets && filteredBets.length > 0 && (
-                  <Button
-                    variant="predensity"
-                    className="w-48"
-                    onClick={submitPrices}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Submitting...' : 'Submit Prices to Contract'}
-                  </Button>
                 )}
               </div>
             )}
