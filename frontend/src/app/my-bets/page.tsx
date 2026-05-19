@@ -618,6 +618,27 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   const { user } = useMagic();
   const isSignedIn = !!user;
   const { data: evmAddress } = useEvmAddress();
+  
+  // Get proxy wallet address
+  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (!user?.publicAddress) return;
+    
+    const fetchProxyWallet = async () => {
+      try {
+        const response = await fetch(`/api/proxy-wallet/create?userAddress=${user.publicAddress}`);
+        const data = await response.json();
+        if (data.exists && data.proxyWalletAddress) {
+          setProxyWalletAddress(data.proxyWalletAddress);
+        }
+      } catch (err) {
+        console.error('[my-bets] Failed to fetch proxy wallet:', err);
+      }
+    };
+    
+    fetchProxyWallet();
+  }, [user?.publicAddress]);
   const { balancesHidden, toggleBalancesHidden } = useBalanceVisibility();
   // Local state synced with localStorage for when context is not available
   const [localHidden, setLocalHidden] = useState(() => {
@@ -881,8 +902,8 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
 
   const currency = getStakingCurrency();
   
-  // Read balance from blockchain (non-custodial)
-  const { balance: cashBalance, isLoading: balanceLoading } = useBlockchainBalance(user?.publicAddress);
+  // Read balance from blockchain (non-custodial) - use proxy wallet address
+  const { balance: cashBalance, isLoading: balanceLoading } = useBlockchainBalance(proxyWalletAddress || undefined);
 
   const activeBets = allBets.filter(b => !b.finalized);
   const historyBets = allBets.filter(b => b.finalized);
