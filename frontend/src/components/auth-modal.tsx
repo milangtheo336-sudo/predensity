@@ -54,6 +54,17 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const metamaskWallet = useWallet(MetamaskConnector);
   const bladeWallet = useWallet(BladeConnector);
   const kabilaWallet = useWallet(KabilaConnector);
+
+  // Per-connector EVM address + auth signature hooks
+  const hashpackEvmAddress = useEvmAddress({ connector: HashpackConnector });
+  const metamaskEvmAddress = useEvmAddress({ connector: MetamaskConnector });
+  const bladeEvmAddress   = useEvmAddress({ connector: BladeConnector });
+  const kabilaEvmAddress  = useEvmAddress({ connector: KabilaConnector });
+
+  const { signAuth: signHashpack }  = useAuthSignature(HashpackConnector);
+  const { signAuth: signMetamask }  = useAuthSignature(MetamaskConnector);
+  const { signAuth: signBlade }     = useAuthSignature(BladeConnector);
+  const { signAuth: signKabila }    = useAuthSignature(KabilaConnector);
   
   // Load last used method from localStorage
   useEffect(() => {
