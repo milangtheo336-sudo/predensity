@@ -135,52 +135,42 @@ function SocialProofAvatars({ count }: { count: number }) {
 // ─── Footer ────────────────────────────────────────────────────────
 function WaitlistFooter() {
   return (
-    <footer className="w-full border-t border-white/[0.06] mt-12 md:mt-20">
-      <div className="max-w-5xl mx-auto px-5 pt-10 pb-8">
-        {/* Logo + tagline */}
-        <div className="flex items-center gap-2 mb-1">
-          <svg viewBox="200 90 180 255" className="w-5 h-6 fill-white flex-shrink-0" aria-hidden="true">
-            <path d="M288.289 93.2865C292.454 94.1865 303.501 101.637 307.525 104.03L336.786 121.118C344.683 125.662 352.542 130.272 360.362 134.947C364.627 137.446 369.148 139.538 373.014 142.58C374.05 146.213 373.601 159.985 373.584 164.447L373.599 192.072L373.666 224.482C373.675 228.554 373.952 237.838 373.375 241.468C372.011 242.877 356.932 251.166 354.389 252.641L312.721 276.986C305.815 281.054 296.401 286.354 289.839 290.686C289.619 293.215 289.809 298.382 289.787 301.124C289.68 308.606 289.635 316.088 289.65 323.571C289.677 327.425 289.803 331.289 289.773 335.141C289.76 336.729 290.036 338.935 288.436 339.585C285.705 339.087 266.579 327.47 262.978 325.348C256.514 321.661 205.572 292.495 203.898 290.536C202.619 285.701 203.257 273.352 203.253 267.959L203.291 227.886L203.283 208.302C203.274 203.72 203.011 195.982 204.029 191.795C204.596 191.052 205.617 190.334 206.416 189.853C216.455 183.811 226.692 178.14 236.617 171.904C238.963 170.431 241.711 168.701 244.2 167.533C233.649 160.849 222.762 154.845 212.098 148.347C210.214 147.2 204.232 144.393 204.061 142.411C205.58 140.802 223.805 130.547 227.161 128.575L268.583 104.477C273.179 101.79 283.771 94.5567 288.289 93.2865ZM247.704 167.249C251.307 169.147 259.609 174.058 262.892 176.452C267.007 179.454 285.565 188.818 287.402 191.793C287.326 195.313 248.867 214.553 247.719 216.891C246.292 219.797 246.788 262.35 247.109 265.393C250.027 267.759 259.326 272.583 263.319 275.135C270.475 279.293 279.997 285.139 287.341 288.503C287.106 283.644 287.176 276.102 287.23 271.171C287.314 263.464 286.416 249.288 287.765 242.115C287.826 242.038 287.885 241.96 287.946 241.883C290.411 238.785 297.09 235.818 300.681 233.748C304.516 231.536 328.516 218.126 329.342 216.452C329.822 215.477 329.886 213.906 329.933 212.838C330.273 205.147 329.94 197.29 329.972 189.585C330.001 182.722 330.477 175.471 329.855 168.642C329.828 168.342 329.795 168.043 329.755 167.745C327.161 165.663 317.302 159.764 314.154 158.202C309.988 156.134 291.173 143.866 288.497 143.705C284.455 144.985 279.89 148.051 276.196 150.299L258.871 160.833C255.22 163.048 251.567 165.464 247.704 167.249Z" />
-          </svg>
-          <span className="text-lg font-bold text-white">Predensity</span>
-        </div>
-        <p className="text-sm text-gray-500 mb-8">Monetize your boldness on Predensity.</p>
-
-        {/* Link columns */}
-        <div className="grid grid-cols-2 gap-x-8 gap-y-6 mb-10">
-          <div>
-            <div className="text-xs font-semibold text-gray-500 mb-3">Support &amp; Social</div>
-            <ul className="space-y-2.5">
-              <li><a href="https://predensity.substack.com/" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-300 hover:text-white transition-colors">Blog</a></li>
-              <li><a href="https://x.com/predensity" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-300 hover:text-white transition-colors">X (Twitter)</a></li>
-              <li><a href="https://tiktok.com/@predensity.com" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-300 hover:text-white transition-colors">TikTok</a></li>
-              <li><a href="mailto:support@predensity.com" className="text-sm text-gray-300 hover:text-white transition-colors">Contact us</a></li>
-            </ul>
+    <footer className="w-full mt-auto bg-[#0a0a0a]">
+      <div className="max-w-6xl mx-auto px-5 py-6 flex flex-col items-center text-center">
+        {/* Top: Logo + tagline */}
+        <div className="mb-5 flex flex-col items-center">
+          <div className="flex items-center gap-2 mb-1">
+            <svg viewBox="200 90 180 255" className="w-5 h-6 fill-white flex-shrink-0" aria-hidden="true">
+              <path d="M288.289 93.2865C292.454 94.1865 303.501 101.637 307.525 104.03L336.786 121.118C344.683 125.662 352.542 130.272 360.362 134.947C364.627 137.446 369.148 139.538 373.014 142.58C374.05 146.213 373.601 159.985 373.584 164.447L373.599 192.072L373.666 224.482C373.675 228.554 373.952 237.838 373.375 241.468C372.011 242.877 356.932 251.166 354.389 252.641L312.721 276.986C305.815 281.054 296.401 286.354 289.839 290.686C289.619 293.215 289.809 298.382 289.787 301.124C289.68 308.606 289.635 316.088 289.65 323.571C289.677 327.425 289.803 331.289 289.773 335.141C289.76 336.729 290.036 338.935 288.436 339.585C285.705 339.087 266.579 327.47 262.978 325.348C256.514 321.661 205.572 292.495 203.898 290.536C202.619 285.701 203.257 273.352 203.253 267.959L203.291 227.886L203.283 208.302C203.274 203.72 203.011 195.982 204.029 191.795C204.596 191.052 205.617 190.334 206.416 189.853C216.455 183.811 226.692 178.14 236.617 171.904C238.963 170.431 241.711 168.701 244.2 167.533C233.649 160.849 222.762 154.845 212.098 148.347C210.214 147.2 204.232 144.393 204.061 142.411C205.58 140.802 223.805 130.547 227.161 128.575L268.583 104.477C273.179 101.79 283.771 94.5567 288.289 93.2865ZM247.704 167.249C251.307 169.147 259.609 174.058 262.892 176.452C267.007 179.454 285.565 188.818 287.402 191.793C287.326 195.313 248.867 214.553 247.719 216.891C246.292 219.797 246.788 262.35 247.109 265.393C250.027 267.759 259.326 272.583 263.319 275.135C270.475 279.293 279.997 285.139 287.341 288.503C287.106 283.644 287.176 276.102 287.23 271.171C287.314 263.464 286.416 249.288 287.765 242.115C287.826 242.038 287.885 241.96 287.946 241.883C290.411 238.785 297.09 235.818 300.681 233.748C304.516 231.536 328.516 218.126 329.342 216.452C329.822 215.477 329.886 213.906 329.933 212.838C330.273 205.147 329.94 197.29 329.972 189.585C330.001 182.722 330.477 175.471 329.855 168.642C329.828 168.342 329.795 168.043 329.755 167.745C327.161 165.663 317.302 159.764 314.154 158.202C309.988 156.134 291.173 143.866 288.497 143.705C284.455 144.985 279.89 148.051 276.196 150.299L258.871 160.833C255.22 163.048 251.567 165.464 247.704 167.249Z" />
+            </svg>
+            <span className="text-base font-bold text-white">Predensity</span>
           </div>
-          <div>
-            <div className="text-xs font-semibold text-gray-500 mb-3">Predensity</div>
-            <ul className="space-y-2.5">
-              <li><a href="https://predensity.gitbook.io/predensity-whitepaper" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-300 hover:text-white transition-colors">Whitepaper</a></li>
-              <li><Link href="/privacy" className="text-sm text-gray-300 hover:text-white transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="text-sm text-gray-300 hover:text-white transition-colors">Terms of Use</Link></li>
-              <li><Link href="/cookies" className="text-sm text-gray-300 hover:text-white transition-colors">Cookie Policy</Link></li>
-            </ul>
+          <p className="text-sm text-gray-500">Monetize your boldness.</p>
+        </div>
+
+        {/* Bottom: Social + Company + Links */}
+        <div className="flex flex-col items-center gap-4">
+          {/* Left: Social icons */}
+          <div className="flex items-center gap-4">
+            <a href="https://x.com/predensity" target="_blank" rel="noopener noreferrer" aria-label="X" className="text-gray-400 hover:text-white transition-colors">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px]"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.733-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
+            </a>
+            <a href="https://tiktok.com/@predensity.com" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="text-gray-400 hover:text-white transition-colors">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px]"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.75a4.85 4.85 0 0 1-1.01-.06z"/></svg>
+            </a>
           </div>
-        </div>
 
-        {/* Social icons */}
-        <div className="flex items-center gap-4 mb-4">
-          <a href="https://x.com/predensity" target="_blank" rel="noopener noreferrer" aria-label="X" className="text-gray-500 hover:text-gray-300 transition-colors">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.733-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
-          </a>
-          <a href="https://tiktok.com/@predensity.com" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="text-gray-500 hover:text-gray-300 transition-colors">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.75a4.85 4.85 0 0 1-1.01-.06z"/></svg>
-          </a>
-        </div>
-
-        {/* Bottom */}
-        <div className="pt-4 border-t border-white/[0.06]">
-          <p className="text-xs text-gray-500">&copy; {new Date().getFullYear()} Predensity. All rights reserved.</p>
+          {/* Company name + links */}
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-y-2 gap-x-3 text-[13px]">
+            <span className="font-bold text-white">Predensity Inc. &copy; {new Date().getFullYear()}</span>
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+              <Link href="/privacy" className="text-[#7a8ba3] hover:text-white transition-colors">Privacy</Link>
+              <span className="text-gray-700">·</span>
+              <Link href="/terms" className="text-[#7a8ba3] hover:text-white transition-colors">Terms of Use</Link>
+              <span className="text-gray-700">·</span>
+              <a href="https://predensity.gitbook.io/predensity-whitepaper" target="_blank" rel="noopener noreferrer" className="text-[#7a8ba3] hover:text-white transition-colors">Whitepaper</a>
+            </div>
+          </div>
         </div>
       </div>
     </footer>
@@ -332,17 +322,34 @@ export default function WaitlistPage() {
   }
 
   return (
-    <div className="bg-[#0a0a0a]">
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       {/* Header */}
       <WaitlistHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
 
       {/* Main content */}
       <div className="flex flex-col items-center px-4 pt-12 md:pt-24 pb-16">
 
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.06] border border-white/10 mb-6">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs font-semibold text-gray-300 tracking-wide uppercase">{t.comingSoon}</span>
+        {/* Coming Soon Caterpillar Wiggle */}
+        <style>{`
+          @keyframes appearAndWiggle {
+            0% { opacity: 0; transform: translateY(10px); }
+            20% { opacity: 1; transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+          }
+          .wiggle-char {
+            display: inline-block;
+            animation: appearAndWiggle 2.4s ease-in-out infinite;
+          }
+        `}</style>
+        <div className="mb-8">
+          <span className="text-sm font-medium text-gray-300 tracking-wide uppercase">
+            {t.comingSoon.split('').map((char, i) => (
+              <span key={i} className="wiggle-char" style={{ animationDelay: `${i * 0.1}s` }}>
+                {char === ' ' ? ' ' : char}
+              </span>
+            ))}
+          </span>
         </div>
 
         {/* Headline */}
