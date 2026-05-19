@@ -143,6 +143,9 @@ if (process.env.MAINNET_ENDPOINT && process.env.MAINNET_OPERATOR_PRIVATE_KEY) {
   networks.mainnet = {
     url: process.env.MAINNET_ENDPOINT,
     accounts: [process.env.MAINNET_OPERATOR_PRIVATE_KEY],
+    gasPrice: 2500000000000,
+    gas: 15000000,
+    timeout: 180000,
   };
 }
 
