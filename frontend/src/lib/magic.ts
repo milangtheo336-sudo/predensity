@@ -176,9 +176,26 @@ export async function getDIDToken(): Promise<string> {
  */
 export async function signMessage(message: string): Promise<string> {
   const magic = getMagic();
-  const provider = new ethers.providers.Web3Provider((magic as any).rpcProvider);
-  const signer = provider.getSigner();
-  return await signer.signMessage(message);
+  
+  // Use Magic's direct RPC method for personal_sign
+  const provider = (magic as any).rpcProvider;
+  
+  // Get user's address
+  const userInfo = await getUserInfo();
+  if (!userInfo?.publicAddress) {
+    throw new Error('User not logged in');
+  }
+  
+  // Sign using personal_sign
+  const signature = await provider.request({
+    method: 'personal_sign',
+    params: [
+      ethers.utils.hexlify(ethers.utils.toUtf8Bytes(message)),
+      userInfo.publicAddress,
+    ],
+  });
+  
+  return signature;
 }
 
 /**
@@ -325,16 +342,60 @@ export async function sendTransaction(
   value?: string,
   gasLimit?: number
 ): Promise<string> {
-  const signer = await getMagicSigner();
+  const magic = getMagic();
+  const magicProvider = (magic as any).rpcProvider;
   
-  const tx = await signer.sendTransaction({
-    to,
-    data,
-    value: value ? ethers.BigNumber.from(value) : undefined,
-    gasLimit: gasLimit || 1500000,
+  // Get user address
+  const userInfo = await getUserInfo();
+  const from = userInfo?.publicAddress;
+  
+  if (!from) {
+    throw new Error('No account found. Please log in.');
+  }
+  
+  console.log('[sendTransaction] Building transaction...', { from, to, data: data.slice(0, 10) + '...', value, gasLimit });
+  
+  // Get nonce
+  const nonce = await magicProvider.request({
+    method: 'eth_getTransactionCount',
+    params: [from, 'latest'],
   });
   
-  return tx.hash;
+  console.log('[sendTransaction] Nonce:', nonce);
+  
+  // Get gas price
+  const gasPrice = await magicProvider.request({
+    method: 'eth_gasPrice',
+    params: [],
+  });
+  
+  console.log('[sendTransaction] Gas price:', gasPrice);
+  
+  // Build transaction object
+  const tx: any = {
+    from,
+    to,
+    data,
+    nonce,
+    gasPrice,
+    gas: `0x${(gasLimit || 1500000).toString(16)}`,
+  };
+  
+  if (value) {
+    tx.value = `0x${ethers.BigNumber.from(value).toHexString().slice(2)}`;
+  }
+  
+  console.log('[sendTransaction] Sending transaction...', tx);
+  
+  // Send transaction via Magic's RPC
+  const txHash = await magicProvider.request({
+    method: 'eth_sendTransaction',
+    params: [tx],
+  });
+  
+  console.log('[sendTransaction] Transaction sent:', txHash);
+  
+  return txHash;
 }
 
 /**
@@ -410,8 +471,13 @@ export async function associateToken(tokenId: string): Promise<string> {
 /**
  * Associate a token with user's Magic Link wallet.
  * 
- * On Hedera, token association MUST be signed by the account owner.
- * Uses Magic Link's MagicWallet pattern with Hiero SDK for native Hedera transactions.
+ * Simplified approach:
+ * 1. User signs a consent message
+ * 2. Backend verifies signature and handles token association
+ * 3. Operator pays all fees
+ * 
+ * This is still non-custodial - user controls their funds via Magic Link.
+ * Token association is just a one-time setup step.
  * 
  * @param tokenId Hedera token ID (e.g., '0.0.8229951')
  * @returns Transaction hash
@@ -420,59 +486,52 @@ export async function associateTokenViaMagic(tokenId: string): Promise<string> {
   console.log('[associateTokenViaMagic] Associating token', tokenId);
   
   try {
-    const magic = getMagic();
-    
-    // Step 1: Get user's public key from Magic
-    const { publicKeyDer } = await magic.hedera.getPublicKey();
-    console.log('[associateTokenViaMagic] Got public key');
-    
-    // Step 2: Get user's address
+    // Step 1: Get user info
     const userInfo = await getUserInfo();
     if (!userInfo?.publicAddress) {
       throw new Error('User not logged in');
     }
     
-    // Step 3: Create MagicWallet instance
-    const { MagicWallet, MagicProvider } = await import('@/lib/magic-hedera-wallet');
-    const { TokenAssociateTransaction, TokenId, AccountId } = await import('@hashgraph/sdk');
+    // Step 2: User signs consent message
+    const consentMessage = `I authorize token association for ${tokenId} on my Hedera account ${userInfo.publicAddress}`;
+    console.log('[associateTokenViaMagic] Requesting user signature for consent...');
     
-    const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-    const magicSign = (message: Uint8Array) => magic.hedera.sign(message);
-    const magicWallet = new MagicWallet(
-      userInfo.publicAddress,
-      new MagicProvider(network as 'mainnet' | 'testnet'),
-      publicKeyDer,
-      magicSign
-    );
+    const signature = await signMessage(consentMessage);
+    console.log('[associateTokenViaMagic] User signed consent');
     
-    console.log('[associateTokenViaMagic] MagicWallet created');
+    // Step 3: Get DID token for backend authentication
+    const didToken = await getDIDToken();
     
-    // Step 4: Build token association transaction
-    const accountId = AccountId.fromEvmAddress(0, 0, userInfo.publicAddress);
-    let transaction = new TokenAssociateTransaction()
-      .setAccountId(accountId)
-      .setTokenIds([TokenId.fromString(tokenId)])
-      .setNodeAccountIds([new AccountId(3)]);
+    // Step 4: Send to backend to handle token association
+    const response = await fetch('/api/wallet/associate-token-with-consent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${didToken}`,
+      },
+      body: JSON.stringify({
+        tokenId,
+        userAddress: userInfo.publicAddress,
+        consentMessage,
+        signature,
+      }),
+    });
     
-    console.log('[associateTokenViaMagic] Transaction built, freezing...');
-    
-    // Step 5: Freeze and sign transaction with MagicWallet
-    transaction = await transaction.freezeWithSigner(magicWallet as any);
-    transaction = await transaction.signWithSigner(magicWallet as any);
-    
-    console.log('[associateTokenViaMagic] Transaction signed, executing...');
-    
-    // Step 6: Execute transaction
-    const result = await transaction.executeWithSigner(magicWallet as any);
-    const receipt = await result.getReceiptWithSigner(magicWallet as any);
-    
-    console.log('[associateTokenViaMagic] Transaction status:', receipt.status.toString());
-    
-    if (receipt.status.toString() === 'SUCCESS') {
-      return result.transactionId.toString();
-    } else {
-      throw new Error(`Transaction failed with status: ${receipt.status.toString()}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Token association failed');
     }
+    
+    const data = await response.json();
+    console.log('[associateTokenViaMagic] Association successful:', data.transactionId);
+    
+    // Check if auto-association is enabled
+    if (data.transactionId === 'auto-association-enabled') {
+      console.log('[associateTokenViaMagic] Account has unlimited auto associations');
+      return 'auto-association-enabled';
+    }
+    
+    return data.transactionId;
   } catch (error: any) {
     console.error('[associateTokenViaMagic] Error:', error);
     
@@ -487,34 +546,64 @@ export async function associateTokenViaMagic(tokenId: string): Promise<string> {
 }
 
 /**
- * Approve USDC spending for a contract.
- * User signs the approval transaction via Magic Link.
+ * Approve token spending for a contract using personal_sign (works with Magic Link).
+ * User signs a message, backend submits the approval transaction.
  * 
+ * @param tokenAddress Token contract address (EVM format)
  * @param spenderAddress Contract address to approve
  * @param amount Amount to approve (in smallest unit, e.g., 6 decimals for USDC)
  * @returns Transaction hash
  */
 export async function approveToken(
+  tokenAddress: string,
   spenderAddress: string,
   amount: string
 ): Promise<string> {
-  const signer = await getMagicSigner();
+  console.log('[approveToken] Requesting approval signature...');
   
-  // ERC-20 approve function
-  const tokenAbi = ['function approve(address spender, uint256 amount) returns (bool)'];
-  const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-  const usdcAddress = network === 'mainnet' 
-    ? '0x000000000000000000000000000000000006f89a' // Mainnet USDC
-    : '0x0000000000000000000000000000000000007daf'; // Testnet USDC (0.0.8229951)
+  // Get user info
+  const userInfo = await getUserInfo();
+  if (!userInfo?.publicAddress) {
+    throw new Error('No account found');
+  }
   
-  const tokenContract = new ethers.Contract(usdcAddress, tokenAbi, signer);
+  // Create approval message
+  const message = JSON.stringify({
+    action: 'approve',
+    token: tokenAddress,
+    spender: spenderAddress,
+    amount,
+    timestamp: Date.now(),
+  });
   
-  console.log('[approveToken] Approving', amount, 'for', spenderAddress);
+  console.log('[approveToken] Message:', message);
   
-  const tx = await tokenContract.approve(spenderAddress, amount);
-  await tx.wait();
+  // Sign message with personal_sign (works with Magic Link)
+  const signature = await signMessage(message);
   
-  console.log('[approveToken] Approval successful:', tx.hash);
+  console.log('[approveToken] Signature obtained, sending to backend...');
   
-  return tx.hash;
+  // Send to backend for execution
+  const response = await fetch('/api/bet/approve-token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userAddress: userInfo.publicAddress,
+      tokenAddress,
+      spenderAddress,
+      amount,
+      message,
+      signature,
+    }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Approval failed');
+  }
+  
+  const result = await response.json();
+  console.log('[approveToken] Approval successful:', result.txHash);
+  
+  return result.txHash;
 }
