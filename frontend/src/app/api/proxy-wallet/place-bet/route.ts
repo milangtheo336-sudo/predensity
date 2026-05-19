@@ -32,6 +32,13 @@ const PREDICTION_MARKET_ABI = [
 ];
 
 export async function POST(request: NextRequest) {
+  // Per-request local — previously this lived on `global`, which meant two
+  // concurrent `/api/proxy-wallet/place-bet` calls would stomp on each
+  // other's pre-bet balance and the response could echo the wrong wallet's
+  // computed `exactNewBalance`. Keep it local so each request's state is
+  // isolated to its own closure.
+  let preBetBalanceUsdc: number | null = null;
+
   try {
     const body = await request.json();
     const {
@@ -217,7 +224,7 @@ export async function POST(request: NextRequest) {
       }
       
       // We store the absolute truth pre-bet balance here so we can return the exact computed post-bet balance
-      (global as any)._tempPreBetBalance = balanceUsdc;
+      preBetBalanceUsdc = balanceUsdc;
     } catch (error: any) {
       if (error.message.includes('Insufficient USDC')) {
         throw error;
@@ -225,7 +232,7 @@ export async function POST(request: NextRequest) {
       console.error('[proxy-place-bet] Balance check error:', error);
       // Continue anyway - let the contract revert if insufficient balance
       console.log('[proxy-place-bet] Skipping balance check, will let contract handle it');
-      (global as any)._tempPreBetBalance = null;
+      preBetBalanceUsdc = null;
     }
 
     const tx = await new ContractExecuteTransaction()
@@ -267,9 +274,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Safely deduct the exact staked amount from the pre-bet balance so frontend can skip waiting for mirror node
-    const preBalance = (global as any)._tempPreBetBalance;
-    const computedNewBalance = preBalance !== null && preBalance !== undefined 
-      ? Math.max(0, preBalance - parseFloat(stakeUsdc))
+    const computedNewBalance = preBetBalanceUsdc !== null
+      ? Math.max(0, preBetBalanceUsdc - parseFloat(stakeUsdc))
       : undefined;
 
     return NextResponse.json({
