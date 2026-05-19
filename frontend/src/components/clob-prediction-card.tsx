@@ -12,7 +12,7 @@ import { useMagic } from '@/context/MagicContext';
 import { useWalletUser } from '@/context/WalletUserContext';
 import { signTypedData, getDIDToken } from '@/lib/magic';
 import { api } from '../../convex/_generated/api';
-import { useBalanceVisibility } from '@/components/header';
+import { useBalanceVisibility, useDepositModal } from '@/components/header';
 import { useBlockchainBalance } from '@/hooks/useBlockchainBalance';
 import BoringAvatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
@@ -765,6 +765,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const isSignedIn = !!user || !!walletUser;
   const effectiveIssuer = user?.issuer ?? walletUser?.userId;
   const { balancesHidden } = useBalanceVisibility();
+  const { openDeposit } = useDepositModal();
 
   // Market data
   const market = useConvexQuery(api.clob.getClobMarket, { marketId });
@@ -1747,8 +1748,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
               {/* CTA Button */}
               <button
-                onClick={handlePlaceOrder}
-                disabled={!isSignedIn || !orderPrice || !orderQuantity || isPlacing || isResolved || market.eliminatedOutcomes?.includes(selectedOutcome)}
+                onClick={platformBalance === 0 && isSignedIn ? openDeposit : handlePlaceOrder}
+                disabled={platformBalance === 0 && isSignedIn ? false : (!isSignedIn || !orderPrice || !orderQuantity || isPlacing || isResolved || market.eliminatedOutcomes?.includes(selectedOutcome))}
                 className="block w-[calc(100%-32px)] mx-4 mb-4 py-3.5 bg-black dark:bg-black hover:bg-gray-800 dark:hover:bg-gray-800 text-white dark:text-white rounded-2xl text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isPlacing ? (
