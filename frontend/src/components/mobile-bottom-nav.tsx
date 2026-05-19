@@ -80,9 +80,9 @@ export function MobileBottomNav() {
                 onClick={() => setMoreOpen(false)}
                 className="flex items-center gap-4 py-4 text-white w-full text-left"
               >
+                {/* Crown icon */}
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M8 21V10M12 21V3M16 21v-7" />
-                  <path d="M6 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1H6V7z" />
+                  <path d="M2 19h20M4 19l2-9 5 4 3-7 3 7 5-4 2 9" />
                 </svg>
                 <span className="text-lg font-medium">Leaderboard</span>
               </button>
