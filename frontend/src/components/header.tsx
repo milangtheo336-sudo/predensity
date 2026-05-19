@@ -1989,6 +1989,32 @@ export function Header({ children }: { children?: React.ReactNode }) {
               </div>,
               document.body
             )}
+
+            {/* Wallet sign-in authenticating overlay — same design as Magic */}
+            {isWalletAuthenticating && mounted && createPortal(
+              <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                <div className="bg-[#1a1a1c] rounded-3xl shadow-2xl border border-white/10 w-[480px] max-w-[90vw] p-16">
+                  <div className="text-center">
+                    <div className="mb-8 flex justify-center">
+                      <div className="relative w-32 h-32 flex items-center justify-center">
+                        <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="opacity-80">
+                          <rect x="2" y="5" width="20" height="14" rx="2"/>
+                          <path d="M2 10h20"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mb-3">
+                      Setting up your account...
+                    </h2>
+                    <p className="text-gray-400 text-base">
+                      Please wait as we set up your wallet.
+                    </p>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )}
           </div>
 
           {/* Mobile: Profile avatar when signed in, Login/Signup when not */}
