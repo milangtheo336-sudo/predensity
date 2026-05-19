@@ -1161,10 +1161,10 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                               setOrderBookSide('yes');
                               setShowMobileTradingModal(true);
                             }}
-                            className={`flex-1 py-3.5 text-center text-base font-bold rounded-xl transition-colors ${
+                            className={`flex-1 py-3 text-center text-base font-bold rounded-lg transition-colors ${
                               selectedOutcome === i && orderSide === 'buy'
-                                ? 'text-white bg-[#3fdc8c]'
-                                : 'text-[#3fdc8c] bg-[#0d2818] hover:bg-[#0e3020]'
+                                ? 'text-white bg-[#16a34a]'
+                                : 'text-[#22c55e] bg-[#0a2818] hover:bg-[#0d3020]'
                             }`}
                           >
                             Yes {o.price}¢
@@ -1176,10 +1176,10 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                               setOrderBookSide('no');
                               setShowMobileTradingModal(true);
                             }}
-                            className={`flex-1 py-3.5 text-center text-base font-bold rounded-xl transition-colors ${
+                            className={`flex-1 py-3 text-center text-base font-bold rounded-lg transition-colors ${
                               selectedOutcome === i && orderSide === 'sell'
-                                ? 'text-white bg-[#ff6b35]'
-                                : 'text-[#ff6b35] bg-[#2d1410] hover:bg-[#3d1810]'
+                                ? 'text-white bg-[#ef4444]'
+                                : 'text-white bg-[#ea580c] hover:bg-[#dc2626]'
                             }`}
                           >
                             No {(100 - o.price).toFixed(1)}¢
@@ -1245,20 +1245,16 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                                 {/* Order book header */}
                                 <div className="flex items-center justify-between mb-3">
                                   <span className="text-sm font-bold text-white">Order Book</span>
-                                  <span className="flex items-center gap-1 text-xs text-[#4a9eff]">
-                                    <span className="text-[13px]">💎</span> MM Rewards
-                                    <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-[#888888] text-[9px] text-[#888888]">i</span>
-                                  </span>
                                 </div>
 
                                 {/* YES/NO toggle */}
-                                <div className="flex w-fit mb-3 bg-[#1c1c1c] rounded-lg overflow-hidden border border-[#2a2a2a]">
+                                <div className="flex w-fit mb-3 bg-[#1a1a1a] rounded-full p-0.5 border border-[#2a2a2a]">
                                   <button 
                                     onClick={() => {
                                       setOrderBookSide('yes');
                                       setOrderSide('buy');
                                     }} 
-                                    className={`px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${orderBookSide === 'yes' ? 'bg-white text-black' : 'text-[#888888] hover:text-white'}`}
+                                    className={`px-6 py-1.5 text-xs font-bold rounded-full transition-colors ${orderBookSide === 'yes' ? 'bg-[#2a2a2a] text-white' : 'text-[#888888] hover:text-white'}`}
                                   >
                                     YES
                                   </button>
@@ -1267,7 +1263,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                                       setOrderBookSide('no');
                                       setOrderSide('sell');
                                     }} 
-                                    className={`px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${orderBookSide === 'no' ? 'bg-white text-black' : 'text-[#888888] hover:text-white'}`}
+                                    className={`px-6 py-1.5 text-xs font-bold rounded-full transition-colors ${orderBookSide === 'no' ? 'bg-[#2a2a2a] text-white' : 'text-[#888888] hover:text-white'}`}
                                   >
                                     NO
                                   </button>
