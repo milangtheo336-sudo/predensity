@@ -255,6 +255,20 @@ export default defineSchema({
     .index("by_hedera_id", ["hederaAccountId"])
     .index("by_evm_address", ["evmAddress"]),
 
+  // Idempotency log for M-Pesa -> USDC bridging. One row per Safaricom
+  // MpesaReceiptNumber (for deposits) or ConversationID (for B2C refunds).
+  // Presence of a row means the bridge/refund already ran; never run twice.
+  mpesaBridges: defineTable({
+    // Unique key. For STK deposits: MpesaReceiptNumber. For B2C refunds: ConversationID.
+    idempotencyKey: v.string(),
+    kind: v.string(), // "deposit_bridge" | "b2c_refund"
+    proxyWalletAddress: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    amountUSDC: v.string(),
+    transactionId: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_key", ["idempotencyKey"]),
+
   // M-Pesa transactions (deposits via STK Push, withdrawals via B2C)
   mpesaTransactions: defineTable({
     phoneNumber: v.string(),

@@ -777,7 +777,24 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   // Auto-repair: reassign operator-address bets to the managed user.
   // This runs once when the page loads and the user has a managed wallet
   // but no bets are showing (bets are stored under the operator EVM address).
-  const reassignOperatorBets = useConvexMutation(api.sync.reassignOperatorBets);
+  // reassignOperatorBets is now gated by a server-token check in Convex, so
+  // we call it through a user-authenticated admin API route that enforces
+  // `requireAuthMatchingUser(userId)` server-side.
+  const reassignOperatorBets = async (input: { operatorAddress: string; userId: string }) => {
+    const { getDIDToken } = await import('@/lib/magic');
+    const didToken = await getDIDToken();
+    const res = await fetch('/api/admin/sync/reassign-operator-bets', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${didToken}`,
+      },
+      body: JSON.stringify(input),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'reassign-operator-bets failed');
+    return data;
+  };
   const fixBetAssets = useConvexMutation(api.sync.fixBetAssets);
   const fixBetBuckets = useConvexMutation(api.sync.fixBetBuckets);
   const [repairAttempted, setRepairAttempted] = useState(false);

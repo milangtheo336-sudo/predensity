@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 import { requireAuth, rateLimit, validateNumericRange } from '@/lib/api-auth';
+import { getServerConvex } from '@/lib/convex-server';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
 // Safaricom Daraja API credentials
 const CONSUMER_KEY = process.env.MPESA_CONSUMER_KEY || '';
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Store pending transaction in Convex
-    await convex.mutation(api.users.createMpesaDeposit, {
+    await convex.adminMutation(api.users.createMpesaDeposit, {
       phoneNumber,
       amountKES: Math.round(amountKES),
       merchantRequestId: stkData.MerchantRequestID,

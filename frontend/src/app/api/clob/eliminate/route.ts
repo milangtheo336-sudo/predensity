@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConvexHttpClient } from 'convex/browser';
 import { requireAdmin } from '@/lib/api-auth';
 import { api } from '../../../../../convex/_generated/api';
+import { getServerConvex } from '@/lib/convex-server';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
 /**
  * POST: Eliminate an outcome (progressive resolution)
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing marketId or outcomeIndex' }, { status: 400 });
     }
 
-    await convex.mutation(api.clob.eliminateOutcome, {
+    await convex.adminMutation(api.clob.eliminateOutcome, {
       marketId,
       outcomeIndex: Number(outcomeIndex),
     });
@@ -48,7 +48,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Missing marketId or outcomeIndex' }, { status: 400 });
     }
 
-    await convex.mutation(api.clob.unEliminateOutcome, {
+    await convex.adminMutation(api.clob.unEliminateOutcome, {
       marketId,
       outcomeIndex: Number(outcomeIndex),
     });

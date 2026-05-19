@@ -179,14 +179,93 @@ contract SimpleProxyWallet {
         session.spentToday += amount;
     }
     
+    // ERC-20 / HTS selectors we know how to decode for limit enforcement.
+    bytes4 private constant SELECTOR_APPROVE       = 0x095ea7b3; // approve(address,uint256)
+    bytes4 private constant SELECTOR_TRANSFER      = 0xa9059cbb; // transfer(address,uint256)
+    bytes4 private constant SELECTOR_TRANSFER_FROM = 0x23b872dd; // transferFrom(address,address,uint256)
+    bytes4 private constant SELECTOR_HTS_TRANSFER  = 0xeca36917; // transferToken(address,address,address,int64)
+
+    /**
+     * Decode the value/amount field of a known ERC-20 / HTS call.
+     *
+     * Returns (amount, recipient). `recipient` is address(0) for `approve`
+     * and HTS transfers where the recipient field is the pre-transfer sink
+     * we already trust (the prediction contract passed in as `target`).
+     *
+     * Reverts if the selector isn't one we can audit — we refuse to run
+     * unknown calldata under a session key because a bad selector with an
+     * unbounded `uint256` field would let a delegate drain funds without
+     * ever touching `_checkAndUpdateDailyLimit`.
+     */
+    function _decodeERC20Amount(bytes calldata data)
+        internal
+        pure
+        returns (uint256 amount, address recipient)
+    {
+        require(data.length >= 4, "Calldata too short");
+        bytes4 selector = bytes4(data[:4]);
+
+        if (selector == SELECTOR_APPROVE) {
+            // approve(address spender, uint256 amount)
+            require(data.length >= 4 + 32 + 32, "Bad approve calldata");
+            address spender;
+            assembly {
+                spender := calldataload(add(data.offset, 4))
+                amount  := calldataload(add(data.offset, 36))
+            }
+            return (amount, spender);
+        }
+        if (selector == SELECTOR_TRANSFER) {
+            // transfer(address to, uint256 amount)
+            require(data.length >= 4 + 32 + 32, "Bad transfer calldata");
+            address to;
+            assembly {
+                to     := calldataload(add(data.offset, 4))
+                amount := calldataload(add(data.offset, 36))
+            }
+            return (amount, to);
+        }
+        if (selector == SELECTOR_TRANSFER_FROM) {
+            // transferFrom(address from, address to, uint256 amount)
+            require(data.length >= 4 + 32 + 32 + 32, "Bad transferFrom calldata");
+            address to;
+            assembly {
+                to     := calldataload(add(data.offset, 36))
+                amount := calldataload(add(data.offset, 68))
+            }
+            return (amount, to);
+        }
+        if (selector == SELECTOR_HTS_TRANSFER) {
+            // transferToken(address token, address from, address to, int64 amount)
+            require(data.length >= 4 + 32 * 4, "Bad HTS transfer calldata");
+            int64 amt;
+            address to;
+            assembly {
+                to  := calldataload(add(data.offset, 68))
+                amt := calldataload(add(data.offset, 100))
+            }
+            require(amt > 0, "HTS amount must be positive");
+            return (uint256(uint64(amt)), to);
+        }
+        revert("Selector not allowed for session keys");
+    }
+
     /**
      * Execute a transaction on behalf of this wallet.
      * Can be called by owner OR valid session key delegate (with restrictions).
-     * 
+     *
      * Session keys can only:
-     * - Call whitelisted contracts (prediction markets)
-     * - Within their spending limits
-     * - Cannot withdraw funds
+     * - Call whitelisted contracts
+     * - Using a known ERC-20/HTS selector (approve/transfer/transferFrom/HTS transferToken)
+     * - With the recipient/spender itself whitelisted, so funds cannot be
+     *   swept to an arbitrary attacker address even if the token contract
+     *   happens to be whitelisted.
+     * - Within their per-tx and daily spending limits
+     * - Cannot send native tokens
+     *
+     * For calling arbitrary prediction-market functions (e.g. placeBet), delegates
+     * MUST use `executeBet()`, which takes the bet amount explicitly so the
+     * daily cap can be enforced against the real value at stake.
      */
     function execute(
         address target,
@@ -198,12 +277,21 @@ contract SimpleProxyWallet {
             require(isValidDelegate(msg.sender), "Invalid session key");
             require(whitelistedContracts[target], "Contract not whitelisted");
             require(value == 0, "Session keys cannot send native tokens");
-            
-            // Check spending limits (approximate USDC value)
-            // In production, you'd decode the calldata to get exact amount
-            _checkAndUpdateDailyLimit(msg.sender, value);
+
+            // Decode the ERC-20/HTS amount from calldata and charge it
+            // against the daily + per-tx limits. Unknown selectors revert.
+            (uint256 amount, address recipient) = _decodeERC20Amount(data);
+
+            // For transfer/transferFrom/HTS, restrict the recipient to a
+            // whitelisted contract so a compromised session key can't
+            // redirect USDC out of the proxy to an attacker-owned address.
+            // For approve, the "recipient" is the spender — also must be
+            // whitelisted.
+            require(whitelistedContracts[recipient], "Recipient not whitelisted");
+
+            _checkAndUpdateDailyLimit(msg.sender, amount);
         }
-        
+
         (bool success, bytes memory result) = target.call{value: value}(data);
         require(success, "Execution failed");
         emit Executed(target, value, data);

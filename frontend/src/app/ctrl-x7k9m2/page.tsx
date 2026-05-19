@@ -64,7 +64,22 @@ function EventResolutionSection({ category, contractId }: EventResolutionSection
   const { writeContract } = useWriteContract();
   const { watch } = useWatchTransactionReceipt();
   const { toast } = useToast();
-  const resolveEventMutation = useMutation(api.events.resolveEvent);
+  // Gated Convex mutation; proxied through admin API route that enforces requireAdmin().
+  const resolveEventMutation = async (input: { eventId: string; actualValue: number }) => {
+    const { getDIDToken } = await import('@/lib/magic');
+    const didToken = await getDIDToken();
+    const res = await fetch('/api/admin/events/resolve', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${didToken}`,
+      },
+      body: JSON.stringify(input),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'resolve-event failed');
+    return data.id;
+  };
   
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [resolutionValue, setResolutionValue] = useState<string>('');
@@ -950,7 +965,22 @@ function AdminPage() {
   const { readContract } = useReadContract();
 
   // Convex mutations
-  const createEventMutation = useMutation(api.events.createEvent);
+  // Gated Convex mutation; proxied through admin API route that enforces requireAdmin().
+  const createEventMutation = async (input: any) => {
+    const { getDIDToken } = await import('@/lib/magic');
+    const didToken = await getDIDToken();
+    const res = await fetch('/api/admin/events/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${didToken}`,
+      },
+      body: JSON.stringify(input),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'create-event failed');
+    return data.eventId;
+  };
 
   // Toast notifications
   const { toast } = useToast();
@@ -1001,9 +1031,57 @@ function AdminPage() {
     imageUrl: '',
     description: '',
   });
-  const createCryptoMarketMutation = useMutation(api.events.createCryptoMarket);
-  const finalizeBetsMutation = useMutation(api.sync.finalizeBetsForBucket);
-  const updateBetOnChainIdMutation = useMutation(api.sync.updateBetOnChainId);
+  // Gated Convex mutation; proxied through admin API route that enforces requireAdmin().
+  const createCryptoMarketMutation = async (input: any) => {
+    const { getDIDToken } = await import('@/lib/magic');
+    const didToken = await getDIDToken();
+    const res = await fetch('/api/admin/events/create-crypto-market', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${didToken}`,
+      },
+      body: JSON.stringify(input),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'create-crypto-market failed');
+    return data;
+  };
+
+  // Gated Convex mutations are proxied through admin API routes that enforce
+  // requireAdmin() on the server. The helpers below keep the same call shape
+  // as the original useMutation hooks so downstream call sites don't change.
+  const finalizeBetsMutation = async (input: any) => {
+    const { getDIDToken } = await import('@/lib/magic');
+    const didToken = await getDIDToken();
+    const res = await fetch('/api/admin/sync/finalize-bets', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${didToken}`,
+      },
+      body: JSON.stringify(input),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'finalize-bets failed');
+    return data;
+  };
+
+  const updateBetOnChainIdMutation = async (input: any) => {
+    const { getDIDToken } = await import('@/lib/magic');
+    const didToken = await getDIDToken();
+    const res = await fetch('/api/admin/sync/update-bet-onchain-id', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${didToken}`,
+      },
+      body: JSON.stringify(input),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'update-bet-onchain-id failed');
+    return data;
+  };
 
   // Protocol fee state
   const [feeData, setFeeData] = useState<Record<string, { fees: string; balance: string; isOwner: boolean; loading: boolean }>>({});

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireServerToken } from "./_lib/auth";
 
 // Create a new event
 export const createEvent = mutation({
@@ -18,8 +19,10 @@ export const createEvent = mutation({
     sportType: v.optional(v.string()),
     company: v.optional(v.string()),
     decimals: v.optional(v.number()),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const eventId = await ctx.db.insert("events", {
       eventId: args.eventId,
       category: args.category,
@@ -103,8 +106,10 @@ export const resolveEvent = mutation({
   args: {
     eventId: v.string(),
     actualValue: v.number(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const event = await ctx.db
       .query("events")
       .withIndex("by_event_id", (q) => q.eq("eventId", args.eventId))
@@ -159,8 +164,10 @@ export const createCryptoMarket = mutation({
     imageUrl: v.string(),
     description: v.string(),
     contractId: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const symbol = args.tokenSymbol.trim();
     const marketId = `crypto-${symbol.toLowerCase()}`;
     
@@ -221,8 +228,10 @@ export const updateCryptoMarketStats = mutation({
     marketId: v.string(),
     activeBets: v.number(),
     totalVolume: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const market = await ctx.db
       .query("cryptoMarkets")
       .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
@@ -246,8 +255,10 @@ export const toggleCryptoMarketStatus = mutation({
   args: {
     marketId: v.string(),
     isActive: v.boolean(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const market = await ctx.db
       .query("cryptoMarkets")
       .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
@@ -267,8 +278,9 @@ export const toggleCryptoMarketStatus = mutation({
 
 // Repair: trim whitespace from all crypto market fields (marketId, tokenSymbol, tokenName)
 export const trimCryptoMarketFields = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { _serverToken: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const all = await ctx.db.query("cryptoMarkets").collect();
     let fixed = 0;
     for (const m of all) {
@@ -293,8 +305,10 @@ export const updateCryptoMarketContractId = mutation({
   args: {
     marketId: v.string(),
     contractId: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const market = await ctx.db
       .query("cryptoMarkets")
       .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
@@ -335,8 +349,10 @@ export const upsertForecast = mutation({
     belowThresholdPct: v.number(),
     totalWeight: v.number(),
     betCount: v.number(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const existing = await ctx.db
       .query("forecasts")
       .withIndex("by_event_id", (q) => q.eq("eventId", args.eventId))
@@ -405,8 +421,10 @@ export const appendForecastSnapshot = mutation({
     pointEstimate: v.number(),
     betCount: v.number(),
     totalWeight: v.number(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     return await ctx.db.insert("forecastHistory", {
       eventId: args.eventId,
       timestamp: args.timestamp,

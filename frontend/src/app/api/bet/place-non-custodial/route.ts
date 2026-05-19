@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 import { CONTRACT_IDS, CONTRACT_ADDRESSES, getStakingCurrency } from '@/lib/contracts/contract-config';
 import { requireAuthMatchingUser, rateLimit, validateNumericRange } from '@/lib/api-auth';
 import { Category } from '@/lib/types/categories';
+import { getServerConvex } from '@/lib/convex-server';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
 /**
  * POST /api/bet/place-non-custodial
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
 
     // Record the bet in Convex
     const betId = `noncustodial-${Date.now()}`;
-    await convex.mutation(api.sync.createBet, {
+    await convex.adminMutation(api.sync.createBet, {
       betId,
       marketId: contractAddress.toLowerCase(),
       userAddress: (wallet as any).magicEOAAddress?.toLowerCase() || wallet.evmAddress.toLowerCase(),

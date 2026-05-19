@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConvexHttpClient } from 'convex/browser';
 import { rateLimit, validateNumericRange } from '@/lib/api-auth';
 import { api } from '../../../../../convex/_generated/api';
+import { getServerConvex } from '@/lib/convex-server';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
 // Bot API key for backend bots (market maker, operator, etc.)
 const BOT_API_KEY = process.env.BOT_API_KEY || '';
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     if (qtyError) return NextResponse.json({ error: qtyError }, { status: 400 });
 
     // Place order (no signature required for bot orders)
-    const orderId = await convex.mutation(api.clob.placeOrder, {
+    const orderId = await convex.adminMutation(api.clob.placeOrder, {
       marketId,
       userId,
       outcomeIndex: Number(outcomeIndex),
@@ -81,7 +81,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Missing userId or orderId' }, { status: 400 });
     }
 
-    await convex.mutation(api.clob.cancelOrder, { orderId, userId });
+    await convex.adminMutation(api.clob.cancelOrder, { orderId, userId });
     
     return NextResponse.json({ success: true });
   } catch (error) {

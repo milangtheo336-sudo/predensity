@@ -19,8 +19,8 @@ import {
   ContractFunctionParameters,
   ContractId,
 } from '@hashgraph/sdk';
-import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
+import { getServerConvex } from '@/lib/convex-server';
 
 const PROXY_WALLET_ABI = [
   'function executeBetWithSignature(address predictionContract, uint256 betAmount, bytes calldata betData, string calldata message, bytes calldata signature) external returns (bytes memory)',
@@ -241,12 +241,12 @@ export async function POST(request: NextRequest) {
 
     // 7. Record bet in Convex database
     try {
-      const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-      
+      const convex = getServerConvex();
+
       // Generate unique bet ID using transaction hash to prevent duplicate DB entries attacks
       const betId = `bet-${tx.transactionId.toString()}`;
-      
-      await convex.mutation(api.sync.createBet, {
+
+      await convex.adminMutation(api.sync.createBet, {
         betId,
         marketId: predictionContract.toLowerCase(),
         userAddress: `managed:${userAddress}`.toLowerCase(), // SECURITY FIX: strictly tie it to signed userAddress instead of unauthenticated userId

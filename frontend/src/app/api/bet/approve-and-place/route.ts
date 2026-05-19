@@ -41,7 +41,15 @@ const USDC_TOKEN_ID = '0.0.8229951';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Request body is not valid JSON' },
+        { status: 400 }
+      );
+    }
     const {
       userAddress,
       userSignature,
@@ -53,7 +61,18 @@ export async function POST(request: NextRequest) {
       stakeUsdc,
       asset,
       userId,
-    } = body;
+    } = body || {};
+
+    if (
+      typeof userAddress !== 'string' ||
+      typeof userSignature !== 'string' ||
+      typeof message !== 'string'
+    ) {
+      return NextResponse.json(
+        { error: 'Missing required fields: userAddress, userSignature, message' },
+        { status: 400 }
+      );
+    }
 
     console.log('[approve-and-place] Request:', { userAddress, category, stakeUsdc });
 
@@ -68,8 +87,29 @@ export async function POST(request: NextRequest) {
 
     console.log('[approve-and-place] Signature verified');
 
-    // 2. Parse message to extract bet details and verify they match
-    const messageData = JSON.parse(message.split('Bet Details: ')[1]);
+    // 2. Parse message to extract bet details and verify they match.
+    //    Wrap JSON.parse — an attacker could craft `message` that lacks the
+    //    "Bet Details: " marker or contains invalid JSON, which would throw
+    //    and surface through the generic 500 path. Fail cleanly with 400.
+    const marker = 'Bet Details: ';
+    const markerIdx = typeof message === 'string' ? message.indexOf(marker) : -1;
+    if (markerIdx < 0) {
+      return NextResponse.json(
+        { error: 'Signed message missing Bet Details payload' },
+        { status: 400 }
+      );
+    }
+
+    let messageData: any;
+    try {
+      messageData = JSON.parse(message.slice(markerIdx + marker.length));
+    } catch {
+      return NextResponse.json(
+        { error: 'Signed message payload is not valid JSON' },
+        { status: 400 }
+      );
+    }
+
     if (
       messageData.stakeUsdc !== stakeUsdc ||
       messageData.category !== category ||
@@ -78,6 +118,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Message data does not match request' },
         { status: 400 }
+      );
+    }
+
+    // 2a. Replay protection: the signed message MUST include a `signedAt`
+    //     (unix ms) and `userAddress`. Reject signatures older than 5 min
+    //     or dated more than 60 s in the future (clock skew grace), and
+    //     require the signed address matches the on-request address so
+    //     a captured signature can't be replayed against another wallet.
+    const signedAt = Number(messageData.signedAt);
+    const signedFor = messageData.userAddress;
+    if (!Number.isFinite(signedAt)) {
+      return NextResponse.json(
+        { error: 'Signed message missing signedAt timestamp' },
+        { status: 400 }
+      );
+    }
+    const now = Date.now();
+    const MAX_AGE_MS = 5 * 60 * 1000;
+    const MAX_SKEW_MS = 60 * 1000;
+    if (signedAt > now + MAX_SKEW_MS || now - signedAt > MAX_AGE_MS) {
+      return NextResponse.json(
+        { error: 'Signature expired — please sign again' },
+        { status: 401 }
+      );
+    }
+    if (
+      typeof signedFor !== 'string' ||
+      signedFor.toLowerCase() !== String(userAddress).toLowerCase()
+    ) {
+      return NextResponse.json(
+        { error: 'Signed userAddress does not match request' },
+        { status: 401 }
       );
     }
 

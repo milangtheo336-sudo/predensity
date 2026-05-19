@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 import { requireAdmin, rateLimit } from '@/lib/api-auth';
 import {
@@ -10,8 +9,9 @@ import {
 } from '@hashgraph/sdk';
 import { ethers } from 'ethers';
 import { getClobExchangeContractId } from '@/lib/contracts/contract-config';
+import { getServerConvex } from '@/lib/convex-server';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
 const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || process.env.NEXT_PUBLIC_OPERATOR_ID || '';
 const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || process.env.OPERATOR_PRIVATE_KEY || '';
@@ -82,7 +82,7 @@ async function settleTradeWithRetry(
     try {
       if (attempt > 0) {
         await sleep(Math.pow(2, attempt) * 1000); // 2s, 4s, 8s
-        await convex.mutation(api.clob.incrementTradeRetry, { tradeId: trade.tradeId });
+        await convex.adminMutation(api.clob.incrementTradeRetry, { tradeId: trade.tradeId });
       }
 
       const tx = new ContractExecuteTransaction()
@@ -102,7 +102,7 @@ async function settleTradeWithRetry(
     } catch {
       if (attempt === MAX_RETRIES) {
         // Exhausted retries
-        await convex.mutation(api.clob.markTradeSettlementFailed, {
+        await convex.adminMutation(api.clob.markTradeSettlementFailed, {
           tradeId: trade.tradeId,
           retries: currentRetries + attempt + 1,
         });
@@ -111,7 +111,7 @@ async function settleTradeWithRetry(
     }
   }
 
-  await convex.mutation(api.clob.markTradeSettlementFailed, {
+  await convex.adminMutation(api.clob.markTradeSettlementFailed, {
     tradeId: trade.tradeId,
     retries: currentRetries + MAX_RETRIES + 1,
   });
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
       const result = await settleTradeWithRetry(trade, exchangeContractId, client, operatorKey);
 
       if (result.success && result.txHash) {
-        await convex.mutation(api.clob.markTradeSettled, {
+        await convex.adminMutation(api.clob.markTradeSettled, {
           tradeId: trade.tradeId,
           txHash: result.txHash,
         });

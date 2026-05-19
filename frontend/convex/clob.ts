@@ -7,6 +7,7 @@
 
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireServerToken } from "./_lib/auth";
 
 // =========================================================================
 // MARKET MANAGEMENT
@@ -28,18 +29,22 @@ export const createClobMarket = mutation({
     sportType: v.optional(v.string()),
     outcomeTokenAddresses: v.optional(v.array(v.string())),
     onChainMarketId: v.optional(v.number()),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
+    const { _serverToken, ...data } = args;
+
     // Check for duplicate
     const existing = await ctx.db
       .query("clobMarkets")
-      .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
+      .withIndex("by_market_id", (q) => q.eq("marketId", data.marketId))
       .first();
     if (existing) throw new Error("Market already exists");
 
     return await ctx.db.insert("clobMarkets", {
-      ...args,
-      numOutcomes: args.outcomeNames.length,
+      ...data,
+      numOutcomes: data.outcomeNames.length,
       resolved: false,
       totalVolume: 0,
       status: "open",
@@ -92,8 +97,10 @@ export const placeOrder = mutation({
     side: v.string(), // "buy" or "sell"
     price: v.number(), // cents (1-99)
     quantity: v.number(), // number of shares
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     // Validate
     if (args.side !== "buy" && args.side !== "sell") throw new Error("Invalid side");
     if (args.price < 1 || args.price > 99) throw new Error("Price must be 1-99 cents");
@@ -180,8 +187,10 @@ export const cancelOrder = mutation({
   args: {
     orderId: v.string(),
     userId: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const order = await ctx.db
       .query("clobOrders")
       .filter((q) => q.eq(q.field("orderId"), args.orderId))
@@ -235,8 +244,10 @@ export const batchCancelOrders = mutation({
   args: {
     userId: v.string(),
     orderIds: v.array(v.string()),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     let cancelled = 0;
     let failed = 0;
     const errors: string[] = [];
@@ -685,8 +696,10 @@ export const markTradeSettled = mutation({
   args: {
     tradeId: v.string(),
     txHash: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const trade = await ctx.db
       .query("clobTrades")
       .filter((q) => q.eq(q.field("tradeId"), args.tradeId))
@@ -705,8 +718,10 @@ export const markTradeSettlementFailed = mutation({
   args: {
     tradeId: v.string(),
     retries: v.number(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const trade = await ctx.db
       .query("clobTrades")
       .filter((q) => q.eq(q.field("tradeId"), args.tradeId))
@@ -722,8 +737,9 @@ export const markTradeSettlementFailed = mutation({
 
 // Increment retry count on a trade
 export const incrementTradeRetry = mutation({
-  args: { tradeId: v.string() },
+  args: { tradeId: v.string(), _serverToken: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const trade = await ctx.db
       .query("clobTrades")
       .filter((q) => q.eq(q.field("tradeId"), args.tradeId))
@@ -778,8 +794,10 @@ export const eliminateOutcome = mutation({
   args: {
     marketId: v.string(),
     outcomeIndex: v.number(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const market = await ctx.db
       .query("clobMarkets")
       .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
@@ -880,8 +898,10 @@ export const resolveClobMarket = mutation({
   args: {
     marketId: v.string(),
     winningOutcome: v.number(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const market = await ctx.db
       .query("clobMarkets")
       .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
@@ -1001,8 +1021,10 @@ export const unEliminateOutcome = mutation({
   args: {
     marketId: v.string(),
     outcomeIndex: v.number(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const market = await ctx.db
       .query("clobMarkets")
       .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
@@ -1028,8 +1050,10 @@ export const unEliminateOutcome = mutation({
 export const unResolveMarket = mutation({
   args: {
     marketId: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const market = await ctx.db
       .query("clobMarkets")
       .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
@@ -1088,8 +1112,9 @@ export const checkNonce = query({
 });
 
 export const markNonceUsed = mutation({
-  args: { userId: v.string(), nonce: v.number() },
+  args: { userId: v.string(), nonce: v.number(), _serverToken: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     await ctx.db.insert("orderNonces", {
       userId: args.userId,
       nonce: args.nonce,

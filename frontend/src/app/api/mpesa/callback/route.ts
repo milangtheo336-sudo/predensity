@@ -1,29 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
+import { rejectIfNotSafaricom, signInternalPayload } from '@/lib/mpesa-security';
+import { getServerConvex } from '@/lib/convex-server';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
-// KES to USDC exchange rate
+// KES to USDC exchange rate (fallback only -- TODO: fetch live rate)
 const KES_TO_USDC_RATE = parseFloat(process.env.KES_TO_USDC_RATE || '0.0077');
-
-// Optional shared secret for callback validation.
-// Set MPESA_CALLBACK_SECRET in env and append ?secret=<value> to the callback URL
-// registered with Safaricom to prevent spoofed callbacks.
-const CALLBACK_SECRET = process.env.MPESA_CALLBACK_SECRET || '';
 
 // STK Push callback from Safaricom
 export async function POST(request: NextRequest) {
   try {
-    // Validate callback secret if configured
-    if (CALLBACK_SECRET) {
-      const url = new URL(request.url);
-      const secret = url.searchParams.get('secret');
-      if (secret !== CALLBACK_SECRET) {
-        console.warn('[mpesa/callback] Invalid callback secret -- possible spoofed request');
-        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
-      }
-    }
+    // 1. Reject callbacks that don't come from Safaricom's IP range in
+    //    production. Sandbox / localhost / ngrok development is unaffected
+    //    (the helper is a no-op outside production).
+    const ipReject = rejectIfNotSafaricom(request);
+    if (ipReject) return ipReject;
+
     const body = await request.json();
     console.log('[mpesa/callback] Received:', JSON.stringify(body, null, 2));
 
@@ -32,8 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
 
-    const { MerchantRequestID, CheckoutRequestID, ResultCode, ResultDesc, CallbackMetadata } =
-      stkCallback;
+    const { CheckoutRequestID, ResultCode, ResultDesc, CallbackMetadata } = stkCallback;
 
     let mpesaReceiptNumber: string | undefined;
     let amountPaid: number | undefined;
@@ -62,8 +54,8 @@ export async function POST(request: NextRequest) {
       amountUSDC = (amountPaid * KES_TO_USDC_RATE).toFixed(6);
     }
 
-    // Update the transaction in Convex
-    const result = await convex.mutation(api.users.completeMpesaDeposit, {
+    // Update the transaction in Convex (server-gated mutation)
+    const result = await convex.adminMutation(api.users.completeMpesaDeposit, {
       checkoutRequestId: CheckoutRequestID,
       resultCode: ResultCode,
       resultDesc: ResultDesc,
@@ -71,38 +63,57 @@ export async function POST(request: NextRequest) {
       amountUSDC,
     });
 
-    // If deposit succeeded, transfer USDC from treasury to user's proxy wallet (NON-CUSTODIAL)
-    if (result.status === 'completed' && amountUSDC) {
+    // If deposit succeeded, transfer USDC from treasury to user's proxy wallet.
+    if (result.status === 'completed' && amountUSDC && mpesaReceiptNumber) {
       const normalizedPhone = phoneNumber
         ? `+${phoneNumber}`
         : `+${result.phoneNumber?.replace(/^\+/, '')}`;
 
       try {
+        // 2. Idempotency: short-circuit if we've already bridged this receipt.
+        const already = await convex.query(api.users.getMpesaBridgeByKey, {
+          idempotencyKey: mpesaReceiptNumber,
+        });
+        if (already) {
+          console.log('[mpesa/callback] Already bridged receipt', mpesaReceiptNumber);
+          return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+        }
+
         const wallet = await convex.query(api.users.getManagedWallet, {
           phoneNumber: normalizedPhone,
         });
 
         if (wallet) {
-          // Transfer USDC from treasury to user's proxy wallet
-          const transferResponse = await fetch(`${request.nextUrl.origin}/api/wallet/bridge-mpesa`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              proxyWalletAddress: (wallet as any).proxyWalletAddress,
-              amountUSDC,
-              mpesaReceiptNumber,
-            }),
+          // 3. Call the internal bridge with HMAC so /api/wallet/bridge-mpesa
+          //    can verify the caller is us and not an attacker.
+          const payload = JSON.stringify({
+            proxyWalletAddress: (wallet as any).proxyWalletAddress,
+            amountUSDC,
+            mpesaReceiptNumber,
           });
+          const signature = signInternalPayload(payload);
+
+          const transferResponse = await fetch(
+            `${request.nextUrl.origin}/api/wallet/bridge-mpesa`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-internal-signature': signature,
+              },
+              body: payload,
+            }
+          );
 
           if (!transferResponse.ok) {
-            throw new Error('USDC transfer to user wallet failed');
+            throw new Error(`USDC transfer to user wallet failed: ${transferResponse.status}`);
           }
 
           // Update cached balance in Convex
           const currentBalance = parseFloat(wallet.usdcBalance || '0');
           const newBalance = (currentBalance + parseFloat(amountUSDC)).toFixed(6);
 
-          await convex.mutation(api.users.updateWalletBalance, {
+          await convex.adminMutation(api.users.updateWalletBalance, {
             phoneNumber: normalizedPhone,
             usdcBalance: newBalance,
           });
@@ -112,16 +123,18 @@ export async function POST(request: NextRequest) {
           );
         }
       } catch (balanceError) {
-        // Log but don't fail the callback -- Safaricom needs a 200 response
+        // Log but don't fail the callback -- Safaricom needs a 200 response,
+        // or it will retry and we risk duplicate bridges. Idempotency on the
+        // bridge endpoint protects us even if a retry slips through.
         console.error('[mpesa/callback] Balance update error:', balanceError);
       }
     }
 
-    // Safaricom expects a response acknowledging receipt
+    // Safaricom expects a 200 acknowledgement
     return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
   } catch (error) {
     console.error('[mpesa/callback] Error:', error);
-    // Always return 200 to Safaricom to prevent retries on our processing errors
+    // Always return 200 to Safaricom to prevent retries on processing errors
     return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
   }
 }

@@ -347,11 +347,16 @@ contract PredensityPredictionMarket is Ownable {
      * @notice Set prices for multiple timestamps at once (only owner)
      * @param timestamps Array of target timestamps
      * @param prices Array of corresponding prices
+     * @dev Access-controlled to prevent anyone from manipulating bet outcomes.
+     *      Reverts if a price has already been set for a timestamp (no retroactive change).
+     *      Caps batch size to prevent out-of-gas griefing.
      */
-    function setPricesForTimestamps(uint256[] calldata timestamps, uint256[] calldata prices) external {
+    function setPricesForTimestamps(uint256[] calldata timestamps, uint256[] calldata prices) external onlyOwner {
         require(timestamps.length == prices.length, "Lengths must match");
+        require(timestamps.length > 0 && timestamps.length <= 500, "Invalid batch size");
         for (uint256 i = 0; i < timestamps.length; i++) {
             require(prices[i] > 0, "Price must be positive");
+            require(pricesAtTimestamp[timestamps[i]] == 0, "Price already set");
             pricesAtTimestamp[timestamps[i]] = prices[i];
             emit BucketPriceSet(timestamps[i], prices[i]);
         }
@@ -361,9 +366,12 @@ contract PredensityPredictionMarket is Ownable {
      * @notice Set price for a single timestamp (only owner)
      * @param timestamp The target timestamp
      * @param price The actual price
+     * @dev Access-controlled to prevent anyone from manipulating bet outcomes.
+     *      Reverts if a price has already been set (no retroactive change).
      */
-    function setPriceForTimestamp(uint256 timestamp, uint256 price) external {
+    function setPriceForTimestamp(uint256 timestamp, uint256 price) external onlyOwner {
         require(price > 0, "Price must be positive");
+        require(pricesAtTimestamp[timestamp] == 0, "Price already set");
         pricesAtTimestamp[timestamp] = price;
         emit BucketPriceSet(timestamp, price);
     }
