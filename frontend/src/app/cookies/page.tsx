@@ -17,7 +17,11 @@ export default function CookiePolicyPage() {
             <div>
               <p className="mb-3">
                 This Cookie Policy explains how Predensity ("Predensity," "we," "us," or "our") uses cookies and similar
-                tracking technologies on our website: https://www.predensity.com and any subdomains or mobile applications
+                tracking technologies on our website:{' '}
+                <a href="https://www.predensity.com" target="_blank" rel="noopener noreferrer" className="text-vibrant-purple hover:underline">
+                  https://www.predensity.com
+                </a>{' '}
+                and any subdomains or mobile applications
                 under Predensity's control (collectively, the "Site"). This Cookie Policy should be read together with our{' '}
                 <Link href="/privacy" className="text-vibrant-purple hover:underline">Privacy Policy</Link> and{' '}
                 <Link href="/terms" className="text-vibrant-purple hover:underline">Terms of Use</Link>. By continuing to
