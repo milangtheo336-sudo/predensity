@@ -33,6 +33,8 @@ const CONTRACT_ABI = new ethers.utils.Interface([
   'function claimBet(uint256 betId) external',
   'function getBet(uint256 betId) external view returns (tuple(address bettor, uint256 targetTimestamp, uint256 priceMin, uint256 priceMax, uint256 stake, uint256 qualityBps, uint256 weight, bool finalized, bool claimed, uint256 actualPrice, bool won, uint256 entryBandWeight, bool exited))',
   'function getContractStats() external view returns (uint256 nextBetId, uint256 totalStaked, uint256 totalFees, uint256 totalObligations)',
+  'function getBucketInfo(uint256 bucket) external view returns (uint256 totalBets, uint256 totalWinningWeight, uint256 nextProcessIndex, bool aggregationComplete)',
+  'function bucketIndex(uint256 targetTimestamp) external view returns (uint256)',
 ]);
 
 // Fee basis points -- must match the contract's FEE_BPS constant
@@ -150,8 +152,18 @@ export async function POST(request: NextRequest) {
       let numericBetId: number | null = bet.onChainBetId ?? null;
       let onChainBet: any = null;
 
+      // If no stored on-chain ID, try extracting from betId format "contractAddress-N"
+      if (numericBetId === null && betId && betId.includes('-')) {
+        const parts = betId.split('-');
+        const lastPart = parts[parts.length - 1];
+        const parsed = parseInt(lastPart, 10);
+        if (!isNaN(parsed)) {
+          numericBetId = parsed;
+        }
+      }
+
       console.log('[bet/claim] Convex bet:', {
-        betId, onChainBetId: bet.onChainBetId,
+        betId, onChainBetId: bet.onChainBetId, resolvedId: numericBetId,
         stake: bet.stake, priceMin: bet.priceMin, priceMax: bet.priceMax,
         targetTimestamp: bet.targetTimestamp,
       });
@@ -237,8 +249,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: `Bet is not finalized on-chain. Run "Submit Prices to Contract" then "processBatch" from admin page first.` }, { status: 400 });
       }
       if (onChainBet.claimed) {
+        // Already claimed on-chain -- sync Convex and return success
+        await convex.mutation(api.sync.markBetClaimed, { betId });
         client.close();
-        return NextResponse.json({ error: 'Bet has already been claimed on-chain.' }, { status: 400 });
+        return NextResponse.json({ success: true, betId, alreadyClaimed: true, payoutAmount: '0', newBalance: '' });
       }
       if (onChainBet.exited) {
         client.close();
@@ -247,6 +261,35 @@ export async function POST(request: NextRequest) {
       if (!onChainBet.won) {
         client.close();
         return NextResponse.json({ error: 'Bet did not win on-chain.' }, { status: 400 });
+      }
+
+      // Check that bucket aggregation is complete before claiming
+      try {
+        const bucketIdxData = CONTRACT_ABI.encodeFunctionData('bucketIndex', [onChainBet.targetTimestamp]);
+        const bucketIdxQuery = new ContractCallQuery()
+          .setContractId(ContractId.fromString(contractId))
+          .setGas(100000)
+          .setFunctionParameters(Buffer.from(bucketIdxData.slice(2), 'hex'));
+        const bucketIdxResult = await bucketIdxQuery.execute(client);
+        const bucketIdx = CONTRACT_ABI.decodeFunctionResult('bucketIndex', bucketIdxResult.bytes)[0];
+
+        const bucketInfoData = CONTRACT_ABI.encodeFunctionData('getBucketInfo', [bucketIdx]);
+        const bucketInfoQuery = new ContractCallQuery()
+          .setContractId(ContractId.fromString(contractId))
+          .setGas(100000)
+          .setFunctionParameters(Buffer.from(bucketInfoData.slice(2), 'hex'));
+        const bucketInfoResult = await bucketInfoQuery.execute(client);
+        const bucketInfo = CONTRACT_ABI.decodeFunctionResult('getBucketInfo', bucketInfoResult.bytes);
+        const aggregationComplete = bucketInfo[3];
+
+        if (!aggregationComplete) {
+          client.close();
+          return NextResponse.json({
+            error: 'Bucket aggregation not complete. Run "processBatch" from the admin page first.',
+          }, { status: 400 });
+        }
+      } catch (bucketErr) {
+        console.warn('[bet/claim] Could not check bucket aggregation:', bucketErr);
       }
 
       // Execute claimBet on-chain
@@ -264,7 +307,7 @@ export async function POST(request: NextRequest) {
       console.log('[bet/claim] Claim tx status:', receipt.status.toString());
 
       if (receipt.status.toString() !== 'SUCCESS') {
-        throw new Error(`Claim failed: ${receipt.status}`);
+        throw new Error(`Claim transaction reverted. This usually means processBatch has not been run for this bucket. Go to admin and run processBatch first.`);
       }
 
       const transactionId = response.transactionId.toString();
