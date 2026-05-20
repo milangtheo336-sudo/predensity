@@ -18,7 +18,14 @@ import { Calendar, RefreshCw } from 'lucide-react';
 import type { Bet } from '@/lib/types';
 import { Category, CATEGORIES } from '@/lib/types/categories';
 import { SPORT_TAXONOMY, getSport } from '@/lib/types/sports';
-import { FINANCE_TAXONOMY } from '@/lib/types/finance';
+import {
+  FINANCE_TAXONOMY,
+  FINANCE_SUBCATEGORIES,
+  FED_RATES_PRESET_OUTCOMES,
+  getFinanceSubCategory,
+  buildAbovePriceQuestion,
+  type FinanceShape,
+} from '@/lib/types/finance';
 import { getContractId, getContractAddress, isCategoryDeployed, getStakingCurrency, isTokenMode, getOnChainBucket } from '@/lib/contracts/contract-config';
 
 import { formatDateUTC, formatTinybarsToHbar, getLocalTimezoneAbbr } from '@/lib/utils';
@@ -429,6 +436,291 @@ function SportLeagueSelector({ sport, league, onChange, category }: SportLeagueS
           ))}
         </select>
       </div>
+    </div>
+  );
+}
+
+// Finance-specific market-creation fields. Picks a sub-category first, then
+// renders only the inputs that sub-category needs. Writes into the same
+// clobMarketForm shared with the non-finance flow so submission is unified.
+interface FinanceMarketFieldsProps {
+  form: any;
+  setForm: (updater: (prev: any) => any) => void;
+}
+function FinanceMarketFields({ form, setForm }: FinanceMarketFieldsProps) {
+  const sub = getFinanceSubCategory(form.financeSubCategory);
+  const effectiveShape: FinanceShape | 'multi-free' | undefined = sub
+    ? sub.shape === 'template-or-multi'
+      ? (form.financeVariant === 'template' ? 'above-price' : 'multi-free')
+      : sub.shape
+    : undefined;
+
+  const pickSubCategory = (id: string) => {
+    const nextSub = getFinanceSubCategory(id);
+    setForm((prev: any) => {
+      const next: any = { ...prev, financeSubCategory: id };
+      // Reset variant so template-or-multi always starts on 'template'.
+      next.financeVariant = 'template';
+      // Seed outcomes for shapes that use the outcomes editor.
+      if (nextSub?.shape === 'fed-rates') {
+        next.outcomes = FED_RATES_PRESET_OUTCOMES.map((name) => ({ name, imageUrl: '' }));
+        next.question = '';
+      } else if (nextSub?.shape === 'template-or-multi') {
+        next.outcomes = [{ name: '', imageUrl: '' }, { name: '', imageUrl: '' }];
+        next.question = '';
+      }
+      return next;
+    });
+  };
+
+  const setVariant = (variant: 'template' | 'multi') => {
+    setForm((prev: any) => {
+      const next: any = { ...prev, financeVariant: variant };
+      if (variant === 'multi') {
+        // Seed empty rows when switching to freeform multi.
+        next.outcomes = [{ name: '', imageUrl: '' }, { name: '', imageUrl: '' }];
+        next.question = '';
+      }
+      return next;
+    });
+  };
+
+  const updateOutcome = (idx: number, field: 'name' | 'imageUrl', value: string) => {
+    setForm((prev: any) => {
+      const outcomes = [...prev.outcomes];
+      outcomes[idx] = { ...outcomes[idx], [field]: value };
+      return { ...prev, outcomes };
+    });
+  };
+
+  const addOutcome = () => setForm((prev: any) => ({
+    ...prev,
+    outcomes: [...prev.outcomes, { name: '', imageUrl: '' }],
+  }));
+
+  const removeOutcome = (idx: number) => setForm((prev: any) => ({
+    ...prev,
+    outcomes: prev.outcomes.filter((_: any, i: number) => i !== idx),
+  }));
+
+  const resolutionDate = form.resolutionTimestamp ? new Date(form.resolutionTimestamp) : null;
+  const previewQuestion = (() => {
+    if (effectiveShape === 'above-price' && form.financeAssetName && form.financeTargetPrice && resolutionDate) {
+      return buildAbovePriceQuestion({
+        assetName: form.financeAssetName,
+        symbol: form.financeAssetSymbol || undefined,
+        price: form.financeTargetPrice,
+        date: resolutionDate,
+      });
+    }
+    if (effectiveShape === 'asset-vs-asset' && form.financeAssetA && form.financeAssetB) {
+      return `${form.financeAssetA} vs ${form.financeAssetB}`;
+    }
+    return null;
+  })();
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Finance sub-category *</label>
+        <select
+          value={form.financeSubCategory}
+          onChange={(e) => pickSubCategory(e.target.value)}
+          className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
+        >
+          <option value="">— Select —</option>
+          <optgroup label="Duration">
+            {FINANCE_SUBCATEGORIES.filter((s) => s.group === 'duration').map((s) => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </optgroup>
+          <optgroup label="Finance Events">
+            {FINANCE_SUBCATEGORIES.filter((s) => s.group === 'finance-events').map((s) => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </optgroup>
+        </select>
+      </div>
+
+      {sub?.shape === 'template-or-multi' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Question shape</label>
+          <div className="flex rounded-lg border border-gray-200 dark:border-neutral-700 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setVariant('template')}
+              className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                form.financeVariant === 'template'
+                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Binary &quot;above $X&quot;
+            </button>
+            <button
+              type="button"
+              onClick={() => setVariant('multi')}
+              className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                form.financeVariant === 'multi'
+                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Multi-outcome
+            </button>
+          </div>
+        </div>
+      )}
+
+      {effectiveShape === 'above-price' && (
+        <div className="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900/50">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Asset name *</label>
+              <input
+                type="text"
+                value={form.financeAssetName}
+                onChange={(e) => setForm((p: any) => ({ ...p, financeAssetName: e.target.value }))}
+                placeholder="Gold"
+                className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Symbol</label>
+              <input
+                type="text"
+                value={form.financeAssetSymbol}
+                onChange={(e) => setForm((p: any) => ({ ...p, financeAssetSymbol: e.target.value }))}
+                placeholder="PAXG"
+                className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Target price (USD) *</label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={form.financeTargetPrice}
+              onChange={(e) => setForm((p: any) => ({ ...p, financeTargetPrice: e.target.value }))}
+              placeholder="4782.48"
+              className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
+            />
+          </div>
+          {previewQuestion && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="font-medium">Preview:</span> {previewQuestion}
+            </p>
+          )}
+          <p className="text-xs text-gray-400">Outcomes fixed to Yes / No. Question is generated from asset + price + resolution date.</p>
+        </div>
+      )}
+
+      {effectiveShape === 'asset-vs-asset' && (
+        <div className="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900/50">
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Asset A *</label>
+            <input
+              type="text"
+              value={form.financeAssetA}
+              onChange={(e) => setForm((p: any) => ({ ...p, financeAssetA: e.target.value }))}
+              placeholder="BTC"
+              className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
+            />
+            <input
+              type="url"
+              value={form.financeAssetALogo}
+              onChange={(e) => setForm((p: any) => ({ ...p, financeAssetALogo: e.target.value }))}
+              placeholder="Asset A logo URL"
+              className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Asset B *</label>
+            <input
+              type="text"
+              value={form.financeAssetB}
+              onChange={(e) => setForm((p: any) => ({ ...p, financeAssetB: e.target.value }))}
+              placeholder="GOLD"
+              className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
+            />
+            <input
+              type="url"
+              value={form.financeAssetBLogo}
+              onChange={(e) => setForm((p: any) => ({ ...p, financeAssetBLogo: e.target.value }))}
+              placeholder="Asset B logo URL"
+              className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
+            />
+          </div>
+          {previewQuestion && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="font-medium">Preview:</span> {previewQuestion}
+            </p>
+          )}
+          <p className="text-xs text-gray-400">Two outcomes, no Draw. Question is generated from the asset names.</p>
+        </div>
+      )}
+
+      {(effectiveShape === 'fed-rates' || effectiveShape === 'multi-free') && (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Question *</label>
+            <input
+              type="text"
+              value={form.question}
+              onChange={(e) => setForm((p: any) => ({ ...p, question: e.target.value }))}
+              placeholder={effectiveShape === 'fed-rates' ? 'Fed decision in April?' : 'What will WTI Crude Oil hit in April 2026?'}
+              className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Outcomes *
+              {effectiveShape === 'fed-rates' && (
+                <span className="ml-2 text-xs font-normal text-gray-400">(prefilled with Fed presets, edit as needed)</span>
+              )}
+            </label>
+            <div className="space-y-2">
+              {form.outcomes.map((outcome: any, idx: number) => (
+                <div key={idx} className="flex gap-2 items-start p-2 bg-gray-50 dark:bg-neutral-900 rounded border border-gray-200 dark:border-neutral-700">
+                  <div className="flex-1 space-y-2">
+                    <input
+                      type="text"
+                      value={outcome.name}
+                      onChange={(e) => updateOutcome(idx, 'name', e.target.value)}
+                      placeholder="Outcome name (e.g., No change, $3.800, ↑ $120)"
+                      className="w-full px-3 py-1.5 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-sm text-gray-900 dark:text-white"
+                    />
+                    <input
+                      type="url"
+                      value={outcome.imageUrl}
+                      onChange={(e) => updateOutcome(idx, 'imageUrl', e.target.value)}
+                      placeholder="Image URL (optional)"
+                      className="w-full px-3 py-1.5 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-sm text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  {form.outcomes.length > 2 && (
+                    <button
+                      type="button"
+                      className="mt-1 px-2 py-1 text-red-600 hover:text-red-700 dark:text-red-400 text-sm font-medium"
+                      onClick={() => removeOutcome(idx)}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addOutcome}
+                className="w-full mt-1 px-3 py-2 border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded text-sm text-gray-600 dark:text-gray-400 hover:border-gray-400"
+              >
+                + Add outcome
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1089,6 +1381,19 @@ function AdminPage() {
     resolutionTimestamp: '',
     sport: undefined as string | undefined,
     league: undefined as string | undefined,
+    // Finance-only fields (ignored for other categories)
+    financeSubCategory: '' as string,
+    // `template-or-multi` sub-cats: admin picks which variant to render
+    financeVariant: 'template' as 'template' | 'multi',
+    // Template fields for "above-price" shape
+    financeAssetName: '',
+    financeAssetSymbol: '',
+    financeTargetPrice: '',
+    // Fields for "asset-vs-asset" shape
+    financeAssetA: '',
+    financeAssetALogo: '',
+    financeAssetB: '',
+    financeAssetBLogo: '',
   });
   const [cryptoMarketForm, setCryptoMarketForm] = useState({
     tokenSymbol: '',
@@ -1646,26 +1951,89 @@ function AdminPage() {
 
   // CLOB market creation handler
   const handleCreateClobMarket = async () => {
-    if (!clobMarketForm.question || !clobMarketForm.marketImageUrl || !clobMarketForm.resolutionTimestamp) {
-      toast({ variant: 'destructive', title: 'Missing fields', description: 'Fill in all required fields' });
+    if (!clobMarketForm.marketImageUrl || !clobMarketForm.resolutionTimestamp) {
+      toast({ variant: 'destructive', title: 'Missing fields', description: 'Image and resolution date are required' });
       return;
     }
 
-    const validOutcomes = clobMarketForm.marketType === 'match'
-      ? [
-          clobMarketForm.outcomes[0] || { name: '', imageUrl: '' },
-          { name: 'Draw', imageUrl: '' },
-          clobMarketForm.outcomes[2] || { name: '', imageUrl: '' },
-        ].filter(o => o.name.trim() !== '')
-      : clobMarketForm.outcomes.filter(o => o.name.trim() !== '');
+    const isFinance = clobMarketForm.category === 'finance';
+    let question = clobMarketForm.question;
+    let validOutcomes: { name: string; imageUrl: string }[] = [];
+    let sport = clobMarketForm.sport;
+    let league = clobMarketForm.league;
 
-    if (clobMarketForm.marketType === 'match' && validOutcomes.length < 3) {
-      toast({ variant: 'destructive', title: 'Teams Required', description: 'Enter both team names for a match result market.' });
-      return;
-    }
-    if (clobMarketForm.marketType !== 'match' && validOutcomes.length < 2) {
-      toast({ variant: 'destructive', title: 'Outcomes Required', description: 'Provide at least 2 outcomes.' });
-      return;
+    if (isFinance) {
+      const sub = getFinanceSubCategory(clobMarketForm.financeSubCategory);
+      if (!sub) {
+        toast({ variant: 'destructive', title: 'Sub-category required', description: 'Pick a Finance sub-category' });
+        return;
+      }
+      // Sidebar taxonomy auto-derived from the chosen sub-category.
+      sport = sub.group;
+      league = sub.id;
+      const effectiveShape: FinanceShape | 'multi-free' =
+        sub.shape === 'template-or-multi'
+          ? (clobMarketForm.financeVariant === 'template' ? 'above-price' : 'multi-free')
+          : sub.shape;
+
+      if (effectiveShape === 'above-price') {
+        if (!clobMarketForm.financeAssetName.trim() || !clobMarketForm.financeTargetPrice.trim()) {
+          toast({ variant: 'destructive', title: 'Missing fields', description: 'Asset name and target price are required' });
+          return;
+        }
+        const date = new Date(clobMarketForm.resolutionTimestamp);
+        question = buildAbovePriceQuestion({
+          assetName: clobMarketForm.financeAssetName.trim(),
+          symbol: clobMarketForm.financeAssetSymbol.trim() || undefined,
+          price: clobMarketForm.financeTargetPrice.trim(),
+          date,
+        });
+        validOutcomes = [{ name: 'Yes', imageUrl: '' }, { name: 'No', imageUrl: '' }];
+      } else if (effectiveShape === 'asset-vs-asset') {
+        if (!clobMarketForm.financeAssetA.trim() || !clobMarketForm.financeAssetB.trim()) {
+          toast({ variant: 'destructive', title: 'Missing fields', description: 'Both asset names are required' });
+          return;
+        }
+        question = `${clobMarketForm.financeAssetA.trim()} vs ${clobMarketForm.financeAssetB.trim()}`;
+        validOutcomes = [
+          { name: clobMarketForm.financeAssetA.trim(), imageUrl: clobMarketForm.financeAssetALogo.trim() },
+          { name: clobMarketForm.financeAssetB.trim(), imageUrl: clobMarketForm.financeAssetBLogo.trim() },
+        ];
+      } else {
+        // fed-rates OR multi-free: admin-entered question + outcomes list
+        if (!clobMarketForm.question.trim()) {
+          toast({ variant: 'destructive', title: 'Question required', description: 'Enter the market question' });
+          return;
+        }
+        question = clobMarketForm.question.trim();
+        validOutcomes = clobMarketForm.outcomes.filter(o => o.name.trim() !== '');
+        if (validOutcomes.length < 2) {
+          toast({ variant: 'destructive', title: 'Outcomes Required', description: 'Provide at least 2 outcomes.' });
+          return;
+        }
+      }
+    } else {
+      // Non-finance: existing binary / match / multi flow
+      if (!clobMarketForm.question) {
+        toast({ variant: 'destructive', title: 'Question required', description: 'Enter the market question' });
+        return;
+      }
+      validOutcomes = clobMarketForm.marketType === 'match'
+        ? [
+            clobMarketForm.outcomes[0] || { name: '', imageUrl: '' },
+            { name: 'Draw', imageUrl: '' },
+            clobMarketForm.outcomes[2] || { name: '', imageUrl: '' },
+          ].filter(o => o.name.trim() !== '')
+        : clobMarketForm.outcomes.filter(o => o.name.trim() !== '');
+
+      if (clobMarketForm.marketType === 'match' && validOutcomes.length < 3) {
+        toast({ variant: 'destructive', title: 'Teams Required', description: 'Enter both team names for a match result market.' });
+        return;
+      }
+      if (clobMarketForm.marketType !== 'match' && validOutcomes.length < 2) {
+        toast({ variant: 'destructive', title: 'Outcomes Required', description: 'Provide at least 2 outcomes.' });
+        return;
+      }
     }
 
     setIsCreatingClobMarket(true);
@@ -1675,37 +2043,46 @@ function AdminPage() {
       const didToken = await getDIDToken();
       const res = await fetch('/api/clob/market', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${didToken}`,
         },
         body: JSON.stringify({
           marketId,
-          question: clobMarketForm.question,
+          question,
           category: clobMarketForm.category,
           outcomeNames: validOutcomes.map(o => o.name),
           outcomesData: validOutcomes,
           imageUrl: clobMarketForm.marketImageUrl,
           description: clobMarketForm.description,
           resolutionTimestamp: Math.floor(new Date(clobMarketForm.resolutionTimestamp).getTime() / 1000),
-          sport: clobMarketForm.sport,
-          league: clobMarketForm.league,
+          sport,
+          league,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create market');
       toast({ title: 'CLOB Market Created', description: `Market ID: ${marketId}` });
       setShowClobMarketModal(false);
-      setClobMarketForm({ 
-        question: '', 
+      setClobMarketForm({
+        question: '',
         category: selectedCategory.toLowerCase(),
         marketType: 'binary',
-        outcomes: [{ name: 'Yes', imageUrl: '' }, { name: 'No', imageUrl: '' }], 
+        outcomes: [{ name: 'Yes', imageUrl: '' }, { name: 'No', imageUrl: '' }],
         marketImageUrl: '',
         description: '',
         resolutionTimestamp: '',
         sport: undefined,
         league: undefined,
+        financeSubCategory: '',
+        financeVariant: 'template',
+        financeAssetName: '',
+        financeAssetSymbol: '',
+        financeTargetPrice: '',
+        financeAssetA: '',
+        financeAssetALogo: '',
+        financeAssetB: '',
+        financeAssetBLogo: '',
       });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Failed to create CLOB market', description: err instanceof Error ? err.message : 'Unknown error' });
@@ -3113,6 +3490,10 @@ function AdminPage() {
                   {clobMarketForm.category}
                 </div>
               </div>
+              {clobMarketForm.category === 'finance' && (
+                <FinanceMarketFields form={clobMarketForm} setForm={setClobMarketForm} />
+              )}
+              {clobMarketForm.category !== 'finance' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Market Type</label>
                 <div className="flex rounded-lg border border-gray-200 dark:border-neutral-700 overflow-hidden">
@@ -3157,10 +3538,13 @@ function AdminPage() {
                   <p className="text-xs text-gray-400 mt-1.5">3 outcomes: Team A, Tie, Team B. Enter team names and images below.</p>
                 )}
               </div>
+              )}
+              {clobMarketForm.category !== 'finance' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Question *</label>
                 <input type="text" value={clobMarketForm.question} onChange={(e) => setClobMarketForm({ ...clobMarketForm, question: e.target.value })} placeholder="Who will win the 2026 World Cup?" className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm placeholder:text-gray-400" />
               </div>
+              )}
               {clobMarketForm.marketType === 'match' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Teams *</label>
@@ -3272,12 +3656,14 @@ function AdminPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Resolution Date *</label>
                 <input type="datetime-local" value={clobMarketForm.resolutionTimestamp} onChange={(e) => setClobMarketForm({ ...clobMarketForm, resolutionTimestamp: e.target.value })} className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm" />
               </div>
-              <SportLeagueSelector
-                category={clobMarketForm.category}
-                sport={clobMarketForm.sport}
-                league={clobMarketForm.league}
-                onChange={(next) => setClobMarketForm({ ...clobMarketForm, sport: next.sport, league: next.league })}
-              />
+              {clobMarketForm.category !== 'finance' && (
+                <SportLeagueSelector
+                  category={clobMarketForm.category}
+                  sport={clobMarketForm.sport}
+                  league={clobMarketForm.league}
+                  onChange={(next) => setClobMarketForm({ ...clobMarketForm, sport: next.sport, league: next.league })}
+                />
+              )}
               <div className="flex gap-3 pt-4">
                 <Button variant="outline" onClick={() => setShowClobMarketModal(false)} className="flex-1">Cancel</Button>
                 <Button variant="predensity" onClick={handleCreateClobMarket} disabled={isCreatingClobMarket} className="flex-1">
