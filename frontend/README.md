@@ -1,150 +1,96 @@
 # Predensity Frontend
 
-A modern Next.js frontend for the Predensity cryptocurrency prediction market platform, built with Tailwind CSS, Radix UI, and viem for wallet integration.
+A Next.js-based prediction market platform with non-custodial wallet integration using Magic Link.
 
-## End User Features
+## Features
 
-Predensity provides a comprehensive prediction market interface with the following capabilities:
-
-| Feature | Description |
-|---------|-------------|
-| 🎯 **Place a bet** | Predict HBAR price ranges with custom time horizons |
-| 📊 **View signals** | Real-time price forecasting and market visualization |
-| 📈 **View activity** | Track bet history, status, and performance |
-| 🏆 **Claim rewards** | Collect winnings from successful predictions |
-| ⚙️ **Admin panel** | Batch processing and bet resolution (Clerk authentication) |
-
-## Technical Features
-
-- 💰 **Wallet Integration** - HashPack (primary), WalletConnect, and other Hedera wallets
-- 📊 **Interactive KDE Charts** - Kernel Density Estimation visualization with confidence hover states
-- 🎯 **Price Range Selection** - Interactive histogram for bet distribution visualization
-- 📱 **Responsive Design** - Mobile-first design with Tailwind CSS
-- ⚡ **Modern Stack** - Next.js 14, TypeScript, and modern React patterns
-- 🎭 **Accessible UI** - Built with Radix UI primitives for accessibility
-- 💲 **Real-time HBAR Prices** - CoinGecko API integration with 30-second updates
-- 🔔 **Toast Notifications** - Real-time feedback for user actions
+- Non-custodial authentication with Magic Link (Google OAuth + Email)
+- Multi-category prediction markets (Crypto, Politics, Sports, Technology)
+- CLOB (Central Limit Order Book) trading system
+- Real-time market data with Convex
+- Hedera blockchain integration
+- M-Pesa payment integration (Kenya)
+- Dark/Light theme support
+- Mobile-responsive design
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 with App Router
-- **Styling**: Tailwind CSS with custom design system
-- **UI Components**: Radix UI + shadcn/ui
-- **Wallet Integration**: @buidlerlabs/hashgraph-react-wallets
-- **Charts**: Recharts for data visualization
-- **Authentication**: Clerk (admin panel)
-- **Data**: Apollo Client + GraphQL
-- **Language**: TypeScript
+- **Framework**: Next.js 14 (App Router)
+- **Authentication**: Magic Link SDK
+- **Database**: Convex
+- **Blockchain**: Hedera Hashgraph
+- **Wallet**: Hashgraph React Wallets
+- **Styling**: Tailwind CSS
+- **UI Components**: Radix UI
+- **State Management**: React Context + Convex
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
-
-- Node.js 18+
+- Node.js 18+ 
 - npm or yarn
+- Convex account
+- Magic Link account
+- Hedera testnet account (for development)
 
-### Installation
+## Installation
 
-1. **Install dependencies**:
+1. Clone the repository:
+```bash
+git clone https://github.com/i-mwangi/frontend.git
+cd frontend
+```
 
-   ```bash
-   npm install
-   ```
+2. Install dependencies:
+```bash
+npm install
+```
 
-2. **Set up environment variables**:
-   Create a `.env.local` file in the root directory:
+3. Set up environment variables:
+```bash
+cp .env.local.example .env.local
+```
 
-   ```env
-   NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=your_wallet_connect_project_id
-   ```
+Edit `.env.local` with your own credentials:
+- `NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY` - Get from Magic Link dashboard
+- `MAGIC_SECRET_KEY` - Get from Magic Link dashboard
+- `NEXT_PUBLIC_CONVEX_URL` - Get from Convex dashboard
+- `CONVEX_DEPLOYMENT` - Your Convex deployment ID
+- Other API keys as needed
 
-3. **Run the development server**:
+4. Run Convex development:
+```bash
+npm run convex:dev
+```
 
-   ```bash
-   npm run dev
-   ```
+5. Start the development server:
+```bash
+npm run dev
+```
 
-4. **Open your browser**:
-   Navigate to [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Environment Variables
+
+See `.env.local.example` for all required environment variables.
+
+**Important**: Never commit your `.env.local` file. It contains sensitive API keys.
 
 ## Project Structure
 
 ```
-src/
-├── app/                    # Next.js App Router
-│   ├── globals.css        # Global styles and CSS variables
-│   ├── layout.tsx         # Root layout with providers
-│   └── page.tsx           # Main page component
-├── components/            # React components
-│   ├── ui/               # Reusable UI components (shadcn/ui)
-│   ├── header.tsx        # Main header with navigation
-│   ├── prediction-card.tsx # Main prediction interface
-│   ├── kde-chart.tsx     # Interactive KDE visualization
-│   ├── price-range-selector.tsx # Price range selection
-│   ├── bet-history.tsx   # Bet history table
-│   ├── hbar-price-display.tsx # HBAR price component
-│   └── wallet-selector.tsx # Wallet connection component
-├── lib/                  # Utility functions and configurations
-│   ├── utils.ts          # Common utility functions
-│   ├── apolloClient.ts   # GraphQL client configuration
-│   ├── coingecko.ts      # HBAR price API integration
-│   └── types.ts          # TypeScript type definitions
-└── types/                # TypeScript type definitions
+frontend/
+├── src/
+│   ├── app/              # Next.js app router pages
+│   ├── components/       # React components
+│   ├── context/          # React context providers
+│   ├── hooks/            # Custom React hooks
+│   ├── lib/              # Utility functions
+│   └── styles/           # Global styles
+├── convex/               # Convex backend functions
+├── abi/                  # Smart contract ABIs
+├── public/               # Static assets
+└── scripts/              # Utility scripts
 ```
-
-## Key Components
-
-### PredictionCard
-
-The main interface component that contains:
-
-- Bet placement interface
-- Interactive price range selector
-- KDE forecast visualization
-- Bet history table
-
-### KDEChart
-
-Interactive Kernel Density Estimation chart that:
-
-- Shows price forecasts over time
-- Displays confidence percentages on hover
-- Uses Recharts for smooth animations
-
-### PriceRangeSelector
-
-Interactive histogram component that:
-
-- Visualizes bet distribution
-- Allows range selection with visual feedback
-- Shows current price indicator
-
-### Header
-
-Navigation header with:
-
-- Predensity branding
-- Wallet connection status
-- HBAR balance display
-- Account address with copy functionality
-- Website link
-
-## Wallet Integration
-
-The app uses Hedera-specific wallet integration:
-
-- **Primary Wallet**: HashPack (recommended)
-- **Additional Support**: WalletConnect, other Hedera-compatible wallets
-- **Network**: Hedera Mainnet (production ready)
-- **Features**: Balance display, transaction signing, bet placement, reward claiming
-
-## Styling
-
-The app uses a custom design system built on Tailwind CSS:
-
-- **Colors**: Custom predensity color palette (purple, green, red, orange, blue)
-- **Design**: Dark theme with consistent design tokens and spacing
-- **Components**: Reusable UI components with Tailwind classes
 
 ## Available Scripts
 
@@ -152,23 +98,35 @@ The app uses a custom design system built on Tailwind CSS:
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
+- `npm run test` - Run tests
+- `npm run convex:dev` - Start Convex development
+- `npm run convex:deploy` - Deploy Convex functions
 
-## Contributing
+## Deployment
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+### Vercel (Recommended)
+
+1. Push your code to GitHub
+2. Import project in Vercel
+3. Add environment variables
+4. Deploy
+
+### Other Platforms
+
+Build the project:
+```bash
+npm run build
+```
+
+Start the production server:
+```bash
+npm run start
+```
 
 ## License
 
-Predensity is part of the **Origins and Ascension hackathons**. This project is licensed under the MIT License.
+Private - All rights reserved
 
-## Planned Features
+## Support
 
-- 🎨 **Theme support** - Dark/light mode toggle (component exists but not implemented in UI)
-- 📱 **Mobile optimization** - Enhanced mobile experience
-- 🤖 **AI agent integration** - Automated prediction strategies
-- 📊 **Advanced analytics** - Detailed performance metrics
-- 🔔 **Push notifications** - Real-time bet status updates
+For issues or questions, contact: mwangihenry336@gmail.com
