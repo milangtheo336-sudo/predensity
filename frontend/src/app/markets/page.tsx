@@ -103,11 +103,6 @@ export default function MarketsPage() {
 
   // Add CLOB markets (politics, sports, technology, international)
   if (clobMarkets) {
-    console.log('[Markets Page] Total CLOB markets from Convex:', clobMarkets.length);
-    clobMarkets.forEach((cm, idx) => {
-      console.log(`  ${idx + 1}. ${cm.question} - category: "${cm.category}" - status: "${cm.status}"`);
-    });
-
     const clobCards: MarketCard[] = clobMarkets
       .filter((cm) => {
         // Case-insensitive category comparison
@@ -115,7 +110,6 @@ export default function MarketsPage() {
         const filterCategory = activeCategory === 'all' ? 'all' : activeCategory.toLowerCase();
         
         if (filterCategory !== 'all' && marketCategory !== filterCategory) {
-          console.log(`  Filtered out: ${cm.question} (category "${cm.category}" doesn't match "${activeCategory}")`);
           return false;
         }
         if (status === MarketStatus.OPEN && cm.status !== 'open') return false;
