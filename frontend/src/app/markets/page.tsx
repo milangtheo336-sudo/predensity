@@ -227,6 +227,7 @@ export default function MarketsPage() {
               onSelect={setSidebarSelection}
               taxonomy={sidebarTaxonomy}
               sectionLabel={sidebarLabel}
+              defaultExpandAll={activeCategory === Category.FINANCE}
             />
           </div>
         )}
@@ -255,6 +256,7 @@ export default function MarketsPage() {
                   }}
                   taxonomy={sidebarTaxonomy}
                   sectionLabel={sidebarLabel}
+                  defaultExpandAll={activeCategory === Category.FINANCE}
                 />
               </div>
             </div>
