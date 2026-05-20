@@ -28,7 +28,7 @@ const ABI = new ethers.utils.Interface([
   'function processBatch(uint256 bucket) external returns (uint256 processedCount, uint256 winningWeight)',
   'function getBucketInfo(uint256 bucket) external view returns (uint256 totalBets, uint256 totalWinningWeight, uint256 nextProcessIndex, bool aggregationComplete)',
   'function startTimestamp() external view returns (uint256)',
-  'function getBet(uint256 betId) external view returns (tuple(address bettor, uint256 targetTimestamp, uint256 priceMin, uint256 priceMax, uint256 stake, uint256 qualityBps, uint256 weight, bool finalized, bool claimed, uint256 actualPrice, bool won, uint256 entryBandWeight, bool exited))',
+  'function getBet(uint256 betId) external view returns (tuple(address bettor, uint256 targetTimestamp, uint256 priceMin, uint256 priceMax, uint256 stake, uint256 qualityBps, uint256 weight, bool finalized, bool claimed, uint256 actualPrice, bool won))',
   'function getContractStats() external view returns (uint256 nextBetId, uint256 totalStaked, uint256 totalFees, uint256 totalObligations)',
 ]);
 
