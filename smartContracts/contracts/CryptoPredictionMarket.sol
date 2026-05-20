@@ -87,13 +87,7 @@ contract CryptoPredictionMarket is Ownable {
         uint256 totalWinningWeight;
         uint256 nextProcessIndex;
         bool aggregationComplete;
-        // DPM fields
-        uint256 totalExited;  // total HBAR paid out via early exits
     }
-
-    // DPM band cost tracking: bucket => bandIndex => total weight in that band
-    // Band index is derived from price range midpoint quantized to bands
-    mapping(uint256 => mapping(uint256 => uint256)) public bandWeights;
 
     // ==============================================================
     // |                    Mappings                               |
