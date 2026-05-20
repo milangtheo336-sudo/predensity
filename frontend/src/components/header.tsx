@@ -233,7 +233,6 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
           <Image src="/hashpack.jpg" alt="" width={20} height={20} className="rounded-full" />
           <Image src="/metamask.png" alt="" width={20} height={20} className="rounded-full" />
           <Image src="/blade.png" alt="" width={20} height={20} className="rounded-full" />
-          <Image src="/kabila.jpg" alt="" width={20} height={20} className="rounded-full" />
         </div>
       </button>
 
