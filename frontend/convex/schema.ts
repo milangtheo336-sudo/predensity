@@ -415,16 +415,6 @@ export default defineSchema({
     .index("by_market_outcome", ["marketId", "outcomeIndex"])
     .index("by_market_outcome_time", ["marketId", "outcomeIndex", "timestamp"]),
 
-  // Community sentiment votes (bullish/bearish button clicks on market cards)
-  marketSentiment: defineTable({
-    marketId: v.string(),
-    direction: v.string(), // "bullish" | "bearish"
-    userAddress: v.optional(v.string()),
-    timestamp: v.number(),
-  })
-    .index("by_market", ["marketId"])
-    .index("by_market_direction", ["marketId", "direction"]),
-
   // Nonce tracking for non-custodial orders (prevents replay attacks)
   orderNonces: defineTable({
     userId: v.string(),
