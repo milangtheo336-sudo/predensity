@@ -6,7 +6,6 @@ import {
   HashpackConnector,
   MetamaskConnector,
   BladeConnector,
-  KabilaConnector,
   HWCConnector,
 } from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { Button } from '@/components/ui/button';
@@ -18,11 +17,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Wallet, ChevronDown, User, Copy, Check, Coins, Info } from 'lucide-react';
+import { Wallet, ChevronDown, User, Copy, Check, Coins } from 'lucide-react';
 import { formatAddress } from '@/lib/utils';
 import { getStakingCurrency } from '@/lib/contracts/contract-config';
 
-type WalletType = 'hashpack' | 'metamask' | 'blade' | 'kabila' | 'walletconnect';
+type WalletType = 'hashpack' | 'metamask' | 'blade' | 'walletconnect';
 
 interface WalletOption {
   name: string;
@@ -48,13 +47,6 @@ const walletOptions: WalletOption[] = [
     connector: MetamaskConnector,
   },
   {
-    name: 'WalletConnect',
-    type: 'walletconnect',
-    icon: '🔗',
-    description: 'Connect any wallet via QR code',
-    connector: HWCConnector,
-  },
-  {
     name: 'Blade',
     type: 'blade',
     icon: '⚔️',
@@ -62,11 +54,11 @@ const walletOptions: WalletOption[] = [
     connector: BladeConnector,
   },
   {
-    name: 'Kabila',
-    type: 'kabila',
+    name: 'WalletConnect',
+    type: 'walletconnect',
     icon: '🔗',
-    description: 'Hedera wallet',
-    connector: KabilaConnector,
+    description: 'Connect any wallet via QR code',
+    connector: HWCConnector,
   },
 ];
 
@@ -74,50 +66,33 @@ export function WalletSelector() {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Use library's hooks directly
   const { isConnected, disconnect, connector } = useWallet();
   const { data: accountId } = useAccountId();
   const { data: balanceData, isLoading: balanceLoading } = useBalance({ autoFetch: false });
 
-  // Parse balance data
   const balance = React.useMemo(() => {
     if (!balanceData) return null;
-
-    // Check if it's an object with hbars property
-    if (typeof balanceData === 'object' && 'hbars' in balanceData) {
-      return balanceData.hbars.toString();
-    }
-
-    // Check if it's an object with value property
-    if (typeof balanceData === 'object' && 'value' in balanceData) {
-      return balanceData.value.toString();
-    }
-
-    // Try direct conversion
+    if (typeof balanceData === 'object' && 'hbars' in balanceData) return balanceData.hbars.toString();
+    if (typeof balanceData === 'object' && 'value' in balanceData) return balanceData.value.toString();
     return balanceData.toString();
   }, [balanceData]);
 
-  // Create wallet hooks for each connector
   const hashpackWallet = useWallet(HashpackConnector);
   const metamaskWallet = useWallet(MetamaskConnector);
   const bladeWallet = useWallet(BladeConnector);
-  const kabilaWallet = useWallet(KabilaConnector);
   const walletConnectWallet = useWallet(HWCConnector);
 
-  const wallets = {
+  const wallets: Record<WalletType, any> = {
     hashpack: hashpackWallet,
     metamask: metamaskWallet,
     blade: bladeWallet,
-    kabila: kabilaWallet,
     walletconnect: walletConnectWallet,
   };
 
   const handleWalletSelect = async (walletOption: WalletOption) => {
     setIsOpen(false);
-
     try {
-      const wallet = wallets[walletOption.type];
-      await wallet.connect();
+      await wallets[walletOption.type].connect();
     } catch (error) {
       console.error('Failed to connect wallet:', error);
     }
@@ -139,39 +114,29 @@ export function WalletSelector() {
     }
   };
 
-  // Get current wallet type from connector
-  const getWalletType = () => {
+  const getWalletType = (): WalletType | null => {
     if (!connector) return null;
-
-    const constructorName = connector.constructor?.name?.toLowerCase() || '';
-
-    if (constructorName.includes('hashpack')) return 'hashpack';
-    if (constructorName.includes('metamask')) return 'metamask';
-    if (constructorName.includes('blade')) return 'blade';
-    if (constructorName.includes('kabila')) return 'kabila';
-    if (constructorName.includes('hwc') || constructorName.includes('walletconnect'))
-      return 'walletconnect';
-
+    const name = connector.constructor?.name?.toLowerCase() || '';
+    if (name.includes('hashpack')) return 'hashpack';
+    if (name.includes('metamask')) return 'metamask';
+    if (name.includes('blade')) return 'blade';
+    if (name.includes('hwc') || name.includes('walletconnect')) return 'walletconnect';
     return null;
   };
 
   const currentWalletType = getWalletType();
   const currentWalletOption = walletOptions.find((w) => w.type === currentWalletType);
 
-  const formatBalance = (balance: string | null) => {
+  const formatBalance = (bal: string | null) => {
     const sym = getStakingCurrency().symbol;
-    if (!balance) return `0 ${sym}`;
-    const numBalance = parseFloat(balance);
-    if (numBalance >= 1000) {
-      return `${(numBalance / 1000).toFixed(2)}k ${sym}`;
-    }
-    return `${numBalance.toFixed(2)} ${sym}`;
+    if (!bal) return `0 ${sym}`;
+    const num = parseFloat(bal);
+    return num >= 1000 ? `${(num / 1000).toFixed(2)}k ${sym}` : `${num.toFixed(2)} ${sym}`;
   };
 
   if (isConnected) {
     return (
       <div className="flex items-center space-x-2">
-        {/* Balance Display */}
         <Button variant="outline" size="sm" className="border-vibrant-purple text-vibrant-purple">
           {balanceLoading ? (
             <div className="flex items-center space-x-1">
@@ -186,7 +151,6 @@ export function WalletSelector() {
           )}
         </Button>
 
-        {/* Account Info Button */}
         {accountId && (
           <Button
             variant="outline"
@@ -200,19 +164,13 @@ export function WalletSelector() {
           </Button>
         )}
 
-        {/* Wallet Type Badge */}
         {currentWalletOption && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center space-x-2 border-vibrant-purple text-vibrant-purple"
-          >
+          <Button variant="outline" size="sm" className="flex items-center space-x-2 border-vibrant-purple text-vibrant-purple">
             <span className="text-sm">{currentWalletOption.icon}</span>
             <span className="text-xs font-medium">{currentWalletOption.name}</span>
           </Button>
         )}
 
-        {/* Disconnect Button */}
         <Button onClick={handleDisconnect} variant="outline" size="sm">
           Disconnect
         </Button>
@@ -236,12 +194,7 @@ export function WalletSelector() {
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {walletOptions.map((wallet) => (
-            <Button
-              key={wallet.name}
-              variant="outline"
-              className="justify-start h-auto p-4"
-              onClick={() => handleWalletSelect(wallet)}
-            >
+            <Button key={wallet.name} variant="outline" className="justify-start h-auto p-4" onClick={() => handleWalletSelect(wallet)}>
               <div className="flex items-center space-x-3 w-full">
                 <span className="text-2xl">{wallet.icon}</span>
                 <div className="flex flex-col items-start">
