@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
-import { rateLimit, validateNumericRange } from '@/lib/api-auth';
+import { rateLimit, validateNumericRange, requireAuthMatchingUser } from '@/lib/api-auth';
 import { api } from '../../../../../convex/_generated/api';
 import { ethers } from 'ethers';
 
@@ -9,8 +9,10 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
 /**
  * POST /api/clob/order
  * 
- * Place a CLOB order (non-custodial).
+ * Place a CLOB order (fully non-custodial).
  * User must sign the order with their Magic Link wallet.
+ * 
+ * NO OPERATOR KEY USED - Pure signature verification
  */
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +31,10 @@ export async function POST(request: NextRequest) {
         error: 'Signature and nonce required for non-custodial orders' 
       }, { status: 400 });
     }
+
+    // Authenticate and verify the caller owns this userId
+    const authResult = await requireAuthMatchingUser(request, userId);
+    if (authResult instanceof NextResponse) return authResult;
 
     if (side !== 'buy' && side !== 'sell') {
       return NextResponse.json({ error: 'Side must be "buy" or "sell"' }, { status: 400 });
