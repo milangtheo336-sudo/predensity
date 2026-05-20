@@ -618,46 +618,36 @@ function FinanceMarketFields({ form, setForm }: FinanceMarketFieldsProps) {
 
       {effectiveShape === 'asset-vs-asset' && (
         <div className="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900/50">
-          <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Asset A *</label>
-            <input
-              type="text"
-              value={form.financeAssetA}
-              onChange={(e) => setForm((p: any) => ({ ...p, financeAssetA: e.target.value }))}
-              placeholder="BTC"
-              className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
-            />
-            <input
-              type="url"
-              value={form.financeAssetALogo}
-              onChange={(e) => setForm((p: any) => ({ ...p, financeAssetALogo: e.target.value }))}
-              placeholder="Asset A logo URL"
-              className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Asset B *</label>
-            <input
-              type="text"
-              value={form.financeAssetB}
-              onChange={(e) => setForm((p: any) => ({ ...p, financeAssetB: e.target.value }))}
-              placeholder="GOLD"
-              className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
-            />
-            <input
-              type="url"
-              value={form.financeAssetBLogo}
-              onChange={(e) => setForm((p: any) => ({ ...p, financeAssetBLogo: e.target.value }))}
-              placeholder="Asset B logo URL"
-              className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Asset A *</label>
+              <input
+                type="text"
+                value={form.financeAssetA}
+                onChange={(e) => setForm((p: any) => ({ ...p, financeAssetA: e.target.value }))}
+                placeholder="BTC"
+                className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Asset B *</label>
+              <input
+                type="text"
+                value={form.financeAssetB}
+                onChange={(e) => setForm((p: any) => ({ ...p, financeAssetB: e.target.value }))}
+                placeholder="Gold"
+                className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
+              />
+            </div>
           </div>
           {previewQuestion && (
             <p className="text-xs text-gray-500 dark:text-gray-400">
               <span className="font-medium">Preview:</span> {previewQuestion}
             </p>
           )}
-          <p className="text-xs text-gray-400">Two outcomes, no Draw. Question is generated from the asset names.</p>
+          <p className="text-xs text-gray-400">
+            Binary Yes / No market — YES means <span className="font-medium">{form.financeAssetA || 'Asset A'}</span> beats <span className="font-medium">{form.financeAssetB || 'Asset B'}</span>. Use Market Image URL above for a composite logo.
+          </p>
         </div>
       )}
 
@@ -1994,10 +1984,11 @@ function AdminPage() {
           toast({ variant: 'destructive', title: 'Missing fields', description: 'Both asset names are required' });
           return;
         }
+        // Binary Yes/No market — YES = Asset A beats Asset B.
         question = `${clobMarketForm.financeAssetA.trim()} vs ${clobMarketForm.financeAssetB.trim()}`;
         validOutcomes = [
-          { name: clobMarketForm.financeAssetA.trim(), imageUrl: clobMarketForm.financeAssetALogo.trim() },
-          { name: clobMarketForm.financeAssetB.trim(), imageUrl: clobMarketForm.financeAssetBLogo.trim() },
+          { name: 'Yes', imageUrl: '' },
+          { name: 'No', imageUrl: '' },
         ];
       } else {
         // fed-rates OR multi-free: admin-entered question + outcomes list
