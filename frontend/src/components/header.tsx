@@ -38,6 +38,11 @@ import {
   useWriteContract,
   useWatchTransactionReceipt,
 } from '@buidlerlabs/hashgraph-react-wallets';
+// Import connectors directly (not from barrel) to avoid MetamaskConnector
+// pulling in wagmi → @walletconnect/ethereum-provider → broken valtio
+import HashpackConnector from '@buidlerlabs/hashgraph-react-wallets/lib/hWBridge/connectors/HashpackConnector';
+import BladeConnector from '@buidlerlabs/hashgraph-react-wallets/lib/hWBridge/connectors/BladeConnector';
+import KabilaConnector from '@buidlerlabs/hashgraph-react-wallets/lib/hWBridge/connectors/KabilaConnector';
 import { useMagic } from '@/context/MagicContext';
 import { useWalletUser } from '@/context/WalletUserContext';
 import { getDIDToken, getUserInfo } from '@/lib/magic';
