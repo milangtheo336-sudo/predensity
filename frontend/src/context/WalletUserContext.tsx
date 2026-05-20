@@ -48,6 +48,7 @@ export function WalletUserProvider({ children }: { children: ReactNode }) {
   const [walletUser, setWalletUserState] = useState<WalletUser | null>(null);
   const [isWalletUserLoading, setIsWalletUserLoading] = useState(true);
   const [isWalletAuthenticating, setIsWalletAuthenticating] = useState(false);
+  const [signingWallet, setSigningWallet] = useState<SigningWalletInfo | null>(null);
 
   // Rehydrate from sessionStorage on mount
   useEffect(() => {
