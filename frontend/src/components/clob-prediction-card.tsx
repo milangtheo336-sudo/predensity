@@ -1516,10 +1516,10 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-[#888888]">
                           <span>To Win:</span>
-                          <div className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#888888] text-[10px] cursor-help group relative">
+                          <div className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-gray-400 dark:border-[#888888] text-[10px] cursor-help group relative text-gray-600 dark:text-[#888888]">
                             i
                             {/* Tooltip */}
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 bg-[#0a0a0a] border border-gray-200 dark:border-[#2a2a2a] rounded-lg p-3 shadow-xl">
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#2a2a2a] rounded-lg p-3 shadow-xl">
                               <div className="text-xs space-y-1.5">
                                 <div className="flex justify-between text-gray-900 dark:text-white">
                                   <span>Amount:</span>
@@ -1642,7 +1642,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               <button
                 onClick={handlePlaceOrder}
                 disabled={!isSignedIn || !orderPrice || !orderQuantity || isPlacing || isResolved || market.eliminatedOutcomes?.includes(selectedOutcome)}
-                className="block w-[calc(100%-32px)] mx-4 mb-4 py-3.5 bg-gray-100 dark:bg-white hover:bg-gray-200 dark:hover:bg-[#e8e8e8] text-black dark:text-black rounded-xl text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed border border-gray-200 dark:border-[#2a2a2a]"
+                className="block w-[calc(100%-32px)] mx-4 mb-4 py-3.5 bg-black dark:bg-black hover:bg-gray-800 dark:hover:bg-gray-800 text-white dark:text-white rounded-2xl text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isPlacing ? (
                   <Loader2 className="w-5 h-5 animate-spin mx-auto" />
@@ -1650,6 +1650,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                   market.eliminatedOutcomes?.includes(selectedOutcome) ? 'Outcome Eliminated' :
                   isResolved ? 'Market Resolved' :
                   !isSignedIn ? 'Log in / Sign up to Trade' :
+                  platformBalance === 0 ? 'Deposit' :
                   isMarketOrder 
                     ? `${orderSide === 'buy' ? 'Buy' : 'Sell'} ${selectedOutcomeData?.name}`
                     : `Create ${orderSide === 'buy' ? 'Buy' : 'Sell'} Order`
