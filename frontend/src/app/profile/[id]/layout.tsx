@@ -1,16 +1,17 @@
 import { Metadata } from 'next';
 
-interface Props {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
   params: { id: string };
-  searchParams: { [key: string]: string | undefined };
-}
-
-export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
-  const name = searchParams.name || 'Trader';
-  const pnl = searchParams.pnl || '+$0.00';
-  const predictions = searchParams.predictions || '0';
-  const win = searchParams.win || '$0.00';
-  const seed = searchParams.seed || params.id || 'default';
+  searchParams: { [key: string]: string | string[] | undefined };
+}): Promise<Metadata> {
+  const name = (searchParams.name as string) || 'Trader';
+  const pnl = (searchParams.pnl as string) || '+$0.00';
+  const predictions = (searchParams.predictions as string) || '0';
+  const win = (searchParams.win as string) || '$0.00';
+  const seed = (searchParams.seed as string) || params.id || 'default';
 
   const ogParams = new URLSearchParams({ name, pnl, predictions, win, seed });
   const ogImageUrl = `https://predensity.com/api/og?${ogParams.toString()}`;
