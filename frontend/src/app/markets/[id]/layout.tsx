@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
 
-interface Props {
+export async function generateMetadata({
+  params,
+}: {
   params: { id: string };
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+}): Promise<Metadata> {
   const marketId = params.id;
   const isCrypto = marketId.toLowerCase().startsWith('crypto-');
   const symbol = isCrypto ? marketId.replace(/^crypto-/i, '').toUpperCase() : '';
