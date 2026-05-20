@@ -27,6 +27,69 @@ class HederaProvider extends ethers.providers.JsonRpcProvider {
 
 // Singleton instance
 let magicInstance: any = null;
+let blurRemoverInitialized = false;
+
+/**
+ * Initialize aggressive backdrop remover for Magic Link modal.
+ * Magic Link creates a backdrop div that blurs/darkens the background.
+ * This function forcefully removes those effects.
+ */
+function initializeBlurRemover() {
+  if (blurRemoverInitialized || typeof window === 'undefined') return;
+  blurRemoverInitialized = true;
+
+  // Make backdrop black without blur
+  const fixBackdrop = () => {
+    // Get ALL elements in the document
+    const allElements = document.querySelectorAll('*') as NodeListOf<HTMLElement>;
+    
+    allElements.forEach((element) => {
+      if (!element.style) return;
+      
+      // Force remove backdrop filter from everything
+      const backdropFilter = element.style.backdropFilter || element.style.webkitBackdropFilter;
+      if (backdropFilter && backdropFilter !== 'none') {
+        element.style.setProperty('backdrop-filter', 'none', 'important');
+        element.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+      }
+      
+      // Check if this is a fixed position element
+      const computed = window.getComputedStyle(element);
+      if (computed.position === 'fixed') {
+        element.style.setProperty('backdrop-filter', 'none', 'important');
+        element.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+        element.style.setProperty('filter', 'none', 'important');
+        
+        // If it has a background, make it black with good opacity
+        const bgColor = computed.backgroundColor;
+        if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+          element.style.setProperty('background-color', 'rgba(0, 0, 0, 0.6)', 'important');
+          element.style.setProperty('background', 'rgba(0, 0, 0, 0.6)', 'important');
+        }
+      }
+    });
+  };
+
+  // Run immediately
+  fixBackdrop();
+  
+  // Run continuously at high frequency
+  const interval = setInterval(fixBackdrop, 20);
+  
+  // Also watch for DOM changes
+  const observer = new MutationObserver(fixBackdrop);
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style'],
+  });
+  
+  // Clean up after 10 seconds (modal should be loaded by then)
+  setTimeout(() => {
+    clearInterval(interval);
+  }, 10000);
+}
 
 /**
  * Get Magic instance (singleton).
@@ -51,8 +114,8 @@ export function getMagic(): any {
       
       const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
       
-      // Detect system theme
-      const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      // Always use dark theme for Magic Link modal
+      const theme = 'dark';
       
       // Initialize Magic with OAuth2 and Hedera extensions + theme
       magicInstance = new Magic(publishableKey, {
@@ -63,7 +126,11 @@ export function getMagic(): any {
           })
         ],
         locale: 'en_US',
-        theme: isDarkMode ? 'dark' : 'light',
+        theme: theme,
+        // Disable backdrop blur
+        network: {
+          rpcUrl: 'https://testnet.hashio.io/api',
+        },
       });
       
       if (!magicInstance.oauth2) {
@@ -73,6 +140,9 @@ export function getMagic(): any {
       if (!magicInstance.hedera) {
         throw new Error('Hedera extension not initialized');
       }
+
+      // Initialize blur remover
+      initializeBlurRemover();
     } catch (error) {
       throw error;
     }
