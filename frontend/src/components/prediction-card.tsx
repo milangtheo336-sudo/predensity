@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Image from 'next/image';
-import { Minus, Plus, AlertTriangle, Clock, ArrowLeft, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { Minus, Plus, AlertTriangle, Clock, ArrowLeft, ChevronDown, ChevronUp, ExternalLink, Share2, Twitter, Link2, Check as CheckIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KDEChart } from '@/components/kde-chart';
 import { PriceRangeSelector } from '@/components/price-range-selector';
@@ -409,6 +409,7 @@ export function PredictionCard({
   const [betError, setBetError] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const isQueryUpdate = useRef(false);
   const { startUnix, endUnix } = getTimestampRange(resolutionDate, resolutionTime);
@@ -642,9 +643,48 @@ export function PredictionCard({
                 <span className="bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-300 text-xs font-medium px-3 py-1 rounded">
                   Crypto
                 </span>
-                <span className="text-gray-500 dark:text-gray-400 text-sm flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" /> Resolves in {timeRemaining}
-                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const url = `${window.location.origin}/markets/crypto-${tokenSymbol.toLowerCase()}`;
+                      navigator.clipboard.writeText(url).catch(() => {});
+                      setShareCopied(true);
+                      setTimeout(() => setShareCopied(false), 2000);
+                    }}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+                    title={shareCopied ? 'Copied!' : 'Copy link'}
+                  >
+                    {shareCopied ? <CheckIcon className="w-3.5 h-3.5 text-green-500" /> : <Link2 className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const url = `${window.location.origin}/markets/crypto-${tokenSymbol.toLowerCase()}`;
+                      const text = `Predict ${tokenSymbol} price on Predensity\n\nCurrent price: $${currentPrice > 0 ? currentPrice.toFixed(2) : '...'}\n\n${url}`;
+                      window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+                    }}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+                    title="Share to X"
+                  >
+                    <Twitter className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const url = `${window.location.origin}/markets/crypto-${tokenSymbol.toLowerCase()}`;
+                      const text = `Predict *${tokenSymbol}* price on Predensity\n\nCurrent price: $${currentPrice > 0 ? currentPrice.toFixed(2) : '...'}\n\n${url}`;
+                      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+                    }}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+                    title="Share to WhatsApp"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-gray-500 dark:text-gray-400 text-sm flex items-center gap-1.5 ml-1">
+                    <Clock className="w-3.5 h-3.5" /> Resolves in {timeRemaining}
+                  </span>
+                </div>
               </div>
 
               {/* Token identity: logo + name + live price */}
