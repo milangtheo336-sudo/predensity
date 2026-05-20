@@ -8,7 +8,9 @@ import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useWallet, useAccountId } from '@buidlerlabs/hashgraph-react-wallets';
-import { User, Shield, Bell, Camera, Copy, Check, Trash2 } from 'lucide-react';
+import { User, Shield, Bell, Copy, Check, Trash2 } from 'lucide-react';
+import Avatar from 'boring-avatars';
+import { getAvatarPalette } from '@/lib/utils';
 
 type Tab = 'profile' | 'account' | 'notifications';
 
@@ -141,43 +143,17 @@ function ProfileTab({ user }: { user: any }) {
 
   return (
     <div className="space-y-6">
-      {/* Profile photo */}
+      {/* Profile avatar */}
       <Card>
         <CardContent className="p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-4">Profile Photo</h3>
+          <h3 className="text-sm font-medium text-muted-foreground mb-4">Profile Avatar</h3>
           <div className="flex items-center gap-4">
-            <div className="relative">
-              {user.imageUrl ? (
-                <img
-                  src={user.imageUrl}
-                  alt="Profile"
-                  className="w-20 h-20 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-vibrant-purple flex items-center justify-center text-white text-2xl font-medium">
-                  {(user.firstName || user.primaryEmailAddress?.emailAddress || 'U').charAt(0).toUpperCase()}
-                </div>
-              )}
-              <label
-                htmlFor="photo-upload"
-                className="absolute bottom-0 right-0 w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center cursor-pointer hover:bg-muted transition-colors"
-              >
-                <Camera className="w-3.5 h-3.5" />
-              </label>
-              <input
-                id="photo-upload"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handlePhotoUpload}
-                disabled={uploadingPhoto}
-              />
+            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 bg-[#0a0a0c]">
+              <Avatar size={80} name={user.id} variant="marble" colors={getAvatarPalette(user.id)} square={false} />
             </div>
             <div>
-              <p className="text-sm font-medium">
-                {uploadingPhoto ? 'Uploading...' : 'Click the camera icon to update'}
-              </p>
-              <p className="text-xs text-muted-foreground">JPG, PNG or GIF. Max 5MB.</p>
+              <p className="text-sm font-medium">Auto-generated avatar</p>
+              <p className="text-xs text-muted-foreground">Unique to your account. Cannot be changed.</p>
             </div>
           </div>
         </CardContent>
