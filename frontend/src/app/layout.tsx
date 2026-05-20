@@ -9,6 +9,7 @@ import ContextProvider from '../../context';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { MagicProvider } from '@/context/MagicContext';
 import { Analytics } from '@vercel/analytics/react';
+import { useEffect } from 'react';
 
 
 const appFont = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-app' });
@@ -16,6 +17,25 @@ const appFont = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-app' }
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Suppress WalletConnect IndexedDB closing errors - benign race condition during HMR/navigation
+  useEffect(() => {
+    const handler = (event: ErrorEvent) => {
+      if (event.message?.includes('IDBDatabase') || event.message?.includes('transaction') && event.message?.includes('closing')) {
+        event.preventDefault();
+      }
+    };
+    const unhandledHandler = (event: PromiseRejectionEvent) => {
+      if (event.reason?.message?.includes('IDBDatabase') || event.reason?.name === 'InvalidStateError') {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('error', handler);
+    window.addEventListener('unhandledrejection', unhandledHandler);
+    return () => {
+      window.removeEventListener('error', handler);
+      window.removeEventListener('unhandledrejection', unhandledHandler);
+    };
+  }, []);
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
