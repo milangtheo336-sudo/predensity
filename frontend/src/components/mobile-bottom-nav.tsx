@@ -62,10 +62,12 @@ export function MobileBottomNav() {
             <Image src="/search.svg" alt="Search" width={20} height={20} className="opacity-40 dark:brightness-0 dark:invert dark:opacity-50" />
             <span className="text-[11.5px] font-medium">{t.search}</span>
           </button>
-          <button className="flex flex-col items-center justify-center gap-1.5 py-2 text-black/40 dark:text-white/50 hover:text-black dark:hover:text-white transition-colors">
-            <Image src="/breaking.svg" alt="Breaking" width={20} height={20} className="opacity-40 dark:brightness-0 dark:invert dark:opacity-50" />
-            <span className="text-[11.5px] font-medium">{t.breaking}</span>
-          </button>
+          <Link href="/leaderboard" className="flex flex-col items-center justify-center gap-1.5 py-2 text-black/40 dark:text-white/50 hover:text-black dark:hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-40 dark:opacity-50">
+              <path d="M6 9h12M6 9v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9M10 17v-7M14 17v-4M10 6v1M14 6v1M8 6h8"/>
+            </svg>
+            <span className="text-[11.5px] font-medium">Leaderboard</span>
+          </Link>
 
           {/* Logged in: Portfolio icon linking to /my-bets */}
           {isSignedIn ? (
