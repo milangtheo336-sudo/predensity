@@ -136,11 +136,11 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
       : 'skip'
   );
 
-  // For crypto, fetch all bets for the contract
+  // For crypto, fetch bets filtered by token symbol so HBAR and BTC are separate
   const cryptoBets = useConvexQuery(
-    api.sync.getBetsByMarket,
-    isCrypto && contractAddress
-      ? { marketId: contractAddress }
+    api.sync.getBetsByMarketAndAsset,
+    isCrypto && contractAddress && market.question
+      ? { marketId: contractAddress.toLowerCase(), asset: market.question }
       : 'skip'
   );
 
