@@ -1170,13 +1170,17 @@ export default function PortfolioPage() {
             <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-                  <Avatar
-                    size={56}
-                    name={user?.id || 'default'}
-                    variant="marble"
-                    colors={getAvatarPalette(user?.id || 'default')}
-                    square={false}
-                  />
+                  {user?.imageUrl && !user.imageUrl.includes('gravatar') ? (
+                    <img src={user.imageUrl} alt="" className="w-14 h-14 rounded-full object-cover" />
+                  ) : (
+                    <Avatar
+                      size={56}
+                      name={user?.id || 'default'}
+                      variant="marble"
+                      colors={getAvatarPalette(user?.id || 'default')}
+                      square={false}
+                    />
+                  )}
                 </div>
                 <div>
                   <div className="text-base font-bold text-gray-900 dark:text-white">
@@ -1185,6 +1189,11 @@ export default function PortfolioPage() {
                   <div className="text-xs text-gray-500 dark:text-neutral-500 flex items-center gap-1 mt-0.5">
                     Joined {joinDate}
                   </div>
+                  {(user?.unsafeMetadata as any)?.bio && (
+                    <div className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5 max-w-[200px] truncate">
+                      {(user.unsafeMetadata as any).bio}
+                    </div>
+                  )}
                 </div>
               </div>
 
