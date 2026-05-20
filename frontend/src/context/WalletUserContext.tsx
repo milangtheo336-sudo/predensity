@@ -9,6 +9,10 @@
  *
  * Session is stored in sessionStorage under 'wallet-user-cache' so it survives
  * page navigations within the same tab but is cleared when the tab closes.
+ *
+ * On mount, if the cache exists we restore it immediately. If the wallet library
+ * later reports isConnected=false (e.g. user disconnected from the wallet side),
+ * the session is cleared automatically via the guard in the Header.
  */
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
@@ -24,20 +28,13 @@ export interface WalletUser {
   userId: string;
 }
 
-export interface SigningWalletInfo {
-  name: string;
-  icon: string; // image src — local path or data URI
-}
-
 interface WalletUserContextType {
   walletUser: WalletUser | null;
   isWalletUserLoading: boolean;
   isWalletAuthenticating: boolean;
-  signingWallet: SigningWalletInfo | null;
   setWalletUser: (user: WalletUser | null) => void;
   clearWalletUser: () => void;
   setIsWalletAuthenticating: (v: boolean) => void;
-  setSigningWallet: (info: SigningWalletInfo | null) => void;
 }
 
 const WalletUserContext = createContext<WalletUserContextType | undefined>(undefined);
@@ -48,7 +45,6 @@ export function WalletUserProvider({ children }: { children: ReactNode }) {
   const [walletUser, setWalletUserState] = useState<WalletUser | null>(null);
   const [isWalletUserLoading, setIsWalletUserLoading] = useState(true);
   const [isWalletAuthenticating, setIsWalletAuthenticating] = useState(false);
-  const [signingWallet, setSigningWallet] = useState<SigningWalletInfo | null>(null);
 
   // Rehydrate from sessionStorage on mount
   useEffect(() => {
@@ -82,7 +78,7 @@ export function WalletUserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <WalletUserContext.Provider value={{ walletUser, isWalletUserLoading, isWalletAuthenticating, signingWallet, setWalletUser, clearWalletUser, setIsWalletAuthenticating, setSigningWallet }}>
+    <WalletUserContext.Provider value={{ walletUser, isWalletUserLoading, isWalletAuthenticating, setWalletUser, clearWalletUser, setIsWalletAuthenticating }}>
       {children}
     </WalletUserContext.Provider>
   );
