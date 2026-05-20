@@ -10,7 +10,7 @@ import "./SimpleProxyWallet.sol";
  * Reduces deployment cost by ~80% compared to full contract deployment.
  * 
  * Pattern:
- * 1. Deploy master implementation once
+ * 1. Deploy master implementation once (externally)
  * 2. Clone master for each user (45 bytes vs full bytecode)
  * 3. Initialize clone with user's owner address
  */
@@ -21,9 +21,9 @@ contract ProxyWalletFactory {
     
     mapping(address => address) public ownerToWallet;
     
-    constructor() {
-        // Deploy master implementation
-        masterImplementation = address(new SimpleProxyWallet(address(this)));
+    constructor(address _masterImplementation) {
+        require(_masterImplementation != address(0), "Invalid implementation");
+        masterImplementation = _masterImplementation;
     }
     
     /**
