@@ -1237,7 +1237,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   >
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-                      <Avatar size={32} name={user?.id || 'default'} variant="marble" colors={getAvatarPalette(user?.id || 'default')} square={false} />
+                      {user?.imageUrl && !user.imageUrl.includes('gravatar') ? (
+                        <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <Avatar size={32} name={user?.id || 'default'} variant="marble" colors={getAvatarPalette(user?.id || 'default')} square={false} />
+                      )}
                     </div>
                     <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform duration-200', profileDropdownOpen && 'rotate-180')} />
                   </button>
@@ -1357,7 +1361,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   >
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-                      <Avatar size={32} name={user?.id || 'default'} variant="marble" colors={getAvatarPalette(user?.id || 'default')} square={false} />
+                      {user?.imageUrl && !user.imageUrl.includes('gravatar') ? (
+                        <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <Avatar size={32} name={user?.id || 'default'} variant="marble" colors={getAvatarPalette(user?.id || 'default')} square={false} />
+                      )}
                     </div>
                     <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform duration-200', profileDropdownOpen && 'rotate-180')} />
                   </button>
@@ -1502,7 +1510,11 @@ function ProfileDropdownPortal({
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-            <Avatar size={32} name={user?.id || 'default'} variant="marble" colors={getAvatarPalette(user?.id || 'default')} square={false} />
+            {user?.imageUrl && !user.imageUrl.includes('gravatar') ? (
+              <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+            ) : (
+              <Avatar size={32} name={user?.id || 'default'} variant="marble" colors={getAvatarPalette(user?.id || 'default')} square={false} />
+            )}
           </div>
           {displayAddress ? (
             <button
