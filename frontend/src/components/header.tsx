@@ -233,6 +233,7 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
           <Image src="/hashpack.jpg" alt="" width={20} height={20} className="rounded-full" />
           <Image src="/metamask.png" alt="" width={20} height={20} className="rounded-full" />
           <Image src="/blade.png" alt="" width={20} height={20} className="rounded-full" />
+          <Image src="/kabila.jpg" alt="" width={20} height={20} className="rounded-full" />
         </div>
       </button>
 
@@ -554,12 +555,13 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
   const [connecting, setConnecting] = useState<string | null>(null);
 
   // Import all wallet hooks at top level (React rules)
-  let hashpackWallet: any, metamaskWallet: any, bladeWallet: any;
+  let hashpackWallet: any, metamaskWallet: any, bladeWallet: any, kabilaWallet: any;
   try {
     const connectors = require('@buidlerlabs/hashgraph-react-wallets/connectors');
     hashpackWallet = useWallet(connectors.HashpackConnector);
     metamaskWallet = useWallet(connectors.MetamaskConnector);
     bladeWallet = useWallet(connectors.BladeConnector);
+    kabilaWallet = useWallet(connectors.KabilaConnector);
   } catch {
     // Fallback if connectors not available
   }
@@ -568,6 +570,7 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
     hashpack: hashpackWallet,
     metamask: metamaskWallet,
     blade: bladeWallet,
+    kabila: kabilaWallet,
   };
 
   // Auto-transition when wallet connects
@@ -594,6 +597,7 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
     { name: 'HashPack', img: '/hashpack.jpg', type: 'hashpack' },
     { name: 'MetaMask', img: '/metamask.png', type: 'metamask' },
     { name: 'Blade', img: '/blade.png', type: 'blade' },
+    { name: 'Kabila', img: '/kabila.jpg', type: 'kabila' },
   ];
 
   return (
