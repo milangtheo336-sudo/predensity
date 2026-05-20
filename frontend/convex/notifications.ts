@@ -51,14 +51,22 @@ export const createNotification = mutation({
     message: v.string(),
     marketId: v.optional(v.string()),
     betId: v.optional(v.string()),
+    matchId: v.optional(v.string()),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Verify admin token if provided
+    if (args._serverToken && args._serverToken !== process.env.CONVEX_ADMIN_TOKEN) {
+      throw new Error("Unauthorized");
+    }
+
     await ctx.db.insert("notifications", {
       userId: args.userId,
       type: args.type,
       message: args.message,
       marketId: args.marketId,
       betId: args.betId,
+      matchId: args.matchId,
       read: false,
       timestamp: Date.now(),
     });
