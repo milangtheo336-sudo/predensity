@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 import { rateLimit } from '@/lib/api-auth';
+import { CONTRACT_ADDRESSES } from '@/lib/contracts/contract-config';
 import {
   Client,
   ContractExecuteTransaction,
   ContractId,
   PrivateKey,
+  TransferTransaction,
+  Hbar,
+  AccountId,
+  TokenId,
+  TokenAssociateTransaction,
 } from '@hashgraph/sdk';
 import { ethers } from 'ethers';
 
@@ -16,6 +22,12 @@ const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || '';
 const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || '';
 const HEDERA_NETWORK = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
 const PROXY_WALLET_FACTORY_ID = process.env.PROXY_WALLET_FACTORY_CONTRACT_ID || '';
+
+// Initial HBAR funding per wallet (covers token associations + future gas)
+const INITIAL_HBAR_FUNDING = 0.15; // ~$0.01 USD
+
+// USDC token ID for auto-association
+const USDC_TOKEN_ID = HEDERA_NETWORK === 'mainnet' ? '0.0.456858' : '0.0.8229951';
 
 function getHederaClient(): Client {
   const client = HEDERA_NETWORK === 'mainnet' ? Client.forMainnet() : Client.forTestnet();
@@ -62,12 +74,13 @@ export async function POST(request: NextRequest) {
     }
 
     // For now, use Magic EOA address directly (no proxy wallet)
-    // TODO: Deploy proxy wallet when PROXY_WALLET_FACTORY_ID is configured
+    // Operator funds the account with initial HBAR for gas
     const useProxyWallet = !!PROXY_WALLET_FACTORY_ID;
     let proxyWalletAddress = magicEOAAddress; // Default to EOA
+    let hederaAccountId = '';
 
+    // Deploy proxy wallet via factory
     if (useProxyWallet) {
-      // Deploy proxy wallet via factory
       const client = getHederaClient();
       const keyHex = OPERATOR_KEY.startsWith('0x') ? OPERATOR_KEY.slice(2) : OPERATOR_KEY;
       const operatorKey = PrivateKey.fromStringECDSA(keyHex);
@@ -80,7 +93,7 @@ export async function POST(request: NextRequest) {
 
       const tx = new ContractExecuteTransaction()
         .setContractId(ContractId.fromString(PROXY_WALLET_FACTORY_ID))
-        .setGas(500000)
+        .setGas(1000000)
         .setFunctionParameters(Buffer.from(callData.slice(2), 'hex'))
         .freezeWith(client);
 
@@ -92,24 +105,141 @@ export async function POST(request: NextRequest) {
         throw new Error('Proxy wallet deployment failed');
       }
 
-      // Get proxy wallet address from factory
-      const getWalletInterface = new ethers.utils.Interface([
-        'function ownerToWallet(address) external view returns (address)',
-      ]);
-      const queryData = getWalletInterface.encodeFunctionData('ownerToWallet', [magicEOAAddress]);
+      // Get the created wallet address from the transaction record
+      const record = await response.getRecord(client);
+      const resultBytes = record.contractFunctionResult?.bytes;
+      
+      if (!resultBytes || resultBytes.length === 0) {
+        throw new Error('Failed to get proxy wallet address from transaction');
+      }
 
-      const queryTx = new ContractExecuteTransaction()
-        .setContractId(ContractId.fromString(PROXY_WALLET_FACTORY_ID))
-        .setGas(100000)
-        .setFunctionParameters(Buffer.from(queryData.slice(2), 'hex'))
-        .freezeWith(client);
+      // Decode the returned address (last 20 bytes)
+      const resultHex = '0x' + Buffer.from(resultBytes).toString('hex');
+      proxyWalletAddress = ethers.utils.defaultAbiCoder.decode(['address'], resultHex)[0];
 
-      const queryResponse = await queryTx.execute(client);
-      const queryRecord = await queryResponse.getRecord(client);
-      proxyWalletAddress = ethers.utils.defaultAbiCoder.decode(
-        ['address'],
-        '0x' + Buffer.from(queryRecord.contractFunctionResult!.bytes).toString('hex')
-      )[0];
+      // Get the Hedera account ID for the proxy wallet
+      // The proxy wallet is a contract, so we need to find its contract ID from created contracts
+      const createdContracts = record.contractFunctionResult?.contractNonces || [];
+      if (createdContracts.length > 0) {
+        // The first created contract is our proxy wallet
+        hederaAccountId = `0.0.${createdContracts[0].contractId}`;
+      } else {
+        // Fallback: derive from EVM address (may not work perfectly)
+        hederaAccountId = proxyWalletAddress;
+      }
+
+      // Fund the proxy wallet with initial HBAR
+      try {
+        const fundTx = new TransferTransaction()
+          .addHbarTransfer(OPERATOR_ID, new Hbar(-INITIAL_HBAR_FUNDING))
+          .addHbarTransfer(AccountId.fromEvmAddress(0, 0, proxyWalletAddress), new Hbar(INITIAL_HBAR_FUNDING))
+          .freezeWith(client);
+        
+        const signedFundTx = await fundTx.sign(operatorKey);
+        const fundResponse = await signedFundTx.execute(client);
+        await fundResponse.getReceipt(client);
+      } catch (fundErr) {
+        console.warn('[wallet/create] Initial HBAR funding failed (non-critical):', fundErr);
+      }
+
+      // Auto-associate USDC token with the proxy wallet
+      try {
+        const associateTx = new TokenAssociateTransaction()
+          .setAccountId(AccountId.fromEvmAddress(0, 0, proxyWalletAddress))
+          .setTokenIds([TokenId.fromString(USDC_TOKEN_ID)])
+          .freezeWith(client);
+        
+        const signedAssociateTx = await associateTx.sign(operatorKey);
+        const associateResponse = await signedAssociateTx.execute(client);
+        await associateResponse.getReceipt(client);
+      } catch (associateErr: any) {
+        // TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT is fine
+        if (associateErr?.status?._code !== 194) {
+          console.warn('[wallet/create] USDC association failed (non-critical):', associateErr);
+        }
+      }
+
+      // Whitelist prediction market contracts
+      try {
+        const proxyWalletInterface = new ethers.utils.Interface([
+          'function whitelistContract(address contractAddress) external',
+        ]);
+
+        const contractsToWhitelist = [
+          CONTRACT_ADDRESSES.crypto,
+          CONTRACT_ADDRESSES.politics,
+          CONTRACT_ADDRESSES.sports,
+          CONTRACT_ADDRESSES.technology,
+        ].filter(addr => addr && addr !== '');
+
+        for (const contractAddr of contractsToWhitelist) {
+          try {
+            const whitelistData = proxyWalletInterface.encodeFunctionData('whitelistContract', [contractAddr]);
+            
+            const whitelistTx = new ContractExecuteTransaction()
+              .setContractId(ContractId.fromString(hederaAccountId))
+              .setGas(300000)
+              .setFunctionParameters(Buffer.from(whitelistData.slice(2), 'hex'))
+              .freezeWith(client);
+            
+            const signedWhitelistTx = await whitelistTx.sign(operatorKey);
+            const whitelistResponse = await signedWhitelistTx.execute(client);
+            await whitelistResponse.getReceipt(client);
+            
+            console.log('[wallet/create] Whitelisted contract:', contractAddr);
+          } catch (whitelistErr) {
+            console.warn('[wallet/create] Failed to whitelist contract:', contractAddr, whitelistErr);
+          }
+        }
+      } catch (whitelistErr) {
+        console.warn('[wallet/create] Contract whitelisting failed (non-critical):', whitelistErr);
+      }
+
+      client.close();
+    } else {
+      // No proxy wallet - just fund the Magic EOA directly
+      const client = getHederaClient();
+      const keyHex = OPERATOR_KEY.startsWith('0x') ? OPERATOR_KEY.slice(2) : OPERATOR_KEY;
+      const operatorKey = PrivateKey.fromStringECDSA(keyHex);
+
+      try {
+        // Fund Magic EOA with initial HBAR for gas
+        const fundTx = new TransferTransaction()
+          .addHbarTransfer(OPERATOR_ID, new Hbar(-INITIAL_HBAR_FUNDING))
+          .addHbarTransfer(AccountId.fromEvmAddress(0, 0, magicEOAAddress), new Hbar(INITIAL_HBAR_FUNDING))
+          .freezeWith(client);
+        
+        const signedFundTx = await fundTx.sign(operatorKey);
+        const fundResponse = await signedFundTx.execute(client);
+        const fundReceipt = await fundResponse.getReceipt(client);
+        
+        if (fundReceipt.status.toString() === 'SUCCESS') {
+          // Get the Hedera account ID from the receipt
+          const record = await fundResponse.getRecord(client);
+          // The account ID is the recipient of the transfer
+          hederaAccountId = AccountId.fromEvmAddress(0, 0, magicEOAAddress).toString();
+        }
+      } catch (fundErr: any) {
+        console.warn('[wallet/create] Initial HBAR funding failed:', fundErr);
+        // Continue anyway - user can still deposit USDC
+      }
+
+      // Auto-associate USDC token with Magic EOA
+      try {
+        const associateTx = new TokenAssociateTransaction()
+          .setAccountId(AccountId.fromEvmAddress(0, 0, magicEOAAddress))
+          .setTokenIds([TokenId.fromString(USDC_TOKEN_ID)])
+          .freezeWith(client);
+        
+        const signedAssociateTx = await associateTx.sign(operatorKey);
+        const associateResponse = await signedAssociateTx.execute(client);
+        await associateResponse.getReceipt(client);
+      } catch (associateErr: any) {
+        // TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT is fine
+        if (associateErr?.status?._code !== 194) {
+          console.warn('[wallet/create] USDC association failed:', associateErr);
+        }
+      }
 
       client.close();
     }
@@ -122,9 +252,9 @@ export async function POST(request: NextRequest) {
       magicEOAAddress,
       proxyWalletAddress,
       evmAddress: proxyWalletAddress,
-      hederaAccountId: '', // Will be set when first transaction happens
+      hederaAccountId: hederaAccountId || '', // Will be populated after first transaction
       usdcBalance: '0',
-      hbarBalance: '0',
+      hbarBalance: INITIAL_HBAR_FUNDING.toFixed(8),
       isActive: true,
       createdAt: Date.now(),
       lastActivity: Date.now(),
@@ -139,6 +269,8 @@ export async function POST(request: NextRequest) {
         magicEOAAddress,
         proxyWalletAddress,
         usingProxyWallet: useProxyWallet,
+        initialHbarFunding: INITIAL_HBAR_FUNDING,
+        usdcAssociated: true,
       },
     });
   } catch (error) {
