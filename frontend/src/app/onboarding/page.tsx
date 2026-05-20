@@ -18,8 +18,8 @@ const CATEGORIES = [
 const AMOUNTS = ['5 USDC', '15 USDC', '50 USDC'];
 
 const MATCH = {
-  home: { name: 'Brazil', flag: '/brazil flag.avif' },
-  away: { name: 'Argentina', flag: '/argentina flag.avif' },
+  home: { name: 'Brazil', flag: '🇧🇷' },
+  away: { name: 'Argentina', flag: '🇦🇷' },
   odds: { home: '38%', draw: 'Draw 29%', away: '33%' },
 };
 
@@ -179,7 +179,7 @@ export default function OnboardingPage() {
             <div className="bg-white rounded-2xl p-5 w-full max-w-xs shadow-xl">
               <div className="flex justify-between items-center mb-4">
                 <div className="flex flex-col items-center gap-1">
-                  <Image src={MATCH.home.flag} alt={MATCH.home.name} width={40} height={40} className="rounded-sm object-cover w-10 h-7" />
+                  <span className="text-3xl">{MATCH.home.flag}</span>
                   <p className="text-xs font-medium text-gray-700">{MATCH.home.name}</p>
                 </div>
                 <div className="flex flex-col items-center gap-1">
@@ -187,7 +187,7 @@ export default function OnboardingPage() {
                   <p className="text-xl font-bold text-gray-900">0 : 0</p>
                 </div>
                 <div className="flex flex-col items-center gap-1">
-                  <Image src={MATCH.away.flag} alt={MATCH.away.name} width={40} height={40} className="rounded-sm object-cover w-10 h-7" />
+                  <span className="text-3xl">{MATCH.away.flag}</span>
                   <p className="text-xs font-medium text-gray-700">{MATCH.away.name}</p>
                 </div>
               </div>
@@ -231,7 +231,7 @@ export default function OnboardingPage() {
               {/* Header: market context + outcome selector with dropdown */}
               <div className="px-4 py-3.5 relative">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <Image src={MATCH.home.flag} alt="" width={16} height={16} className="w-4 h-4 rounded-full object-cover flex-shrink-0" />
+                  <span className="text-lg">{MATCH.home.flag}</span>
                   <span className="text-[11px] text-gray-500 truncate">{MATCH.home.name} vs {MATCH.away.name}</span>
                 </div>
                 {/* Outcome selector button */}
@@ -240,7 +240,7 @@ export default function OnboardingPage() {
                   className="flex items-center gap-2 text-left"
                 >
                   {currentOutcome.flag ? (
-                    <Image src={currentOutcome.flag} alt={currentOutcome.name} width={28} height={20} className="rounded-sm object-cover w-7 h-5 flex-shrink-0" />
+                    <span className="text-lg">{currentOutcome.flag}</span>
                   ) : (
                     <div className="w-7 h-5 bg-[#141414] rounded-sm flex items-center justify-center flex-shrink-0">
                       <Image src="/predensity-logo.png" alt="Draw" width={18} height={18} className="object-contain" />
@@ -264,7 +264,7 @@ export default function OnboardingPage() {
                           className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left ${selectedOutcomeIndex === i ? 'bg-gray-50' : ''}`}
                         >
                           {o.flag ? (
-                            <Image src={o.flag} alt={o.name} width={28} height={20} className="rounded-sm object-cover w-7 h-5 flex-shrink-0" />
+                            <span className="text-lg">{o.flag}</span>
                           ) : (
                             <div className="w-7 h-5 bg-[#141414] rounded-sm flex items-center justify-center flex-shrink-0">
                               <Image src="/predensity-logo.png" alt="Draw" width={16} height={16} className="object-contain" />
