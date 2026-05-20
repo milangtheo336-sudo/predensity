@@ -569,6 +569,12 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
     // Fallback if connectors not available
   }
 
+  const walletMap: Record<string, any> = {
+    hashpack: hashpackWallet,
+    blade: bladeWallet,
+    kabila: kabilaWallet,
+  };
+
   // Auto-transition when wallet connects
   useEffect(() => {
     if (!prevConnected.current && isConnected) {
