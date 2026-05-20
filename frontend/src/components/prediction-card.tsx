@@ -11,6 +11,7 @@ import { BetPlacedModal } from '@/components/bet-placed-modal';
 import { PredictionCardSkeleton } from '@/components/prediction-card-skeleton';
 import { useHbarPrice } from '@/hooks/useHbarPrice';
 import { useBetSimulation } from '@/hooks/useBetSimulation';
+import { useNonCustodialBetting } from '@/hooks/useNonCustodialBetting';
 import { HbarPriceDisplay } from '@/components/hbar-price-display';
 import { Category } from '@/lib/types/categories';
 import { getContractId, getContractAddress, getStakingCurrency } from '@/lib/contracts/contract-config';
@@ -632,6 +633,9 @@ export function PredictionCard({
   const [showDetails, setShowDetails] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
 
+  // Non-custodial betting hook
+  const { placeBet, isPlacing, isApproving, txHash } = useNonCustodialBetting();
+
   const isQueryUpdate = useRef(false);
   const { startUnix, endUnix } = getTimestampRange(resolutionDate, resolutionTime);
 
@@ -697,10 +701,11 @@ export function PredictionCard({
 
   // Validation
   const hasValidAmount = depositAmount && parseFloat(depositAmount) > 0 && parseFloat(depositAmount) <= platformBalance;
-  const canPlaceBet = hasValidAmount && isSignedIn && !!managedWallet && !isPlacingBet && hasValidLeadPeriod;
+  const canPlaceBet = hasValidAmount && isSignedIn && !!managedWallet && !isPlacingBet && !isPlacing && !isApproving && hasValidLeadPeriod;
 
   const getButtonText = () => {
-    if (isPlacingBet) return 'Processing...';
+    if (isApproving) return 'Approving USDC...';
+    if (isPlacingBet || isPlacing) return 'Signing Transaction...';
     if (!isSignedIn) return 'Sign In to Bet';
     if (!managedWallet) return 'Deposit to Start';
     if (!hasValidLeadPeriod) return `Min 24h lead required (${leadPeriodHours < 1 ? Math.round(leadPeriodHours * 60) + 'min' : leadPeriodHours.toFixed(1) + 'h'})`;
@@ -854,34 +859,35 @@ export function PredictionCard({
     return () => { if (debouncedSimulateRef.current) debouncedSimulateRef.current.cancel(); };
   }, [selectedRange.min, selectedRange.max, startUnix, depositAmount, hasValidLeadPeriod]);
 
-  // Place bet handler
+  // Place bet handler (non-custodial)
   const handlePlaceBet = async () => {
     if (!depositAmount || parseFloat(depositAmount) <= 0) { setBetError('Enter a valid amount'); return; }
     if (!user) { setBetError('Sign in to place a bet'); return; }
     if (!managedWallet) { setBetError('Deposit funds first'); return; }
     if (parseFloat(depositAmount) > platformBalance) { setBetError('Insufficient balance. Deposit more funds.'); return; }
-    setIsPlacingBet(true); setBetError(null);
+    
+    setIsPlacingBet(true); 
+    setBetError(null);
+    
     try {
       const decimals = 8;
       const minStr = limitDecimals(selectedRange.min, decimals);
       const maxStr = limitDecimals(selectedRange.max, decimals);
-      const res = await fetch('/api/bet/place', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.issuer,
-          category: 'crypto',
-          targetTimestamp: startUnix,
-          priceMin: minStr,
-          priceMax: maxStr,
-          stakeUsdc: depositAmount,
-          asset: tokenSymbol,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Bet placement failed');
-      setTransactionId(data.transactionId);
-      setIsBetPlaced(true); setIsPlacingBet(false);
+      
+      // User signs transaction with Magic Link
+      const result = await placeBet(
+        Category.CRYPTO,
+        startUnix,
+        minStr,
+        maxStr,
+        depositAmount,
+        tokenSymbol,
+        user.issuer
+      );
+      
+      setTransactionId(result.txHash);
+      setIsBetPlaced(true);
+      setIsPlacingBet(false);
     } catch (err) {
       setIsPlacingBet(false);
       setBetError(err instanceof Error ? err.message : 'Failed to place bet');
