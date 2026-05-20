@@ -356,40 +356,40 @@ contract CryptoPredictionMarket is Ownable {
         
         if (startIndex >= bucketInfo.betIds.length) {
             bucketInfo.aggregationComplete = true;
-            totalObligations += bucketInfo.totalStaked - bucketInfo.totalExited;
+            totalObligations += bucketInfo.totalStaked;
             emit AggregationCompleted(bucket, bucketInfo.totalWinningWeight);
             return (0, 0);
         }
-        
+
         uint256 batchWinningWeight = 0;
         uint256 processed = 0;
-        
+
         for (uint256 i = startIndex; i < endIndex; i++) {
             uint256 betId = bucketInfo.betIds[i];
             Bet storage bet = bets[betId];
-            
-            if (!bet.finalized && !bet.exited) {
+
+            if (!bet.finalized) {
                 uint256 price = _priceForBet(betId);
                 require(price > 0, "Price not set for asset+timestamp");
 
                 bet.finalized = true;
                 bet.actualPrice = price;
                 bet.won = (price >= bet.priceMin && price <= bet.priceMax);
-                
+
                 if (bet.won) {
                     batchWinningWeight += bet.weight;
                 }
-                
+
                 processed++;
             }
         }
-        
+
         bucketInfo.totalWinningWeight += batchWinningWeight;
         bucketInfo.nextProcessIndex = endIndex;
-        
+
         if (endIndex >= bucketInfo.betIds.length) {
             bucketInfo.aggregationComplete = true;
-            totalObligations += bucketInfo.totalStaked - bucketInfo.totalExited;
+            totalObligations += bucketInfo.totalStaked;
             emit AggregationCompleted(bucket, bucketInfo.totalWinningWeight);
         }
         
