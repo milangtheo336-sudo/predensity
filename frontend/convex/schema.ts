@@ -93,6 +93,8 @@ export default defineSchema({
     content: v.string(),
     timestamp: v.number(),
     likes: v.number(),
+    likedBy: v.optional(v.array(v.string())),
+    parentId: v.optional(v.id("comments")),
   }).index("by_market", ["marketId"]),
 
   privateNotes: defineTable({
