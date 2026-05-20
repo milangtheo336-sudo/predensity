@@ -141,7 +141,7 @@ export const countAllEvents = query({
       total: allEvents.length,
       byCategory: {
         politics: allEvents.filter(e => e.category === 'politics').length,
-        sports: allEvents.filter(e => e.category === 'sports').length,
+        esports: allEvents.filter(e => e.category === 'esports').length,
         technology: allEvents.filter(e => e.category === 'technology').length,
         crypto: allEvents.filter(e => e.category === 'crypto').length,
       },
