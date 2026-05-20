@@ -145,25 +145,79 @@ export const addComment = mutation({
     marketId: v.string(),
     userAddress: v.string(),
     content: v.string(),
+    parentId: v.optional(v.id("comments")),
   },
   handler: async (ctx, args) => {
-    await ctx.db.insert("comments", {
+    const commentId = await ctx.db.insert("comments", {
       marketId: args.marketId,
       userAddress: args.userAddress,
       content: args.content,
       timestamp: Date.now(),
       likes: 0,
+      parentId: args.parentId,
     });
+
+    // Notify parent comment author on reply
+    if (args.parentId) {
+      const parent = await ctx.db.get(args.parentId);
+      if (parent && parent.userAddress !== args.userAddress) {
+        await ctx.db.insert("notifications", {
+          userId: parent.userAddress,
+          type: "reply",
+          message: `Someone replied to your comment`,
+          marketId: args.marketId,
+          read: false,
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    // Detect @mentions and notify
+    const mentions = args.content.match(/@(\S+)/g);
+    if (mentions) {
+      for (const mention of mentions) {
+        const mentionedName = mention.slice(1).toLowerCase();
+        // Look up user by display name in profiles
+        const profile = await ctx.db
+          .query("userProfiles")
+          .filter((q) => q.eq(q.field("displayName"), mentionedName))
+          .first();
+        if (profile && profile.userAddress !== args.userAddress) {
+          await ctx.db.insert("notifications", {
+            userId: profile.userAddress,
+            type: "mention",
+            message: `You were mentioned in a comment`,
+            marketId: args.marketId,
+            read: false,
+            timestamp: Date.now(),
+          });
+        }
+      }
+    }
+
+    return commentId;
   },
 });
 
 export const likeComment = mutation({
-  args: { commentId: v.id("comments") },
+  args: { commentId: v.id("comments"), userAddress: v.string() },
   handler: async (ctx, args) => {
     const comment = await ctx.db.get(args.commentId);
-    if (comment) {
+    if (!comment) return;
+    const likedBy = comment.likedBy || [];
+    const alreadyLiked = likedBy.includes(args.userAddress);
+    if (alreadyLiked) {
+      // Unlike
+      const updated = likedBy.filter((a: string) => a !== args.userAddress);
+      await ctx.db.patch(args.commentId, {
+        likes: Math.max(0, comment.likes - 1),
+        likedBy: updated,
+      });
+    } else {
+      // Like
       await ctx.db.patch(args.commentId, {
         likes: comment.likes + 1,
+        likedBy: [...likedBy, args.userAddress],
       });
     }
   },
