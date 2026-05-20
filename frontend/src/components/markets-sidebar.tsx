@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { SPORT_TAXONOMY } from '@/lib/types/sports';
+import { SPORT_TAXONOMY, Sport } from '@/lib/types/sports';
 import { MarketCard } from '@/lib/types/categories';
 
 export interface SidebarSelection {
@@ -14,12 +14,32 @@ interface MarketsSidebarProps {
   markets: MarketCard[];
   selection: SidebarSelection | null;
   onSelect: (selection: SidebarSelection | null) => void;
+  taxonomy?: Sport[];
+  sectionLabel?: string;
+  defaultExpandAll?: boolean;
 }
 
 const LEAGUES_COLLAPSED_LIMIT = 5;
 
-export function MarketsSidebar({ markets, selection, onSelect }: MarketsSidebarProps) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+export function MarketsSidebar({
+  markets,
+  selection,
+  onSelect,
+  taxonomy = SPORT_TAXONOMY,
+  sectionLabel = 'All Sports',
+  defaultExpandAll = false,
+}: MarketsSidebarProps) {
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => (defaultExpandAll ? new Set(taxonomy.map((s) => s.id)) : new Set())
+  );
+
+  // When the taxonomy changes (e.g. switching between Sports and Finance tabs),
+  // reset expansion to match the new taxonomy's default.
+  useEffect(() => {
+    setExpanded(defaultExpandAll ? new Set(taxonomy.map((s) => s.id)) : new Set());
+    setShowAllLeagues(new Set());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taxonomy]);
   const [showAllLeagues, setShowAllLeagues] = useState<Set<string>>(new Set());
 
   const { sportCounts, leagueCounts, total } = useMemo(() => {
@@ -83,10 +103,10 @@ export function MarketsSidebar({ markets, selection, onSelect }: MarketsSidebarP
         </button>
 
         <div className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 px-2 pt-2 pb-1">
-          All Sports
+          {sectionLabel}
         </div>
 
-        {SPORT_TAXONOMY.map((sport) => {
+        {taxonomy.map((sport) => {
           const isExpanded = expanded.has(sport.id);
           const isSportActive =
             selection?.sport === sport.id && !selection?.league;
@@ -162,7 +182,7 @@ export function MarketsSidebar({ markets, selection, onSelect }: MarketsSidebarP
                       onClick={() => toggleShowAllLeagues(sport.id)}
                       className="flex items-center gap-1 pl-9 pr-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                     >
-                      <span>{showAll ? `Show less` : `More ${sport.label.toLowerCase()}`}</span>
+                      <span>{showAll ? 'Show less' : `More ${sport.label.toLowerCase()}`}</span>
                       {showAll ? (
                         <ChevronUp className="w-3 h-3" />
                       ) : (

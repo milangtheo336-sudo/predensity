@@ -5,7 +5,7 @@ export enum Category {
   POLITICS = 'politics',
   SPORTS = 'sports',
   TECHNOLOGY = 'technology',
-  INTERNATIONAL = 'international',
+  FINANCE = 'finance',
 }
 
 export interface CategoryConfig {
@@ -46,12 +46,12 @@ export const CATEGORIES: Record<Category, CategoryConfig> = {
     icon: 'T',
     enabled: true,
   },
-  [Category.INTERNATIONAL]: {
-    id: Category.INTERNATIONAL,
-    name: 'International',
-    description: 'Global events and economics',
-    icon: 'I',
-    enabled: false, // Not implemented yet
+  [Category.FINANCE]: {
+    id: Category.FINANCE,
+    name: 'Finance',
+    description: 'Stocks, commodities, and economic indicators',
+    icon: 'F',
+    enabled: true,
   },
 };
 

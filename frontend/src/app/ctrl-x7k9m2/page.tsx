@@ -18,6 +18,7 @@ import { Calendar, RefreshCw } from 'lucide-react';
 import type { Bet } from '@/lib/types';
 import { Category, CATEGORIES } from '@/lib/types/categories';
 import { SPORT_TAXONOMY, getSport } from '@/lib/types/sports';
+import { FINANCE_TAXONOMY } from '@/lib/types/finance';
 import { getContractId, getContractAddress, isCategoryDeployed, getStakingCurrency, isTokenMode, getOnChainBucket } from '@/lib/contracts/contract-config';
 
 import { formatDateUTC, formatTinybarsToHbar, getLocalTimezoneAbbr } from '@/lib/utils';
@@ -385,15 +386,21 @@ interface SportLeagueSelectorProps {
   sport?: string;
   league?: string;
   onChange: (next: { sport?: string; league?: string }) => void;
+  // When category=Finance we swap in the finance taxonomy + labels.
+  category?: Category | string;
 }
 
-function SportLeagueSelector({ sport, league, onChange }: SportLeagueSelectorProps) {
-  const leagues = sport ? getSport(sport)?.leagues ?? [] : [];
+function SportLeagueSelector({ sport, league, onChange, category }: SportLeagueSelectorProps) {
+  const isFinance = category === Category.FINANCE || category === 'finance';
+  const taxonomy = isFinance ? FINANCE_TAXONOMY : SPORT_TAXONOMY;
+  const topLabel = isFinance ? 'Group' : 'Sport';
+  const subLabel = isFinance ? 'Sub-category' : 'League';
+  const leagues = sport ? taxonomy.find((s) => s.id === sport)?.leagues ?? [] : [];
   return (
     <div className="grid grid-cols-2 gap-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-          Sport
+          {topLabel}
         </label>
         <select
           value={sport ?? ''}
@@ -401,14 +408,14 @@ function SportLeagueSelector({ sport, league, onChange }: SportLeagueSelectorPro
           className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
         >
           <option value="">— None —</option>
-          {SPORT_TAXONOMY.map((s) => (
+          {taxonomy.map((s) => (
             <option key={s.id} value={s.id}>{s.label}</option>
           ))}
         </select>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-          League
+          {subLabel}
         </label>
         <select
           value={league ?? ''}
@@ -508,6 +515,7 @@ function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: Event
 
       {/* Sidebar taxonomy: sport (top-level) + optional league (sub-category) */}
       <SportLeagueSelector
+        category={category}
         sport={formData.sport}
         league={formData.league}
         onChange={(next) => {
@@ -3265,6 +3273,7 @@ function AdminPage() {
                 <input type="datetime-local" value={clobMarketForm.resolutionTimestamp} onChange={(e) => setClobMarketForm({ ...clobMarketForm, resolutionTimestamp: e.target.value })} className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm" />
               </div>
               <SportLeagueSelector
+                category={clobMarketForm.category}
                 sport={clobMarketForm.sport}
                 league={clobMarketForm.league}
                 onChange={(next) => setClobMarketForm({ ...clobMarketForm, sport: next.sport, league: next.league })}

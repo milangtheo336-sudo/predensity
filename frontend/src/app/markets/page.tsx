@@ -9,6 +9,7 @@ import { CategoryTabs } from '@/components/category-tabs';
 import { MarketFilters } from '@/components/market-filters';
 import { GenericMarketCard } from '@/components/generic-market-card';
 import { MarketsSidebar, SidebarSelection } from '@/components/markets-sidebar';
+import { FINANCE_TAXONOMY } from '@/lib/types/finance';
 import {
   Category,
   MarketStatus,
@@ -106,7 +107,7 @@ export default function MarketsPage() {
     markets.unshift(...cryptoMarketCards); // Add to beginning of array
   }
 
-  // Add CLOB markets (politics, sports, technology, international)
+  // Add CLOB markets (politics, sports, technology, finance)
   if (clobMarkets) {
     const clobCards: MarketCard[] = clobMarkets
       .filter((cm) => {
@@ -126,7 +127,7 @@ export default function MarketsPage() {
         const catIcon = cm.category === 'politics' ? 'P'
           : cm.category === 'sports' ? 'S'
           : cm.category === 'technology' ? 'T'
-          : cm.category === 'international' ? 'I' : '?';
+          : cm.category === 'finance' ? 'F' : '?';
 
         // Build outcome prices -- default to equal probability if no trades yet
         const defaultPrice = Math.round(100 / cm.numOutcomes);
@@ -209,22 +210,28 @@ export default function MarketsPage() {
     });
 
 
+  const showSidebar = activeCategory === Category.SPORTS || activeCategory === Category.FINANCE;
+  const sidebarTaxonomy = activeCategory === Category.FINANCE ? FINANCE_TAXONOMY : undefined;
+  const sidebarLabel = activeCategory === Category.FINANCE ? 'All Finances' : 'All Sports';
+
   return (
     <div className="min-h-screen bg-white dark:bg-black flex flex-col">
       <Header />
-      
-      <main className={`${activeCategory === Category.SPORTS ? 'w-full md:px-0 px-4' : 'container mx-auto px-4'} py-8 flex-1 flex gap-6`}>
-        {activeCategory === Category.SPORTS && (
+
+      <main className={`${showSidebar ? 'w-full md:px-0 px-4' : 'container mx-auto px-4'} py-8 flex-1 flex gap-6`}>
+        {showSidebar && (
           <div className="hidden md:block pl-4 w-64 shrink-0">
             <MarketsSidebar
               markets={markets}
               selection={sidebarSelection}
               onSelect={setSidebarSelection}
+              taxonomy={sidebarTaxonomy}
+              sectionLabel={sidebarLabel}
             />
           </div>
         )}
 
-        {activeCategory === Category.SPORTS && mobileSidebarOpen && (
+        {showSidebar && mobileSidebarOpen && (
           <>
             <div
               className="fixed inset-0 z-40 md:hidden bg-black/40"
@@ -244,28 +251,30 @@ export default function MarketsPage() {
                   selection={sidebarSelection}
                   onSelect={(sel) => {
                     setSidebarSelection(sel);
-                    // Only close when picking "All" or a specific league.
-                    // Tapping a top-level sport just expands it inline.
                     if (!sel || sel.league) setMobileSidebarOpen(false);
                   }}
+                  taxonomy={sidebarTaxonomy}
+                  sectionLabel={sidebarLabel}
                 />
               </div>
             </div>
           </>
         )}
 
-        <div className={`flex-1 flex flex-col min-w-0 ${activeCategory === Category.SPORTS ? 'pr-4' : ''}`}>
+        <div className={`flex-1 flex flex-col min-w-0 ${showSidebar ? 'pr-4' : ''}`}>
           <div className="mb-6">
             <CategoryTabs
               activeCategory={activeCategory}
               onCategoryChange={(cat) => {
                 setActiveCategory(cat);
-                if (cat !== Category.SPORTS) setSidebarSelection(null);
+                if (cat !== Category.SPORTS && cat !== Category.FINANCE) {
+                  setSidebarSelection(null);
+                }
               }}
             />
           </div>
 
-          {activeCategory === Category.SPORTS && (
+          {showSidebar && (
             <div className="md:hidden mb-4">
               <button
                 onClick={() => setMobileSidebarOpen(true)}
