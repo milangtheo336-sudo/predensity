@@ -551,7 +551,7 @@ function PriceChart({ marketId, outcomes, timeRange, setTimeRange }: { marketId:
   };
 
   return (
-    <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a] rounded-2xl p-4 mb-5 relative">
+    <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2a2a2a] rounded-2xl p-4 mb-5 relative">
 
       {/* Row 1: Legend (left) + Predensity watermark (right) — ABOVE the chart, Polymarket style */}
       <div className="flex items-center justify-between mb-2">
@@ -567,7 +567,7 @@ function PriceChart({ marketId, outcomes, timeRange, setTimeRange }: { marketId:
             );
           })}
           {outcomes.length > 4 && (
-            <button onClick={() => setShowOutcomeSelector(!showOutcomeSelector)} className="text-gray-500 dark:text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-gray-900 dark:text-white cursor-pointer text-xs">
+            <button onClick={() => setShowOutcomeSelector(!showOutcomeSelector)} className="text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-white cursor-pointer text-xs">
               ··· More
             </button>
           )}
@@ -577,15 +577,15 @@ function PriceChart({ marketId, outcomes, timeRange, setTimeRange }: { marketId:
         <div className="flex items-center gap-2 opacity-15 pointer-events-none select-none flex-shrink-0">
           <img src="/predensity-logo.png" alt="" width={50} height={30} className="hidden dark:block" />
           <img src="/white the loading predensity logo.png" alt="" width={50} height={30} className="dark:hidden" />
-          <span className="text-xl font-semibold tracking-wide text-gray-500 dark:text-gray-500 dark:text-[#888888]">Predensity</span>
+          <span className="text-xl font-semibold tracking-wide text-gray-500 dark:text-[#888888]">Predensity</span>
         </div>
       </div>
 
       {/* Outcome Selector Panel */}
       {showOutcomeSelector && (
-        <div className="absolute right-4 top-12 w-56 bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a] rounded-lg shadow-2xl z-50 overflow-hidden">
-          <div className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a]">
-            <span className="text-[11px] text-gray-500 dark:text-gray-500 dark:text-[#888888] font-medium">Select up to 4 options</span>
+        <div className="absolute right-4 top-12 w-56 bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#2a2a2a] rounded-lg shadow-2xl z-50 overflow-hidden">
+          <div className="px-3 py-2.5 border-b border-gray-200 dark:border-[#2a2a2a]">
+            <span className="text-[11px] text-gray-500 dark:text-[#888888] font-medium">Select up to 4 options</span>
           </div>
           <div>
             {outcomes.map((o, i) => {
@@ -599,7 +599,7 @@ function PriceChart({ marketId, outcomes, timeRange, setTimeRange }: { marketId:
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-                    <span className={`text-[13px] font-medium truncate ${isVisible ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-500 dark:text-[#888888]'}`}>
+                    <span className={`text-[13px] font-medium truncate ${isVisible ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-[#888888]'}`}>
                       {o.price}% {o.name}
                     </span>
                   </div>
@@ -640,10 +640,10 @@ function PriceChart({ marketId, outcomes, timeRange, setTimeRange }: { marketId:
           {[100, 75, 50, 25, 0].map((pct, i) => (
             <div
               key={pct}
-              className="absolute left-0 right-10 border-t border-dashed border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a]"
+              className="absolute left-0 right-10 border-t border-dashed border-gray-200 dark:border-[#2a2a2a]"
               style={{ top: `${i * 25}%` }}
             >
-              <span className="absolute right-0 -translate-y-1/2 text-[10px] text-gray-500 dark:text-gray-500 dark:text-[#888888]">
+              <span className="absolute right-0 -translate-y-1/2 text-[10px] text-gray-500 dark:text-[#888888]">
                 {pct}%
               </span>
             </div>
@@ -668,7 +668,7 @@ function PriceChart({ marketId, outcomes, timeRange, setTimeRange }: { marketId:
       </div>
 
       {/* X-axis labels only */}
-      <div className="flex justify-between pt-2 pr-10 text-[11px] text-gray-500 dark:text-gray-500 dark:text-[#888888]">
+      <div className="flex justify-between pt-2 pr-10 text-[11px] text-gray-500 dark:text-[#888888]">
         {generateXAxisLabels().map((label, i) => (
           <span key={i}>{label}</span>
         ))}
@@ -683,7 +683,7 @@ function PriceChart({ marketId, outcomes, timeRange, setTimeRange }: { marketId:
 function OrderBookView({ marketId, outcomeIndex, side }: { marketId: string; outcomeIndex: number; side: 'yes' | 'no' }) {
   const orderBook = useConvexQuery(api.clob.getOrderBook, { marketId, outcomeIndex });
 
-  if (!orderBook) return <div className="py-4 text-center text-xs text-gray-500 dark:text-gray-500 dark:text-[#888888]"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>;
+  if (!orderBook) return <div className="py-4 text-center text-xs text-gray-500 dark:text-[#888888]"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>;
 
   type OrderLevel = { price: number; quantity: number };
 
@@ -705,7 +705,7 @@ function OrderBookView({ marketId, outcomeIndex, side }: { marketId: string; out
     <div className="space-y-1">
       {/* Ask rows (sell orders) - red background */}
       {displayBook.asks.length === 0 ? (
-        <div className="text-center text-gray-500 dark:text-gray-500 dark:text-[#888888] py-2 text-xs">No asks</div>
+        <div className="text-center text-gray-500 dark:text-[#888888] py-2 text-xs">No asks</div>
       ) : (
         displayBook.asks.slice(0, 4).map((a: OrderLevel, i: number) => (
           <div key={i} className="grid grid-cols-3 items-center py-1.5 px-1.5 rounded bg-red-50 dark:bg-[#2a1010] relative">
@@ -716,22 +716,22 @@ function OrderBookView({ marketId, outcomeIndex, side }: { marketId: string; out
             )}
             <span className={`text-[#ff6b35] font-medium ${i === displayBook.asks.length - 1 ? 'pl-12' : ''}`}>{a.price}¢</span>
             <span className="text-gray-900 dark:text-white text-center">{a.quantity.toLocaleString()}</span>
-            <span className="text-gray-500 dark:text-gray-500 dark:text-[#888888] text-right">{calculateTotal(a.price, a.quantity)} USDC</span>
+            <span className="text-gray-500 dark:text-[#888888] text-right">{calculateTotal(a.price, a.quantity)} USDC</span>
           </div>
         ))
       )}
 
       {/* Separator with last price and spread */}
       {displayBook.asks.length > 0 && displayBook.bids.length > 0 && (
-        <div className="flex justify-between items-center py-1.5 px-1.5 text-[11px] border-t border-b border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a] my-1">
+        <div className="flex justify-between items-center py-1.5 px-1.5 text-[11px] border-t border-b border-gray-200 dark:border-[#2a2a2a] my-1">
           <span className="text-[#ff6b35]">Last: {side === 'yes' ? 'YES' : 'NO'} {displayBook.asks[displayBook.asks.length - 1].price}¢</span>
-          <span className="text-gray-500 dark:text-gray-500 dark:text-[#888888]">Spread {Math.abs(displayBook.bids[0]?.price - displayBook.asks[displayBook.asks.length - 1]?.price).toFixed(1)}¢</span>
+          <span className="text-gray-500 dark:text-[#888888]">Spread {Math.abs(displayBook.bids[0]?.price - displayBook.asks[displayBook.asks.length - 1]?.price).toFixed(1)}¢</span>
         </div>
       )}
 
       {/* Bid rows (buy orders) - green background */}
       {displayBook.bids.length === 0 ? (
-        <div className="text-center text-gray-500 dark:text-gray-500 dark:text-[#888888] py-2 text-xs">No bids</div>
+        <div className="text-center text-gray-500 dark:text-[#888888] py-2 text-xs">No bids</div>
       ) : (
         displayBook.bids.slice(0, 3).map((b: OrderLevel, i: number) => (
           <div key={i} className="grid grid-cols-3 items-center py-1.5 px-1.5 rounded bg-green-50 dark:bg-[#0e2218] relative">
@@ -742,7 +742,7 @@ function OrderBookView({ marketId, outcomeIndex, side }: { marketId: string; out
             )}
             <span className={`text-[#3fdc8c] font-medium ${i === 0 ? 'pl-12' : ''}`}>{b.price}¢</span>
             <span className="text-gray-900 dark:text-white text-center">{b.quantity.toLocaleString()}</span>
-            <span className="text-gray-500 dark:text-gray-500 dark:text-[#888888] text-right">{calculateTotal(b.price, b.quantity)} USDC</span>
+            <span className="text-gray-500 dark:text-[#888888] text-right">{calculateTotal(b.price, b.quantity)} USDC</span>
           </div>
         ))
       )}
@@ -1020,15 +1020,15 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               {/* Share buttons */}
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button onClick={() => { navigator.clipboard.writeText(window.location.href); setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); }}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors">
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors">
                   {shareCopied ? <CheckIcon className="w-3.5 h-3.5 text-green-500" /> : <Link2 className="w-3.5 h-3.5" />}
                 </button>
                 <button onClick={() => window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(`${market.question}\n\n${window.location.href}`)}`, '_blank')}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors">
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors">
                   <Twitter className="w-3.5 h-3.5" />
                 </button>
                 <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`${market.question}\n\n${window.location.href}`)}`, '_blank')}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors">
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors">
                   <Share2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1040,7 +1040,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
             </div>
 
             {/* Volume row with time range buttons */}
-            <div className="flex items-center justify-between text-xs sm:text-[13px] text-gray-500 dark:text-gray-500 dark:text-[#888888] mb-4 lg:mb-5 px-4 lg:px-0">
+            <div className="flex items-center justify-between text-xs sm:text-[13px] text-gray-500 dark:text-[#888888] mb-4 lg:mb-5 px-4 lg:px-0">
               <div className="flex items-center gap-1.5">
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
                   <path d="M2 12l4-4 3 3 5-7"/>
@@ -1057,7 +1057,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                     className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors ${
                       chartTimeRange === range
                         ? 'text-gray-900 dark:text-white bg-gray-200 dark:bg-[#2a2a2a]'
-                        : 'text-gray-500 dark:text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-100 dark:bg-[#1c1c1c]'
+                        : 'text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-100 dark:bg-[#1c1c1c]'
                     }`}
                   >
                     {range}
@@ -1103,16 +1103,16 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                       }}
                       className={`bg-white dark:bg-[#141414] rounded-2xl border overflow-hidden cursor-pointer ${
                         isEliminated || isLoser
-                          ? 'opacity-50 border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a]'
+                          ? 'opacity-50 border-gray-200 dark:border-[#2a2a2a]'
                           : isWinner
                           ? 'border-green-500'
-                          : 'border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a]'
+                          : 'border-gray-200 dark:border-[#2a2a2a]'
                       }`}
                     >
                       {/* Outcome header */}
                       <div className="w-full flex items-center gap-3 p-4">
                         {/* Icon */}
-                        <div className="w-10 h-10 bg-gray-100 dark:bg-gray-100 dark:bg-[#1c1c1c] rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 bg-gray-100 dark:bg-[#1c1c1c] rounded-lg flex items-center justify-center flex-shrink-0">
                           {outcomeImage ? (
                             <img src={outcomeImage} alt={o.name} className="w-full h-full object-cover rounded-lg" />
                           ) : (
@@ -1125,7 +1125,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                           <div className={`text-base font-bold ${isEliminated || isLoser ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>
                             {o.name}
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-500 dark:text-[#888888] mt-1">
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-[#888888] mt-1">
                             <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3">
                               <path d="M6 2L8 8L2 6L6 2Z" fill="#4a9eff"/>
                             </svg>
@@ -1191,13 +1191,13 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                       {isExpanded && !isEliminated && !market.resolved && (
                         <div onClick={(e) => e.stopPropagation()}>
                           {/* Tabs */}
-                          <div className="flex gap-0 border-t border-b border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a]">
+                          <div className="flex gap-0 border-t border-b border-gray-200 dark:border-[#2a2a2a]">
                             <button
                               onClick={() => setOutcomeTab('orderbook')}
                               className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
                                 outcomeTab === 'orderbook'
                                   ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                                  : 'text-gray-500 dark:text-gray-500 dark:text-[#888888] border-transparent hover:text-gray-700 dark:hover:text-[#cccccc]'
+                                  : 'text-gray-500 dark:text-[#888888] border-transparent hover:text-gray-700 dark:hover:text-[#cccccc]'
                               }`}
                             >
                               <Book size={16} weight="regular" />
@@ -1248,13 +1248,13 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                                 </div>
 
                                 {/* YES/NO toggle */}
-                                <div className="flex w-fit mb-3 bg-[#1a1a1a] rounded-full p-0.5 border border-gray-200 dark:border-[#2a2a2a]">
+                                <div className="flex w-fit mb-3 bg-gray-200 dark:bg-[#1a1a1a] rounded-full p-0.5 border border-gray-200 dark:border-[#2a2a2a]">
                                   <button 
                                     onClick={() => {
                                       setOrderBookSide('yes');
                                       setOrderSide('buy');
                                     }} 
-                                    className={`px-6 py-1.5 text-xs font-bold rounded-full transition-colors ${orderBookSide === 'yes' ? 'bg-[#2a2a2a] text-gray-900 dark:text-white' : 'text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:text-white'}`}
+                                    className={`px-6 py-1.5 text-xs font-bold rounded-full transition-colors ${orderBookSide === 'yes' ? 'bg-gray-300 dark:bg-[#2a2a2a] text-gray-900 dark:text-white' : 'text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-white'}`}
                                   >
                                     YES
                                   </button>
@@ -1263,7 +1263,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                                       setOrderBookSide('no');
                                       setOrderSide('sell');
                                     }} 
-                                    className={`px-6 py-1.5 text-xs font-bold rounded-full transition-colors ${orderBookSide === 'no' ? 'bg-[#2a2a2a] text-gray-900 dark:text-white' : 'text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:text-white'}`}
+                                    className={`px-6 py-1.5 text-xs font-bold rounded-full transition-colors ${orderBookSide === 'no' ? 'bg-gray-300 dark:bg-[#2a2a2a] text-gray-900 dark:text-white' : 'text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-white'}`}
                                   >
                                     NO
                                   </button>
@@ -1363,12 +1363,12 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
           {/* RIGHT COLUMN -- Trading Panel */}
           <div className="order-2 lg:order-none lg:col-span-4">
-            <div className={`${showMobileTradingModal ? 'fixed' : 'hidden'} lg:block bottom-0 left-0 right-0 lg:static lg:sticky lg:top-20 z-50 lg:z-10 bg-white dark:bg-[#141414] border-t lg:border border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a] lg:rounded-2xl overflow-hidden max-h-[85vh] lg:max-h-none overflow-y-auto`}>
+            <div className={`${showMobileTradingModal ? 'fixed' : 'hidden'} lg:block bottom-0 left-0 right-0 lg:static lg:sticky lg:top-20 z-50 lg:z-10 bg-white dark:bg-[#141414] border-t lg:border border-gray-200 dark:border-[#2a2a2a] lg:rounded-2xl overflow-hidden max-h-[85vh] lg:max-h-none overflow-y-auto`}>
 
               {/* Mobile close button */}
               <button
                 onClick={() => setShowMobileTradingModal(false)}
-                className="lg:hidden absolute top-3 right-3 z-10 p-2 text-gray-500 dark:text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-gray-900 dark:text-white"
+                className="lg:hidden absolute top-3 right-3 z-10 p-2 text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-white"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
                   <path d="M18 6L6 18M6 6l12 12"/>
@@ -1394,7 +1394,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               )}
 
               {/* Panel header with icon and title */}
-              <div className="flex items-center gap-2.5 px-3 sm:px-4 py-3 sm:py-3.5 border-b border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a]">
+              <div className="flex items-center gap-2.5 px-3 sm:px-4 py-3 sm:py-3.5 border-b border-gray-200 dark:border-[#2a2a2a]">
                 <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 dark:bg-[#1a1a2e] rounded-lg flex items-center justify-center flex-shrink-0 text-sm sm:text-base">
                   {market.imageUrl ? (
                     <img src={market.imageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
@@ -1408,14 +1408,14 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               </div>
 
               {/* Trading panel tabs */}
-              <div className="flex justify-between items-center px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a]">
+              <div className="flex justify-between items-center px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 dark:border-[#2a2a2a]">
                 <div className="flex gap-0">
                   <button
                     onClick={() => setOrderSide('buy')}
                     className={`px-3 py-1.5 text-[13px] font-semibold border-b-2 transition-colors ${
                       orderSide === 'buy'
                         ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                        : 'text-gray-500 dark:text-gray-500 dark:text-[#888888] border-transparent hover:text-gray-900 dark:hover:text-gray-900 dark:text-white'
+                        : 'text-gray-500 dark:text-[#888888] border-transparent hover:text-gray-900 dark:hover:text-white'
                     }`}
                   >
                     Buy
@@ -1425,7 +1425,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                     className={`px-3 py-1.5 text-[13px] font-semibold border-b-2 transition-colors ${
                       orderSide === 'sell'
                         ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                        : 'text-gray-500 dark:text-gray-500 dark:text-[#888888] border-transparent hover:text-gray-900 dark:hover:text-gray-900 dark:text-white'
+                        : 'text-gray-500 dark:text-[#888888] border-transparent hover:text-gray-900 dark:hover:text-white'
                     }`}
                   >
                     Sell
@@ -1434,14 +1434,14 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsMarketOrder(!isMarketOrder)}
-                    className="flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a] rounded-lg text-xs font-semibold text-gray-900 dark:text-white"
+                    className="flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-[#2a2a2a] rounded-lg text-xs font-semibold text-gray-900 dark:text-white"
                   >
                     {isMarketOrder ? 'Market' : 'Limit'}
                     <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" className="w-2.5 h-2.5">
                       <path d="M2 3.5l3 3 3-3"/>
                     </svg>
                   </button>
-                  <button className="px-2 py-1 bg-gray-100 dark:bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a] rounded-lg text-base leading-none text-gray-900 dark:text-white">
+                  <button className="px-2 py-1 bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-[#2a2a2a] rounded-lg text-base leading-none text-gray-900 dark:text-white">
                     ⋮
                   </button>
                 </div>
@@ -1482,8 +1482,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                 <>
                   {/* Amount section with input */}
                   <div className="px-4 pb-3">
-                    <div className="text-xs text-gray-500 dark:text-gray-500 dark:text-[#888888] mb-2">Amount</div>
-                    <div className="relative bg-gray-100 dark:bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a] rounded-xl px-4 py-3 mb-2">
+                    <div className="text-xs text-gray-500 dark:text-[#888888] mb-2">Amount</div>
+                    <div className="relative bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-[#2a2a2a] rounded-xl px-4 py-3 mb-2">
                       <input
                         type="number"
                         value={orderQuantity}
@@ -1491,13 +1491,13 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                         className="w-full bg-transparent text-3xl font-bold text-gray-900 dark:text-white outline-none"
                         placeholder="0"
                       />
-                      <div className="text-xs text-gray-500 dark:text-gray-500 dark:text-[#888888] mt-1">Min. Amount is 1 USDC</div>
+                      <div className="text-xs text-gray-500 dark:text-[#888888] mt-1">Min. Amount is 1 USDC</div>
                     </div>
                     
                     {/* Quick add buttons */}
                     <div className="flex flex-wrap gap-2 mb-2">
-                      <button onClick={() => setOrderQuantity('1')} className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a] text-xs font-medium text-gray-900 dark:text-white hover:border-gray-300 dark:hover:border-[#555]">+1 USDC</button>
-                      <button onClick={() => setOrderQuantity('5')} className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-gray-200 dark:border-[#2a2a2a] text-xs font-medium text-gray-900 dark:text-white hover:border-gray-300 dark:hover:border-[#555]">+5 USDC</button>
+                      <button onClick={() => setOrderQuantity('1')} className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-[#2a2a2a] text-xs font-medium text-gray-900 dark:text-white hover:border-gray-300 dark:hover:border-[#555]">+1 USDC</button>
+                      <button onClick={() => setOrderQuantity('5')} className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-[#2a2a2a] text-xs font-medium text-gray-900 dark:text-white hover:border-gray-300 dark:hover:border-[#555]">+5 USDC</button>
                       <button onClick={() => setOrderQuantity('10')} className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-[#2a2a2a] text-xs font-medium text-gray-900 dark:text-white hover:border-[#555]">+10 USDC</button>
                       <button onClick={() => setOrderQuantity('100')} className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-[#2a2a2a] text-xs font-medium text-gray-900 dark:text-white hover:border-[#555]">+100 USDC</button>
                       <button onClick={() => setOrderQuantity(platformBalance.toString())} className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-[#1c1c1c] border border-gray-200 dark:border-[#2a2a2a] text-xs font-medium text-gray-900 dark:text-white hover:border-[#555]">MAX</button>
@@ -1642,7 +1642,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               <button
                 onClick={handlePlaceOrder}
                 disabled={!isSignedIn || !orderPrice || !orderQuantity || isPlacing || isResolved || market.eliminatedOutcomes?.includes(selectedOutcome)}
-                className="block w-[calc(100%-32px)] mx-4 mb-4 py-3.5 bg-white hover:bg-[#e8e8e8] text-black rounded-xl text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="block w-[calc(100%-32px)] mx-4 mb-4 py-3.5 bg-gray-100 dark:bg-white hover:bg-gray-200 dark:hover:bg-[#e8e8e8] text-black dark:text-black rounded-xl text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed border border-gray-200 dark:border-[#2a2a2a]"
               >
                 {isPlacing ? (
                   <Loader2 className="w-5 h-5 animate-spin mx-auto" />
@@ -1719,4 +1719,5 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
     </div>
   );
 }
+
 
