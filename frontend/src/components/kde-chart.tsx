@@ -103,7 +103,7 @@ function buildTimelineData(
       const placedTs = parseInt(b.timestamp) || targetTs;
       return { mid, stake, targetTs, placedTs, minP, maxP };
     })
-    .filter((b) => b.targetTs > now && b.targetTs <= maxTime)
+    .filter((b) => b.targetTs <= maxTime)
     .sort((a, b) => a.placedTs - b.placedTs);
 
   if (bets.length === 0) return { timeline: [], scatter: [] };
