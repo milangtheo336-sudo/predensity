@@ -2,9 +2,11 @@
 
 import React, { useState } from 'react';
 import { useWallet, useAccountId, useBalance } from '@buidlerlabs/hashgraph-react-wallets';
-import HashpackConnector from '@buidlerlabs/hashgraph-react-wallets/lib/hWBridge/connectors/HashpackConnector';
-import BladeConnector from '@buidlerlabs/hashgraph-react-wallets/lib/hWBridge/connectors/BladeConnector';
-import KabilaConnector from '@buidlerlabs/hashgraph-react-wallets/lib/hWBridge/connectors/KabilaConnector';
+import {
+  HashpackConnector,
+  BladeConnector,
+  KabilaConnector,
+} from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

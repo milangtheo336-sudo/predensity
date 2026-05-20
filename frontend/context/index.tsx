@@ -2,11 +2,11 @@
 
 import React, { ReactNode } from 'react';
 import { HWBridgeProvider } from '@buidlerlabs/hashgraph-react-wallets';
-// Import each connector directly from its own path to avoid the barrel file
-// pulling in MetamaskConnector → wagmi → @walletconnect/ethereum-provider → broken valtio
-import HashpackConnector from '@buidlerlabs/hashgraph-react-wallets/lib/hWBridge/connectors/HashpackConnector';
-import BladeConnector from '@buidlerlabs/hashgraph-react-wallets/lib/hWBridge/connectors/BladeConnector';
-import KabilaConnector from '@buidlerlabs/hashgraph-react-wallets/lib/hWBridge/connectors/KabilaConnector';
+import {
+  HashpackConnector,
+  BladeConnector,
+  KabilaConnector,
+} from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { hederaChain } from '../config';
 const connectors = [
   HashpackConnector,
