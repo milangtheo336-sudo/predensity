@@ -1064,7 +1064,7 @@ export default function PortfolioPage() {
     });
     const profileUrl = `${window.location.origin}/profile/${user?.id || ''}?${ogParams.toString()}`;
     const lines = [
-      `${displayName} on Predensity`,
+      `@${displayName.toLowerCase()} on Predensity`,
       `P&L: ${pnlStr}`,
       `${totalPredictions} predictions`,
       winStr,
@@ -1090,7 +1090,7 @@ export default function PortfolioPage() {
     });
     const profileUrl = `${window.location.origin}/profile/${user?.id || ''}?${ogParams.toString()}`;
     const lines = [
-      `*${displayName} on Predensity*`,
+      `*@${displayName.toLowerCase()} on Predensity*`,
       `P&L: ${pnlStr}`,
       `${totalPredictions} predictions`,
       winStr,
