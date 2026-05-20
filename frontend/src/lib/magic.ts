@@ -26,16 +26,11 @@ export function getMagic(): any {
       throw new Error('NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY is not set');
     }
 
-    console.log('[Magic] Starting initialization...');
-    console.log('[Magic] Key:', publishableKey.substring(0, 10) + '...');
-
     try {
       // Dynamic imports to avoid SSR issues
       const { Magic } = require('magic-sdk');
       const { OAuthExtension } = require('@magic-ext/oauth2');
       const { HederaExtension } = require('@magic-ext/hedera');
-      
-      console.log('[Magic] Packages loaded');
       
       // Initialize Magic with extensions as an object (not array)
       magicInstance = new Magic(publishableKey, {
@@ -48,16 +43,10 @@ export function getMagic(): any {
         },
       });
       
-      console.log('[Magic] Instance created');
-      console.log('[Magic] OAuth2 available:', !!magicInstance.oauth2);
-      console.log('[Magic] Hedera available:', !!magicInstance.hedera);
-      
       if (!magicInstance.oauth2) {
-        console.error('[Magic] OAuth2 extension not found on instance');
-        console.error('[Magic] Available properties:', Object.keys(magicInstance));
+        throw new Error('OAuth2 extension not initialized');
       }
     } catch (error) {
-      console.error('[Magic] Initialization error:', error);
       throw error;
     }
   }
@@ -191,4 +180,100 @@ export async function getMagicSigner(): Promise<ethers.Signer> {
   const magic = getMagic();
   const provider = new ethers.providers.Web3Provider((magic as any).rpcProvider);
   return provider.getSigner();
+}
+
+/**
+ * Send a transaction using Magic Link wallet.
+ * User signs the transaction with their private key (via Magic MPC).
+ * 
+ * @param to Contract address
+ * @param data Encoded function call data
+ * @param value Amount of native token to send (in wei)
+ * @param gasLimit Gas limit for the transaction
+ * @returns Transaction hash
+ */
+export async function sendTransaction(
+  to: string,
+  data: string,
+  value?: string,
+  gasLimit?: number
+): Promise<string> {
+  const magic = getMagic();
+  const provider = new ethers.providers.Web3Provider((magic as any).rpcProvider);
+  const signer = provider.getSigner();
+  
+  const tx = await signer.sendTransaction({
+    to,
+    data,
+    value: value ? ethers.BigNumber.from(value) : undefined,
+    gasLimit: gasLimit || 1500000,
+  });
+  
+  return tx.hash;
+}
+
+/**
+ * Wait for transaction confirmation.
+ * 
+ * @param txHash Transaction hash
+ * @param confirmations Number of confirmations to wait for (default: 1)
+ * @returns Transaction receipt
+ */
+export async function waitForTransaction(
+  txHash: string,
+  confirmations: number = 1
+): Promise<any> {
+  const magic = getMagic();
+  const provider = new ethers.providers.Web3Provider((magic as any).rpcProvider);
+  return await provider.waitForTransaction(txHash, confirmations);
+}
+
+/**
+ * Get user's token balance.
+ * 
+ * @param tokenAddress ERC-20 token address
+ * @param userAddress User's address (optional, uses current user if not provided)
+ * @returns Balance in smallest unit (e.g., 6 decimals for USDC)
+ */
+export async function getTokenBalance(
+  tokenAddress: string,
+  userAddress?: string
+): Promise<string> {
+  const magic = getMagic();
+  const provider = new ethers.providers.Web3Provider((magic as any).rpcProvider);
+  
+  if (!userAddress) {
+    const signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+  }
+  
+  const tokenAbi = ['function balanceOf(address) view returns (uint256)'];
+  const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, provider);
+  const balance = await tokenContract.balanceOf(userAddress);
+  
+  return balance.toString();
+}
+
+/**
+ * Approve token spending for a contract.
+ * 
+ * @param tokenAddress ERC-20 token address
+ * @param spenderAddress Contract address to approve
+ * @param amount Amount to approve (in smallest unit)
+ * @returns Transaction hash
+ */
+export async function approveToken(
+  tokenAddress: string,
+  spenderAddress: string,
+  amount: string
+): Promise<string> {
+  const magic = getMagic();
+  const provider = new ethers.providers.Web3Provider((magic as any).rpcProvider);
+  const signer = provider.getSigner();
+  
+  const tokenAbi = ['function approve(address spender, uint256 amount) returns (bool)'];
+  const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, signer);
+  
+  const tx = await tokenContract.approve(spenderAddress, amount);
+  return tx.hash;
 }
