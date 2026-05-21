@@ -13,7 +13,6 @@ export interface Bucket {
   totalBets?: number;
   totalWinningWeight?: string;
   totalStaked?: string;
-  totalExited?: string;
 }
 
 export interface BetMarket {
@@ -40,9 +39,4 @@ export interface Bet {
   bucketRef?: Bucket;
   market?: BetMarket;
   asset?: string;
-  // DPM fields
-  entryBandWeight?: string;
-  exited?: boolean;
-  exitPayout?: number;
-  exitFee?: number;
 }
