@@ -39,31 +39,15 @@ export default function MarketDetailPage() {
   const params = useParams();
   const router = useRouter();
   const marketId = params.id as string;
+  const isCryptoMarket = marketId.toLowerCase().startsWith('crypto-');
+  const goBack = () => router.push('/markets');
 
-  const marketIdLower = marketId.toLowerCase();
-  const isCryptoMarket = marketIdLower.startsWith('crypto-');
-
-  // Crypto markets use the DPM prediction card
   const cryptoMarket = useQuery(
     api.events.getCryptoMarket,
     isCryptoMarket ? { marketId } : "skip"
   );
 
-  // Non-crypto: check if it's a CLOB market first, then fall back to old events
-  const clobMarket = useQuery(
-    api.clob.getClobMarket,
-    !isCryptoMarket ? { marketId } : "skip"
-  );
-
-  // Legacy event data (for old events not yet migrated to CLOB)
-  const eventData = useQuery(
-    api.events.getEventByEventId,
-    !isCryptoMarket && clobMarket === null ? { eventId: marketId } : "skip"
-  );
-
-  const goBack = () => router.push('/markets');
-
-  // --- Crypto market ---
+  // Crypto: use DPM prediction card
   if (isCryptoMarket) {
     if (cryptoMarket === undefined) return <LoadingView />;
     if (cryptoMarket === null) return <NotFoundView message="This crypto market doesn't exist." onBack={goBack} />;
@@ -81,22 +65,8 @@ export default function MarketDetailPage() {
     );
   }
 
-  // --- CLOB market (politics, sports, tech, international) ---
-  if (clobMarket === undefined) return <LoadingView />;
-  if (clobMarket !== null) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-black">
-        <Header />
-        <ClobPredictionCard marketId={marketId} />
-      </div>
-    );
-  }
-
-  // --- Legacy event (old system, fallback) ---
-  if (eventData === undefined) return <LoadingView />;
-  if (eventData === null) return <NotFoundView message="This market doesn't exist." onBack={goBack} />;
-
-  // Legacy events render as CLOB card too (marketId = eventId)
+  // Non-crypto (politics, sports, tech, international): use CLOB card
+  // The ClobPredictionCard handles its own data fetching
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       <Header />
