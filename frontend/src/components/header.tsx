@@ -53,6 +53,9 @@ import { QRCodeSVG } from 'qrcode.react';
 import { AuthModal } from '@/components/auth-modal';
 import { useBlockchainBalance } from '@/hooks/useBlockchainBalance';
 import { useEIP6963Wallets } from '@/hooks/useEIP6963Wallets';
+import { useCountryCode } from '@/hooks/useCountryCode';
+import { useLanguage } from '@/context/LanguageContext';
+import { LANGUAGES } from '@/lib/i18n/translations';
 
 // ---------------------------------------------------------------------------
 // Balance Visibility Context -- persisted to localStorage
@@ -1538,6 +1541,7 @@ function GuestHamburgerMenu({
 // ---------------------------------------------------------------------------
 
 export function Header({ children }: { children?: React.ReactNode }) {
+  const countryCode = useCountryCode();
   const { isConnected, disconnect } = useWallet();
   const { data: accountId } = useAccountId();
   const { user, logout, isAuthenticating } = useMagic();
@@ -1920,7 +1924,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
   return (
     <BalanceVisibilityContext.Provider value={{ balancesHidden, toggleBalancesHidden }}>
     <DepositModalContext.Provider value={{ openDeposit, openWithdraw }}>
-      <header className="sticky top-3 z-50 px-4">
+      <header className="sticky top-3 z-50 px-4 mt-1.5">
         <div className="mx-auto max-w-screen-2xl px-3 sm:px-5 h-14 sm:h-16 flex items-center justify-between gap-2 rounded-2xl bg-white dark:bg-neutral-950 border border-gray-200 dark:border-white/[0.08] shadow-lg dark:shadow-black/40 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-neutral-950/90">
           {/* Logo */}
           <Link href="/markets" className="flex items-center gap-1.5 flex-shrink-0">
@@ -1928,7 +1932,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
             <svg viewBox="200 90 180 255" className="w-4 h-5 fill-black dark:fill-white" aria-hidden="true">
               <path d="M288.289 93.2865C292.454 94.1865 303.501 101.637 307.525 104.03L336.786 121.118C344.683 125.662 352.542 130.272 360.362 134.947C364.627 137.446 369.148 139.538 373.014 142.58C374.05 146.213 373.601 159.985 373.584 164.447L373.599 192.072L373.666 224.482C373.675 228.554 373.952 237.838 373.375 241.468C372.011 242.877 356.932 251.166 354.389 252.641L312.721 276.986C305.815 281.054 296.401 286.354 289.839 290.686C289.619 293.215 289.809 298.382 289.787 301.124C289.68 308.606 289.635 316.088 289.65 323.571C289.677 327.425 289.803 331.289 289.773 335.141C289.76 336.729 290.036 338.935 288.436 339.585C285.705 339.087 266.579 327.47 262.978 325.348C256.514 321.661 205.572 292.495 203.898 290.536C202.619 285.701 203.257 273.352 203.253 267.959L203.291 227.886L203.283 208.302C203.274 203.72 203.011 195.982 204.029 191.795C204.596 191.052 205.617 190.334 206.416 189.853C216.455 183.811 226.692 178.14 236.617 171.904C238.963 170.431 241.711 168.701 244.2 167.533C233.649 160.849 222.762 154.845 212.098 148.347C210.214 147.2 204.232 144.393 204.061 142.411C205.58 140.802 223.805 130.547 227.161 128.575L268.583 104.477C273.179 101.79 283.771 94.5567 288.289 93.2865ZM247.704 167.249C251.307 169.147 259.609 174.058 262.892 176.452C267.007 179.454 285.565 188.818 287.402 191.793C287.326 195.313 248.867 214.553 247.719 216.891C246.292 219.797 246.788 262.35 247.109 265.393C250.027 267.759 259.326 272.583 263.319 275.135C270.475 279.293 279.997 285.139 287.341 288.503C287.106 283.644 287.176 276.102 287.23 271.171C287.314 263.464 286.416 249.288 287.765 242.115C287.826 242.038 287.885 241.96 287.946 241.883C290.411 238.785 297.09 235.818 300.681 233.748C304.516 231.536 328.516 218.126 329.342 216.452C329.822 215.477 329.886 213.906 329.933 212.838C330.273 205.147 329.94 197.29 329.972 189.585C330.001 182.722 330.477 175.471 329.855 168.642C329.828 168.342 329.795 168.043 329.755 167.745C327.161 165.663 317.302 159.764 314.154 158.202C309.988 156.134 291.173 143.866 288.497 143.705C284.455 144.985 279.89 148.051 276.196 150.299L258.871 160.833C255.22 163.048 251.567 165.464 247.704 167.249Z" />
             </svg>
-            <span className="text-base sm:text-xl font-bold text-light-gray">Predensity</span>
+            <span className="text-base sm:text-xl font-bold text-light-gray">
+              Predensity{countryCode && (
+                <sup className="text-[10px] font-semibold text-gray-400 ml-0.5 align-super">{countryCode}</sup>
+              )}
+            </span>
           </Link>
 
           {/* Desktop nav */}
@@ -2299,6 +2307,80 @@ export function Header({ children }: { children?: React.ReactNode }) {
 // Profile Dropdown -- portal-based
 // ---------------------------------------------------------------------------
 
+// Rendered inside ProfileDropdownPortal — uses a context to push the panel up
+const LangPanelContext = createContext<{ open: boolean; setOpen: (v: boolean) => void }>({
+  open: false, setOpen: () => {},
+});
+
+function LanguageFlyout() {
+  const { setOpen } = useContext(LangPanelContext);
+  const { lang, t, countryCode } = useLanguage();
+  const currentLangMeta = LANGUAGES.find(l => l.code === lang);
+
+  return (
+    <div
+      className="border-t border-b border-gray-100 dark:border-neutral-800"
+      onClick={() => setOpen(true)}
+    >
+      <div className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-neutral-800/60 transition-colors cursor-pointer select-none active:bg-gray-100 dark:active:bg-neutral-800">
+        <div className="flex items-center gap-2.5">
+          <span className="text-[13px] font-bold text-gray-500 dark:text-gray-400 w-6 flex-shrink-0 tracking-wide">
+            {countryCode ?? currentLangMeta?.flag ?? '🌐'}
+          </span>
+          <div className="text-left">
+            <div className="text-[11px] text-gray-400 dark:text-gray-500 leading-tight">{t.language}</div>
+            <div className="text-xs font-medium text-gray-800 dark:text-gray-200 leading-tight">
+              {currentLangMeta?.nativeName ?? 'English'}
+            </div>
+          </div>
+        </div>
+        <ChevronDown className="w-3.5 h-3.5 text-gray-400 -rotate-90 flex-shrink-0" />
+      </div>
+    </div>
+  );
+}
+
+function LanguagePanel({ onClose }: { onClose: () => void }) {
+  const { lang, setLang, t } = useLanguage();
+  return (
+    <div className="absolute inset-0 z-10 bg-white dark:bg-neutral-900 rounded-xl flex flex-col overflow-hidden">
+      {/* Header row */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-neutral-800 flex-shrink-0">
+        <button
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClose(); }}
+          className="p-1 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 active:bg-gray-200 dark:active:bg-neutral-700 transition-colors"
+        >
+          <ChevronDown className="w-4 h-4 rotate-90" />
+        </button>
+        <span className="text-sm font-semibold text-gray-900 dark:text-white">{t.selectLanguage}</span>
+      </div>
+      {/* Language list */}
+      <div className="overflow-y-auto flex-1 py-1">
+        {LANGUAGES.map((l) => (
+          <button
+            key={l.code}
+            onClick={(e) => { e.stopPropagation(); e.preventDefault(); setLang(l.code); onClose(); }}
+            className={cn(
+              'w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left',
+              lang === l.code
+                ? 'bg-vibrant-purple/10 text-vibrant-purple'
+                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white active:bg-gray-200 dark:active:bg-neutral-700'
+            )}
+          >
+            <span className="text-xl leading-none flex-shrink-0">{l.flag}</span>
+            <span className="flex-1 font-medium">{l.nativeName}</span>
+            {lang === l.code && (
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ProfileDropdownPortal({
   buttonRef,
   mobileButtonRef,
@@ -2332,7 +2414,9 @@ function ProfileDropdownPortal({
   const [copied, setCopied] = useState(false);
   const [comingSoonMsg, setComingSoonMsg] = useState<string | null>(null);
   const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
+  const [langPanelOpen, setLangPanelOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
 
   // Use whichever button ref is currently visible
   const activeRef = buttonRef.current?.offsetParent !== null ? buttonRef : mobileButtonRef;
@@ -2394,7 +2478,8 @@ function ProfileDropdownPortal({
   if (!activeBtnEl) return null;
   const rect = activeBtnEl.getBoundingClientRect();
 
-  return createPortal(
+  const portal = createPortal(
+    <LangPanelContext.Provider value={{ open: langPanelOpen, setOpen: setLangPanelOpen }}>
     <div
       ref={menuRef}
       onMouseEnter={() => {
@@ -2411,7 +2496,7 @@ function ProfileDropdownPortal({
         right: window.innerWidth - rect.right,
         zIndex: 9999,
       }}
-      className="w-64 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-0 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden"
+      className="relative w-64 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-0 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden"
     >
       {/* Top section: address + settings */}
       <div className="flex items-center justify-between px-4 py-3">
@@ -2438,6 +2523,9 @@ function ProfileDropdownPortal({
           <Settings className="w-4 h-4" />
         </Link>
       </div>
+
+      {/* Location + Language row — hover reveals fly-out submenu */}
+      <LanguageFlyout />
 
       {/* Coming soon toast */}
       {comingSoonMsg && (
@@ -2525,9 +2613,15 @@ function ProfileDropdownPortal({
           </>
         )}
       </div>
-    </div>,
+
+      {/* Language panel slides over the whole dropdown on hover */}
+      {langPanelOpen && <LanguagePanel onClose={() => setLangPanelOpen(false)} />}
+    </div>
+    </LangPanelContext.Provider>,
     document.body
   );
+
+  return portal;
 }
 
 
