@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
+import { useLanguage } from '@/context/LanguageContext';
 import { api } from '../../convex/_generated/api';
 import { Header } from '@/components/header';
 import { ActivityTicker } from '@/components/activity-ticker';
-import { CategoryHero } from '@/components/category-hero';
+import { CategoryHeroVideo, CategoryHeroText } from '@/components/category-hero';
 import { CategoryTabs } from '@/components/category-tabs';
 import { MarketFilters } from '@/components/market-filters';
 import { GenericMarketCard } from '@/components/generic-market-card';
@@ -21,6 +22,7 @@ import {
 
 export default function MarketsPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
   const [status, setStatus] = useState<MarketStatus>(MarketStatus.OPEN);
   const [sortBy, setSortBy] = useState<SortOption>(SortOption.MOST_ACTIVE_24H);
@@ -226,11 +228,25 @@ export default function MarketsPage() {
 
       {/* 3. Hero video — negative margin pulls it UP behind the header so the
           video bleeds behind the island while the text content shows below it */}
-      <div className={(activeCategory === 'all' || activeCategory === 'crypto') ? '-mt-[76px]' : ''}>
-        <CategoryHero category={activeCategory} />
+      {/* VIDEO layer — sticky so it never scrolls */}
+      <div className={
+        (activeCategory === 'all' || activeCategory === 'crypto')
+          ? 'sticky top-0 -mt-[82px] z-0'
+          : ''
+      }>
+        <CategoryHeroVideo category={activeCategory} />
       </div>
 
-      <main className={`${showSidebar ? 'w-full md:px-0 px-4' : 'container mx-auto px-4'} ${(activeCategory === 'all' || activeCategory === 'crypto') ? 'pt-2' : 'pt-8'} pb-8 flex-1 flex gap-6`}>
+      {/* TEXT layer — normal flow, scrolls with the page, sits over the video */}
+      <div className={
+        (activeCategory === 'all' || activeCategory === 'crypto')
+          ? 'relative z-[1] -mt-[140px]'
+          : ''
+      }>
+        <CategoryHeroText category={activeCategory} />
+      </div>
+
+      <main className={`relative z-10 bg-white dark:bg-black ${showSidebar ? 'w-full md:px-0 px-4' : 'container mx-auto px-4'} ${(activeCategory === 'all' || activeCategory === 'crypto') ? 'pt-2' : 'pt-8'} pb-8 flex-1 flex gap-6`}>
         {showSidebar && (
           <div className="hidden md:block pl-4 w-64 shrink-0">
             <MarketsSidebar
@@ -318,7 +334,7 @@ export default function MarketsPage() {
           <div className="flex-1">
           {loading ? (
             <div className="text-center py-12">
-              <p className="text-gray-400 text-lg">Loading markets...</p>
+              <p className="text-gray-400 text-lg">{t.loadingMarkets}</p>
             </div>
           ) : (
             <>
@@ -334,10 +350,8 @@ export default function MarketsPage() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <p className="text-gray-400 text-lg">No markets found</p>
-                  <p className="text-gray-500 text-sm mt-2">
-                    Try adjusting your filters or search query
-                  </p>
+                  <p className="text-gray-400 text-lg">{t.noMarketsFound}</p>
+                  <p className="text-gray-500 text-sm mt-2">{t.tryAdjusting}</p>
                 </div>
               )}
             </>
