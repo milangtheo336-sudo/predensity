@@ -130,7 +130,7 @@ export default function GamePlay({
   const progress = (minute / 90) * 100;
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-between px-6 pt-16 pb-10">
+    <div className="flex-1 flex flex-col items-center justify-between px-6 pt-16 pb-10 bg-[#1e3a5f] min-h-screen">
       {/* Question */}
       <div className="text-center mb-6">
         <p className="text-white text-lg font-semibold">{getQuestion()}</p>
