@@ -162,8 +162,8 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     // |                    Modifiers                               |
     // ==============================================================
     modifier validBetAmount(uint256 amount) {
-        require(amount >= MIN_STAKE, "Bet too small");
-        require(amount <= MAX_STAKE, "Bet too large");
+        require(amount >= minStake, "Bet too small");
+        require(amount <= maxStake, "Bet too large");
         _;
     }
 
