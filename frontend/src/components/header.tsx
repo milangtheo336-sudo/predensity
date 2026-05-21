@@ -23,6 +23,7 @@ import {
   FileText,
   Briefcase,
   ArrowLeft,
+  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatAddress, cn, getAvatarPalette } from '@/lib/utils';
@@ -236,43 +237,66 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
 
 function CryptoDepositView({ onBack }: { onBack: () => void }) {
   const [copied, setCopied] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [txId, setTxId] = useState('');
-  const [confirming, setConfirming] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
-  const [confirmError, setConfirmError] = useState('');
+  const [depositDetected, setDepositDetected] = useState(false);
+  const [detectedAmount, setDetectedAmount] = useState('');
   const { user } = useUser();
-  const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_EVM_ADDRESS || '';
   const currency = getStakingCurrency();
+  const updateWallet = useConvexMutation(api.users.updateWalletBalance);
+
+  const managedWallet = useConvexQuery(
+    api.users.getManagedWalletByUserId,
+    user ? { userId: user.id } : 'skip'
+  );
+  const depositAddress = managedWallet?.evmAddress || '';
+  const hederaId = managedWallet?.hederaAccountId || '';
+  const storedBalance = managedWallet?.usdcBalance || '0';
+
+  const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+  const mirrorBase = hederaNetwork === 'mainnet'
+    ? 'https://mainnet.mirrornode.hedera.com'
+    : 'https://testnet.mirrornode.hedera.com';
+  const usdcTokenId = hederaNetwork === 'mainnet' ? '0.0.456858' : '0.0.8229951';
+
+  // Poll mirror node for balance changes while modal is open
+  useEffect(() => {
+    if (!hederaId || depositDetected) return;
+    const initialBalance = parseFloat(storedBalance);
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`${mirrorBase}/api/v1/accounts/${hederaId}/tokens?token.id=${usdcTokenId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const tokenEntry = data.tokens?.find((t: any) => t.token_id === usdcTokenId);
+        if (!tokenEntry) return;
+
+        const onChainBalance = parseInt(tokenEntry.balance) / 1e6;
+        if (onChainBalance > initialBalance + 0.000001) {
+          const diff = (onChainBalance - initialBalance).toFixed(6);
+          setDetectedAmount(diff);
+          setDepositDetected(true);
+          // Credit in Convex
+          if (user && managedWallet) {
+            updateWallet({
+              userId: user.id,
+              usdcBalance: onChainBalance.toFixed(6),
+            });
+          }
+        }
+      } catch { /* ignore polling errors */ }
+    };
+
+    const interval = setInterval(poll, 5000);
+    poll(); // immediate first check
+    return () => clearInterval(interval);
+  }, [hederaId, storedBalance, depositDetected]);
 
   const handleCopy = async () => {
-    if (treasuryAddress) {
-      await navigator.clipboard.writeText(treasuryAddress);
+    if (depositAddress) {
+      await navigator.clipboard.writeText(depositAddress);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  };
-
-  const handleConfirmDeposit = async () => {
-    if (!txId.trim() || !user) return;
-    setConfirming(true);
-    setConfirmError('');
-    try {
-      const res = await fetch('/api/wallet/deposit-crypto', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, transactionId: txId.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setConfirmError(data.error || 'Could not verify the deposit. Please try again in a minute.');
-      } else {
-        setConfirmed(true);
-      }
-    } catch {
-      setConfirmError('Network error. Please try again.');
-    }
-    setConfirming(false);
   };
 
   return (
@@ -285,105 +309,86 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
         <div className="flex items-center gap-2">
           <Image src="/hedera.svg" alt="Hedera" width={20} height={20} />
           <span className="text-sm text-white font-medium">Hedera</span>
+          <div className="relative group">
+            <HelpCircle className="w-3.5 h-3.5 text-gray-500 cursor-help" />
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-52 p-2 rounded-lg bg-neutral-800 border border-white/10 text-[11px] text-gray-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+              Send {currency.symbol} on the Hedera network to this address. Your balance updates automatically.
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/10">
           <span className="text-xs text-gray-300">{currency.symbol}</span>
         </div>
       </div>
 
-      {treasuryAddress ? (
-        <div className="flex justify-center py-3">
-          <div className="bg-white p-3 rounded-xl">
-            <QRCodeSVG
-              value={treasuryAddress}
-              size={180}
-              level="H"
-              includeMargin={false}
-              imageSettings={{
-                src: '/hedera.svg',
-                x: undefined,
-                y: undefined,
-                height: 32,
-                width: 32,
-                excavate: true,
-              }}
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="text-center py-8 text-gray-500 text-sm">
-          Treasury address not configured
-        </div>
-      )}
-
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <label className="text-xs text-gray-400">Your deposit address</label>
-          <Link href="/terms" className="text-xs text-gray-400 underline hover:text-white transition-colors">
-            Terms apply
-          </Link>
-        </div>
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-neutral-800 border border-white/10">
-          <span className="text-sm text-white font-mono truncate flex-1">
-            {treasuryAddress || 'Not available'}
-          </span>
-        </div>
-        <button
-          onClick={handleCopy}
-          disabled={!treasuryAddress}
-          className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-white/10 text-sm text-gray-300 hover:text-white hover:bg-white/[0.03] transition-colors disabled:opacity-50"
-        >
-          {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-          {copied ? 'Copied' : 'Copy address'}
-        </button>
-      </div>
-
-      {/* Confirm deposit section */}
-      {!showConfirm && !confirmed && (
-        <button
-          onClick={() => setShowConfirm(true)}
-          className="w-full py-2.5 rounded-xl bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-semibold text-sm transition-colors"
-        >
-          I've sent {currency.symbol}
-        </button>
-      )}
-
-      {showConfirm && !confirmed && (
-        <div className="space-y-2">
-          <input
-            type="text"
-            value={txId}
-            onChange={(e) => setTxId(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleConfirmDeposit()}
-            placeholder="Paste transaction ID (0.0.xxx-xxx-xxx)"
-            className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
-          />
-          {confirmError && <p className="text-xs text-red-400">{confirmError}</p>}
-          <button
-            onClick={handleConfirmDeposit}
-            disabled={!txId.trim() || confirming}
-            className="w-full py-2.5 rounded-xl bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-semibold text-sm transition-colors disabled:opacity-40"
-          >
-            {confirming ? 'Verifying...' : 'Confirm deposit'}
-          </button>
-          <p className="text-[10px] text-gray-500 text-center">
-            Find your transaction ID on HashScan or in your wallet's transaction history
-          </p>
-        </div>
-      )}
-
-      {confirmed && (
-        <div className="text-center py-3">
-          <Check className="w-6 h-6 text-green-500 mx-auto mb-1" />
-          <p className="text-sm text-green-400 font-medium">Deposit confirmed</p>
+      {depositDetected ? (
+        <div className="text-center py-6">
+          <Check className="w-8 h-8 text-green-500 mx-auto mb-2" />
+          <p className="text-lg text-green-400 font-semibold">{detectedAmount} {currency.symbol} received</p>
           <p className="text-xs text-gray-400 mt-1">Your balance has been updated</p>
         </div>
-      )}
+      ) : (
+        <>
+          {depositAddress ? (
+            <div className="flex justify-center py-3">
+              <div className="bg-white p-3 rounded-xl">
+                <QRCodeSVG
+                  value={depositAddress}
+                  size={180}
+                  level="H"
+                  includeMargin={false}
+                  imageSettings={{
+                    src: '/hedera.svg',
+                    x: undefined,
+                    y: undefined,
+                    height: 32,
+                    width: 32,
+                    excavate: true,
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500 text-sm">
+              {managedWallet === undefined ? 'Loading wallet...' : 'No wallet found. Sign in to create one.'}
+            </div>
+          )}
 
-      {!showConfirm && !confirmed && (
-        <p className="text-[11px] text-gray-500 text-center leading-relaxed">
-          Send only {currency.symbol} on the Hedera network to this address.
-        </p>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs text-gray-400">Your deposit address</label>
+              <Link href="/terms" className="text-xs text-gray-400 underline hover:text-white transition-colors">
+                Terms apply
+              </Link>
+            </div>
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-neutral-800 border border-white/10">
+              <span className="text-sm text-white font-mono truncate flex-1">
+                {depositAddress || 'Not available'}
+              </span>
+            </div>
+            {hederaId && (
+              <div className="text-[10px] text-gray-500 mt-1 text-center">
+                Hedera ID: {hederaId}
+              </div>
+            )}
+            <button
+              onClick={handleCopy}
+              disabled={!depositAddress}
+              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-white/10 text-sm text-gray-300 hover:text-white hover:bg-white/[0.03] transition-colors disabled:opacity-50"
+            >
+              {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+              {copied ? 'Copied' : 'Copy address'}
+            </button>
+          </div>
+
+          {depositAddress && (
+            <div className="flex items-center justify-center gap-2 py-2">
+              <Loader2 className="w-3.5 h-3.5 text-vibrant-purple animate-spin" />
+              <span className="text-xs text-gray-400">Waiting for deposit...</span>
+            </div>
+          )}
+
+        </>
       )}
     </div>
   );
@@ -1204,6 +1209,36 @@ export function Header({ children }: { children?: React.ReactNode }) {
       })
       .catch((err) => console.error('[auto-wallet] Error:', err));
   }, [isSignedIn, user, managedWallet]);
+
+  // Background deposit detection -- polls mirror node every 30s while signed in
+  const updateWalletBalance = useConvexMutation(api.users.updateWalletBalance);
+  useEffect(() => {
+    if (!isSignedIn || !user || !managedWallet?.hederaAccountId) return;
+    const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+    const mirrorBase = hederaNetwork === 'mainnet'
+      ? 'https://mainnet.mirrornode.hedera.com'
+      : 'https://testnet.mirrornode.hedera.com';
+    const usdcTokenId = hederaNetwork === 'mainnet' ? '0.0.456858' : '0.0.8229951';
+    const hederaId = managedWallet.hederaAccountId;
+    const storedBal = parseFloat(managedWallet.usdcBalance || '0');
+
+    const checkBalance = async () => {
+      try {
+        const res = await fetch(`${mirrorBase}/api/v1/accounts/${hederaId}/tokens?token.id=${usdcTokenId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const entry = data.tokens?.find((t: any) => t.token_id === usdcTokenId);
+        if (!entry) return;
+        const onChain = parseInt(entry.balance) / 1e6;
+        if (onChain > storedBal + 0.000001) {
+          updateWalletBalance({ userId: user.id, usdcBalance: onChain.toFixed(6) });
+        }
+      } catch { /* ignore */ }
+    };
+
+    const interval = setInterval(checkBalance, 30000);
+    return () => clearInterval(interval);
+  }, [isSignedIn, user?.id, managedWallet?.hederaAccountId, managedWallet?.usdcBalance]);
 
   // Notifications
   const notifications = useConvexQuery(
