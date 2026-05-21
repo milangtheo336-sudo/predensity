@@ -258,9 +258,10 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
   const usdcTokenId = hederaNetwork === 'mainnet' ? '0.0.456858' : '0.0.8229951';
 
   // Poll mirror node for balance changes while modal is open
+  const initialOnChainRef = useRef<number | null>(null);
   useEffect(() => {
     if (!depositAddress || depositDetected) return;
-    const initialBalance = parseFloat(storedBalance);
+    initialOnChainRef.current = null; // reset on mount
 
     const poll = async () => {
       try {
@@ -271,25 +272,32 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
         if (!tokenEntry) return;
 
         const onChainBalance = parseInt(tokenEntry.balance) / 1e6;
-        if (onChainBalance > initialBalance + 0.000001) {
-          const diff = (onChainBalance - initialBalance).toFixed(6);
+
+        if (initialOnChainRef.current === null) {
+          // First poll -- record baseline
+          initialOnChainRef.current = onChainBalance;
+          return;
+        }
+
+        // Only detect if on-chain increased since modal opened
+        if (onChainBalance > initialOnChainRef.current + 0.000001) {
+          const diff = (onChainBalance - initialOnChainRef.current).toFixed(6);
           setDetectedAmount(diff);
           setDepositDetected(true);
-          // Credit in Convex
+          // Credit the deposit amount to stored balance
           if (user && managedWallet) {
-            updateWallet({
-              userId: user.id,
-              usdcBalance: onChainBalance.toFixed(6),
-            });
+            const currentStored = parseFloat(managedWallet.usdcBalance || '0');
+            const newBal = (currentStored + parseFloat(diff)).toFixed(6);
+            updateWallet({ userId: user.id, usdcBalance: newBal });
           }
         }
       } catch { /* ignore polling errors */ }
     };
 
     const interval = setInterval(poll, 5000);
-    poll(); // immediate first check
+    poll();
     return () => clearInterval(interval);
-  }, [depositAddress, storedBalance, depositDetected]);
+  }, [depositAddress, depositDetected]);
 
   const handleCopy = async () => {
     if (depositAddress) {
@@ -1215,7 +1223,9 @@ export function Header({ children }: { children?: React.ReactNode }) {
   }, [isSignedIn, user, managedWallet]);
 
   // Background deposit detection -- polls mirror node every 30s while signed in
+  // Only credits NEW deposits by tracking the last known on-chain balance
   const updateWalletBalance = useConvexMutation(api.users.updateWalletBalance);
+  const lastOnChainBalance = useRef<number | null>(null);
   useEffect(() => {
     if (!isSignedIn || !user || !managedWallet?.hederaAccountId) return;
     const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
@@ -1224,7 +1234,6 @@ export function Header({ children }: { children?: React.ReactNode }) {
       : 'https://testnet.mirrornode.hedera.com';
     const usdcTokenId = hederaNetwork === 'mainnet' ? '0.0.456858' : '0.0.8229951';
     const hederaId = managedWallet.hederaAccountId;
-    const storedBal = parseFloat(managedWallet.usdcBalance || '0');
 
     const checkBalance = async () => {
       try {
@@ -1234,15 +1243,29 @@ export function Header({ children }: { children?: React.ReactNode }) {
         const entry = data.tokens?.find((t: any) => t.token_id === usdcTokenId);
         if (!entry) return;
         const onChain = parseInt(entry.balance) / 1e6;
-        if (onChain > storedBal + 0.000001) {
-          updateWalletBalance({ userId: user.id, usdcBalance: onChain.toFixed(6) });
+
+        if (lastOnChainBalance.current === null) {
+          // First poll -- just record the baseline, don't credit
+          lastOnChainBalance.current = onChain;
+          return;
         }
+
+        // Only credit if on-chain balance INCREASED since last poll
+        // This means a new deposit arrived, not just a stale higher balance
+        if (onChain > lastOnChainBalance.current + 0.000001) {
+          const depositAmount = onChain - lastOnChainBalance.current;
+          const currentStored = parseFloat(managedWallet.usdcBalance || '0');
+          const newBalance = (currentStored + depositAmount).toFixed(6);
+          updateWalletBalance({ userId: user.id, usdcBalance: newBalance });
+        }
+        lastOnChainBalance.current = onChain;
       } catch { /* ignore */ }
     };
 
     const interval = setInterval(checkBalance, 30000);
+    checkBalance(); // immediate first check to set baseline
     return () => clearInterval(interval);
-  }, [isSignedIn, user?.id, managedWallet?.hederaAccountId, managedWallet?.usdcBalance]);
+  }, [isSignedIn, user?.id, managedWallet?.hederaAccountId]);
 
   // Notifications
   const notifications = useConvexQuery(
