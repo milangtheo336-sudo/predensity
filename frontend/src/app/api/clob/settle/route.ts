@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
-import { anyApi } from 'convex/server';
+import { api } from '../../../../../convex/_generated/api';
 import { requireAdmin, rateLimit } from '@/lib/api-auth';
 import { signTransaction } from '@/lib/turnkey';
 import {
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch unsettled trades from Convex
-    const unsettledTrades = await convex.query(anyApi.clob.getUnsettledTrades, {
+    const unsettledTrades = await convex.query(api.clob.getUnsettledTrades, {
       limit: maxTrades,
     });
 
@@ -75,13 +75,13 @@ export async function POST(request: NextRequest) {
     for (const trade of unsettledTrades) {
       try {
         // Get the market to find the outcome token address
-        const market = await convex.query(anyApi.clob.getClobMarket, {
+        const market = await convex.query(api.clob.getClobMarket, {
           marketId: trade.marketId,
         });
 
         if (!market || !market.outcomeTokenAddresses || !market.outcomeTokenAddresses[trade.outcomeIndex]) {
           // No on-chain token configured -- mark as settled (off-chain only)
-          await convex.mutation(anyApi.clob.markTradeSettled, {
+          await convex.mutation(api.clob.markTradeSettled, {
             tradeId: trade.tradeId,
             txHash: 'off-chain-only',
           });
@@ -103,10 +103,10 @@ export async function POST(request: NextRequest) {
         ]);
 
         // Check if buyer/seller have Turnkey wallets (for future non-custodial mode)
-        const buyerWallet = await convex.query(anyApi.users.getManagedWalletByUserId, {
+        const buyerWallet = await convex.query(api.users.getManagedWalletByUserId, {
           userId: trade.buyerUserId,
         });
-        const sellerWallet = await convex.query(anyApi.users.getManagedWalletByUserId, {
+        const sellerWallet = await convex.query(api.users.getManagedWalletByUserId, {
           userId: trade.sellerUserId,
         });
 
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
 
         if (receipt.status.toString() === 'SUCCESS') {
           const txId = response.transactionId.toString();
-          await convex.mutation(anyApi.clob.markTradeSettled, {
+          await convex.mutation(api.clob.markTradeSettled, {
             tradeId: trade.tradeId,
             txHash: txId,
           });
