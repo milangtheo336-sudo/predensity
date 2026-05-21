@@ -300,7 +300,28 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('[bet/place] Error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const rawMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Map technical errors to user-friendly messages
+    let friendlyMessage = rawMessage;
+    if (rawMessage.includes('CONTRACT_REVERT_EXECUTED')) {
+      friendlyMessage = 'Insufficient funds. Please deposit more USDC to cover the stake and fees.';
+    } else if (rawMessage.includes('INSUFFICIENT_PAYER_BALANCE') || rawMessage.includes('INSUFFICIENT_ACCOUNT_BALANCE')) {
+      friendlyMessage = 'The platform treasury needs more HBAR for gas. Please contact support.';
+    } else if (rawMessage.includes('TOKEN_NOT_ASSOCIATED')) {
+      friendlyMessage = 'USDC token not associated. Please try again or contact support.';
+    } else if (rawMessage.includes('INVALID_SIGNATURE')) {
+      friendlyMessage = 'Transaction signing failed. Please try again.';
+    } else if (rawMessage.includes('BUSY') || rawMessage.includes('PLATFORM_TRANSACTION_NOT_CREATED')) {
+      friendlyMessage = 'Network is busy. Please try again in a moment.';
+    } else if (rawMessage.includes('receipt for transaction')) {
+      // Generic Hedera receipt error -- extract the status
+      const statusMatch = rawMessage.match(/status (\w+)/);
+      friendlyMessage = statusMatch
+        ? `Transaction failed: ${statusMatch[1].replace(/_/g, ' ').toLowerCase()}. Please try again or contact support.`
+        : 'Transaction failed. Please try again.';
+    }
+
+    return NextResponse.json({ error: friendlyMessage }, { status: 500 });
   }
 }
