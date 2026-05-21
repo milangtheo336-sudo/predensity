@@ -20,45 +20,51 @@ export function BetPlacingModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-black border border-slate-800 w-full mx-auto max-w-[360px] rounded-2xl p-6 shadow-2xl">
+    <div className="absolute inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50 rounded-lg">
+      <div className="bg-[#111114] border border-white/10 w-full max-w-sm rounded-xl p-5 shadow-2xl">
         
         {/* Header & Spinner */}
-        <div className="flex flex-col items-center mb-6">
-          <div className="relative flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full border-4 border-slate-800"></div>
-            <div className="absolute w-12 h-12 rounded-full border-4 border-t-white border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+        <div className="flex flex-col items-center mb-6 pt-2">
+          <div className="relative flex items-center justify-center w-10 h-10">
+            <div className="absolute inset-0 rounded-full border-[3px] border-white/10"></div>
+            <div
+              className="absolute inset-0 rounded-full border-[3px] border-transparent"
+              style={{
+                borderTopColor: 'var(--color-vibrant-purple, #7c3aed)',
+                animation: 'bet-spinner 0.8s linear infinite',
+              }}
+            ></div>
           </div>
-          <h2 className="mt-4 text-xl font-semibold text-white tracking-tight">Placing Trade</h2>
-          <p className="text-slate-400 text-sm mt-1">Confirming trade...</p>
+          <h2 className="mt-4 text-lg font-bold text-white tracking-tight">Placing Trade</h2>
+          <p className="text-gray-400 text-xs mt-1">Confirming transaction...</p>
         </div>
 
         {/* Trade Details */}
-        <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800/50 mb-6">
-          <div className="flex justify-between mb-2">
-            <span className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Asset</span>
-            <span className="text-slate-200 text-sm font-medium">{asset}</span>
+        <div className="space-y-3 mb-6 text-sm px-2">
+          <div className="flex justify-between pb-2 border-b border-white/5">
+            <span className="text-gray-400 font-medium">Asset</span>
+            <span className="text-white font-bold">{asset}</span>
           </div>
           
           {priceRange && (
-            <div className="flex justify-between mb-2">
-              <span className="text-slate-500 text-xs">Price Range</span>
-              <span className="text-slate-200 text-sm font-medium">
+            <div className="flex justify-between pb-2 border-b border-white/5">
+              <span className="text-gray-400 font-medium">Price Range</span>
+              <span className="text-white font-bold">
                 ${priceRange.min} - ${priceRange.max}
               </span>
             </div>
           )}
           
-          <div className="flex justify-between">
-            <span className="text-slate-500 text-xs">Amount</span>
-            <span className="text-slate-200 text-sm font-medium">${amount}</span>
+          <div className="flex justify-between pb-2">
+            <span className="text-gray-400 font-medium">Amount</span>
+            <span className="text-white font-bold">${amount}</span>
           </div>
         </div>
 
         {/* Animated Progress Bar */}
-        <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+        <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden mb-4 border border-white/5">
           <div 
-            className="bg-white h-full w-1/3 animate-[loading_2s_ease-in-out_infinite]"
+            className="bg-vibrant-purple h-full w-1/3"
             style={{
               animation: 'loading 2s ease-in-out infinite',
             }}
@@ -66,14 +72,18 @@ export function BetPlacingModal({
         </div>
 
         {/* Footer Note */}
-        <p className="text-center text-[10px] text-slate-500 mt-4 uppercase tracking-widest">
-          Do not close or refresh this window
+        <p className="text-center text-[10px] text-gray-500 uppercase tracking-widest font-semibold mt-2">
+          Do not close or refresh
         </p>
       </div>
 
-      <style jsx>{`
+      <style>{`
+        @keyframes bet-spinner {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
         @keyframes loading {
-          0% { transform: translateX(-100%); }
+          0%   { transform: translateX(-100%); }
           100% { transform: translateX(300%); }
         }
       `}</style>
