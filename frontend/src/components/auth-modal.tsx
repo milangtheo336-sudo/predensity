@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMagic } from '@/context/MagicContext';
 import { getDIDToken, getMagic } from '@/lib/magic';
@@ -28,24 +28,29 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const [view, setView] = useState<AuthView>('main');
   const [lastUsedMethod, setLastUsedMethod] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const justOpenedRef = useRef(false);
+  const backdropClickEnabledRef = useRef(false);
   const router = useRouter();
   const { login, refreshUser, user } = useMagic();
   const { isConnected } = useWallet();
+  
+  // Log isConnected changes
+  useEffect(() => {
+    console.log('[auth-modal] isConnected changed to:', isConnected, 'isOpen:', isOpen);
+  }, [isConnected, isOpen]);
+  
+  // Wrap onClose to add logging
+  const handleClose = useCallback(() => {
+    console.log('[auth-modal] handleClose called, stack trace:');
+    console.trace();
+    onClose();
+  }, [onClose]);
   
   // Wallet hooks
   const hashpackWallet = useWallet(HashpackConnector);
   const metamaskWallet = useWallet(MetamaskConnector);
   const bladeWallet = useWallet(BladeConnector);
   const kabilaWallet = useWallet(KabilaConnector);
-  
-  // Close modal if user is already logged in
-  useEffect(() => {
-    if (user && isOpen) {
-      console.log('[auth-modal] User already logged in, closing modal');
-      onClose();
-      setView('main');
-    }
-  }, [user, isOpen, onClose]);
   
   // Load last used method from localStorage
   useEffect(() => {
@@ -55,30 +60,80 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
     }
   }, [isOpen]);
 
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setEmail('');
+      setError('');
+      setIsLoading(false);
+      setView('main');
+      justOpenedRef.current = true;
+      backdropClickEnabledRef.current = false;
+      console.log('[auth-modal] Modal opened, user state:', user, 'timestamp:', Date.now());
+      
+      // Enable backdrop clicks after a delay to prevent immediate closure
+      const enableBackdropTimer = setTimeout(() => {
+        backdropClickEnabledRef.current = true;
+        console.log('[auth-modal] Backdrop clicks enabled');
+      }, 500);
+      
+      // Clear the "just opened" flag after 300ms to allow normal closing
+      const justOpenedTimer = setTimeout(() => {
+        justOpenedRef.current = false;
+        console.log('[auth-modal] Just opened flag cleared');
+      }, 300);
+      
+      return () => {
+        clearTimeout(enableBackdropTimer);
+        clearTimeout(justOpenedTimer);
+      };
+    } else {
+      console.log('[auth-modal] Modal closed, timestamp:', Date.now());
+      backdropClickEnabledRef.current = false;
+    }
+  }, [isOpen, user]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Don't close if modal just opened or backdrop clicks not enabled
+      if (justOpenedRef.current || !backdropClickEnabledRef.current) {
+        console.log('[auth-modal] Ignoring click outside - modal just opened or backdrop disabled');
+        return;
+      }
+      
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        console.log('[auth-modal] Click outside detected, closing modal');
         onClose();
         setView('main');
       }
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      // Delay adding the event listener to avoid catching the button click that opened the modal
+      const timer = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+        console.log('[auth-modal] Click outside listener added');
+      }, 100);
+      
       document.body.style.overflow = 'hidden';
+      
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.body.style.overflow = 'unset';
+      };
     }
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.body.style.overflow = 'unset';
-    };
   }, [isOpen, onClose]);
   
   // Close modal if wallet connects successfully
   useEffect(() => {
-    if (isConnected && isOpen) {
+    // Don't close if modal just opened
+    if (isConnected && isOpen && !justOpenedRef.current) {
+      console.log('[auth-modal] Wallet connected, closing modal');
       onClose();
       setView('main');
+    } else if (isConnected && isOpen && justOpenedRef.current) {
+      console.log('[auth-modal] Wallet connected but modal just opened, not closing yet');
     }
   }, [isConnected, isOpen, onClose]);
 
@@ -330,7 +385,15 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       {/* Backdrop */}
       <div 
         className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm"
-        onClick={() => {
+        onClick={(e) => {
+          // Don't close if backdrop clicks not enabled yet
+          if (!backdropClickEnabledRef.current) {
+            console.log('[auth-modal] Ignoring backdrop click - not enabled yet');
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          console.log('[auth-modal] Backdrop clicked, closing modal');
           onClose();
           setView('main');
         }}
