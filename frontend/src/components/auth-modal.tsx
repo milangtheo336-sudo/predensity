@@ -172,23 +172,41 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
         body: JSON.stringify({ userId: currentUser.issuer, email: currentUser.email || email, magicEOAAddress: currentUser.publicAddress }),
       });
       const data = await res.json();
+      const isNewUser = res.ok; // 409 = existing user, 200 = new user
       if (!res.ok && res.status !== 409) throw new Error(data.error || 'Failed to create wallet');
-      const proxyRes = await fetch('/api/proxy-wallet/create', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userAddress: currentUser.publicAddress }),
-      });
-      const proxyData = await proxyRes.json();
-      if (!proxyRes.ok) throw new Error(`Failed to create proxy wallet: ${proxyData.error || 'Unknown error'}`);
-      if (!proxyData.alreadyExists && !proxyData.proxyWalletAddress) {
-        await new Promise(r => setTimeout(r, 5000));
-        const vRes = await fetch(`/api/proxy-wallet/create?userAddress=${currentUser.publicAddress}`);
-        const vData = await vRes.json();
-        if (!vData.exists || !vData.proxyWalletAddress) throw new Error('Proxy wallet not available. Please try logging in again.');
-      }
+
+      // Close modal and show the "Setting up your account" overlay
+      // while the slow proxy wallet deployment happens
       onClose();
+      setIsWalletAuthenticating(true);
+
+      try {
+        const proxyRes = await fetch('/api/proxy-wallet/create', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userAddress: currentUser.publicAddress }),
+        });
+        const proxyData = await proxyRes.json();
+        if (!proxyRes.ok) throw new Error(`Failed to create proxy wallet: ${proxyData.error || 'Unknown error'}`);
+        if (!proxyData.alreadyExists && !proxyData.proxyWalletAddress) {
+          await new Promise(r => setTimeout(r, 5000));
+          const vRes = await fetch(`/api/proxy-wallet/create?userAddress=${currentUser.publicAddress}`);
+          const vData = await vRes.json();
+          if (!vData.exists || !vData.proxyWalletAddress) throw new Error('Proxy wallet not available. Please try logging in again.');
+        }
+
+        // New user → onboarding, returning user → stay
+        if (isNewUser && !proxyData.alreadyExists) {
+          sessionStorage.setItem('predensity-new-user', 'true');
+          router.push('/onboarding');
+        }
+      } finally {
+        setIsWalletAuthenticating(false);
+      }
     } catch (err) {
       console.error('[auth] Error:', err);
+      setIsWalletAuthenticating(false);
       setError(err instanceof Error ? err.message : 'Authentication failed');
+      setIsLoading(false);
     } finally { setIsLoading(false); }
   };
 
