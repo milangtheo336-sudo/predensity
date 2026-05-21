@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as clob from "../clob.js";
 import type * as crons from "../crons.js";
 import type * as events from "../events.js";
 import type * as features from "../features.js";
@@ -27,6 +28,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  clob: typeof clob;
   crons: typeof crons;
   events: typeof events;
   features: typeof features;
