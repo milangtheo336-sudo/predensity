@@ -204,7 +204,12 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
     const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
     const svgRef = useRef<d3.Selection<SVGSVGElement, unknown, null, undefined> | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [timeFilter, setTimeFilter] = useState<TimeRangeFilter>('all');
+    const [internalTimeFilter, setInternalTimeFilter] = useState<TimeRangeFilter>('all');
+    const timeFilter = externalTimeFilter ?? internalTimeFilter;
+    const setTimeFilter = (f: TimeRangeFilter) => {
+      setInternalTimeFilter(f);
+      onTimeFilterChange?.(f);
+    };
 
     const handleZoomIn = useCallback(() => {
       if (svgRef.current && zoomRef.current) {
@@ -556,11 +561,11 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
 
     return (
       <div className={cn('w-full', className)}>
-        {!hideTimeRange && (
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <span className="text-sm text-gray-500 dark:text-neutral-400 font-medium mr-auto">
             Community Forecast
           </span>
+          {!hideTimeRange && (
           <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-neutral-900 rounded-lg p-0.5">
             {timeRangeOptions.map((opt) => (
               <button
@@ -577,8 +582,8 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
               </button>
             ))}
           </div>
+          )}
         </div>
-        )}
         {/* Chart area -- uses fixed height by default, inherits from parent className if set */}
         <div className="relative">
           <div ref={chartContainerRef} className={cn('w-full', className?.includes('h-full') ? 'h-[calc(100%-3rem)]' : 'h-64 sm:h-80')} />
