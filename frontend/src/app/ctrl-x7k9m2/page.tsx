@@ -27,9 +27,11 @@ import { useToast } from '@/components/ui/useToast';
 import { Toaster } from '@/components/ui/toaster';
 import NoWalletConnectedContainer from '@/components/no-wallet-connected-container';
 import CryptoPredictionMarketABI from '../../../abi/CryptoPredictionMarket.json';
-import PoliticsPredictionMarketABI from '../../../abi/PoliticsPredictionMarket.json';
-import SportsPredictionMarketABI from '../../../abi/SportsPredictionMarket.json';
-import TechnologyPredictionMarketABI from '../../../abi/TechnologyPredictionMarket.json';
+
+// Old ABIs removed -- politics/sports/tech now use CLOB system
+const PoliticsPredictionMarketABI = { abi: [] as any[] };
+const SportsPredictionMarketABI = { abi: [] as any[] };
+const TechnologyPredictionMarketABI = { abi: [] as any[] };
 
 export default function AdminPageWrapper() {
   return (
