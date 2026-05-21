@@ -5,6 +5,44 @@ import { createPortal } from 'react-dom';
 import { MarketStatus, SortOption, MarketCard, Category } from '@/lib/types/categories';
 import { cn } from '@/lib/utils';
 import { TrendingUp, Flame, Sparkles, Clock } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
+
+const SEARCH_HINTS = [
+  'Where Will HBAR Price Land?',
+  'Will BTC hit $150K?',
+  'Where will ETH price land?',
+  'World Cup winner?',
+  'Fed interest rates?',
+  'Tesla stock price?',
+  'FIFA World Cup 2026?',
+];
+
+function AnimatedSearchPlaceholder() {
+  const [index, setIndex] = useState(0);
+  const [animClass, setAnimClass] = useState('hint-visible');
+
+  useEffect(() => {
+    const cycle = setInterval(() => {
+      // slide up & fade out
+      setAnimClass('hint-exit');
+      setTimeout(() => {
+        setIndex(i => (i + 1) % SEARCH_HINTS.length);
+        // instantly place new text below, then animate up
+        setAnimClass('hint-enter');
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setAnimClass('hint-visible'));
+        });
+      }, 400);
+    }, 5000);
+    return () => clearInterval(cycle);
+  }, []);
+
+  return (
+    <span className={`search-hint ${animClass} pointer-events-none absolute left-10 top-1/2 text-sm font-bold text-gray-500 dark:text-gray-400 select-none whitespace-nowrap`}>
+      {SEARCH_HINTS[index]}
+    </span>
+  );
+}
 
 interface MarketFiltersProps {
   status: MarketStatus;
@@ -24,6 +62,7 @@ export function MarketFilters({
   markets = [], hiddenCategories, onToggleCategory, onClearFilters,
   searchQuery, onSearchChange,
 }: MarketFiltersProps) {
+  const { t } = useLanguage();
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
@@ -38,17 +77,17 @@ export function MarketFilters({
   const hasActiveFilters = hiddenCategories.size > 0 || status !== MarketStatus.OPEN || sortBy !== SortOption.MOST_ACTIVE_24H;
 
   const statusOptions = [
-    { value: MarketStatus.ALL, label: 'All' },
-    { value: MarketStatus.OPEN, label: 'Open' },
-    { value: MarketStatus.CLOSED, label: 'Closed' },
-    { value: MarketStatus.RESOLVED, label: 'Resolved' },
+    { value: MarketStatus.ALL, label: t.top },
+    { value: MarketStatus.OPEN, label: t.open },
+    { value: MarketStatus.CLOSED, label: t.closed },
+    { value: MarketStatus.RESOLVED, label: t.resolved },
   ];
 
   const sortOptions = [
-    { value: SortOption.NEWEST, label: 'Newest', icon: Sparkles },
-    { value: SortOption.MOST_ACTIVE_24H, label: '24h Volume', icon: TrendingUp },
-    { value: SortOption.HIGH_VOLUME, label: 'High volume', icon: Flame },
-    { value: SortOption.CLOSING_SOON, label: 'Ending soon', icon: Clock },
+    { value: SortOption.NEWEST, label: t.newest, icon: Sparkles },
+    { value: SortOption.MOST_ACTIVE_24H, label: t.mostActive, icon: TrendingUp },
+    { value: SortOption.HIGH_VOLUME, label: t.highVolume, icon: Flame },
+    { value: SortOption.CLOSING_SOON, label: t.closingSoon, icon: Clock },
   ];
 
   const categoryToggles: { value: Category; label: string }[] = [
@@ -127,14 +166,16 @@ export function MarketFilters({
         <div className="flex-1 relative">
           <input
             type="text"
-            placeholder="Search markets..."
+            placeholder=""
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full bg-transparent text-gray-900 dark:text-white px-4 py-2.5 pl-10 border-b border-gray-200 dark:border-white/[0.08] focus:border-gray-400 dark:focus:border-white/20 focus:outline-none text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600"
+            className="w-full bg-transparent text-gray-900 dark:text-white px-4 py-2.5 pl-10 border-b border-gray-200 dark:border-white/[0.08] focus:border-gray-400 dark:focus:border-white/20 focus:outline-none text-sm"
           />
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
+          {/* Animated placeholder — only shows when input is empty */}
+          {!searchQuery && <AnimatedSearchPlaceholder />}
         </div>
 
         <button
