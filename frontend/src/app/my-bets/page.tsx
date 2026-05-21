@@ -625,6 +625,8 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   useEffect(() => {
     if (!user?.publicAddress) return;
     
+    let pollingInterval: NodeJS.Timeout;
+
     const fetchProxyWallet = async () => {
       // Check cache first
       try {
@@ -659,8 +661,15 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
       }
     };
     
-    fetchProxyWallet();
-  }, [user?.publicAddress]);
+    if (!proxyWalletAddress) {
+      fetchProxyWallet();
+      pollingInterval = setInterval(fetchProxyWallet, 5000);
+    }
+
+    return () => {
+      if (pollingInterval) clearInterval(pollingInterval);
+    };
+  }, [user?.publicAddress, proxyWalletAddress]);
   const { balancesHidden, toggleBalancesHidden } = useBalanceVisibility();
   // Local state synced with localStorage for when context is not available
   const [localHidden, setLocalHidden] = useState(() => {
