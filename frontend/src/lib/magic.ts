@@ -263,11 +263,17 @@ export async function getTokenBalance(
   userAddress?: string
 ): Promise<string> {
   const magic = getMagic();
-  const provider = new ethers.providers.Web3Provider((magic as any).rpcProvider);
+  const magicProvider = (magic as any).rpcProvider;
+  const provider = new ethers.providers.Web3Provider(magicProvider);
   
   if (!userAddress) {
-    const signer = provider.getSigner();
-    userAddress = await signer.getAddress();
+    // Get user address from Magic provider directly (avoid getAddress() error)
+    const accounts = await magicProvider.request({ method: 'eth_accounts' });
+    userAddress = accounts[0];
+    
+    if (!userAddress) {
+      throw new Error('No account found. Please log in.');
+    }
   }
   
   const tokenAbi = ['function balanceOf(address) view returns (uint256)'];
