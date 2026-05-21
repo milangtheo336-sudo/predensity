@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   useEvmAddress,
 } from '@buidlerlabs/hashgraph-react-wallets';
@@ -15,7 +15,7 @@ import { formatDateUTC, formatTinybarsToHbar, getLocalTimezoneAbbr, getAvatarPal
 
 import { useToast } from '@/components/ui/useToast';
 import { Toaster } from '@/components/ui/toaster';
-import { Header, DepositModal } from '@/components/header';
+import { Header, DepositModal, useBalanceVisibility } from '@/components/header';
 import {
   Loader2,
   ArrowUpRight,
@@ -32,6 +32,7 @@ import {
   Calendar,
   Download,
   Eye,
+  EyeOff,
   ExternalLink,
   TrendingUp,
   TrendingDown,
@@ -342,11 +343,13 @@ function ActivePositionCard({
   livePrice,
   imageUrl,
   mobile,
+  balancesHidden,
 }: {
   bet: Bet;
   livePrice: number | null;
   imageUrl?: string | null;
   mobile?: boolean;
+  balancesHidden?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -358,6 +361,7 @@ function ActivePositionCard({
   const currency = getStakingCurrency();
   const stakeNum = Number(formatAmount(bet.stake, 6));
   const asset = bet.asset || 'HBAR';
+  const HIDDEN = '****';
 
   const minPrice = Number(bet.priceMin) / 1e8;
   const maxPrice = Number(bet.priceMax) / 1e8;
@@ -476,7 +480,7 @@ function ActivePositionCard({
           </div>
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
             {statusBadge}
-            <span className="text-sm font-medium text-gray-900 dark:text-white">{formatUsd(stakeNum)}</span>
+            <span className="text-sm font-medium text-gray-900 dark:text-white">{balancesHidden ? HIDDEN : formatUsd(stakeNum)}</span>
           </div>
         </div>
         {expandedDetail}
@@ -519,13 +523,13 @@ function ActivePositionCard({
 
       {/* TOTAL TRADED */}
       <td className="px-4 py-3.5 text-right">
-        <span className="text-sm text-gray-900 dark:text-white font-medium">{formatUsd(stakeNum)}</span>
+        <span className="text-sm text-gray-900 dark:text-white font-medium">{balancesHidden ? HIDDEN : formatUsd(stakeNum)}</span>
       </td>
 
       {/* AMOUNT */}
       <td className="px-4 py-3.5 text-right">
         <div className="flex flex-col items-end">
-          <span className="text-sm text-gray-900 dark:text-white font-medium">{formatUsd(stakeNum)}</span>
+          <span className="text-sm text-gray-900 dark:text-white font-medium">{balancesHidden ? HIDDEN : formatUsd(stakeNum)}</span>
           <span className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">Active</span>
         </div>
       </td>
@@ -605,9 +609,34 @@ function SortDropdown({
 // ---------------------------------------------------------------------------
 // Main Portfolio Page
 // ---------------------------------------------------------------------------
-export default function PortfolioPage() {
+export default function PortfolioPage(props: { publicViewUserId?: string }) {
+  const publicViewUserId = props.publicViewUserId;
+  const isPublicView = !!publicViewUserId;
   const { user, isSignedIn } = useUser();
   const { data: evmAddress } = useEvmAddress();
+  const { balancesHidden, toggleBalancesHidden } = useBalanceVisibility();
+  // Local state synced with localStorage for when context is not available
+  const [localHidden, setLocalHidden] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('predensity-hide-balances') === 'true';
+    }
+    return false;
+  });
+  useEffect(() => {
+    const onToggle = () => {
+      setLocalHidden(localStorage.getItem('predensity-hide-balances') === 'true');
+    };
+    window.addEventListener('predensity-balance-toggle', onToggle);
+    return () => window.removeEventListener('predensity-balance-toggle', onToggle);
+  }, []);
+  const isHidden = localHidden;
+  const handleToggleHidden = useCallback(() => {
+    const next = !localHidden;
+    localStorage.setItem('predensity-hide-balances', String(next));
+    setLocalHidden(next);
+    window.dispatchEvent(new Event('predensity-balance-toggle'));
+  }, [localHidden]);
+  const HIDDEN_VALUE = '****';
 
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositInitialView, setDepositInitialView] = useState<'crypto' | 'withdraw'>('crypto');
@@ -632,12 +661,19 @@ export default function PortfolioPage() {
 
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    isSignedIn && user ? { userId: user.id } : 'skip'
+    isPublicView ? 'skip' : (isSignedIn && user ? { userId: user.id } : 'skip')
   );
 
-  const managedUserAddress = isSignedIn && user ? `managed:${user.id}`.toLowerCase() : null;
-  const walletAddress = evmAddress?.toLowerCase() || null;
-  const managedEvmAddress = managedWallet?.evmAddress?.toLowerCase() || null;
+  const effectiveUserId = isPublicView ? publicViewUserId : (isSignedIn && user ? user.id : null);
+  const managedUserAddress = effectiveUserId ? `managed:${effectiveUserId}`.toLowerCase() : null;
+  const walletAddress = isPublicView ? null : (evmAddress?.toLowerCase() || null);
+  const managedEvmAddress = isPublicView ? null : (managedWallet?.evmAddress?.toLowerCase() || null);
+
+  // Public profile data (for viewing other users)
+  const publicProfile = useConvexQuery(
+    api.social.getUserProfile,
+    isPublicView && managedUserAddress ? { userAddress: managedUserAddress } : 'skip'
+  );
 
   const managedBetsRaw = useConvexQuery(
     api.sync.getBetsByUser,
@@ -931,7 +967,7 @@ export default function PortfolioPage() {
     pnlRange === '1D' ? 'Past Day'
     : pnlRange === '1W' ? 'Past Week'
     : pnlRange === '1M' ? 'Past Month'
-    : 'All-Time';
+    : 'Total';
 
   const getEventForBet = (bet: Bet) => {
     const cat = getBetCategory(bet).toLowerCase();
@@ -1146,7 +1182,7 @@ export default function PortfolioPage() {
     ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
     : '';
 
-  if (!isSignedIn) {
+  if (!isSignedIn && !isPublicView) {
     return (
       <div className="min-h-screen bg-white dark:bg-black">
         <Header />
@@ -1162,41 +1198,52 @@ export default function PortfolioPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
       <Header />
-      <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} />
+      {!isPublicView && <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} />}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
         {/* ============ TOP CARDS ============ */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
 
-          {/* ── Profile Card ── */}
+          {/* -- Profile Card -- */}
           <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6">
-            {/* Header row */}
+            {/* Header row: avatar + name + share icons */}
             <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-                  {user?.imageUrl && !user.imageUrl.includes('gravatar') ? (
+                  {!isPublicView && user?.imageUrl && !user.imageUrl.includes('gravatar') ? (
                     <img src={user.imageUrl} alt="" className="w-14 h-14 rounded-full object-cover" />
+                  ) : publicProfile?.avatar ? (
+                    <img src={publicProfile.avatar} alt="" className="w-14 h-14 rounded-full object-cover" />
                   ) : (
                     <Avatar
                       size={56}
-                      name={user?.id || 'default'}
+                      name={effectiveUserId || 'default'}
                       variant="marble"
-                      colors={getAvatarPalette(user?.id || 'default')}
+                      colors={getAvatarPalette(effectiveUserId || 'default')}
                       square={false}
                     />
                   )}
                 </div>
                 <div>
                   <div className="text-base font-bold text-gray-900 dark:text-white">
-                    {user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Trader'}
+                    {isPublicView
+                      ? (publicProfile?.displayName || `User ${(publicViewUserId || '').slice(0, 8)}`)
+                      : (user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Trader')}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-neutral-500 flex items-center gap-1 mt-0.5">
-                    Joined {joinDate}
+                    {isPublicView
+                      ? (publicProfile?.createdAt ? `Joined ${new Date(publicProfile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : 'Trader')
+                      : `Joined ${joinDate}`}
                   </div>
-                  {(user?.unsafeMetadata as any)?.bio && (
+                  {!isPublicView && (user?.unsafeMetadata as any)?.bio && (
                     <div className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5 max-w-[200px] truncate">
-                      {(user.unsafeMetadata as any).bio}
+                      {(user?.unsafeMetadata as any)?.bio}
+                    </div>
+                  )}
+                  {isPublicView && publicProfile?.bio && (
+                    <div className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5 max-w-[200px] truncate">
+                      {publicProfile.bio}
                     </div>
                   )}
                 </div>
@@ -1228,54 +1275,93 @@ export default function PortfolioPage() {
               </div>
             </div>
 
-            {/* 4-stat grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-              <div className="bg-gray-50 dark:bg-neutral-900/60 rounded-xl p-3.5 text-center">
-                <div className="text-xl font-bold text-gray-900 dark:text-white">{formatUsd(cashBalance)}</div>
-                <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">Cash Balance</div>
-              </div>
-              <div className="bg-gray-50 dark:bg-neutral-900/60 rounded-xl p-3.5 text-center">
-                <div className="text-xl font-bold text-gray-900 dark:text-white">{formatUsd(activePositionValue)}</div>
-                <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">Positions Value</div>
-              </div>
-              <div className="bg-gray-50 dark:bg-neutral-900/60 rounded-xl p-3.5 text-center">
-                <div className="text-xl font-bold text-gray-900 dark:text-white">
-                  {biggestWin > 0 ? formatUsd(biggestWin) : '$0.00'}
+            {/* Private view: Portfolio / Available to trade / Positions Value */}
+            {!isPublicView && (
+            <>
+              <div className="flex items-start justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 dark:text-neutral-400 font-medium">Portfolio</span>
+                  <button
+                    onClick={handleToggleHidden}
+                    className="p-0.5 rounded text-gray-400 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-white transition-colors"
+                    title={isHidden ? 'Show balances' : 'Hide balances'}
+                    aria-label={isHidden ? 'Show balances' : 'Hide balances'}
+                  >
+                    <Image src={isHidden ? "/eye-hide-svgrepo-com.svg" : "/eye-show-svgrepo-com.svg"} alt="" width={30} height={20} className="dark:brightness-0 dark:invert" />
+                  </button>
                 </div>
-                <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">Biggest Win</div>
+                <div className="text-right">
+                  <div className="text-[15px] text-gray-500 dark:text-neutral-500">Available to trade</div>
+                  <div className="text-lg font-bold text-gray-900 dark:text-white">
+                    {isHidden ? HIDDEN_VALUE : formatUsd(cashBalance)}
+                  </div>
+                </div>
               </div>
-              <div className="bg-gray-50 dark:bg-neutral-900/60 rounded-xl p-3.5 text-center">
-                <div className="text-xl font-bold text-gray-900 dark:text-white">{totalPredictions}</div>
-                <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">Predictions</div>
+              <div className="flex items-end justify-between mb-1">
+                <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {isHidden ? HIDDEN_VALUE : formatUsd(activePositionValue + totalPnl)}
+                </div>
+                <div className="text-right">
+                  <div className="text-[11px] text-gray-500 dark:text-neutral-500">Positions Value</div>
+                  <div className="text-lg font-bold text-gray-900 dark:text-white">
+                    {isHidden ? HIDDEN_VALUE : formatUsd(activePositionValue)}
+                  </div>
+                </div>
               </div>
-            </div>
+              <div className="text-sm text-gray-500 dark:text-neutral-500 mb-5">
+                {isHidden ? HIDDEN_VALUE : (
+                  <>
+                    <span className={totalPnl >= 0 ? 'text-green-500' : 'text-red-400'}>
+                      {totalPnl >= 0 ? '+' : ''}{formatUsd(totalPnl)}
+                    </span>
+                    {' '}
+                    <span className={totalPnl >= 0 ? 'text-green-500' : 'text-red-400'}>
+                      ({portfolioValue > 0 ? ((totalPnl / portfolioValue) * 100).toFixed(1) : '0.0'}%)
+                    </span>
+                    {' '}
+                    <span className="text-gray-400 dark:text-neutral-600">{pnlRangeLabel.toLowerCase()}</span>
+                  </>
+                )}
+              </div>
+              <div className="flex gap-2.5">
+                <button onClick={openDeposit} className="flex-1 py-2.5 rounded-xl bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2">
+                  <Image src="/deposit icon.svg" alt="" width={15} height={15} className="brightness-0 invert" />
+                  Deposit
+                </button>
+                <button onClick={openWithdraw} className="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-neutral-700 text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2">
+                  <Image src="/withdraw icon.svg" alt="" width={15} height={15} className="dark:brightness-0 dark:invert" />
+                  Withdraw
+                </button>
+              </div>
+            </>
+            )}
 
-            {/* Deposit / Withdraw */}
-            <div className="flex gap-2.5">
-              <button
-                onClick={openDeposit}
-                className="flex-1 py-2.5 rounded-xl bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
-              >
-                <Image src="/deposit icon.svg" alt="" width={15} height={15} className="brightness-0 invert" />
-                Deposit
-              </button>
-              <button
-                onClick={openWithdraw}
-                className="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-neutral-700 text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
-              >
-                <Image src="/withdraw icon.svg" alt="" width={15} height={15} className="dark:brightness-0 dark:invert" />
-                Withdraw
-              </button>
-            </div>
+            {/* Public view: Positions Value, Biggest Win, Predictions */}
+            {isPublicView && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center">
+                  <div className="text-xl font-bold text-gray-900 dark:text-white">{formatUsd(activePositionValue)}</div>
+                  <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">Positions Value</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl font-bold text-gray-900 dark:text-white">{biggestWin > 0 ? formatUsd(biggestWin) : '$0.00'}</div>
+                  <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">Biggest Win</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl font-bold text-gray-900 dark:text-white">{totalPredictions}</div>
+                  <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">Predictions</div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* ── P&L Card — style ── */}
+          {/* -- P&L Card -- */}
           <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6">
             {/* Header: label + range buttons */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${totalPnl >= 0 ? 'bg-green-500' : 'bg-red-400'}`} />
-                <span className="text-sm text-gray-500 dark:text-neutral-400 font-medium">Profit/Loss</span>
+                <span className="text-base text-gray-500 dark:text-neutral-400 font-semibold">Profit/Loss</span>
               </div>
               <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-neutral-900 rounded-lg p-0.5">
                 {(['1D', '1W', '1M', 'ALL'] as PnlRange[]).map(r => (
@@ -1296,7 +1382,7 @@ export default function PortfolioPage() {
 
             {/* Main big P&L number */}
             <div className="text-4xl font-bold mb-1 text-gray-900 dark:text-white">
-              {totalPnl >= 0 ? '' : '-'}{formatUsd(Math.abs(totalPnl))}
+              {isHidden ? HIDDEN_VALUE : <>{totalPnl >= 0 ? '' : '-'}{formatUsd(Math.abs(totalPnl))}</>}
             </div>
             <div className="text-xs text-gray-500 dark:text-neutral-500 mb-4">{pnlRangeLabel}</div>
 
@@ -1447,6 +1533,7 @@ export default function PortfolioPage() {
                             livePrice={livePrices[bet.asset || 'HBAR'] ?? null}
                             imageUrl={getCryptoImage(bet.asset || 'HBAR')}
                             mobile
+                            balancesHidden={isHidden}
                           />
                         ))}
                         {otherBets.map(bet => {
@@ -1470,8 +1557,8 @@ export default function PortfolioPage() {
                                   </div>
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{marketName}</div>
-                                  <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
+                                  <div className="text-base font-medium text-gray-900 dark:text-white truncate">{marketName}</div>
+                                  <div className="text-base text-gray-500 dark:text-neutral-500 mt-0.5">
                                     {stakeVal.toFixed(2)} {currency.symbol} staked
                                   </div>
                                 </div>
@@ -1480,7 +1567,7 @@ export default function PortfolioPage() {
                                     <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-neutral-500" />
                                     Active
                                   </span>
-                                  <span className="text-sm font-medium text-gray-900 dark:text-white">{formatUsd(stakeVal)}</span>
+                                  <span className="text-sm font-medium text-gray-900 dark:text-white">{isHidden ? HIDDEN_VALUE : formatUsd(stakeVal)}</span>
                                 </div>
                               </div>
                             </div>
@@ -1543,8 +1630,8 @@ export default function PortfolioPage() {
                                   ) : (
                                     <span className="text-xs text-gray-400 dark:text-neutral-500">--</span>
                                   )}
-                                  <span className="text-sm font-bold text-gray-900 dark:text-white">{formatUsd(value)}</span>
-                                  {pnlAbs !== 0 && (
+                                  <span className="text-sm font-bold text-gray-900 dark:text-white">{isHidden ? HIDDEN_VALUE : formatUsd(value)}</span>
+                                  {pnlAbs !== 0 && !isHidden && (
                                     <span className={`text-[11px] font-semibold ${pnlAbs > 0 ? 'text-green-500' : 'text-red-400'}`}>
                                       {pnlAbs > 0 ? '+' : ''}{formatUsd(pnlAbs)}
                                     </span>
@@ -1613,6 +1700,7 @@ export default function PortfolioPage() {
                               bet={bet}
                               livePrice={livePrices[bet.asset || 'HBAR'] ?? null}
                               imageUrl={getCryptoImage(bet.asset || 'HBAR')}
+                              balancesHidden={isHidden}
                             />
                           ))}
                           {otherBets.map(bet => {
@@ -1651,10 +1739,10 @@ export default function PortfolioPage() {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3.5 text-right">
-                                  <span className="text-sm text-gray-900 dark:text-white font-medium">{formatUsd(stakeVal)}</span>
+                                  <span className="text-sm text-gray-900 dark:text-white font-medium">{isHidden ? HIDDEN_VALUE : formatUsd(stakeVal)}</span>
                                 </td>
                                 <td className="px-4 py-3.5 text-right">
-                                  <span className="text-sm text-gray-900 dark:text-white font-medium">{formatUsd(stakeVal)}</span>
+                                  <span className="text-sm text-gray-900 dark:text-white font-medium">{isHidden ? HIDDEN_VALUE : formatUsd(stakeVal)}</span>
                                 </td>
                                 <td className="px-4 py-3.5">
                                   <Link2 className="w-4 h-4 text-gray-300 dark:text-neutral-700 hover:text-gray-500 dark:hover:text-neutral-400 transition-colors cursor-pointer" onClick={() => handleSharePosition(bet)} />
@@ -1735,16 +1823,16 @@ export default function PortfolioPage() {
 
                                 {/* TOTAL TRADED */}
                                 <td className="px-4 py-4 text-right">
-                                  <span className="text-sm text-gray-900 dark:text-white font-medium">{formatUsd(stakeVal)}</span>
+                                  <span className="text-sm text-gray-900 dark:text-white font-medium">{isHidden ? HIDDEN_VALUE : formatUsd(stakeVal)}</span>
                                 </td>
 
                                 {/* AMOUNT / P&L */}
                                 <td className="px-4 py-4 text-right">
                                   <div className="flex flex-col items-end gap-0.5">
                                     <span className="text-sm font-bold text-gray-900 dark:text-white">
-                                      {formatUsd(value)}
+                                      {isHidden ? HIDDEN_VALUE : formatUsd(value)}
                                     </span>
-                                    {pnlAbs !== 0 && (
+                                    {pnlAbs !== 0 && !isHidden && (
                                       <span className={`text-xs font-semibold ${pnlAbs > 0 ? 'text-green-500' : 'text-red-400'}`}>
                                         {pnlAbs > 0 ? '+' : ''}{formatUsd(pnlAbs)} ({pnlPct > 0 ? '+' : ''}{pnlPct.toFixed(2)}%)
                                       </span>
