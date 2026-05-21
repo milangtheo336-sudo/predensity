@@ -148,7 +148,7 @@ export const getManagedWallet = query({
   },
 });
 
-// Look up a managed wallet by Clerk user ID
+// Look up a managed wallet by Magic Link user ID
 export const getManagedWalletByUserId = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
