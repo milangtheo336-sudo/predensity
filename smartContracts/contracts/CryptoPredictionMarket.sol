@@ -274,7 +274,17 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 targetTimestamp,
         uint256 priceMin,
         uint256 priceMax
-    ) external payable validTimeRange(targetTimestamp) returns (uint256) {
+    )
+        external
+        payable
+        whenNotPaused
+        nonReentrant
+        validTimeRange(targetTimestamp)
+        validBetAmount(msg.value)
+        returns (uint256)
+    {
+        require(address(stakingToken) == address(0), "Native mode disabled");
+        require(bytes(asset).length > 0, "Asset required");
         require(priceMin < priceMax, "Invalid price range");
         require(priceMin > 0 && priceMax > 0, "Prices must be positive");
         require(targetTimestamp > block.timestamp, "Cannot bet on past timestamps");
