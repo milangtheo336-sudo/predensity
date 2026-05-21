@@ -95,7 +95,36 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
     if (isConnected && isOpen && !justOpenedRef.current) { onClose(); setView('main'); }
   }, [isConnected, isOpen, onClose]);
 
-  if (!isOpen) return null;
+  // Signing modal must render even when isOpen=false — the auth modal closes
+  // as soon as isConnected becomes true (line above), but the sign request
+  // popup from the wallet extension appears after that. Without this guard
+  // the overlay would be wiped by the return null below.
+  if (!isOpen && !signingWallet) return null;
+
+  if (!isOpen && signingWallet) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md">
+        <div className="bg-[#111318] border border-white/10 rounded-3xl p-10 flex flex-col items-center gap-6 w-[320px] shadow-2xl">
+          <div className="relative">
+            {signingWallet.logoElement ? (
+              <div className="w-20 h-20 rounded-xl overflow-hidden flex items-center justify-center bg-[#0d1117] border border-white/[0.07]">
+                {signingWallet.logoElement}
+              </div>
+            ) : signingWallet.logoSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={signingWallet.logoSrc} alt={signingWallet.name} className="w-20 h-20 rounded-xl object-contain" />
+            ) : null}
+            <div className="absolute -inset-1.5 rounded-[14px] border-2 border-white/10 border-t-white/50 animate-spin" />
+          </div>
+          <p className="text-white text-xl font-bold">{signingWallet.name}</p>
+          <div className="text-center space-y-1">
+            <p className="text-white text-lg font-semibold">Requesting Signature</p>
+            <p className="text-gray-400 text-sm">Please sign to connect.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // Magic auth handlers (unchanged)
