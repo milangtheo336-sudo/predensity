@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -9,15 +11,22 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @title CryptoPredictionMarket
  * @dev Prediction market for cryptocurrency price ranges with multi-asset support
  * @notice Users predict price ranges for crypto assets (HBAR, BTC, ETH, etc.)
- * 
+ *
  * Example predictions:
  * - "HBAR will be between $0.29-$0.31 on March 15"
  * - "BTC will be between $65,000-$68,000 on April 1"
  * - "ETH will be between $3,200-$3,500 on March 20"
- * 
- * Resolution: Centralized owner sets prices (scalable, fast, gas-efficient)
+ *
+ * Resolution: owner sets prices via setPrice* functions. A RESOLUTION_DELAY
+ * timelock applies between price set and bet finalization, giving the owner
+ * a window to correct bad oracle pushes before they become binding.
+ *
+ * Security primitives:
+ *  - Ownable2Step: ownership transfer requires explicit acceptance
+ *  - Pausable: owner can halt all bet placement / resolution / claims
+ *  - ReentrancyGuard: applied to every external function that moves funds
  */
-contract CryptoPredictionMarket is Ownable {
+contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     // ==============================================================
     // |                    Constants                               |
