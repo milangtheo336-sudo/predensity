@@ -26,6 +26,7 @@ import {
   Eye,
   EyeOff,
   Phone,
+  Swords,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatAddress, cn, getAvatarPalette } from '@/lib/utils';
@@ -2438,6 +2439,16 @@ function ProfileDropdownPortal({
           <Wallet className="w-4 h-4 text-gray-400 dark:text-gray-500" />
           {t.portfolio}
         </Link>
+        <Link href="/challenges" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors">
+          <Swords className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+          Challenges
+        </Link>
+        <Link href="/leaderboard" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-400 dark:text-gray-500">
+            <path d="M6 9h12M6 9v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9M10 17v-7M14 17v-4M10 6v1M14 6v1M8 6h8"/>
+          </svg>
+          Leaderboard
+        </Link>
         <div className="px-2 py-0.5">
           <ThemeToggle />
         </div>
@@ -2525,6 +2536,5 @@ function ProfileDropdownPortal({
 
   return portal;
 }
-
 
 
