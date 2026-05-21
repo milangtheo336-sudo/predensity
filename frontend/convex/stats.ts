@@ -49,18 +49,21 @@ export const getUserWinRate = query({
   handler: async (ctx, args) => {
     const stats = await ctx.db
       .query("userStats")
-      .withIndex("by_address", (q) => q.eq("userAddress", args.userAddress))
+      .withIndex("by_user_id", (q) => q.eq("userId", args.userAddress))
       .first();
 
     if (!stats) return null;
 
+    const winRate = stats.totalMatchesCreated > 0 
+      ? (stats.totalMatchesWon / stats.totalMatchesCreated) * 100 
+      : 0;
+
     return {
-      totalBets: stats.totalBets,
-      totalWon: stats.totalWon,
-      winRate: stats.winRate,
-      totalStaked: stats.totalStaked,
-      totalPayout: stats.totalPayout,
-      netProfit: stats.totalPayout - stats.totalStaked,
+      totalMatchesCreated: stats.totalMatchesCreated,
+      totalMatchesWon: stats.totalMatchesWon,
+      winRate: winRate,
+      pointsAllTime: stats.pointsAllTime,
+      followers: stats.followers,
     };
   },
 });
