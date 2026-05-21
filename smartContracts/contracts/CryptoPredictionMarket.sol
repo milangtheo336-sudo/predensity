@@ -151,6 +151,10 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     event BucketPriceSet(uint256 indexed bucket, uint256 price);
     event BatchProcessed(uint256 indexed bucket, uint256 processedCount, uint256 winningWeight);
     event AggregationCompleted(uint256 indexed bucket, uint256 totalWinningWeight);
+    /// Emitted when a bucket aggregates with zero winning weight; the bucket's
+    /// stake is swept into the protocol fee pool instead of being reserved for
+    /// (non-existent) winners.
+    event NoWinnersSwept(uint256 indexed bucket, uint256 amountSwept);
     
     event AssetPriceResolved(
         string indexed asset,
@@ -439,9 +443,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         }
         
         if (startIndex >= bucketInfo.betIds.length) {
-            bucketInfo.aggregationComplete = true;
-            totalObligations += bucketInfo.totalStaked;
-            emit AggregationCompleted(bucket, bucketInfo.totalWinningWeight);
+            _finalizeBucketAggregation(bucket, bucketInfo);
             return (0, 0);
         }
 
@@ -472,9 +474,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         bucketInfo.nextProcessIndex = endIndex;
 
         if (endIndex >= bucketInfo.betIds.length) {
-            bucketInfo.aggregationComplete = true;
-            totalObligations += bucketInfo.totalStaked;
-            emit AggregationCompleted(bucket, bucketInfo.totalWinningWeight);
+            _finalizeBucketAggregation(bucket, bucketInfo);
         }
         
         emit BatchProcessed(bucket, processed, batchWinningWeight);
@@ -674,6 +674,32 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
      *         placed before per-bet asset tracking. Extracted as a helper to
      *         keep `processBatch`'s stack frame within EVM limits.
      */
+    /**
+     * @notice Mark a bucket as fully aggregated and route its net stake to the
+     *         correct destination.
+     *           - If the bucket has at least one winning bet, the entire net
+     *             stake is reserved for winners via `totalObligations`. Each
+     *             winner's `claimBet` then decrements that reservation.
+     *           - If the bucket aggregated with zero winning weight (everyone
+     *             guessed wrong), the stake is swept into the protocol fee pool
+     *             so it doesn't stay locked forever. `totalObligations` is not
+     *             touched in this branch.
+     */
+    function _finalizeBucketAggregation(uint256 bucket, BucketInfo storage bucketInfo) internal {
+        bucketInfo.aggregationComplete = true;
+        if (bucketInfo.totalWinningWeight == 0) {
+            // No winners -- house keeps the pool.
+            uint256 swept = bucketInfo.totalStaked;
+            if (swept > 0) {
+                totalFeesCollected += swept;
+                emit NoWinnersSwept(bucket, swept);
+            }
+        } else {
+            totalObligations += bucketInfo.totalStaked;
+        }
+        emit AggregationCompleted(bucket, bucketInfo.totalWinningWeight);
+    }
+
     function _priceForBet(uint256 betId) internal view returns (uint256) {
         Bet storage bet = bets[betId];
         string memory asset = bytes(betAssets[betId]).length > 0 ? betAssets[betId] : assetSymbol;
