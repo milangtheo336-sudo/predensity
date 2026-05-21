@@ -54,7 +54,7 @@ The platform supports multiple market categories -- crypto, politics, sports, an
 - **Bet simulation**: Preview fees, multipliers, and estimated payouts before placing
 
 ### Admin and Resolution
-- **Clerk-authenticated admin panel**: Manage markets and resolve events
+- **magic link-authenticated admin panel**: Manage markets and resolve events
 - **Batch processing**: Gas-efficient on-chain resolution in chunks of 50
 - **Multi-asset price resolution**: Set prices for multiple assets and timestamps
 
@@ -77,7 +77,7 @@ The platform supports multiple market categories -- crypto, politics, sports, an
 
 ```mermaid
 graph LR
-    A[1. Sign In via Clerk] --> B[2. Deposit USDC or M-Pesa]
+    A[1. Sign In via magic link] --> B[2. Deposit USDC or M-Pesa]
     B --> C[3. Browse Markets]
     C --> D[4. Set Price Range + Date]
     D --> E[5. Place Bet]
@@ -85,7 +85,7 @@ graph LR
     F --> G[7. Claim Winnings]
 ```
 
-1. **Sign In** -- Clerk authentication creates a managed wallet on Convex
+1. **Sign In** -- magic link authentication creates a managed wallet on Convex
 2. **Deposit** -- Transfer USDC from HashPack/MetaMask or deposit via M-Pesa
 3. **Browse** -- Filter markets by category, status, and search
 4. **Predict** -- Select a price range (min-max) and resolution date/time
@@ -126,7 +126,7 @@ graph TB
     end
 
     subgraph Auth["Auth Layer"]
-        Clerk[Clerk Authentication]
+        magic link[magic link Authentication]
     end
 
     subgraph Backend["Backend Layer"]
@@ -151,8 +151,8 @@ graph TB
 
     UI --> Wallets
     UI --> Charts
-    UI --> Clerk
-    Clerk --> Convex
+    UI --> magic link
+    magic link --> Convex
     UI --> API
     API --> Convex
     API --> Contracts
@@ -287,7 +287,7 @@ stateDiagram-v2
 | **Charts** | D3.js, Recharts |
 | **Blockchain** | ethers.js v5, Hedera SDK |
 | **Wallets** | HashPack, MetaMask, Blade, Kabila |
-| **Auth** | Clerk |
+| **Auth** | magic link |
 | **Backend** | Convex, Next.js API Routes |
 | **Smart Contracts** | Solidity 0.8.0, OpenZeppelin |
 | **Indexing** | Graph Protocol (self-hosted Graph Node) |
@@ -330,7 +330,7 @@ predensity/
 
 - **Node.js** 18+ and npm
 - **HashPack Wallet** ([Download](https://www.hashpack.app/))
-- **Clerk Account** ([clerk.com](https://clerk.com))
+- **magic link Account** ([magic link.com](https://magic link.com))
 - **Convex Account** ([convex.dev](https://convex.dev))
 
 ### Installation
@@ -358,8 +358,8 @@ NEXT_PUBLIC_HEDERA_NETWORK=mainnet
 NEXT_PUBLIC_HEDERA_CHAIN_ID=295
 NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=your_project_id
 NEXT_PUBLIC_CONVEX_URL=your_convex_url
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_key
-CLERK_SECRET_KEY=your_clerk_secret
+NEXT_PUBLIC_magic link_PUBLISHABLE_KEY=your_magic link_key
+magic link_SECRET_KEY=your_magic link_secret
 NEXT_PUBLIC_TREASURY_EVM_ADDRESS=0x...
 NEXT_PUBLIC_SUBGRAPH_URL=your_subgraph_url
 ```
