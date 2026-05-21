@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { PredictionCardSkeleton } from '@/components/prediction-card-skeleton';
 import { useQuery as useConvexQuery, useMutation } from 'convex/react';
 import { useMagic } from '@/context/MagicContext';
+import { useWalletUser } from '@/context/WalletUserContext';
 import { signTypedData, getDIDToken } from '@/lib/magic';
 import { api } from '../../convex/_generated/api';
 import { useBalanceVisibility } from '@/components/header';
@@ -107,7 +108,9 @@ function ClobActivitySection({
 }) {
   const [activeTab, setActiveTab] = useState<'ideas' | 'positions' | 'activity'>('ideas');
   const { user } = useMagic();
-  const isSignedIn = !!user;
+  const { walletUser } = useWalletUser();
+  const isSignedIn = !!user || !!walletUser;
+  const effectiveIssuer = user?.issuer ?? walletUser?.userId;
 
   // Comments/Ideas
   const comments = useConvexQuery(api.social.getMarketComments, { marketId });
@@ -119,12 +122,12 @@ function ClobActivitySection({
   const [replyText, setReplyText] = useState('');
 
   const handleSubmitComment = async () => {
-    if (!newComment.trim() || !isSignedIn || !user) return;
+    if (!newComment.trim() || !isSignedIn || !effectiveIssuer) return;
     setSubmittingComment(true);
     try {
       await addCommentMutation({
         marketId,
-        userAddress: `managed:${user.issuer}`.toLowerCase(),
+        userAddress: `managed:${effectiveIssuer}`.toLowerCase(),
         content: newComment.trim(),
       });
       setNewComment('');
@@ -284,12 +287,12 @@ function ClobActivitySection({
                         </p>
                         <div className="flex items-center gap-4 mt-1.5">
                           {(() => {
-                            const currentAddr = isSignedIn && user ? `managed:${user.issuer}`.toLowerCase() : '';
+                            const currentAddr = isSignedIn && effectiveIssuer ? `managed:${effectiveIssuer}`.toLowerCase() : '';
                             const hasLiked = (comment.likedBy || []).includes(currentAddr);
                             return (
                               <button
                                 onClick={() => {
-                                  if (!isSignedIn || !user) return;
+                                  if (!isSignedIn || !effectiveIssuer) return;
                                   likeCommentMutation({ commentId: comment._id, userAddress: currentAddr });
                                 }}
                                 className={`flex items-center gap-1 transition-colors ${hasLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
@@ -317,7 +320,7 @@ function ClobActivitySection({
                                 if (e.key === 'Enter' && replyText.trim()) {
                                   addCommentMutation({
                                     marketId,
-                                    userAddress: `managed:${user?.issuer}`.toLowerCase(),
+                                    userAddress: `managed:${effectiveIssuer}`.toLowerCase(),
                                     content: replyText.trim(),
                                     parentId: comment._id,
                                   }).then(() => { setReplyText(''); setReplyingTo(null); });
@@ -758,7 +761,9 @@ function OrderBookView({ marketId, outcomeIndex, side }: { marketId: string; out
 // ---------------------------------------------------------------------------
 export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const { user } = useMagic();
-  const isSignedIn = !!user;
+  const { walletUser } = useWalletUser();
+  const isSignedIn = !!user || !!walletUser;
+  const effectiveIssuer = user?.issuer ?? walletUser?.userId;
   const { balancesHidden } = useBalanceVisibility();
 
   // Market data
@@ -766,19 +771,19 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const prices = useConvexQuery(api.clob.getMarketPrices, { marketId });
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    isSignedIn && user ? { userId: user.issuer } : 'skip'
+    user ? { userId: user.issuer } : 'skip'
   );
   const userPositions = useConvexQuery(
     api.clob.getUserPositions,
-    isSignedIn && user ? { userId: user.issuer } : 'skip'
+    effectiveIssuer ? { userId: effectiveIssuer } : 'skip'
   );
   const userOrders = useConvexQuery(
     api.clob.getUserOrders,
-    isSignedIn && user ? { userId: user.issuer, marketId } : 'skip'
+    effectiveIssuer ? { userId: effectiveIssuer, marketId } : 'skip'
   );
   const settlementStatuses = useConvexQuery(
     api.clob.getUserTradeSettlementStatus,
-    isSignedIn && user ? { userId: user.issuer, marketId } : 'skip'
+    effectiveIssuer ? { userId: effectiveIssuer, marketId } : 'skip'
   );
 
   // UI state
@@ -921,7 +926,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
           'Authorization': `Bearer ${didToken}`,
         },
         body: JSON.stringify({
-          userId: user.issuer,
+          userId: effectiveIssuer,
           marketId,
           outcomeIndex: selectedOutcome,
           side: orderSide,
@@ -975,7 +980,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
           'Authorization': `Bearer ${didToken}`,
         },
         body: JSON.stringify({
-          userId: user.issuer,
+          userId: effectiveIssuer,
           orderId,
           signature,
           nonce,
@@ -1408,7 +1413,11 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
             {/* Activity Section (Ideas/Positions/Activity) */}
             <div className="border-t border-gray-200 dark:border-white/[0.06] pt-6 mt-6">
-              <ClobActivitySection marketId={marketId} currentUser={isSignedIn && user ? { id: user.issuer, name: user.email?.split('@')[0] || '', imageUrl: undefined } : undefined} />
+              <ClobActivitySection marketId={marketId} currentUser={isSignedIn ? {
+                id: effectiveIssuer ?? '',
+                name: user?.email?.split('@')[0] || walletUser?.publicAddress?.slice(0, 6) || 'Trader',
+                imageUrl: undefined,
+              } : undefined} />
             </div>
           </div>
 
