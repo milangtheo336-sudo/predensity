@@ -267,7 +267,7 @@ function ActivityRow({ item, explorerBase, getCryptoImage }: { item: any; explor
   ) : (
     <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
       item.category === 'politics' ? 'bg-blue-500/10 text-blue-400'
-      : item.category === 'esports' ? 'bg-green-500/10 text-green-400'
+      : item.category === 'sports' ? 'bg-green-500/10 text-green-400'
       : item.category === 'technology' ? 'bg-purple-500/10 text-purple-400'
       : 'bg-orange-500/10 text-orange-400'
     }`}>
