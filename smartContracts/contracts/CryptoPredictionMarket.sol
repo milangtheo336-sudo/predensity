@@ -665,6 +665,11 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     function _priceForBet(uint256 betId) internal view returns (uint256) {
         Bet storage bet = bets[betId];
         string memory asset = bytes(betAssets[betId]).length > 0 ? betAssets[betId] : assetSymbol;
+        uint256 setAt = priceSetAt[asset][bet.targetTimestamp];
+        // 0 means never set; require both: a price exists AND the resolution
+        // delay has elapsed since the most recent set so the owner has had a
+        // window to overwrite a bad oracle push.
+        if (setAt == 0 || block.timestamp < setAt + RESOLUTION_DELAY) return 0;
         return pricesAtTimestamp[asset][bet.targetTimestamp];
     }
 
