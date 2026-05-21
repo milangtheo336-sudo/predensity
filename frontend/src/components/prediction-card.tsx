@@ -1225,7 +1225,7 @@ export function PredictionCard({
           <div className="lg:col-span-8 space-y-6 order-1 lg:order-none">
 
             {/* Sticky header */}
-            <div className="sticky top-0 z-20 bg-white dark:bg-[#141414] pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-gray-200 dark:border-[#2a2a2a]">
+            <div className="sticky top-0 z-20 bg-white dark:bg-black pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-gray-200 dark:border-[#2a2a2a]">
               {/* Header: logo + badge + title + share -- matches CLOB layout */}
               <div className="flex gap-3 items-start pt-2 mb-3">
                 <Image src={tokenLogo} alt={tokenName} width={40} height={40} className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] flex-shrink-0 mt-0.5" />
