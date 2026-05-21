@@ -26,6 +26,31 @@ interface SigningWalletInfo {
   logoElement?: React.ReactNode;
 }
 
+function SigningOverlay({ signingWallet }: { signingWallet: SigningWalletInfo }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md">
+      <div className="bg-[#111318] border border-white/10 rounded-3xl p-10 flex flex-col items-center gap-6 w-[320px] shadow-2xl">
+        {/* Logo — matches wallet list item style (rounded-xl), scaled to 80px */}
+        {signingWallet.logoElement ? (
+          <div className="w-20 h-20 rounded-xl overflow-hidden flex items-center justify-center bg-[#0d1117] border border-white/[0.07]">
+            {signingWallet.logoElement}
+          </div>
+        ) : signingWallet.logoSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={signingWallet.logoSrc} alt={signingWallet.name} className="w-20 h-20 rounded-xl object-contain" />
+        ) : null}
+        <p className="text-white text-xl font-bold">{signingWallet.name}</p>
+        <div className="text-center space-y-1">
+          <p className="text-white text-lg font-semibold">Requesting Signature</p>
+          <p className="text-gray-400 text-sm">Please sign to connect.</p>
+        </div>
+        {/* Spinner below the card — clean, no clipping */}
+        <div className="w-8 h-8 rounded-full border-2 border-white/10 border-t-white/60 animate-spin" />
+      </div>
+    </div>
+  );
+}
+
 export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -102,28 +127,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   if (!isOpen && !signingWallet) return null;
 
   if (!isOpen && signingWallet) {
-    return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md">
-        <div className="bg-[#111318] border border-white/10 rounded-3xl p-10 flex flex-col items-center gap-6 w-[320px] shadow-2xl">
-          <div className="relative">
-            {signingWallet.logoElement ? (
-              <div className="w-20 h-20 rounded-xl overflow-hidden flex items-center justify-center bg-[#0d1117] border border-white/[0.07]">
-                {signingWallet.logoElement}
-              </div>
-            ) : signingWallet.logoSrc ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={signingWallet.logoSrc} alt={signingWallet.name} className="w-20 h-20 rounded-xl object-contain" />
-            ) : null}
-            <div className="absolute -inset-1.5 rounded-[14px] border-2 border-white/10 border-t-white/50 animate-spin" />
-          </div>
-          <p className="text-white text-xl font-bold">{signingWallet.name}</p>
-          <div className="text-center space-y-1">
-            <p className="text-white text-lg font-semibold">Requesting Signature</p>
-            <p className="text-gray-400 text-sm">Please sign to connect.</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <SigningOverlay signingWallet={signingWallet} />;
   }
 
   // ---------------------------------------------------------------------------
@@ -350,32 +354,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       />
 
       {/* Signing Wallet Modal — shown while waiting for wallet signature */}
-      {signingWallet && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md">
-          <div className="bg-[#111318] border border-white/10 rounded-3xl p-10 flex flex-col items-center gap-6 w-[320px] shadow-2xl">
-            {/* Wallet logo — same rounded-xl style as the wallet list items, scaled up */}
-            <div className="relative">
-              {signingWallet.logoElement ? (
-                <div className="w-20 h-20 rounded-xl overflow-hidden flex items-center justify-center bg-[#0d1117] border border-white/[0.07]">
-                  {signingWallet.logoElement}
-                </div>
-              ) : signingWallet.logoSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={signingWallet.logoSrc} alt={signingWallet.name} className="w-20 h-20 rounded-xl object-contain" />
-              ) : null}
-              {/* Animated ring around logo to show activity */}
-              <div className="absolute -inset-1.5 rounded-[14px] border-2 border-white/10 border-t-white/50 animate-spin" />
-            </div>
-            {/* Wallet name */}
-            <p className="text-white text-xl font-bold">{signingWallet.name}</p>
-            {/* Message */}
-            <div className="text-center space-y-1">
-              <p className="text-white text-lg font-semibold">Requesting Signature</p>
-              <p className="text-gray-400 text-sm">Please sign to connect.</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {signingWallet && <SigningOverlay signingWallet={signingWallet} />}
 
       {/* Generic Loading Overlay — email / OAuth / passkey flows */}
       {isLoading && !signingWallet && (
