@@ -61,7 +61,6 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const justOpenedRef = useRef(false);
   const backdropClickEnabledRef = useRef(false);
-  const walletSignInInProgressRef = useRef(false);
   const router = useRouter();
   const { login, refreshUser, user } = useMagic();
   const { setWalletUser, setIsWalletAuthenticating } = useWalletUser();
@@ -118,11 +117,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   }, [isOpen, onClose]);
 
   useEffect(() => {
-    // Don't auto-close if we're mid wallet sign-in — connect fires isConnected=true
-    // before we've had a chance to call signHashpack, and closing here kills the flow.
-    if (isConnected && isOpen && !justOpenedRef.current && !walletSignInInProgressRef.current) {
-      onClose(); setView('main');
-    }
+    if (isConnected && isOpen && !justOpenedRef.current) { onClose(); setView('main'); }
   }, [isConnected, isOpen, onClose]);
 
   // Signing modal must render even when isOpen=false — the auth modal closes
@@ -246,7 +241,6 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   // ---------------------------------------------------------------------------
   const handleHashpackConnect = async () => {
     setIsLoading(true); setError('');
-    walletSignInInProgressRef.current = true;
     try {
       localStorage.setItem('lastUsedAuthMethod', 'hashpack');
       await hashpackWallet.connect();
@@ -273,7 +267,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
     } catch (err) {
       console.error('[auth-modal] HashPack error:', err);
       setError(err instanceof Error ? err.message : 'Failed to connect HashPack');
-    } finally { setIsLoading(false); setSigningWallet(null); walletSignInInProgressRef.current = false; }
+    } finally { setIsLoading(false); setSigningWallet(null); }
   };
 
   // ---------------------------------------------------------------------------
