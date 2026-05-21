@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
+import { useLanguage } from '@/context/LanguageContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMagic } from '@/context/MagicContext';
 import { useWalletUser } from '@/context/WalletUserContext';
 
 export function MobileBottomNav() {
+  const { t } = useLanguage();
   const { user } = useMagic();
   const { walletUser } = useWalletUser();
   const isSignedIn = !!user || !!walletUser;
@@ -20,22 +22,22 @@ export function MobileBottomNav() {
         <div className="flex items-center justify-around h-16 px-4">
           <Link href="/markets" className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
             <Image src="/home.svg" alt="Home" width={20} height={20} className="dark:brightness-0 dark:invert" />
-            <span className="text-[10px] font-medium">Home</span>
+            <span className="text-[10px] font-medium">{t.home}</span>
           </Link>
           <button className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
             <Image src="/search.svg" alt="Search" width={20} height={20} className="dark:brightness-0 dark:invert" />
-            <span className="text-[10px] font-medium">Search</span>
+            <span className="text-[10px] font-medium">{t.search}</span>
           </button>
           <button className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
             <Image src="/breaking.svg" alt="Breaking" width={20} height={20} className="dark:brightness-0 dark:invert" />
-            <span className="text-[10px] font-medium">Breaking</span>
+            <span className="text-[10px] font-medium">{t.breaking}</span>
           </button>
 
           {/* Logged in: Portfolio icon linking to /my-bets */}
           {isSignedIn ? (
             <Link href="/my-bets" className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
               <Image src="/portfolio icon.svg" alt="Portfolio" width={20} height={20} className="dark:brightness-0 dark:invert" />
-              <span className="text-[10px] font-medium">Portfolio</span>
+              <span className="text-[10px] font-medium">{t.portfolio}</span>
             </Link>
           ) : (
             <button
@@ -47,7 +49,7 @@ export function MobileBottomNav() {
                 <line x1="4" y1="12" x2="20" y2="12"/>
                 <line x1="4" y1="18" x2="20" y2="18"/>
               </svg>
-              <span className="text-[10px] font-medium">More</span>
+              <span className="text-[10px] font-medium">{t.more}</span>
             </button>
           )}
         </div>
@@ -72,7 +74,7 @@ export function MobileBottomNav() {
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 12H5M12 5l-7 7 7 7" />
               </svg>
-              <span className="text-base font-medium">Close</span>
+              <span className="text-base font-medium">{t.close}</span>
             </button>
 
             {/* Nav items */}
@@ -89,7 +91,7 @@ export function MobileBottomNav() {
                   <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
                   <circle cx="12" cy="17" r="0.5" fill="currentColor" />
                 </svg>
-                <span className="text-lg font-medium">Support</span>
+                <span className="text-lg font-medium">{t.support}</span>
               </a>
 
               <div className="h-px bg-white/10 my-1" />
@@ -106,7 +108,7 @@ export function MobileBottomNav() {
                   <line x1="16" y1="17" x2="8" y2="17"/>
                   <polyline points="10 9 9 9 8 9"/>
                 </svg>
-                <span className="text-lg font-medium">Terms of Use</span>
+                <span className="text-lg font-medium">{t.termsOfUse}</span>
               </Link>
 
               <Link
@@ -117,7 +119,7 @@ export function MobileBottomNav() {
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                 </svg>
-                <span className="text-lg font-medium">Privacy Policy</span>
+                <span className="text-lg font-medium">{t.privacyPolicy}</span>
               </Link>
 
             </div>

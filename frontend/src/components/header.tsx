@@ -1541,6 +1541,7 @@ function GuestHamburgerMenu({
 // ---------------------------------------------------------------------------
 
 export function Header({ children }: { children?: React.ReactNode }) {
+  const { t } = useLanguage();
   const countryCode = useCountryCode();
   const { isConnected, disconnect } = useWallet();
   const { data: accountId } = useAccountId();
@@ -1948,14 +1949,14 @@ export function Header({ children }: { children?: React.ReactNode }) {
                   <div className="flex items-center gap-1.5">
                     <Wallet className="w-4 h-4 text-gray-400" />
                     <div>
-                      <div className="text-[11px] text-gray-500 leading-tight">Portfolio</div>
+                      <div className="text-[11px] text-gray-500 leading-tight">{t.portfolio}</div>
                       <div className="text-sm font-semibold text-green-500">
                         {balancesHidden ? HIDDEN_VALUE : `$${portfolioValue.toFixed(2)}`}
                       </div>
                     </div>
                   </div>
                   <div>
-                    <div className="text-[11px] text-gray-500 leading-tight">Bal</div>
+                    <div className="text-[11px] text-gray-500 leading-tight">{t.balance}</div>
                     <div className="text-sm font-semibold text-green-500">
                       {balancesHidden ? HIDDEN_VALUE : `$${platformBalance.toFixed(2)}`}
                     </div>
@@ -2000,7 +2001,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                       className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#111] rounded-xl shadow-2xl z-[100] overflow-hidden"
                     >
                       <div className="px-4 py-3">
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</span>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{t.notifications}</span>
                       </div>
                       {(!notifications || notifications.length === 0) ? (
                         <div className="flex flex-col items-center justify-center py-10 px-4">
@@ -2194,7 +2195,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                       className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white dark:bg-[#111] rounded-xl shadow-2xl z-[100] overflow-hidden"
                     >
                       <div className="px-4 py-3">
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</span>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{t.notifications}</span>
                       </div>
                       {(!notifications || notifications.length === 0) ? (
                         <div className="flex flex-col items-center justify-center py-10 px-4">
