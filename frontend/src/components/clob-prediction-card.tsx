@@ -8,6 +8,7 @@ import { PredictionCardSkeleton } from '@/components/prediction-card-skeleton';
 import { useQuery as useConvexQuery } from 'convex/react';
 import { useUser } from '@clerk/nextjs';
 import { api } from '../../convex/_generated/api';
+import { anyApi } from 'convex/server';
 import { useBalanceVisibility } from '@/components/header';
 
 // ---------------------------------------------------------------------------
@@ -44,7 +45,7 @@ const OUTCOME_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '
 function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: OutcomePrice[] }) {
   // Get price history for all outcomes
   const histories = outcomes.map((o) => {
-    const history = useConvexQuery(api.clob.getPriceHistory, {
+    const history = useConvexQuery(anyApi.clob.getPriceHistory, {
       marketId,
       outcomeIndex: o.outcomeIndex,
     });
@@ -97,7 +98,7 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
 // Order Book Display
 // ---------------------------------------------------------------------------
 function OrderBookView({ marketId, outcomeIndex }: { marketId: string; outcomeIndex: number }) {
-  const orderBook = useConvexQuery(api.clob.getOrderBook, { marketId, outcomeIndex });
+  const orderBook = useConvexQuery(anyApi.clob.getOrderBook, { marketId, outcomeIndex });
 
   if (!orderBook) return <div className="py-4 text-center text-sm text-gray-400"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>;
 
@@ -155,18 +156,18 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const { balancesHidden } = useBalanceVisibility();
 
   // Market data
-  const market = useConvexQuery(api.clob.getClobMarket, { marketId });
-  const prices = useConvexQuery(api.clob.getMarketPrices, { marketId });
+  const market = useConvexQuery(anyApi.clob.getClobMarket, { marketId });
+  const prices = useConvexQuery(anyApi.clob.getMarketPrices, { marketId });
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
     isSignedIn && user ? { userId: user.id } : 'skip'
   );
   const userPositions = useConvexQuery(
-    api.clob.getUserPositions,
+    anyApi.clob.getUserPositions,
     isSignedIn && user ? { userId: user.id } : 'skip'
   );
   const userOrders = useConvexQuery(
-    api.clob.getUserOrders,
+    anyApi.clob.getUserOrders,
     isSignedIn && user ? { userId: user.id, marketId } : 'skip'
   );
 
