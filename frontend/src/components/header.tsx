@@ -24,6 +24,8 @@ import {
   Briefcase,
   ArrowLeft,
   HelpCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatAddress, cn, getAvatarPalette } from '@/lib/utils';
@@ -40,9 +42,30 @@ import {
 import { SignInButton, SignUpButton, useUser, useClerk } from '@clerk/nextjs';
 import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { getStakingCurrency, getStakingTokenId } from '@/lib/contracts/contract-config';
+import { getStakingCurrency, getStakingTokenId, isTokenMode } from '@/lib/contracts/contract-config';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { QRCodeSVG } from 'qrcode.react';
+
+// ---------------------------------------------------------------------------
+// Balance Visibility Context -- persisted to localStorage
+// ---------------------------------------------------------------------------
+
+interface BalanceVisibilityContextType {
+  balancesHidden: boolean;
+  toggleBalancesHidden: () => void;
+}
+
+const BalanceVisibilityContext = createContext<BalanceVisibilityContextType>({
+  balancesHidden: false,
+  toggleBalancesHidden: () => {},
+});
+
+export function useBalanceVisibility() {
+  return useContext(BalanceVisibilityContext);
+}
+
+// Masked placeholder for hidden values
+const HIDDEN_VALUE = '****';
 
 // ---------------------------------------------------------------------------
 // Deposit Modal Context
@@ -81,6 +104,7 @@ export function DepositModal({
 }) {
   const [view, setView] = useState<DepositView>(initialView);
   const [mounted, setMounted] = useState(false);
+  const balancesHidden = typeof window !== 'undefined' && localStorage.getItem('predensity-hide-balances') === 'true';
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -107,7 +131,7 @@ export function DepositModal({
               {isWithdraw ? 'Withdraw' : 'Deposit'}
             </h2>
             <p className="text-sm text-gray-400 mt-0.5">
-              Balance: <span className="text-white font-medium">${platformBalance.toFixed(2)}</span>
+              Portfolio Balance: <span className="text-white font-medium">{balancesHidden ? '****' : `$${platformBalance.toFixed(2)}`}</span>
             </p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
@@ -1200,6 +1224,90 @@ export function Header({ children }: { children?: React.ReactNode }) {
   );
   const platformBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
 
+  // Balance visibility toggle -- persisted to localStorage, synced across components
+  const [balancesHidden, setBalancesHidden] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('predensity-hide-balances') === 'true';
+    }
+    return false;
+  });
+  useEffect(() => {
+    // Listen for changes from other components (e.g. my-bets page toggle)
+    const onCustom = () => {
+      setBalancesHidden(localStorage.getItem('predensity-hide-balances') === 'true');
+    };
+    window.addEventListener('predensity-balance-toggle', onCustom);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'predensity-hide-balances') {
+        setBalancesHidden(e.newValue === 'true');
+      }
+    });
+    return () => {
+      window.removeEventListener('predensity-balance-toggle', onCustom);
+    };
+  }, []);
+  const toggleBalancesHidden = useCallback(() => {
+    setBalancesHidden(prev => {
+      const next = !prev;
+      localStorage.setItem('predensity-hide-balances', String(next));
+      window.dispatchEvent(new Event('predensity-balance-toggle'));
+      return next;
+    });
+  }, []);
+
+  // Query user bets to calculate portfolio value (positions + unrealized P&L)
+  const managedUserAddress = isSignedIn && user ? `managed:${user.id}`.toLowerCase() : null;
+  const managedEvmAddress = managedWallet?.evmAddress?.toLowerCase() || null;
+  const { data: evmAddr } = useEvmAddress();
+  const walletAddress = evmAddr?.toLowerCase() || null;
+
+  const managedBetsRaw = useConvexQuery(
+    api.sync.getBetsByUser,
+    managedUserAddress ? { userAddress: managedUserAddress } : 'skip'
+  );
+  const walletBetsRaw = useConvexQuery(
+    api.sync.getBetsByUser,
+    walletAddress ? { userAddress: walletAddress } : 'skip'
+  );
+  const managedEvmBetsRaw = useConvexQuery(
+    api.sync.getBetsByUser,
+    managedEvmAddress && managedEvmAddress !== walletAddress
+      ? { userAddress: managedEvmAddress }
+      : 'skip'
+  );
+
+  // Calculate portfolio value: active positions value + unrealized P&L
+  const portfolioValue = React.useMemo(() => {
+    const allRaw = [
+      ...(managedBetsRaw || []),
+      ...(walletBetsRaw || []),
+      ...(managedEvmBetsRaw || []),
+    ].filter((b: any) => b.status !== 'failed');
+    // Deduplicate by betId
+    const seen = new Set<string>();
+    const bets: any[] = [];
+    for (const b of allRaw) {
+      if (!seen.has(b.betId)) { seen.add(b.betId); bets.push(b); }
+    }
+    const currency = getStakingCurrency();
+    const formatStake = (val: number | string) => {
+      if (isTokenMode()) return Number(val) / Math.pow(10, currency.decimals);
+      return Number(val) / 1e8;
+    };
+    // Active positions value
+    const activeBets = bets.filter(b => !b.finalized);
+    const activeValue = activeBets.reduce((sum, b) => sum + formatStake(b.stake), 0);
+    // Unrealized P&L from resolved bets (won payouts minus all stakes)
+    const resolvedBets = bets.filter(b => b.finalized);
+    const totalWonPayout = resolvedBets.reduce((sum, b) => {
+      if (b.won) return sum + formatStake(b.payout || b.expectedPayout);
+      return sum;
+    }, 0);
+    const totalResolvedStake = resolvedBets.reduce((sum, b) => sum + formatStake(b.stake), 0);
+    const unrealizedPnl = totalWonPayout - totalResolvedStake;
+    return activeValue + unrealizedPnl;
+  }, [managedBetsRaw, walletBetsRaw, managedEvmBetsRaw]);
+
   // Auto-create managed wallet for new users who don't have one yet
   const walletCreationAttempted = useRef(false);
   useEffect(() => {
@@ -1221,6 +1329,21 @@ export function Header({ children }: { children?: React.ReactNode }) {
       })
       .catch((err) => console.error('[auto-wallet] Error:', err));
   }, [isSignedIn, user, managedWallet]);
+
+  // Auto-sync Clerk profile data to Convex userProfiles (for public profiles)
+  const updateProfile = useConvexMutation(api.social.updateProfile);
+  const profileSyncAttempted = useRef(false);
+  useEffect(() => {
+    if (!isSignedIn || !user || profileSyncAttempted.current) return;
+    profileSyncAttempted.current = true;
+    const addr = `managed:${user.id}`.toLowerCase();
+    updateProfile({
+      userAddress: addr,
+      displayName: user.firstName || user.primaryEmailAddress?.emailAddress?.split('@')[0] || undefined,
+      avatar: user.imageUrl || undefined,
+      bio: (user.unsafeMetadata as any)?.bio || undefined,
+    }).catch(() => { /* ignore sync errors */ });
+  }, [isSignedIn, user]);
 
   // Background deposit detection -- polls mirror node every 30s while signed in
   // Only credits NEW deposits by tracking the last known on-chain balance
@@ -1320,6 +1443,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
   };
 
   return (
+    <BalanceVisibilityContext.Provider value={{ balancesHidden, toggleBalancesHidden }}>
     <DepositModalContext.Provider value={{ openDeposit, openWithdraw }}>
       <header className="border-b border-border bg-neutral-950 backdrop-blur supports-[backdrop-filter]:bg-background/60 relative z-50">
         <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1333,18 +1457,22 @@ export function Header({ children }: { children?: React.ReactNode }) {
           <div className="hidden md:flex items-center gap-2">
             {isSignedIn && (
               <>
-                {/* Portfolio link with icon + value, then Bal value */}
+                {/* Portfolio link with icon + value, then Bal value, then eye toggle */}
                 <Link href="/my-bets" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                   <div className="flex items-center gap-1.5">
                     <Wallet className="w-4 h-4 text-gray-400" />
                     <div>
                       <div className="text-[11px] text-gray-500 leading-tight">Portfolio</div>
-                      <div className="text-sm font-semibold text-green-500">${platformBalance.toFixed(2)}</div>
+                      <div className="text-sm font-semibold text-green-500">
+                        {balancesHidden ? HIDDEN_VALUE : `$${portfolioValue.toFixed(2)}`}
+                      </div>
                     </div>
                   </div>
                   <div>
                     <div className="text-[11px] text-gray-500 leading-tight">Bal</div>
-                    <div className="text-sm font-semibold text-green-500">${platformBalance.toFixed(2)}</div>
+                    <div className="text-sm font-semibold text-green-500">
+                      {balancesHidden ? HIDDEN_VALUE : `$${platformBalance.toFixed(2)}`}
+                    </div>
                   </div>
                 </Link>
 
@@ -1603,6 +1731,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
       />
       <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} platformBalance={platformBalance} />
     </DepositModalContext.Provider>
+    </BalanceVisibilityContext.Provider>
   );
 }
 
