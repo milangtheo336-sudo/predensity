@@ -866,7 +866,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
             });
         }
         
-        if (stakeAmount < MIN_STAKE || stakeAmount > MAX_STAKE) {
+        if (stakeAmount < minStake || stakeAmount > maxStake) {
             return BetSimulation({
                 fee: 0, stakeNet: 0, sharpnessBps: 0, timeBps: 0, qualityBps: 0, weight: 0, bucket: 0,
                 isValid: false, errorMessage: "Invalid stake amount"
