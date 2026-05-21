@@ -11,7 +11,36 @@
   animation: ticker 120s linear infinite;
 }
 
+/* Search hint cycling animation */
+.search-hint {
+  transition: opacity 380ms cubic-bezier(0.4, 0, 0.2, 1),
+              transform 380ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Resting state — fully visible, centred */
+.hint-visible {
+  opacity: 1;
+  transform: translateY(-50%);
+}
+
+/* Exit — slide up and fade out */
+.hint-exit {
+  opacity: 0;
+  transform: translateY(calc(-50% - 12px));
+}
+
+/* Enter start — below centre, invisible */
+.hint-enter {
+  opacity: 0;
+  transform: translateY(calc(-50% + 12px));
+  transition: none; /* no transition on the snap-in position */
+}
+
 @layer base {
+  html {
+    font-family: var(--font-app), 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
