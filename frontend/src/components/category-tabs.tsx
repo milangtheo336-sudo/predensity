@@ -11,13 +11,10 @@ interface CategoryTabsProps {
 
 export function CategoryTabs({ activeCategory, onCategoryChange }: CategoryTabsProps) {
   const { t } = useLanguage();
+  // Only show categories that have active markets (CLOB categories hidden until liquidity is available)
   const tabs = [
     { id: 'all' as const, name: t.top },
     { id: Category.CRYPTO, name: t.crypto },
-    { id: Category.TECHNOLOGY, name: t.technology },
-    { id: Category.FINANCE, name: t.finance },
-    { id: Category.SPORTS, name: t.sports },
-    { id: Category.POLITICS, name: t.politics },
   ];
 
   return (
