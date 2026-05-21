@@ -44,7 +44,7 @@ const OUTCOME_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '
 
 function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: OutcomePrice[] }) {
   // Get price history for all outcomes
-  const histories = outcomes.map((o) => {
+  const histories = outcomes.map((o: any) => {
     const history = useConvexQuery(anyApi.clob.getPriceHistory, {
       marketId,
       outcomeIndex: o.outcomeIndex,
@@ -103,8 +103,8 @@ function OrderBookView({ marketId, outcomeIndex }: { marketId: string; outcomeIn
   if (!orderBook) return <div className="py-4 text-center text-sm text-gray-400"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>;
 
   const maxQty = Math.max(
-    ...orderBook.bids.map((b) => b.quantity),
-    ...orderBook.asks.map((a) => a.quantity),
+    ...orderBook.bids.map((b: any) => b.quantity),
+    ...orderBook.asks.map((a: any) => a.quantity),
     1
   );
 
@@ -448,7 +448,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               {marketPositions.length > 0 && (
                 <div className="mt-5 pt-4 border-t border-gray-200 dark:border-neutral-800">
                   <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Your Positions</h4>
-                  {marketPositions.map((pos) => {
+                  {marketPositions.map((pos: any) => {
                     const outcomeName = market.outcomeNames[pos.outcomeIndex] || `Outcome ${pos.outcomeIndex}`;
                     const currentPrice = outcomes[pos.outcomeIndex]?.price || 0;
                     const currentValue = (pos.shares * currentPrice) / 100;
@@ -472,7 +472,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               {userOrders && userOrders.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-neutral-800">
                   <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Open Orders</h4>
-                  {userOrders.map((order) => (
+                  {userOrders.map((order: any) => (
                     <div key={order.orderId} className="flex items-center justify-between py-1.5 text-xs">
                       <div>
                         <span className={order.side === 'buy' ? 'text-green-500' : 'text-red-400'}>
