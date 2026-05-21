@@ -30,12 +30,22 @@ async function main() {
   
   console.log("Staking token:", stakingToken);
   console.log("Mode:", isTokenMode ? "ERC-20 Token (USDC)" : "Native HBAR");
+
+  // Stake bounds in the staking token's smallest unit.
+  //   Native HBAR (18 decimals): 0.01 ether / 100 ether
+  //   USDC      (6 decimals):   10_000 / 100_000_000
+  const defaultMin = isTokenMode ? "10000" : hre.ethers.utils.parseEther("0.01").toString();
+  const defaultMax = isTokenMode ? "100000000" : hre.ethers.utils.parseEther("100").toString();
+  const minStake = process.env.MIN_STAKE || defaultMin;
+  const maxStake = process.env.MAX_STAKE || defaultMax;
+  console.log("minStake:", minStake);
+  console.log("maxStake:", maxStake);
   console.log("");
 
   // Deploy Crypto Prediction Market
   console.log("1. Deploying CryptoPredictionMarket...");
   const CryptoPredictionMarket = await hre.ethers.getContractFactory("CryptoPredictionMarket");
-  const cryptoMarket = await CryptoPredictionMarket.deploy("HBAR", 8, stakingToken);
+  const cryptoMarket = await CryptoPredictionMarket.deploy("HBAR", 8, stakingToken, minStake, maxStake);
   await cryptoMarket.deployed();
   console.log("   CryptoPredictionMarket deployed to:", cryptoMarket.address);
   console.log("");
