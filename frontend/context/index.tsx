@@ -5,13 +5,16 @@ import { HWBridgeProvider } from '@buidlerlabs/hashgraph-react-wallets';
 import {
   HashpackConnector,
   BladeConnector,
-  KabilaConnector,
+  MetamaskConnector,
+  HWCConnector,
 } from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { hederaChain } from '../config';
+
 const connectors = [
   HashpackConnector,
   BladeConnector,
-  KabilaConnector,
+  MetamaskConnector,
+  HWCConnector,
 ];
 
 const metadata = {
