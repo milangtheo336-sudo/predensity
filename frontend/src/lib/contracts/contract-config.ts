@@ -112,12 +112,6 @@ export function getCurrentNetworkConfig() {
   return NETWORK_CONFIG[CURRENT_NETWORK];
 }
 
-// Challenge market contract address (1v1 parimutuel)
-export const CHALLENGE_MARKET_ADDRESS = process.env.NEXT_PUBLIC_CHALLENGE_MARKET_ADDRESS || '';
-export function getChallengeMarketAddress(): `0x${string}` {
-  return CHALLENGE_MARKET_ADDRESS as `0x${string}`;
-}
-
 // Backward compat aliases (some files still reference these)
 export const CONTRACT_IDS = CONTRACT_ADDRESSES;
 export function getContractId(category: Category): string {
