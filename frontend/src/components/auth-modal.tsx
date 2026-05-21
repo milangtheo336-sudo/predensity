@@ -324,14 +324,18 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       {signingWallet && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md">
           <div className="bg-[#111318] border border-white/10 rounded-3xl p-10 flex flex-col items-center gap-6 w-[320px] shadow-2xl">
-            {/* Wallet logo */}
-            <div className="w-24 h-24 rounded-3xl overflow-hidden flex items-center justify-center bg-[#1a1f2e] shadow-lg">
+            {/* Wallet logo — same rounded-xl style as the wallet list items, scaled up */}
+            <div className="relative">
               {signingWallet.logoElement ? (
-                signingWallet.logoElement
+                <div className="w-20 h-20 rounded-xl overflow-hidden flex items-center justify-center bg-[#0d1117] border border-white/[0.07]">
+                  {signingWallet.logoElement}
+                </div>
               ) : signingWallet.logoSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={signingWallet.logoSrc} alt={signingWallet.name} className="w-full h-full object-contain" />
+                <img src={signingWallet.logoSrc} alt={signingWallet.name} className="w-20 h-20 rounded-xl object-contain" />
               ) : null}
+              {/* Animated ring around logo to show activity */}
+              <div className="absolute -inset-1.5 rounded-[14px] border-2 border-white/10 border-t-white/50 animate-spin" />
             </div>
             {/* Wallet name */}
             <p className="text-white text-xl font-bold">{signingWallet.name}</p>
@@ -340,8 +344,6 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
               <p className="text-white text-lg font-semibold">Requesting Signature</p>
               <p className="text-gray-400 text-sm">Please sign to connect.</p>
             </div>
-            {/* Subtle spinner */}
-            <div className="w-8 h-8 rounded-full border-2 border-white/10 border-t-white/60 animate-spin" />
           </div>
         </div>
       )}
