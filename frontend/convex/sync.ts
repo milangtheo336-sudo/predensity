@@ -826,11 +826,10 @@ export const finalizeBetsForBucket = mutation({
       })
     ),
     category: v.string(),
-    // Optional DPM pool data for payout calculation
+    // Optional pool data for parimutuel payout calculation
     poolData: v.optional(
       v.object({
         totalStaked: v.string(),
-        totalExited: v.string(),
         totalWinningWeight: v.string(),
       })
     ),
@@ -864,11 +863,9 @@ export const finalizeBetsForBucket = mutation({
       return effectiveBucket === args.bucket && (!b.finalized || (b.finalized && b.payout === "0"));
     });
 
-    // Parse pool data for payout calculation
+    // Parse pool data for payout calculation (classic parimutuel: winners split totalStaked)
     const totalStaked = args.poolData ? BigInt(args.poolData.totalStaked) : BigInt(0);
-    const totalExited = args.poolData ? BigInt(args.poolData.totalExited) : BigInt(0);
     const totalWinningWeight = args.poolData ? BigInt(args.poolData.totalWinningWeight) : BigInt(0);
-    const remainingPool = totalStaked - totalExited;
 
     let updated = 0;
     for (const bet of bucketBets) {
@@ -885,7 +882,7 @@ export const finalizeBetsForBucket = mutation({
       if (won && totalWinningWeight > BigInt(0)) {
         const betWeight = BigInt(weightLookup.get(bet.betId) || bet.weight || "0");
         if (betWeight > BigInt(0)) {
-          const payoutBig = (betWeight * remainingPool) / totalWinningWeight;
+          const payoutBig = (betWeight * totalStaked) / totalWinningWeight;
           payout = payoutBig.toString();
           expectedPayout = payoutBig.toString();
         } else {
