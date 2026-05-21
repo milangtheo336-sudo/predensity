@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
-import { api } from '../../../../../convex/_generated/api';
 import { requireAdmin, rateLimit } from '@/lib/api-auth';
+import { anyApi } from 'convex/server';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
 
-/**
- * POST /api/clob/resolve -- Resolve a CLOB market (admin only).
- * Declares the winning outcome, cancels open orders, auto-redeems winners.
- * Body: { marketId, winningOutcome }
- */
 export async function POST(request: NextRequest) {
   try {
     const adminResult = await requireAdmin();
@@ -25,15 +20,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing marketId or winningOutcome' }, { status: 400 });
     }
 
-    await convex.mutation(api.clob.resolveMarket, {
-      marketId,
-      winningOutcome: Number(winningOutcome),
+    await convex.mutation(anyApi.clob.resolveMarket, {
+      marketId, winningOutcome: Number(winningOutcome),
     });
 
     return NextResponse.json({ success: true, marketId, winningOutcome });
   } catch (error) {
     console.error('[clob/resolve] Error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
