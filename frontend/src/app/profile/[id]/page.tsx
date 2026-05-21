@@ -2,7 +2,7 @@
 
 import { useParams, redirect } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
-import PortfolioPage from '@/app/my-bets/page';
+import { PortfolioPageContent } from '@/app/my-bets/page';
 
 export default function PublicProfilePage() {
   const params = useParams();
@@ -17,5 +17,5 @@ export default function PublicProfilePage() {
     redirect('/my-bets');
   }
 
-  return <PortfolioPage publicViewUserId={profileUserId} />;
+  return <PortfolioPageContent publicViewUserId={profileUserId} />;
 }
