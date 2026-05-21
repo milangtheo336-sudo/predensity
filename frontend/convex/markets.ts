@@ -47,6 +47,46 @@ export const getMarkets = query({
   },
 });
 
+// Returns the most recent bets for the activity ticker, enriched with display names
+export const getRecentBetsForTicker = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 40;
+
+    const bets = await ctx.db
+      .query("bets")
+      .withIndex("by_timestamp")
+      .order("desc")
+      .take(limit);
+
+    const results = await Promise.all(
+      bets.map(async (bet) => {
+        const profile = await ctx.db
+          .query("userProfiles")
+          .withIndex("by_address", (q) => q.eq("userAddress", bet.userAddress))
+          .first();
+
+        const displayName = profile?.displayName ?? null;
+
+        return {
+          betId: bet.betId,
+          userAddress: bet.userAddress,
+          displayName,
+          avatar: profile?.avatar ?? null,
+          asset: bet.asset ?? null,
+          priceMin: bet.priceMin,
+          priceMax: bet.priceMax,
+          stake: bet.stake,
+          category: bet.category,
+          timestamp: bet.timestamp,
+        };
+      })
+    );
+
+    return results;
+  },
+});
+
 export const getMarket = query({
   args: { marketId: v.string() },
   handler: async (ctx, args) => {
