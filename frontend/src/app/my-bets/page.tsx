@@ -609,7 +609,7 @@ function SortDropdown({
 // ---------------------------------------------------------------------------
 // Main Portfolio Page
 // ---------------------------------------------------------------------------
-export function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string }) {
+function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string }) {
   const isPublicView = !!publicViewUserId;
   const { user, isSignedIn } = useUser();
   const { data: evmAddress } = useEvmAddress();
@@ -1902,7 +1902,17 @@ export function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: 
   );
 }
 
-// Next.js page wrapper -- no custom props
+// Next.js page wrapper
 export default function PortfolioPage() {
-  return <PortfolioPageContent />;
+  // Support public view via ?viewUser= query param (used by /profile/[id] redirect)
+  const [viewUser, setViewUser] = React.useState<string | undefined>(undefined);
+  const [checked, setChecked] = React.useState(false);
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const vu = params.get('viewUser') || undefined;
+    setViewUser(vu);
+    setChecked(true);
+  }, []);
+  if (!checked) return null;
+  return <PortfolioPageContent publicViewUserId={viewUser} />;
 }
