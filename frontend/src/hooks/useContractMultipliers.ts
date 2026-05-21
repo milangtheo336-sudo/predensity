@@ -1,24 +1,31 @@
 import { useCallback } from 'react';
-import { useReadContract } from '@buidlerlabs/hashgraph-react-wallets';
+import { usePublicClient } from 'wagmi';
 import CryptoPredictionMarketABI from '../../abi/CryptoPredictionMarket.json';
 import { ethers } from 'ethers';
 import { Category } from '@/lib/types/categories';
 import { getContractAddress } from '@/lib/contracts/contract-config';
 
-// Breakdown of multipliers and estimated profit for a potential bet
 export interface MultiplierBreakdown {
-  sharpnessBps: string;   // range precision multiplier (BPS)
-  timeBps: string;        // time-to-event multiplier (BPS)
-  qualityBps: string;     // combined quality = (sharpness * time) / 10000
-  weight: string;         // effective weight = (stakeNet * quality) / 10000
-  fee: string;            // 1% entry fee in wei
-  stakeNet: string;       // stake after fee in wei
-  estimatedMultiplier: string; // estimated payout / stake ratio (e.g. "2.35")
-  estimatedPayout: string;     // estimated resolution payout in wei
+  sharpnessBps: string;
+  timeBps: string;
+  qualityBps: string;
+  weight: string;
+  fee: string;
+  stakeNet: string;
+  estimatedMultiplier: string;
+  estimatedPayout: string;
 }
 
 export function useContractMultipliers(category?: Category) {
-  const { readContract } = useReadContract();
+  const publicClient = usePublicClient();
+
+  const readContract = useCallback(
+    async (params: { address: `0x${string}`; abi: any; functionName: string; args: any[] }) => {
+      if (!publicClient) throw new Error('No public client');
+      return publicClient.readContract(params);
+    },
+    [publicClient]
+  );
 
   const getContractAddressForCategory = useCallback((cat?: Category): `0x${string}` => {
     if (cat) {

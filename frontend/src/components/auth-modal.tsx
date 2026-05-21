@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMagic } from '@/context/MagicContext';
 import { useWalletUser } from '@/context/WalletUserContext';
 import { getDIDToken, getMagic, getUserInfo } from '@/lib/magic';
-import { useWallet, useEvmAddress, useAuthSignature } from '@buidlerlabs/hashgraph-react-wallets';
-import { HashpackConnector } from '@buidlerlabs/hashgraph-react-wallets/connectors';
+import { useAccount } from 'wagmi';
 import { useEIP6963Wallets, EIP6963ProviderDetail } from '@/hooks/useEIP6963Wallets';
 import { connectWithWalletConnect, signWithWalletConnect } from '@/lib/walletconnect-modal';
 import Image from 'next/image';
@@ -68,14 +67,8 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const router = useRouter();
   const { login, refreshUser, user, setIsAuthenticating } = useMagic();
   const { setWalletUser, setIsWalletAuthenticating } = useWalletUser();
-  const { isConnected } = useWallet();
+  const { isConnected } = useAccount();
 
-  // HashPack connector hooks (Hedera-native, not EIP-6963)
-  const hashpackWallet = useWallet(HashpackConnector);
-  const hashpackEvmAddress = useEvmAddress({ connector: HashpackConnector });
-  const { signAuth: signHashpack } = useAuthSignature(HashpackConnector);
-
-  // EIP-6963: auto-discovers every EVM wallet extension installed in the browser
   const eip6963Wallets = useEIP6963Wallets();
 
   useEffect(() => {
@@ -298,62 +291,6 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   };
 
   // ---------------------------------------------------------------------------
-  // HashPack (Hedera-native connector)
-  // ---------------------------------------------------------------------------
-  const handleHashpackConnect = async () => {
-    setIsLoading(true); setError('');
-    walletSignInInProgressRef.current = true;
-    try {
-      localStorage.setItem('lastUsedAuthMethod', 'hashpack');
-
-      // Prefer EIP-6963 path so sign-in address == betting address (both come
-      // from the same eth_requestAccounts call, not the Hedera mirror node).
-      // HashPack announces itself via EIP-6963 as well as its native connector.
-      const hashpackEip6963 = eip6963Wallets.find(w =>
-        w.info.rdns?.toLowerCase().includes('hashpack') ||
-        w.info.name?.toLowerCase().includes('hashpack')
-      );
-
-      if (hashpackEip6963) {
-        // Use the EIP-6963 flow — identical to MetaMask/Rabby sign-in.
-        // This guarantees the address stored in walletUser matches what
-        // eth_requestAccounts returns later when placing a bet.
-        console.log('[auth-modal] HashPack: using EIP-6963 path for address consistency');
-        await handleEIP6963Connect(hashpackEip6963);
-        return;
-      }
-
-      // Fallback: Hedera-native flow (used when EIP-6963 is not available,
-      // e.g. older HashPack versions or non-browser environments).
-      console.log('[auth-modal] HashPack: EIP-6963 not found, falling back to Hedera-native');
-      await hashpackWallet.connect();
-      const addressResult = await hashpackEvmAddress.refetch();
-      const address = addressResult.data;
-      if (!address) throw new Error('Could not get wallet address. Make sure HashPack is unlocked and try again.');
-      const normalizedAddress = address.toLowerCase();
-      const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
-      const message = `Sign in to Predensity\nAddress: ${normalizedAddress}\nNonce: ${nonce}`;
-      let signerSignature: any;
-      try {
-        setSigningWallet({ name: 'HashPack', logoSrc: '/hashpack.jpg' });
-        signerSignature = await signHashpack(message);
-      } catch (signErr: any) {
-        const msg = (signErr?.message || '').toLowerCase();
-        if (msg.includes('refused') || msg.includes('rejected') || msg.includes('cancel')) {
-          throw new Error('Signature cancelled. Please approve the sign-in request in HashPack.');
-        }
-        throw new Error('Failed to sign message. Please try again.');
-      }
-      const sigBytes = signerSignature?._signerSignature?.signature || signerSignature?.signature || signerSignature;
-      const signature = typeof sigBytes === 'string' ? sigBytes : ('0x' + Buffer.from(sigBytes).toString('hex'));
-      await finishWalletSignIn(normalizedAddress, signature, nonce, 'hashpack');
-    } catch (err) {
-      console.error('[auth-modal] HashPack error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to connect HashPack');
-    } finally { setIsLoading(false); setSigningWallet(null); walletSignInInProgressRef.current = false; }
-  };
-
-  // ---------------------------------------------------------------------------
   // WalletConnect — QR code modal + wallet search (300+ wallets)
   // Separate from EIP-6963: this handles mobile wallets and any WC-compatible wallet
   // ---------------------------------------------------------------------------
@@ -566,29 +503,11 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
                 <h2 className="text-2xl font-bold text-white">{t.selectYourWallet}</h2>
               </div>
 
-              {/* Wallet list — no scrollbar, no search */}
+              {/* Wallet list */}
               <div className="space-y-3">
 
-                {/* HashPack — always shown, Hedera-native */}
-                <button
-                  onClick={handleHashpackConnect}
-                  disabled={isLoading}
-                  className="w-full flex items-center gap-4 px-4 py-3.5 bg-[#0d1117] hover:bg-[#161b27] text-white border border-white/[0.07] rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed relative"
-                >
-                  <div className="relative flex-shrink-0">
-                    <Image src="/hashpack.jpg" alt="HashPack" width={40} height={40} className="rounded-xl object-contain w-10 h-10" />
-                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-[#0d1117]" />
-                  </div>
-                  <span className="text-[15px] font-medium">HashPack</span>
-                  {lastUsedMethod === 'hashpack' && (
-                    <span className="ml-auto text-[10px] text-gray-500 font-medium">{t.lastUsed}</span>
-                  )}
-                </button>
-
-                {/* EIP-6963 detected wallets — browser extensions.
-                    Kabila is excluded: it advertises EIP-6963 but rejects EIP-1193
-                    requests and only works via WalletConnect/HederaAdapter. */}
-                {eip6963Wallets.filter(w => !w.info.name.toLowerCase().includes('kabila')).map((w) => (
+                {/* EIP-6963 detected wallets — browser extensions */}
+                {eip6963Wallets.map((w) => (
                   <button
                     key={w.info.uuid}
                     onClick={() => handleEIP6963Connect(w)}

@@ -19,9 +19,7 @@ import { getContractId, getContractAddress, getStakingCurrency } from '@/lib/con
 import { ethers } from 'ethers';
 import debounce from 'lodash.debounce';
 
-import {
-  useWallet,
-} from '@buidlerlabs/hashgraph-react-wallets';
+import { useAccount } from 'wagmi';
 
 import { useQuery as useConvexQuery, useMutation } from 'convex/react';
 import { useMagic } from '@/context/MagicContext';
@@ -685,7 +683,7 @@ export function PredictionCard({
   // Wallet provider check
   let isConnected = false;
   try {
-    const walletHook = useWallet();
+    const walletHook = useAccount();
     isConnected = walletHook.isConnected;
   } catch (error) {
     return <PredictionCardSkeleton />;

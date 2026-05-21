@@ -31,17 +31,8 @@ import { Button } from '@/components/ui/button';
 import { formatAddress, cn, getAvatarPalette } from '@/lib/utils';
 import Avatar from 'boring-avatars';
 import { WalletSelector } from '@/components/wallet-selector';
-import {
-  useWallet,
-  useAccountId,
-  useEvmAddress,
-  useWriteContract,
-  useWatchTransactionReceipt,
-} from '@buidlerlabs/hashgraph-react-wallets';
-import {
-  HashpackConnector,
-  BladeConnector,
-} from '@buidlerlabs/hashgraph-react-wallets/connectors';
+import { useAccount, useDisconnect } from 'wagmi';
+import { useContractWriteCompat } from '@/hooks/useContractWrite';
 import { useMagic } from '@/context/MagicContext';
 import { useWalletUser } from '@/context/WalletUserContext';
 import { getDIDToken, getUserInfo } from '@/lib/magic';
@@ -225,7 +216,7 @@ export function DepositModal({
 
 function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
   const { t } = useLanguage();
-  const { isConnected } = useWallet();
+  const { isConnected } = useAccount();
 
   return (
     <div className="space-y-3">
@@ -585,21 +576,12 @@ function CexDepositView({ onBack }: { onBack: () => void }) {
 // ---------------------------------------------------------------------------
 
 function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConnected: (eip6963Provider?: any) => void }) {
-  const { isConnected } = useWallet();
+  const { isConnected } = useAccount();
   const prevConnected = useRef(isConnected);
   const [connecting, setConnecting] = useState<string | null>(null);
   const eip6963Wallets = useEIP6963Wallets();
 
-  let hashpackWallet: any, bladeWallet: any;
-  try {
-    hashpackWallet = useWallet(HashpackConnector);
-    bladeWallet = useWallet(BladeConnector);
-  } catch { /* fallback */ }
-
-  const hederaWalletMap: Record<string, any> = {
-    hashpack: hashpackWallet,
-    blade: bladeWallet,
-  };
+  const hederaWalletMap: Record<string, any> = {};
 
   // Auto-transition when a Hedera wallet connects
   useEffect(() => {
@@ -829,11 +811,9 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
   const { user } = useMagic();
   const { walletUser } = useWalletUser();
   const effectiveAddress = user?.publicAddress ?? walletUser?.publicAddress ?? null;
-  const { isConnected } = useWallet();
-  const { data: evmAddress } = useEvmAddress();
-  const { data: accountId } = useAccountId();
-  const { writeContract } = useWriteContract();
-  const { watch } = useWatchTransactionReceipt();
+  const { isConnected } = useAccount();
+  const { address: evmAddress, address: accountId } = useAccount();
+  const { writeContract, watch } = useContractWriteCompat();
   const eip6963Wallets = useEIP6963Wallets();
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState<'input' | 'transferring' | 'done' | 'error'>('input');
@@ -1222,8 +1202,8 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
 
 function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
   const { user } = useMagic();
-  const { data: evmAddress } = useEvmAddress();
-  const { isConnected } = useWallet();
+  const { address: evmAddress } = useAccount();
+  const { isConnected } = useAccount();
 
   // Pre-fill with connected wallet address or managed wallet address
   const managedWallet = useConvexQuery(
@@ -1591,8 +1571,8 @@ function GuestHamburgerMenu({
 export function Header({ children }: { children?: React.ReactNode }) {
   const { t } = useLanguage();
   const countryCode = useCountryCode();
-  const { isConnected, disconnect } = useWallet();
-  const { data: accountId } = useAccountId();
+  const { isConnected, address: accountId } = useAccount();
+  const { disconnect } = useDisconnect();
   const { user, logout, isAuthenticating } = useMagic();
   const { walletUser, clearWalletUser } = useWalletUser();
   // Signed in = Magic user OR wallet user
@@ -1802,7 +1782,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
   // Query user bets to calculate portfolio value (positions + unrealized P&L)
   const managedUserAddress = isSignedIn && user ? `managed:${user.issuer}`.toLowerCase() : null;
   const managedEvmAddress = managedWallet?.evmAddress?.toLowerCase() || null;
-  const { data: evmAddr } = useEvmAddress();
+  const { address: evmAddr } = useAccount();
   const walletAddress = evmAddr?.toLowerCase() || null;
 
   const managedEoaAddress = isSignedIn && (user?.publicAddress || evmAddr) 
@@ -2455,7 +2435,7 @@ function ProfileDropdownPortal({
   isConnected: boolean;
   accountId: string | undefined;
   evmAddress: string | undefined;
-  disconnect: () => Promise<any>;
+  disconnect: () => void;
   logout: () => Promise<void>;
   clearWalletUser: () => void;
 }) {

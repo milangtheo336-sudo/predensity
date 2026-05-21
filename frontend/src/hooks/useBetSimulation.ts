@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useReadContract } from '@buidlerlabs/hashgraph-react-wallets';
+import { usePublicClient } from 'wagmi';
 import CryptoPredictionMarketABI from '../../abi/CryptoPredictionMarket.json';
 import { ethers } from 'ethers';
 import { Category } from '@/lib/types/categories';
@@ -57,7 +57,15 @@ interface ContractStats {
 }
 
 export function useBetSimulation(category?: Category) {
-  const { readContract } = useReadContract();
+  const publicClient = usePublicClient();
+
+  const readContract = useCallback(
+    async (params: { address: `0x${string}`; abi: any; functionName: string; args: any[] }) => {
+      if (!publicClient) throw new Error('No public client');
+      return publicClient.readContract(params);
+    },
+    [publicClient]
+  );
 
   const getContractAddressForCategory = useCallback((cat?: Category): `0x${string}` => {
     if (cat) {
