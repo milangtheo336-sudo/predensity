@@ -8,6 +8,23 @@
 
 import { ethers } from 'ethers';
 
+// Custom Hedera provider that disables ENS
+class HederaProvider extends ethers.providers.JsonRpcProvider {
+  async getResolver(name: string): Promise<null> {
+    // Hedera doesn't support ENS, always return null
+    return null;
+  }
+  
+  async resolveName(name: string): Promise<string | null> {
+    // If it's already an address, return it
+    if (ethers.utils.isAddress(name)) {
+      return name;
+    }
+    // Otherwise, Hedera doesn't support ENS
+    return null;
+  }
+}
+
 // Singleton instance
 let magicInstance: any = null;
 
@@ -221,18 +238,34 @@ export async function getMagicSigner(): Promise<ethers.Signer> {
   const magic = getMagic();
   const magicProvider = (magic as any).rpcProvider;
   
-  // Create a custom provider that uses Hedera RPC
-  const hederaProvider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api', {
-    name: 'hedera-testnet',
-    chainId: 296,
+  // Create a Web3Provider that wraps Magic's provider
+  // but intercepts network calls to use Hedera RPC
+  const customProvider = new Proxy(magicProvider, {
+    get(target, prop) {
+      if (prop === 'request') {
+        return async (args: any) => {
+          // Intercept network-related calls
+          if (args.method === 'eth_chainId') {
+            return '0x128'; // 296 in hex
+          }
+          if (args.method === 'net_version') {
+            return '296';
+          }
+          // For contract calls and balance queries, use Hedera RPC
+          if (args.method === 'eth_call' || args.method === 'eth_getBalance' || args.method === 'eth_getTransactionCount') {
+            const hederaProvider = new HederaProvider('https://testnet.hashio.io/api');
+            return await hederaProvider.send(args.method, args.params || []);
+          }
+          // For all other calls (signing, etc), use Magic's provider
+          return target.request(args);
+        };
+      }
+      return target[prop];
+    },
   });
   
-  // Use Magic's provider for signing, but Hedera's provider for network calls
-  const provider = new ethers.providers.Web3Provider(magicProvider);
-  const signer = provider.getSigner();
-  
-  // Connect signer to Hedera provider
-  return signer.connect(hederaProvider);
+  const provider = new ethers.providers.Web3Provider(customProvider);
+  return provider.getSigner();
 }
 
 /**
@@ -274,10 +307,8 @@ export async function waitForTransaction(
   txHash: string,
   confirmations: number = 1
 ): Promise<any> {
-  const hederaProvider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api', {
-    name: 'hedera-testnet',
-    chainId: 296,
-  });
+  // Create provider without network config to avoid ENS lookups
+  const hederaProvider = new HederaProvider('https://testnet.hashio.io/api');
   return await hederaProvider.waitForTransaction(txHash, confirmations);
 }
 
@@ -294,10 +325,8 @@ export async function getTokenBalance(
 ): Promise<string> {
   const magic = getMagic();
   const magicProvider = (magic as any).rpcProvider;
-  const hederaProvider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api', {
-    name: 'hedera-testnet',
-    chainId: 296,
-  });
+  // Create provider without network config to avoid ENS lookups
+  const hederaProvider = new HederaProvider('https://testnet.hashio.io/api');
   
   if (!userAddress) {
     // Get user address from Magic provider directly (avoid getAddress() error)
