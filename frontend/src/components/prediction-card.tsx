@@ -159,13 +159,13 @@ function addrToGradient(addr: string): string {
 }
 
 function UserAvatar({ addr, size = 28, imageUrl }: { addr: string; avatar?: string; size?: number; imageUrl?: string }) {
-  // If user has uploaded a Clerk profile pic, show that
+  // If user has a profile pic, show that
   if (imageUrl && !imageUrl.includes('gravatar')) {
     return (
       <img src={imageUrl} alt="" className="rounded-full object-cover flex-shrink-0" style={{ width: size, height: size }} />
     );
   }
-  // Normalize seed: strip "managed:" prefix so it matches the Clerk userId used elsewhere
+  // Normalize seed: strip "managed:" prefix so it matches the user ID used elsewhere
   const seed = addr.startsWith('managed:') ? addr.slice(8) : addr;
   return (
     <div className="rounded-full overflow-hidden flex-shrink-0 bg-[#0a0a0c]" style={{ width: size, height: size }}>
@@ -254,6 +254,24 @@ function CryptoActivitySection({
   );
   const profiles = profilesRaw || {};
 
+  // Collect unique comment author addresses to resolve their proxy wallets
+  const uniqueCommentAddresses = useMemo(() => {
+    const set = new Set<string>();
+    if (comments) {
+      for (const c of comments) {
+        if (c.userAddress) set.add(c.userAddress.toLowerCase());
+      }
+    }
+    return Array.from(set);
+  }, [comments]);
+
+  // Resolve Magic Link issuer -> proxy wallet address mapping via managedWallets table
+  const proxyWalletMapRaw = useConvexQuery(
+    api.social.getProxyWalletsByUserIds,
+    uniqueCommentAddresses.length > 0 ? { userAddresses: uniqueCommentAddresses } : 'skip'
+  );
+  const proxyWalletMap: Record<string, string> = proxyWalletMapRaw || {};
+
   const formatTimeAgo = (ts: number) => {
     const diff = Date.now() - ts;
     const secs = Math.floor(diff / 1000);
@@ -281,7 +299,8 @@ function CryptoActivitySection({
   const positions = useMemo(() => {
     const map = new Map<string, { totalStake: number; betCount: number; active: number }>();
     for (const bet of allBets) {
-      const addr = bet.userAddress || 'Anonymous';
+      // Always key by the lowercased address so comment lookups (which are lowercased) always match
+      const addr = (bet.userAddress || 'anonymous').toLowerCase();
       const existing = map.get(addr) || { totalStake: 0, betCount: 0, active: 0 };
       existing.totalStake += parseFloat(bet.stake) / 1e6;
       existing.betCount += 1;
@@ -292,6 +311,19 @@ function CryptoActivitySection({
       .map(([addr, data]) => ({ addr, ...data }))
       .sort((a, b) => b.totalStake - a.totalStake);
   }, [allBets]);
+
+  // Fast O(1) position lookup by address (lowercased) — used for comment badges
+  const positionsByAddr = useMemo(() => {
+    const m = new Map<string, { totalStake: number; betCount: number; active: number }>();
+    for (const p of positions) m.set(p.addr, p);
+    
+    // Debug: log what addresses we have positions for
+    if (typeof window !== 'undefined' && m.size > 0) {
+      console.log('[positionsByAddr] Addresses with positions:', Array.from(m.keys()));
+    }
+    
+    return m;
+  }, [positions]);
 
   const tabs: Array<{ key: 'ideas' | 'positions' | 'activity'; label: string; count?: number; icon?: React.ReactNode }> = [
     { key: 'ideas', label: 'Ideas', count: comments?.length },
@@ -363,10 +395,45 @@ function CryptoActivitySection({
                 const managedMatch = comment.userAddress.match(/^managed:(.+)$/i);
                 const profileLink = isCurrentUser ? '/my-bets' : (managedMatch ? `/profile/${managedMatch[1]}` : undefined);
                 
-                // Match position against original comment address OR EOA address if current user
-                const eoaAddr = user?.publicAddress ? `managed:${user.publicAddress}`.toLowerCase() : null;
-                const isCurrentUserComment = user && comment.userAddress === `managed:${user.issuer}`.toLowerCase();
-                const userPos = positions.find(p => p.addr === comment.userAddress || (isCurrentUserComment && eoaAddr && p.addr === eoaAddr));
+                // Resolve position for this commenter using O(1) map lookups.
+                // Tries every address variant since bets may be stored in different formats:
+                //   a) managed:issuer  (created via platform, preserved by reconciliation)
+                //   b) 0xproxyWallet  (from mirror node sync when managed address was NOT preserved)
+                // The positionsByAddr map is always keyed lowercase so all comparisons are safe.
+                const commentAddr = comment.userAddress.toLowerCase();
+                const proxyAddr = proxyWalletMap[commentAddr]?.toLowerCase();
+                const isCurrentUserComment = user && commentAddr === `managed:${user.issuer}`.toLowerCase();
+                const eoaAddr = (isCurrentUserComment && user?.publicAddress)
+                  ? `managed:${user.publicAddress}`.toLowerCase()
+                  : null;
+                
+                // Extract hex address from DID format if present
+                // e.g., "managed:did:ethr:0x..." -> "managed:0x..."
+                const normalizedAddr = commentAddr.includes('did:ethr:')
+                  ? `managed:${commentAddr.split('did:ethr:')[1]}`
+                  : commentAddr;
+                
+                const userPos =
+                  positionsByAddr.get(commentAddr) ||                          // exact match (most common)
+                  positionsByAddr.get(normalizedAddr) ||                       // normalized DID format
+                  (proxyAddr ? positionsByAddr.get(proxyAddr) : undefined) ||  // proxy wallet match
+                  (eoaAddr ? positionsByAddr.get(eoaAddr) : undefined) ||      // logged-in user EOA
+                  positionsByAddr.get(`managed:${commentAddr.startsWith('managed:') ? commentAddr.slice(8) : commentAddr}`);
+                
+                // Debug: log lookup attempts
+                if (typeof window !== 'undefined' && !userPos) {
+                  console.log('[position lookup failed]', {
+                    commentAddr,
+                    proxyAddr,
+                    eoaAddr,
+                    tried: [
+                      commentAddr,
+                      proxyAddr,
+                      eoaAddr,
+                      `managed:${commentAddr.startsWith('managed:') ? commentAddr.slice(8) : commentAddr}`
+                    ].filter(Boolean)
+                  });
+                }
                 
                 const replies = comments.filter((c: any) => c.parentId === comment._id);
                 return (
@@ -383,7 +450,11 @@ function CryptoActivitySection({
                           <span className="text-xs text-gray-400">{formatTimeAgo(comment.timestamp)}</span>
                           {userPos && userPos.active > 0 ? (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 font-medium">
-                              {userPos.totalStake.toFixed(2)} {getStakingCurrency().symbol}
+                              {userPos.active} {userPos.active === 1 ? 'range' : 'ranges'}
+                            </span>
+                          ) : userPos && userPos.betCount > 0 ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-medium">
+                              Settled
                             </span>
                           ) : (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-500/10 text-gray-400 font-medium">
@@ -1099,14 +1170,16 @@ export function PredictionCard({
       
       console.log('[handlePlaceBet] Bet placed successfully:', result);
       
-      // Immediately update balance optimistically (subtract bet amount)
+      // Immediately update balance strictly matching the backend validation
       if (typeof window !== 'undefined') {
-        if ((window as any).adjustBalance) {
-          console.log('[handlePlaceBet] Updating balance immediately (optimistic)');
+        if ((window as any).refreshBalanceWithExact && result.exactNewBalance !== undefined) {
+          console.log('[handlePlaceBet] Backend returned exact balance, jumping immediately to truth:', result.exactNewBalance);
+          (window as any).refreshBalanceWithExact(result.exactNewBalance);
+        } else if ((window as any).adjustBalance) {
+          console.log('[handlePlaceBet] Updating balance with generic adjust');
           (window as any).adjustBalance(-parseFloat(depositAmount));
         } else {
           console.warn('[handlePlaceBet] adjustBalance function not available yet');
-          // Trigger a page refresh after a short delay to show updated balance
           setTimeout(() => {
             console.log('[handlePlaceBet] Refreshing page to show updated balance');
             window.location.reload();
@@ -1126,6 +1199,7 @@ export function PredictionCard({
       const { handleError } = await import('@/lib/error-handler');
       const friendlyError = handleError(err, 'handlePlaceBet');
       setBetError(friendlyError);
+      setTimeout(() => setBetError(null), 1000);
     }
   };
 
@@ -1250,8 +1324,8 @@ export function PredictionCard({
           </div>
 
           {/* TRADING PANEL -- order-2 on mobile (right after chart), stays in right column on desktop */}
-          <div className="order-2 lg:order-none lg:col-span-4 lg:row-span-2">
-            <div className="lg:sticky lg:top-20 z-10 bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-white/[0.06] rounded-lg p-5 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+          <div className="order-2 lg:order-none lg:col-span-4 lg:row-span-2 relative z-10">
+            <div className="lg:sticky lg:top-20 bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-white/[0.06] rounded-lg p-5 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto relative">
 
               {/* Resolution Date/Time Picker -- compact timeline style */}
               <div className="mb-5">
@@ -1474,6 +1548,13 @@ export function PredictionCard({
               </div>
 
               {/* Market Details removed for mainnet -- internal info not user-facing */}
+              <BetPlacingModal 
+                isOpen={isPlacingBet} 
+                onClose={() => { setIsPlacingBet(false); setBetError(null); }}
+                amount={depositAmount}
+                priceRange={currentPriceRange}
+                asset={tokenSymbol}
+              />
             </div>
           </div>
 
@@ -1496,13 +1577,6 @@ export function PredictionCard({
         </div>
       </div>
 
-      <BetPlacingModal 
-        isOpen={isPlacingBet} 
-        onClose={() => { setIsPlacingBet(false); setBetError(null); }}
-        amount={depositAmount}
-        priceRange={currentPriceRange}
-        asset={tokenSymbol}
-      />
       <BetPlacedModal isOpen={isBetPlaced} onClose={() => { setIsBetPlaced(false); setTransactionId(null); setDepositAmount(''); }} onViewExplorer={() => {
         const url = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase() === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
         window.open(transactionId ? `${url}/transaction/${transactionId}` : url, '_blank');
