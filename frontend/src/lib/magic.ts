@@ -156,13 +156,36 @@ export async function signTypedData(
   value: any
 ): Promise<string> {
   const magic = getMagic();
-  const provider = new ethers.providers.Web3Provider((magic as any).rpcProvider);
-  const signer = provider.getSigner();
   
-  // Remove EIP712Domain from types (ethers adds it automatically)
+  // Remove EIP712Domain from types (not needed in payload)
   const { EIP712Domain, ...typesWithoutDomain } = types;
   
-  return await signer._signTypedData(domain, typesWithoutDomain, value);
+  // Use Magic's direct RPC method for signing typed data
+  const provider = (magic as any).rpcProvider;
+  
+  // Get user's address first
+  const accounts = await provider.request({ method: 'eth_accounts' });
+  const userAddress = accounts[0];
+  
+  if (!userAddress) {
+    throw new Error('No account found. Please log in.');
+  }
+  
+  // Construct EIP-712 payload
+  const payload = {
+    domain,
+    types: typesWithoutDomain,
+    primaryType: Object.keys(typesWithoutDomain)[0],
+    message: value,
+  };
+  
+  // Sign using eth_signTypedData_v4
+  const signature = await provider.request({
+    method: 'eth_signTypedData_v4',
+    params: [userAddress, JSON.stringify(payload)],
+  });
+  
+  return signature;
 }
 
 /**
