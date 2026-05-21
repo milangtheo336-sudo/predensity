@@ -215,6 +215,9 @@ export async function POST(request: NextRequest) {
       if (balance < tokenAmount.toNumber()) {
         throw new Error(`Insufficient USDC in proxy wallet. Balance: ${balanceUsdc} USDC, Required: ${stakeUsdc} USDC. Please deposit USDC to your proxy wallet: ${proxyWalletAddress}`);
       }
+      
+      // We store the absolute truth pre-bet balance here so we can return the exact computed post-bet balance
+      (global as any)._tempPreBetBalance = balanceUsdc;
     } catch (error: any) {
       if (error.message.includes('Insufficient USDC')) {
         throw error;
@@ -222,6 +225,7 @@ export async function POST(request: NextRequest) {
       console.error('[proxy-place-bet] Balance check error:', error);
       // Continue anyway - let the contract revert if insufficient balance
       console.log('[proxy-place-bet] Skipping balance check, will let contract handle it');
+      (global as any)._tempPreBetBalance = null;
     }
 
     const tx = await new ContractExecuteTransaction()
@@ -262,10 +266,17 @@ export async function POST(request: NextRequest) {
       // The bet is already on-chain, sync will pick it up later
     }
 
+    // Safely deduct the exact staked amount from the pre-bet balance so frontend can skip waiting for mirror node
+    const preBalance = (global as any)._tempPreBetBalance;
+    const computedNewBalance = preBalance !== null && preBalance !== undefined 
+      ? Math.max(0, preBalance - parseFloat(stakeUsdc))
+      : undefined;
+
     return NextResponse.json({
       success: true,
       txHash: tx.transactionId.toString(),
       message: 'Bet placed successfully',
+      exactNewBalance: computedNewBalance,
     });
 
   } catch (error: any) {
