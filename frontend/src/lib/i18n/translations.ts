@@ -1,4 +1,4 @@
-export type LangCode = 'en' | 'ko' | 'zh' | 'ru' | 'es' | 'fr';
+export type LangCode = 'en' | 'ko' | 'zh' | 'ru' | 'es' | 'fr' | 'hi';
 
 export interface Translations {
   // Header
@@ -94,6 +94,7 @@ export const LANGUAGES: { code: LangCode; name: string; nativeName: string; flag
   { code: 'ru', name: 'Russian',            nativeName: 'Русский',    flag: '🇷🇺', countryCodes: ['RU','BY','KZ','KG','TJ'] },
   { code: 'es', name: 'Spanish',            nativeName: 'Español',    flag: '🇪🇸', countryCodes: ['ES','MX','AR','CO','CL','PE','VE','EC','BO','PY','UY','CR','PA','DO','HN','SV','GT','NI','CU','PR'] },
   { code: 'fr', name: 'French',             nativeName: 'Français',   flag: '🇫🇷', countryCodes: ['FR','BE','CH','LU','MC','BF','BI','BJ','CD','CF','CG','CI','CM','DJ','DZ','GA','GN','GW','HT','KM','MA','MG','ML','MR','MU','NE','RW','SC','SN','TD','TG','TN'] },
+  { code: 'hi', name: 'Hindi',              nativeName: 'हिन्दी',     flag: '🇮🇳', countryCodes: ['IN'] },
 ];
 
 /** Return the suggested language code for a given ISO country code */
@@ -249,6 +250,30 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: 'Choisir la langue', currentLanguage: 'Langue actuelle', cancel: 'Annuler', apply: 'Appliquer',
     selectYourWallet: 'Choisissez votre portefeuille', lastUsed: 'Dernièrement utilisé', requestingSignature: 'Demande de signature', pleaseSign: 'Veuillez signer dans votre portefeuille.', back: 'Retour',
     home: 'Accueil', search: 'Rechercher', breaking: 'Urgent', more: 'Plus', support: 'Assistance', termsOfUse: "Conditions d'utilisation", close: 'Fermer',
+  },
+  hi: {
+    portfolio: 'पोर्टफोलियो', balance: 'शेष', deposit: 'जमा करें', withdraw: 'निकालें',
+    notifications: 'सूचनाएं', settings: 'सेटिंग्स', myBets: 'मेरी बेट्स',
+    signOut: 'साइन आउट', signIn: 'साइन इन', location: 'स्थान', language: 'भाषा',
+    switchLanguage: 'भाषा बदलें',
+    top: 'टॉप', politics: 'राजनीति', crypto: 'क्रिप्टो', technology: 'तकनीक',
+    sports: 'खेल', finance: 'वित्त',
+    searchMarkets: 'बाज़ार खोजें...', sortBy: 'क्रमबद्ध करें', allMarkets: 'सभी बाज़ार',
+    open: 'खुला', closed: 'बंद', resolved: 'हल हुआ',
+    loadingMarkets: 'बाज़ार लोड हो रहे हैं...', noMarketsFound: 'कोई बाज़ार नहीं मिला',
+    tryAdjusting: 'फ़िल्टर या खोज बदलकर देखें',
+    mostActive: '24 घंटे सबसे सक्रिय', highVolume: 'उच्च वॉल्यूम', newest: 'नवीनतम', closingSoon: 'जल्द बंद',
+    yes: 'हाँ', no: 'नहीं', vol: 'वॉल्यूम', live: 'लाइव', remaining: 'शेष',
+    daysLeft: 'दिन बाकी', monthsLeft: 'महीने बाकी', aboutMonthsLeft: 'लगभग {n} महीने बाकी',
+    moreOutcomes: '+{n} और परिणाम',
+    heroCrypto: 'क्रिप्टो', heroTagline: 'BTC, ETH, HBAR और अन्य पर साहसी और सटीक मूल्य पूर्वानुमान से कमाएं।',
+    loginOrSignUp: 'लॉग इन या साइन अप', continueWithGoogle: 'Google से जारी रखें',
+    emailAddress: 'ईमेल पता', continueWithWallet: 'वॉलेट से जारी रखें',
+    agreeTerms: 'जारी रखकर आप हमारी', termsOfService: 'सेवा की शर्तों',
+    privacyPolicy: 'गोपनीयता नीति', securedBy: 'सुरक्षित', authenticating: 'प्रमाणीकरण...',
+    selectLanguage: 'भाषा चुनें', currentLanguage: 'वर्तमान भाषा', cancel: 'रद्द करें', apply: 'लागू करें',
+    selectYourWallet: 'अपना वॉलेट चुनें', lastUsed: 'अंतिम उपयोग', requestingSignature: 'हस्ताक्षर का अनुरोध', pleaseSign: 'कृपया अपने वॉलेट में हस्ताक्षर करें।', back: 'वापस',
+    home: 'होम', search: 'खोजें', breaking: 'ब्रेकिंग', more: 'और', support: 'सहायता', termsOfUse: 'उपयोग की शर्तें', close: 'बंद करें',
   },
 };
 
