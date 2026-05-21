@@ -183,13 +183,31 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
      * @param _assetSymbol The primary asset symbol (e.g., "HBAR")
      * @param _priceDecimals Number of decimals for price representation
      * @param _stakingToken ERC-20 token for stakes (address(0) = native HBAR mode)
+     * @param _minStake Minimum stake in the staking token's smallest unit
+     * @param _maxStake Maximum stake in the staking token's smallest unit
+     *
+     * Examples:
+     *   Native HBAR (18 decimals): _minStake = 0.01 ether, _maxStake = 100 ether
+     *   USDC (6 decimals):         _minStake = 10_000,     _maxStake = 100_000_000
      */
-    constructor(string memory _assetSymbol, uint8 _priceDecimals, address _stakingToken) {
+    constructor(
+        string memory _assetSymbol,
+        uint8 _priceDecimals,
+        address _stakingToken,
+        uint256 _minStake,
+        uint256 _maxStake
+    ) {
+        require(bytes(_assetSymbol).length > 0, "Asset symbol required");
+        require(_minStake > 0, "minStake must be > 0");
+        require(_maxStake > _minStake, "maxStake must exceed minStake");
+
         assetSymbol = _assetSymbol;
         priceDecimals = _priceDecimals;
         stakingToken = IERC20(_stakingToken);
         startTimestamp = block.timestamp;
-        transferOwnership(msg.sender);
+        minStake = _minStake;
+        maxStake = _maxStake;
+        // Ownable's constructor already sets msg.sender as owner; no transfer needed.
     }
 
     /**
