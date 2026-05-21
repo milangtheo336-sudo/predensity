@@ -139,16 +139,6 @@ export default defineSchema({
     .index("by_invitee", ["inviteeAddress"])
     .index("by_status", ["status"]),
 
-  userStats: defineTable({
-    userAddress: v.string(),
-    totalBets: v.number(),
-    totalWon: v.number(),
-    totalStaked: v.number(),
-    totalPayout: v.number(),
-    winRate: v.number(),
-    lastUpdated: v.number(),
-  }).index("by_address", ["userAddress"]),
-
   userProfiles: defineTable({
     userAddress: v.string(),
     displayName: v.optional(v.string()),
