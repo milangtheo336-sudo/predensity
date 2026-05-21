@@ -869,10 +869,23 @@ export function PredictionCard({
     
     // Verify Magic Link session before proceeding
     try {
+      console.log('[handlePlaceBet] Checking Magic Link session...');
       const magic = getMagic();
       const loggedIn = await magic.user.isLoggedIn();
+      console.log('[handlePlaceBet] Magic Link logged in:', loggedIn);
+      
       if (!loggedIn) {
         setBetError('Session expired. Please log in again.');
+        return;
+      }
+      
+      // Test if we can get accounts
+      const magicProvider = (magic as any).rpcProvider;
+      const accounts = await magicProvider.request({ method: 'eth_accounts' });
+      console.log('[handlePlaceBet] Magic Link accounts:', accounts);
+      
+      if (!accounts || accounts.length === 0) {
+        setBetError('Magic Link wallet not ready. Please refresh the page and try again.');
         return;
       }
     } catch (err) {
