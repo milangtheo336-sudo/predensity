@@ -24,6 +24,7 @@ import {
 
 import { useQuery as useConvexQuery, useMutation } from 'convex/react';
 import { useMagic } from '@/context/MagicContext';
+import { getMagic } from '@/lib/magic';
 import { api } from '../../convex/_generated/api';
 import BoringAvatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
@@ -866,6 +867,20 @@ export function PredictionCard({
     if (!managedWallet) { setBetError('Deposit funds first'); return; }
     if (parseFloat(depositAmount) > platformBalance) { setBetError('Insufficient balance. Deposit more funds.'); return; }
     
+    // Verify Magic Link session before proceeding
+    try {
+      const magic = getMagic();
+      const loggedIn = await magic.user.isLoggedIn();
+      if (!loggedIn) {
+        setBetError('Session expired. Please log in again.');
+        return;
+      }
+    } catch (err) {
+      console.error('[handlePlaceBet] Session check failed:', err);
+      setBetError('Failed to verify session. Please refresh and try again.');
+      return;
+    }
+    
     setIsPlacingBet(true); 
     setBetError(null);
     
@@ -873,6 +888,15 @@ export function PredictionCard({
       const decimals = 8;
       const minStr = limitDecimals(selectedRange.min, decimals);
       const maxStr = limitDecimals(selectedRange.max, decimals);
+      
+      console.log('[handlePlaceBet] Starting bet placement...', {
+        category: Category.CRYPTO,
+        targetTimestamp: startUnix,
+        priceRange: { min: minStr, max: maxStr },
+        stake: depositAmount,
+        asset: tokenSymbol,
+        userId: user.issuer,
+      });
       
       // User signs transaction with Magic Link
       const result = await placeBet(
@@ -885,10 +909,12 @@ export function PredictionCard({
         user.issuer
       );
       
+      console.log('[handlePlaceBet] Bet placed successfully:', result);
       setTransactionId(result.txHash);
       setIsBetPlaced(true);
       setIsPlacingBet(false);
     } catch (err) {
+      console.error('[handlePlaceBet] Error placing bet:', err);
       setIsPlacingBet(false);
       setBetError(err instanceof Error ? err.message : 'Failed to place bet');
     }
