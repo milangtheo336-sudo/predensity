@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Header } from '@/components/header';
+import { ActivityTicker } from '@/components/activity-ticker';
+import { CategoryHero } from '@/components/category-hero';
 import { CategoryTabs } from '@/components/category-tabs';
 import { MarketFilters } from '@/components/market-filters';
 import { GenericMarketCard } from '@/components/generic-market-card';
@@ -216,9 +218,19 @@ export default function MarketsPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black flex flex-col">
+      {/* 1. Ticker — absolute top edge, full width */}
+      <ActivityTicker />
+
+      {/* 2. Header island — sits right below the ticker, sticky so it stays there on scroll */}
       <Header />
 
-      <main className={`${showSidebar ? 'w-full md:px-0 px-4' : 'container mx-auto px-4'} py-8 flex-1 flex gap-6`}>
+      {/* 3. Hero video — negative margin pulls it UP behind the header so the
+          video bleeds behind the island while the text content shows below it */}
+      <div className={(activeCategory === 'all' || activeCategory === 'crypto') ? '-mt-[76px]' : ''}>
+        <CategoryHero category={activeCategory} />
+      </div>
+
+      <main className={`${showSidebar ? 'w-full md:px-0 px-4' : 'container mx-auto px-4'} ${(activeCategory === 'all' || activeCategory === 'crypto') ? 'pt-2' : 'pt-8'} pb-8 flex-1 flex gap-6`}>
         {showSidebar && (
           <div className="hidden md:block pl-4 w-64 shrink-0">
             <MarketsSidebar
