@@ -1303,7 +1303,7 @@ export const recordProcessedDeposit = internalMutation({
   },
 });
 
-// Poll mirror node for incoming USDC transfers to the treasury
+// Poll mirror node for USDC balances on managed wallets and credit any new deposits
 export const detectDeposits = internalAction({
   args: {},
   handler: async (ctx) => {
@@ -1314,44 +1314,46 @@ export const detectDeposits = internalAction({
       ? "https://mainnet.mirrornode.hedera.com"
       : "https://testnet.mirrornode.hedera.com";
 
+    const usdcTokenId = network === "mainnet" ? "0.0.456858" : "0.0.8229951";
+
     try {
-      // Fetch recent token transfers to the treasury account
-      // Look at the last 5 minutes of transactions
-      const fiveMinAgo = (Date.now() / 1000 - 300).toFixed(9);
-      const url = `${baseUrl}/api/v1/transactions?account.id=${TREASURY_ACCOUNT_ID}&transactiontype=CRYPTOTRANSFER&timestamp=gt:${fiveMinAgo}&limit=50&order=desc`;
-
-      const res = await fetch(url);
-      if (!res.ok) return { detected: 0, error: `Mirror node returned ${res.status}` };
-
-      const data = await res.json();
-      const transactions = data.transactions || [];
+      // Get all active managed wallets
+      const wallets: any[] = await ctx.runQuery(internal.sync.getActiveManagedWallets);
+      if (!wallets || wallets.length === 0) return { detected: 0 };
 
       let detected = 0;
 
-      for (const tx of transactions) {
-        // Look for USDC token transfers where treasury is the receiver
-        const tokenTransfers = tx.token_transfers || [];
-        for (const tt of tokenTransfers) {
-          if (tt.token_id === USDC_TOKEN_ID && tt.account === TREASURY_ACCOUNT_ID && tt.amount > 0) {
-            // Found an incoming USDC transfer to treasury
-            // Find the sender (the account with negative amount for this token)
-            const sender = tokenTransfers.find(
-              (s: any) => s.token_id === USDC_TOKEN_ID && s.amount < 0
-            );
-            if (!sender) continue;
+      for (const wallet of wallets) {
+        try {
+          // Query mirror node for this wallet's USDC balance
+          const url = `${baseUrl}/api/v1/accounts/${wallet.hederaAccountId}/tokens?token.id=${usdcTokenId}`;
+          const res = await fetch(url);
+          if (!res.ok) continue;
 
-            const amountUsdc = (tt.amount / 1e6).toFixed(6);
-            const txId = tx.transaction_id;
+          const data = await res.json();
+          const tokenEntry = data.tokens?.find((t: any) => t.token_id === usdcTokenId);
+          if (!tokenEntry) continue;
 
-            const result = await ctx.runMutation(internal.sync.recordProcessedDeposit, {
-              transactionId: txId,
-              senderAccount: sender.account,
-              amount: amountUsdc,
-              timestamp: Date.now(),
+          const onChainBalance = (parseInt(tokenEntry.balance) / 1e6).toFixed(6);
+          const storedBalance = wallet.usdcBalance || "0";
+
+          // If on-chain balance is higher than stored, credit the difference
+          const onChainNum = parseFloat(onChainBalance);
+          const storedNum = parseFloat(storedBalance);
+
+          if (onChainNum > storedNum + 0.000001) {
+            const depositAmount = (onChainNum - storedNum).toFixed(6);
+            await ctx.runMutation(internal.sync.creditDetectedDeposit, {
+              walletId: wallet._id,
+              newBalance: onChainBalance,
+              depositAmount,
+              userId: wallet.userId,
             });
-
-            if (result.credited) detected++;
+            detected++;
           }
+        } catch {
+          // Skip individual wallet errors
+          continue;
         }
       }
 
@@ -1407,5 +1409,46 @@ export const creditManualDeposit = mutation({
     });
 
     return { credited: true, newBalance };
+  },
+});
+
+
+// Internal query to get all active managed wallets for deposit detection
+import { internalQuery } from "./_generated/server";
+
+export const getActiveManagedWallets = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("managedWallets")
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+  },
+});
+
+// Credit a detected deposit (called by detectDeposits cron)
+export const creditDetectedDeposit = internalMutation({
+  args: {
+    walletId: v.id("managedWallets"),
+    newBalance: v.string(),
+    depositAmount: v.string(),
+    userId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.walletId, {
+      usdcBalance: args.newBalance,
+      lastActivity: Date.now(),
+    });
+
+    // Create notification
+    if (args.userId) {
+      await ctx.db.insert("notifications", {
+        userId: args.userId,
+        type: "deposit",
+        message: `${args.depositAmount} USDC deposited to your account`,
+        read: false,
+        timestamp: Date.now(),
+      });
+    }
   },
 });
