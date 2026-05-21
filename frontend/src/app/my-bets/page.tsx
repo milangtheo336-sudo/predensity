@@ -401,14 +401,14 @@ function ActivePositionCard({
   const question = getCryptoQuestion(bet);
 
   const statusBadge = (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
+    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
       isPast
         ? 'bg-yellow-500/10 text-yellow-400'
         : inRange
         ? 'bg-green-500/10 text-green-500'
         : 'bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400'
     }`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${isPast ? 'bg-yellow-400' : inRange ? 'bg-green-500' : 'bg-neutral-500'}`} />
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isPast ? 'bg-yellow-400' : inRange ? 'bg-green-500' : 'bg-neutral-500'}`} />
       {isPast ? 'Pending' : inRange ? 'In Range' : 'Active'}
     </span>
   );
@@ -491,7 +491,7 @@ function ActivePositionCard({
       onClick={() => setExpanded(e => !e)}
     >
       {/* STATUS */}
-      <td className="px-5 py-3.5 w-28">
+      <td className="px-5 py-3.5 w-32">
         {statusBadge}
       </td>
 
@@ -530,9 +530,13 @@ function ActivePositionCard({
         </div>
       </td>
 
-      {/* LINK */}
+      {/* EXPAND */}
       <td className="px-4 py-3.5 w-10">
-        <Link2 className="w-4 h-4 text-gray-300 dark:text-neutral-700 hover:text-gray-500 dark:hover:text-neutral-400 transition-colors" />
+        {expanded ? (
+          <ChevronUp className="w-4 h-4 text-gray-400 dark:text-neutral-500" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-gray-300 dark:text-neutral-700" />
+        )}
       </td>
     </tr>
   );
@@ -623,7 +627,8 @@ export default function PortfolioPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
-  const HASHSCAN_BASE = 'https://hashscan.io/testnet';
+  const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+  const HASHSCAN_BASE = hederaNetwork === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
 
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
