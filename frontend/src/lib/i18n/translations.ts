@@ -52,6 +52,14 @@ export interface Translations {
   // Hero
   heroCrypto: string;
   heroTagline: string;
+  heroSports: string;
+  heroSportsTagline: string;
+  heroPolitics: string;
+  heroPoliticsTagline: string;
+  heroTechnology: string;
+  heroTechnologyTagline: string;
+  heroFinance: string;
+  heroFinanceTagline: string;
 
   // Auth modal
   loginOrSignUp: string;
@@ -123,6 +131,10 @@ const T: Record<LangCode, Translations> = {
     daysLeft: 'days left', monthsLeft: 'months left', aboutMonthsLeft: 'about {n} months left',
     moreOutcomes: '+{n} more outcomes',
     heroCrypto: 'Crypto', heroTagline: 'Profit from bold, early, and accurate price forecasts on BTC, ETH, HBAR and more.',
+    heroSports: 'Sports', heroSportsTagline: 'Predict match outcomes, scores, and championship winners before the final whistle.',
+    heroPolitics: 'Politics', heroPoliticsTagline: 'Forecast elections, policy outcomes, and geopolitical events with real stakes.',
+    heroTechnology: 'Technology', heroTechnologyTagline: 'Predict product launches, AI breakthroughs, and the future of tech.',
+    heroFinance: 'Finance', heroFinanceTagline: 'Forecast stocks, interest rates, and macroeconomic shifts before the market moves.',
     loginOrSignUp: 'Log in or sign up', continueWithGoogle: 'Continue with Google',
     emailAddress: 'Email address', continueWithWallet: 'Continue with a wallet',
     agreeTerms: 'By continuing, you agree to our', termsOfService: 'Terms of Service',
@@ -147,6 +159,10 @@ const T: Record<LangCode, Translations> = {
     daysLeft: '일 남음', monthsLeft: '개월 남음', aboutMonthsLeft: '약 {n}개월 남음',
     moreOutcomes: '+{n}개 더보기',
     heroCrypto: '크립토', heroTagline: 'BTC, ETH, HBAR 등의 대담하고 정확한 가격 예측으로 수익을 창출하세요.',
+    heroSports: '스포츠', heroSportsTagline: '최종 휘슬 전에 경기 결과, 점수, 챔피언십 우승자를 예측하세요.',
+    heroPolitics: '정치', heroPoliticsTagline: '선거, 정책 결과, 지정학적 이벤트를 실제 베팅으로 예측하세요.',
+    heroTechnology: '기술', heroTechnologyTagline: '제품 출시, AI 혁신, 기술의 미래를 예측하세요.',
+    heroFinance: '금융', heroFinanceTagline: '시장이 움직이기 전에 주식, 금리, 거시경제 변화를 예측하세요.',
     loginOrSignUp: '로그인 또는 회원가입', continueWithGoogle: 'Google로 계속',
     emailAddress: '이메일 주소', continueWithWallet: '지갑으로 계속',
     agreeTerms: '계속하면 다음에 동의하는 것입니다', termsOfService: '서비스 약관',
@@ -171,6 +187,10 @@ const T: Record<LangCode, Translations> = {
     daysLeft: '天后结束', monthsLeft: '个月后结束', aboutMonthsLeft: '约{n}个月后结束',
     moreOutcomes: '+{n}个结果',
     heroCrypto: '加密货币', heroTagline: '通过对BTC、ETH、HBAR等的大胆、精准预测获利。',
+    heroSports: '体育', heroSportsTagline: '在终场哨声前预测比赛结果、比分和冠军得主。',
+    heroPolitics: '政治', heroPoliticsTagline: '预测选举、政策走向和地缘政治事件，真实押注。',
+    heroTechnology: '科技', heroTechnologyTagline: '预测产品发布、AI突破和科技未来走向。',
+    heroFinance: '金融', heroFinanceTagline: '在市场变动前预测股票、利率和宏观经济走势。',
     loginOrSignUp: '登录或注册', continueWithGoogle: '使用Google继续',
     emailAddress: '电子邮件地址', continueWithWallet: '使用钱包继续',
     agreeTerms: '继续即表示您同意我们的', termsOfService: '服务条款',
@@ -195,6 +215,10 @@ const T: Record<LangCode, Translations> = {
     daysLeft: 'дн. осталось', monthsLeft: 'мес. осталось', aboutMonthsLeft: 'около {n} мес.',
     moreOutcomes: '+{n} исходов',
     heroCrypto: 'Крипто', heroTagline: 'Зарабатывайте на смелых и точных прогнозах цен BTC, ETH, HBAR и других.',
+    heroSports: 'Спорт', heroSportsTagline: 'Предсказывайте результаты матчей, счёта и победителей до финального свистка.',
+    heroPolitics: 'Политика', heroPoliticsTagline: 'Прогнозируйте выборы, политические решения и геополитические события.',
+    heroTechnology: 'Технологии', heroTechnologyTagline: 'Предсказывайте запуски продуктов, прорывы ИИ и будущее технологий.',
+    heroFinance: 'Финансы', heroFinanceTagline: 'Прогнозируйте акции, процентные ставки и макроэкономические сдвиги.',
     loginOrSignUp: 'Войти или зарегистрироваться', continueWithGoogle: 'Продолжить с Google',
     emailAddress: 'Адрес электронной почты', continueWithWallet: 'Продолжить с кошельком',
     agreeTerms: 'Продолжая, вы соглашаетесь с нашими', termsOfService: 'Условиями использования',
@@ -219,6 +243,10 @@ const T: Record<LangCode, Translations> = {
     daysLeft: 'días restantes', monthsLeft: 'meses restantes', aboutMonthsLeft: 'aprox. {n} meses',
     moreOutcomes: '+{n} resultados más',
     heroCrypto: 'Cripto', heroTagline: 'Obtén ganancias con predicciones audaces y precisas sobre BTC, ETH, HBAR y más.',
+    heroSports: 'Deportes', heroSportsTagline: 'Predice resultados, marcadores y campeones antes del pitido final.',
+    heroPolitics: 'Política', heroPoliticsTagline: 'Pronostica elecciones, políticas y eventos geopolíticos con apuestas reales.',
+    heroTechnology: 'Tecnología', heroTechnologyTagline: 'Predice lanzamientos, avances en IA y el futuro de la tecnología.',
+    heroFinance: 'Finanzas', heroFinanceTagline: 'Pronostica acciones, tasas de interés y cambios macroeconómicos antes del mercado.',
     loginOrSignUp: 'Iniciar sesión o registrarse', continueWithGoogle: 'Continuar con Google',
     emailAddress: 'Correo electrónico', continueWithWallet: 'Continuar con cartera',
     agreeTerms: 'Al continuar, aceptas nuestros', termsOfService: 'Términos de servicio',
@@ -243,6 +271,10 @@ const T: Record<LangCode, Translations> = {
     daysLeft: 'jours restants', monthsLeft: 'mois restants', aboutMonthsLeft: 'environ {n} mois',
     moreOutcomes: '+{n} résultats',
     heroCrypto: 'Crypto', heroTagline: 'Profitez de prévisions audacieuses et précises sur BTC, ETH, HBAR et plus encore.',
+    heroSports: 'Sports', heroSportsTagline: 'Prédisez les résultats, scores et champions avant le coup de sifflet final.',
+    heroPolitics: 'Politique', heroPoliticsTagline: 'Pronostiquez élections, politiques et événements géopolitiques avec de vrais enjeux.',
+    heroTechnology: 'Technologie', heroTechnologyTagline: 'Anticipez les lancements produits, avancées en IA et l\'avenir de la tech.',
+    heroFinance: 'Finance', heroFinanceTagline: 'Prévoyez actions, taux d\'intérêt et changements macroéconomiques avant le marché.',
     loginOrSignUp: 'Se connecter ou s\'inscrire', continueWithGoogle: 'Continuer avec Google',
     emailAddress: 'Adresse e-mail', continueWithWallet: 'Continuer avec un portefeuille',
     agreeTerms: 'En continuant, vous acceptez nos', termsOfService: 'Conditions d\'utilisation',
@@ -267,6 +299,10 @@ const T: Record<LangCode, Translations> = {
     daysLeft: 'दिन बाकी', monthsLeft: 'महीने बाकी', aboutMonthsLeft: 'लगभग {n} महीने बाकी',
     moreOutcomes: '+{n} और परिणाम',
     heroCrypto: 'क्रिप्टो', heroTagline: 'BTC, ETH, HBAR और अन्य पर साहसी और सटीक मूल्य पूर्वानुमान से कमाएं।',
+    heroSports: 'खेल', heroSportsTagline: 'अंतिम सीटी से पहले मैच परिणाम, स्कोर और चैंपियन का पूर्वानुमान लगाएं।',
+    heroPolitics: 'राजनीति', heroPoliticsTagline: 'चुनाव, नीतिगत परिणाम और भू-राजनीतिक घटनाओं का पूर्वानुमान लगाएं।',
+    heroTechnology: 'तकनीक', heroTechnologyTagline: 'उत्पाद लॉन्च, AI सफलताओं और तकनीक के भविष्य का पूर्वानुमान लगाएं।',
+    heroFinance: 'वित्त', heroFinanceTagline: 'बाज़ार हिलने से पहले स्टॉक, ब्याज दरों और आर्थिक बदलावों का पूर्वानुमान लगाएं।',
     loginOrSignUp: 'लॉग इन या साइन अप', continueWithGoogle: 'Google से जारी रखें',
     emailAddress: 'ईमेल पता', continueWithWallet: 'वॉलेट से जारी रखें',
     agreeTerms: 'जारी रखकर आप हमारी', termsOfService: 'सेवा की शर्तों',

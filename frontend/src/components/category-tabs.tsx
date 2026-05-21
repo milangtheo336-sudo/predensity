@@ -13,10 +13,10 @@ export function CategoryTabs({ activeCategory, onCategoryChange }: CategoryTabsP
   const { t } = useLanguage();
   const tabs = [
     { id: 'all' as const, name: t.top },
-    { id: Category.POLITICS, name: t.politics },
     { id: Category.CRYPTO, name: t.crypto },
-    { id: Category.TECHNOLOGY, name: t.technology },
     { id: Category.SPORTS, name: t.sports },
+    { id: Category.POLITICS, name: t.politics },
+    { id: Category.TECHNOLOGY, name: t.technology },
     { id: Category.FINANCE, name: t.finance },
   ];
 
