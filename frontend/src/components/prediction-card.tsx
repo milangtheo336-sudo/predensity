@@ -25,6 +25,7 @@ import {
 
 import { useQuery as useConvexQuery, useMutation } from 'convex/react';
 import { useMagic } from '@/context/MagicContext';
+import { useWalletUser } from '@/context/WalletUserContext';
 import { getMagic, getUserInfo } from '@/lib/magic';
 import { api } from '../../convex/_generated/api';
 import BoringAvatar from 'boring-avatars';
@@ -190,7 +191,9 @@ function CryptoActivitySection({
   const hashscanBase = hederaNetwork === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
 
   const { user } = useMagic();
-  const isSignedIn = !!user;
+  const { walletUser } = useWalletUser();
+  const isSignedIn = !!user || !!walletUser;
+  const effectiveIssuer = user?.issuer ?? walletUser?.userId;
 
   // Ideas (comments)
   const marketIdForComments = `crypto-${tokenSymbol.toLowerCase()}`;
@@ -203,12 +206,12 @@ function CryptoActivitySection({
   const [replyText, setReplyText] = useState('');
 
   const handleSubmitComment = async () => {
-    if (!newComment.trim() || !isSignedIn || !user) return;
+    if (!newComment.trim() || !isSignedIn || !effectiveIssuer) return;
     setSubmittingComment(true);
     try {
       await addCommentMutation({
         marketId: marketIdForComments,
-        userAddress: `managed:${user.issuer}`.toLowerCase(),
+        userAddress: `managed:${effectiveIssuer}`.toLowerCase(),
         content: newComment.trim(),
       });
       setNewComment('');
@@ -402,7 +405,7 @@ function CryptoActivitySection({
                 // The positionsByAddr map is always keyed lowercase so all comparisons are safe.
                 const commentAddr = comment.userAddress.toLowerCase();
                 const proxyAddr = proxyWalletMap[commentAddr]?.toLowerCase();
-                const isCurrentUserComment = user && commentAddr === `managed:${user.issuer}`.toLowerCase();
+                const isCurrentUserComment = effectiveIssuer && commentAddr === `managed:${effectiveIssuer}`.toLowerCase();
                 const eoaAddr = (isCurrentUserComment && user?.publicAddress)
                   ? `managed:${user.publicAddress}`.toLowerCase()
                   : null;
@@ -473,12 +476,12 @@ function CryptoActivitySection({
                         </p>
                         <div className="flex items-center gap-4 mt-1.5">
                           {(() => {
-                            const currentAddr = isSignedIn && user ? `managed:${user.issuer}`.toLowerCase() : '';
+                            const currentAddr = isSignedIn && effectiveIssuer ? `managed:${effectiveIssuer}`.toLowerCase() : '';
                             const hasLiked = (comment.likedBy || []).includes(currentAddr);
                             return (
                               <button
                                 onClick={() => {
-                                  if (!isSignedIn || !user) return;
+                                  if (!isSignedIn || !effectiveIssuer) return;
                                   likeCommentMutation({ commentId: comment._id, userAddress: currentAddr });
                                 }}
                                 className={`flex items-center gap-1 transition-colors ${hasLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
@@ -507,7 +510,7 @@ function CryptoActivitySection({
                                 if (e.key === 'Enter' && replyText.trim()) {
                                   addCommentMutation({
                                     marketId: marketIdForComments,
-                                    userAddress: `managed:${user?.issuer}`.toLowerCase(),
+                                    userAddress: `managed:${effectiveIssuer}`.toLowerCase(),
                                     content: replyText.trim(),
                                     parentId: comment._id,
                                   }).then(() => { setReplyText(''); setReplyingTo(null); });
@@ -689,18 +692,20 @@ export function PredictionCard({
 
   //  all users use platform balance
   const { user } = useMagic();
-  const isSignedIn = !!user;
+  const { walletUser } = useWalletUser();
+  const isSignedIn = !!user || !!walletUser;
+  const effectivePublicAddress = user?.publicAddress ?? walletUser?.publicAddress;
   
   // Get proxy wallet address
   const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
   
   useEffect(() => {
-    if (!user?.publicAddress) return;
-    
+    if (!effectivePublicAddress) return;
+
     const fetchProxyWallet = async () => {
       // Check cache first
       try {
-        const cached = localStorage.getItem(`predensity_proxy_wallet_${user.publicAddress}`);
+        const cached = localStorage.getItem(`predensity_proxy_wallet_${effectivePublicAddress}`);
         if (cached) {
           const data = JSON.parse(cached);
           if (Date.now() - data.timestamp < 86400000) { // 24 hour cache
@@ -713,13 +718,13 @@ export function PredictionCard({
       }
       
       try {
-        const response = await fetch(`/api/proxy-wallet/create?userAddress=${user.publicAddress}`);
+        const response = await fetch(`/api/proxy-wallet/create?userAddress=${effectivePublicAddress}`);
         const data = await response.json();
         if (data.exists && data.proxyWalletAddress) {
           setProxyWalletAddress(data.proxyWalletAddress);
           // Cache it
           localStorage.setItem(
-            `predensity_proxy_wallet_${user.publicAddress}`,
+            `predensity_proxy_wallet_${effectivePublicAddress}`,
             JSON.stringify({
               proxyWallet: data.proxyWalletAddress,
               timestamp: Date.now(),
@@ -732,7 +737,7 @@ export function PredictionCard({
     };
     
     fetchProxyWallet();
-  }, [user?.publicAddress]);
+  }, [effectivePublicAddress]);
   
   // Read balance from blockchain (non-custodial) - use proxy wallet address
   const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(proxyWalletAddress || undefined);
@@ -740,7 +745,7 @@ export function PredictionCard({
   // Still query managed wallet for user info (but not balance)
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    isSignedIn && user ? { userId: user.issuer } : 'skip'
+    user ? { userId: user.issuer } : 'skip'
   );
   const { balancesHidden } = useBalanceVisibility();
 
@@ -989,7 +994,8 @@ export function PredictionCard({
   // Place bet handler (non-custodial)
   const handlePlaceBet = async () => {
     if (!depositAmount || parseFloat(depositAmount) <= 0) { setBetError('Enter a valid amount'); return; }
-    if (!user) { setBetError('Sign in to place a bet'); return; }
+    if (!user && !walletUser) { setBetError('Sign in to place a bet'); return; }
+    if (!user) { setBetError('Wallet-based betting coming soon. Please sign in with email to place bets.'); return; }
     if (parseFloat(depositAmount) > platformBalance) { setBetError('Insufficient balance. Deposit more funds.'); return; }
     
     // Verify Magic Link session before proceeding
@@ -1584,7 +1590,11 @@ export function PredictionCard({
               contractIdString={cryptoContractIdString}
               contractAddress={contractAddress}
               tokenSymbol={tokenSymbol}
-              currentUser={isSignedIn && user ? { id: user.issuer, name: user.email?.split('@')[0] || 'Trader', imageUrl: undefined } : undefined}
+              currentUser={isSignedIn ? {
+                id: user?.issuer ?? walletUser?.userId ?? '',
+                name: user?.email?.split('@')[0] || walletUser?.publicAddress?.slice(0, 6) || 'Trader',
+                imageUrl: undefined,
+              } : undefined}
             />
           </div>
 
