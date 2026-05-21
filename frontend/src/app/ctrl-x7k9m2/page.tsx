@@ -2303,13 +2303,13 @@ function AdminPage() {
         const [bucket, prices] = bucketEntries[i];
         const betIds = bucketBetIds.get(bucket) || [];
 
-        // Read bucket info from contract for DPM payout calculation
-        let poolData: { totalStaked: string; totalExited: string; totalWinningWeight: string } | undefined;
+        // Read bucket info from contract for parimutuel payout calculation
+        let poolData: { totalStaked: string; totalWinningWeight: string } | undefined;
         let betWeights: { betId: string; weight: string }[] | undefined;
 
         try {
           if (readContract) {
-            // Read bucket stats: totalStaked, totalWeight, price
+            // Read bucket stats: totalStaked, totalWeight
             const bucketStats = await readContract({
               address: contractAddr,
               abi: CryptoPredictionMarketABI.abi,
@@ -2325,24 +2325,12 @@ function AdminPage() {
               args: [bucket],
             }) as any;
 
-            // getBucketStats returns (totalStaked, totalWeight, price)
+            // getBucketStats returns (totalStaked, totalWeight)
             // getBucketInfo returns (totalBets, totalWinningWeight, nextProcessIndex, aggregationComplete)
             const totalStaked = bucketStats?.[0]?.toString() || '0';
             const totalWinningWeight = bucketInfo?.[1]?.toString() || '0';
 
-            // Read totalExited from the buckets mapping directly
-            // buckets is a public mapping, so buckets(bucket) returns the struct fields
-            const bucketData = await readContract({
-              address: contractAddr,
-              abi: CryptoPredictionMarketABI.abi,
-              functionName: 'buckets',
-              args: [bucket],
-            }) as any;
-            // Public mapping returns: totalStaked, totalWeight, totalWinningWeight, nextProcessIndex, aggregationComplete, totalExited
-            // The exact order depends on the struct layout
-            const totalExited = bucketData?.totalExited?.toString() || bucketData?.[5]?.toString() || '0';
-
-            poolData = { totalStaked, totalExited, totalWinningWeight };
+            poolData = { totalStaked, totalWinningWeight };
 
             // Read each bet's weight from the contract using on-chain bet IDs
             betWeights = [];
@@ -2642,9 +2630,9 @@ function AdminPage() {
                       };
                     });
 
-                    // Read contract data for DPM payout calculation, then finalize in Convex
+                    // Read contract data for parimutuel payout calculation, then finalize in Convex
                     const finalizeWithContractData = async () => {
-                      let poolData: { totalStaked: string; totalExited: string; totalWinningWeight: string } | undefined;
+                      let poolData: { totalStaked: string; totalWinningWeight: string } | undefined;
                       let betWeights: { betId: string; weight: string }[] | undefined;
                       try {
                         if (readContract) {
@@ -2660,16 +2648,9 @@ function AdminPage() {
                             functionName: 'getBucketInfo',
                             args: [bucketIndex],
                           }) as any;
-                          const bucketRaw = await readContract({
-                            address: getContractAddress(selectedCategory),
-                            abi: CryptoPredictionMarketABI.abi,
-                            functionName: 'buckets',
-                            args: [bucketIndex],
-                          }) as any;
 
                           poolData = {
                             totalStaked: bucketStats?.[0]?.toString() || '0',
-                            totalExited: bucketRaw?.totalExited?.toString() || bucketRaw?.[5]?.toString() || '0',
                             totalWinningWeight: bucketInfoData?.[1]?.toString() || '0',
                           };
 
