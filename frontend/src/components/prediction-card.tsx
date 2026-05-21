@@ -26,6 +26,7 @@ import { useUser } from '@clerk/nextjs';
 import { api } from '../../convex/_generated/api';
 import BoringAvatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
+import { useBalanceVisibility } from '@/components/header';
 
 interface PredictionCardProps {
   className?: string;
@@ -356,11 +357,12 @@ function CryptoActivitySection({
             <div className="divide-y divide-gray-100 dark:divide-white/[0.04]">
               {comments.filter((c: any) => !c.parentId).map((comment: any) => {
                 const prof = profiles[comment.userAddress];
-                // Check if this comment is from the current user
                 const isCurrentUser = currentUser && comment.userAddress === `managed:${currentUser.id}`.toLowerCase();
                 const displayName = isCurrentUser ? currentUser.name : (prof?.displayName || truncateAddr(comment.userAddress));
                 const avatarImageUrl = isCurrentUser ? currentUser.imageUrl : undefined;
-                const profileLink = isCurrentUser ? `/profile/${currentUser.id}` : undefined;
+                // Build profile link: own profile -> /my-bets, others -> /profile/{id}
+                const managedMatch = comment.userAddress.match(/^managed:(.+)$/i);
+                const profileLink = isCurrentUser ? '/my-bets' : (managedMatch ? `/profile/${managedMatch[1]}` : undefined);
                 const userPos = positions.find(p => p.addr === comment.userAddress);
                 const replies = comments.filter((c: any) => c.parentId === comment._id);
                 return (
@@ -450,7 +452,8 @@ function CryptoActivitySection({
                               const isReplyCurrentUser = currentUser && reply.userAddress === `managed:${currentUser.id}`.toLowerCase();
                               const rName = isReplyCurrentUser ? currentUser.name : (rProf?.displayName || truncateAddr(reply.userAddress));
                               const rImageUrl = isReplyCurrentUser ? currentUser.imageUrl : undefined;
-                              const rProfileLink = isReplyCurrentUser ? `/profile/${currentUser.id}` : undefined;
+                              const rManagedMatch = reply.userAddress.match(/^managed:(.+)$/i);
+                              const rProfileLink = isReplyCurrentUser ? '/my-bets' : (rManagedMatch ? `/profile/${rManagedMatch[1]}` : undefined);
                               return (
                                 <div key={reply._id} className="flex items-start gap-2">
                                   <UserAvatar addr={reply.userAddress} size={20} imageUrl={rImageUrl} />
@@ -505,6 +508,8 @@ function CryptoActivitySection({
                   const isBetCurrentUser = currentUser && bet.userAddress === `managed:${currentUser.id}`.toLowerCase();
                   const betImageUrl = isBetCurrentUser ? currentUser.imageUrl : undefined;
                   const betDisplayName = isBetCurrentUser ? currentUser.name : (prof?.displayName || truncateAddr(bet.userAddress));
+                  const betManagedMatch = bet.userAddress.match(/^managed:(.+)$/i);
+                  const betProfileLink = isBetCurrentUser ? '/my-bets' : (betManagedMatch ? `/profile/${betManagedMatch[1]}` : undefined);
                   return (
                     <div key={bet.id} className="py-3 flex items-center justify-between text-sm">
                       <div className="flex items-center gap-3 min-w-0">
@@ -517,7 +522,11 @@ function CryptoActivitySection({
                             <span className="text-gray-900 dark:text-light-gray font-medium">{stakeFormatted} {getStakingCurrency().symbol}</span>
                             <span className="text-gray-400 text-xs">{bet.finalized ? 'Settled' : 'Active'}</span>
                           </div>
-                          <span className="text-xs text-gray-500 truncate block" style={{ fontWeight: 521 }}>{betDisplayName}</span>
+                          {betProfileLink ? (
+                            <a href={betProfileLink} className="text-xs text-gray-500 truncate block hover:underline" style={{ fontWeight: 521 }}>{betDisplayName}</a>
+                          ) : (
+                            <span className="text-xs text-gray-500 truncate block" style={{ fontWeight: 521 }}>{betDisplayName}</span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -553,12 +562,18 @@ function CryptoActivitySection({
                 const isPosCurrentUser = currentUser && pos.addr === `managed:${currentUser.id}`.toLowerCase();
                 const posImageUrl = isPosCurrentUser ? currentUser.imageUrl : undefined;
                 const posDisplayName = isPosCurrentUser ? currentUser.name : (prof?.displayName || truncateAddr(pos.addr));
+                const posManagedMatch = pos.addr.match(/^managed:(.+)$/i);
+                const posProfileLink = isPosCurrentUser ? '/my-bets' : (posManagedMatch ? `/profile/${posManagedMatch[1]}` : undefined);
                 return (
                   <div key={pos.addr} className="py-3 flex items-center justify-between text-sm">
                     <div className="flex items-center gap-3 min-w-0">
                       <UserAvatar addr={pos.addr} size={28} imageUrl={posImageUrl} />
                       <div className="min-w-0">
-                        <span className="text-gray-900 dark:text-light-gray block truncate" style={{ fontWeight: 521 }}>{posDisplayName}</span>
+                        {posProfileLink ? (
+                          <a href={posProfileLink} className="text-gray-900 dark:text-light-gray block truncate hover:underline" style={{ fontWeight: 521 }}>{posDisplayName}</a>
+                        ) : (
+                          <span className="text-gray-900 dark:text-light-gray block truncate" style={{ fontWeight: 521 }}>{posDisplayName}</span>
+                        )}
                         <span className="text-xs text-gray-500">{pos.betCount} bet{pos.betCount !== 1 ? 's' : ''} -- {pos.active} active</span>
                       </div>
                     </div>
@@ -604,6 +619,7 @@ export function PredictionCard({
     isSignedIn && user ? { userId: user.id } : 'skip'
   );
   const platformBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
+  const { balancesHidden } = useBalanceVisibility();
 
   const [selectedRange, setSelectedRange] = useState({ min: 0.01, max: 0.2843 });
   const [depositAmount, setDepositAmount] = useState('');
@@ -1216,7 +1232,7 @@ export function PredictionCard({
               </Button>
 
               <div className="text-center mt-3">
-                <span className="text-xs text-gray-500">Balance: {platformBalance.toFixed(2)} {getStakingCurrency().symbol}</span>
+                <span className="text-xs text-gray-500">Balance: {balancesHidden ? '****' : `${platformBalance.toFixed(2)} ${getStakingCurrency().symbol}`}</span>
               </div>
 
               {/* Market Details removed for mainnet -- internal info not user-facing */}
