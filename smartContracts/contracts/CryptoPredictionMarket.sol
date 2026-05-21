@@ -943,14 +943,50 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     /**
      * @notice Check if every (asset, timestamp) pair for the bets in a bucket has a price set
      */
+    /**
+     * @notice Check whether every (asset, timestamp) pair in a bucket has a usable
+     *         price (set + past the resolution delay).
+     *         Iterations are capped at MAX_BUCKET_SCAN to keep the call gas-bounded.
+     *         For huge buckets, use {arePricesSetForBucketRange} to paginate.
+     */
     function arePricesSetForBucket(uint256 bucket) external view returns (bool) {
         BucketInfo storage bucketInfo = buckets[bucket];
-        for (uint256 i = 0; i < bucketInfo.betIds.length; i++) {
+        uint256 len = bucketInfo.betIds.length;
+        require(len <= MAX_BUCKET_SCAN, "Bucket too large; use range");
+        for (uint256 i = 0; i < len; i++) {
             if (_priceForBet(bucketInfo.betIds[i]) == 0) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * @notice Paginated variant of {arePricesSetForBucket}. Checks bets[start..start+limit).
+     *         Use this for buckets exceeding MAX_BUCKET_SCAN bets.
+     * @param bucket Bucket index
+     * @param start  First bet index in the bucket to check
+     * @param limit  Maximum number of bets to check (capped at MAX_BUCKET_SCAN)
+     * @return allSet True if every checked bet has a usable price
+     * @return checked Number of bets actually inspected
+     */
+    function arePricesSetForBucketRange(
+        uint256 bucket,
+        uint256 start,
+        uint256 limit
+    ) external view returns (bool allSet, uint256 checked) {
+        BucketInfo storage bucketInfo = buckets[bucket];
+        uint256 len = bucketInfo.betIds.length;
+        if (start >= len) return (true, 0);
+        uint256 cap = limit > MAX_BUCKET_SCAN ? MAX_BUCKET_SCAN : limit;
+        uint256 end = start + cap;
+        if (end > len) end = len;
+        for (uint256 i = start; i < end; i++) {
+            if (_priceForBet(bucketInfo.betIds[i]) == 0) {
+                return (false, i - start + 1);
+            }
+        }
+        return (true, end - start);
     }
 
     /**
