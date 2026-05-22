@@ -22,7 +22,7 @@ import { getServerConvex } from '@/lib/convex-server';
 const convex = getServerConvex();
 
 /** The message the client must sign.  Must match auth-modal.tsx exactly. */
-export function buildSignInMessage(address: string, nonce: string): string {
+function buildSignInMessage(address: string, nonce: string): string {
   return `Sign in to Predensity\nAddress: ${address}\nNonce: ${nonce}`;
 }
 
