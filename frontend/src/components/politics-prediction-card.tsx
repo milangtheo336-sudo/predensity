@@ -491,6 +491,11 @@ function ForecastChart({
     <div className="relative w-full">
       <div ref={containerRef} className="relative w-full h-[320px]">
         <svg ref={svgRef} className="w-full h-full" />
+        {/* Predensity watermark -- top right of chart */}
+        <div className="absolute top-2 right-3 flex items-center gap-1.5 opacity-20 pointer-events-none select-none">
+          <img src="/predensity-logo.png" alt="" width={16} height={16} />
+          <span className="text-xs font-medium text-gray-400">Predensity</span>
+        </div>
         {/* Floating bet labels -- React-rendered, immune to SVG redraws */}
         {floatingLabels.map((label, idx) => (
           <div
