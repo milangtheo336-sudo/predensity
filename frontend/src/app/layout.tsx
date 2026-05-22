@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 import { SupportChat } from '@/components/support-chat';
 import { WalletErrorSuppressor } from '@/components/wallet-error-suppressor';
+import { HydrationErrorBoundary } from '@/components/hydration-error-boundary';
 import { WalletProviderClient } from '@/components/wallet-provider-client';
 import { ConvexClientProvider } from '@/components/convex-client-provider';
 import { MagicProvider } from '@/context/MagicContext';
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${appFont.variable} font-sans`} style={{ backgroundColor: '#000' }}>
         <WalletErrorSuppressor />
+        <HydrationErrorBoundary>
         <MagicProvider>
           <WalletUserProvider>
             <ConvexClientProvider>
@@ -73,6 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </ConvexClientProvider>
           </WalletUserProvider>
         </MagicProvider>
+        </HydrationErrorBoundary>
       </body>
     </html>
   );
