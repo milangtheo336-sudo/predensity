@@ -221,6 +221,10 @@ export interface MarketCard {
   currentValue?: string;
   status: 'open' | 'closed' | 'resolved';
   imageUrl?: string;
+  // CLOB-specific fields (multi-outcome markets)
+  isClob?: boolean;
+  outcomes?: Array<{ name: string; price: number }>;
+  numOutcomes?: number;
 }
 
 // Filter and sort options
