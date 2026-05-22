@@ -80,21 +80,8 @@ export default function AuthCallback() {
 
         const data = await response.json();
         
-        // Auto-associate USDC token for new users
-        if (response.ok && response.status !== 409) {
-          try {
-            const { associateToken } = await import('@/lib/magic');
-            const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-            const usdcTokenId = network === 'mainnet' ? '0.0.456858' : '0.0.8229951';
-            
-            console.log('[auth/callback] Auto-associating USDC token...');
-            await associateToken(usdcTokenId);
-            console.log('[auth/callback] USDC token associated successfully');
-          } catch (associateErr) {
-            console.error('[auth/callback] Token association failed:', associateErr);
-            // Don't fail the signup - user can associate later
-          }
-        }
+        // Skip auto-association - will be handled on first deposit
+        console.log('[auth/callback] Wallet setup complete. Token will be associated on first deposit.');
         
         // Whether wallet was created or already exists, set user data
         // Set user data in sessionStorage for immediate UI update
