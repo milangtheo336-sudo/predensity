@@ -265,6 +265,27 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
     walletSignInInProgressRef.current = true;
     try {
       localStorage.setItem('lastUsedAuthMethod', 'hashpack');
+
+      // Prefer EIP-6963 path so sign-in address == betting address (both come
+      // from the same eth_requestAccounts call, not the Hedera mirror node).
+      // HashPack announces itself via EIP-6963 as well as its native connector.
+      const hashpackEip6963 = eip6963Wallets.find(w =>
+        w.info.rdns?.toLowerCase().includes('hashpack') ||
+        w.info.name?.toLowerCase().includes('hashpack')
+      );
+
+      if (hashpackEip6963) {
+        // Use the EIP-6963 flow — identical to MetaMask/Rabby sign-in.
+        // This guarantees the address stored in walletUser matches what
+        // eth_requestAccounts returns later when placing a bet.
+        console.log('[auth-modal] HashPack: using EIP-6963 path for address consistency');
+        await handleEIP6963Connect(hashpackEip6963);
+        return;
+      }
+
+      // Fallback: Hedera-native flow (used when EIP-6963 is not available,
+      // e.g. older HashPack versions or non-browser environments).
+      console.log('[auth-modal] HashPack: EIP-6963 not found, falling back to Hedera-native');
       await hashpackWallet.connect();
       const addressResult = await hashpackEvmAddress.refetch();
       const address = addressResult.data;
