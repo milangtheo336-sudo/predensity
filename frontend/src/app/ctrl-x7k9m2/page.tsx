@@ -812,7 +812,34 @@ function ClobMarketsDisplay({ category }: { category: Category }) {
                   </>
                 )}
                 {market.resolved && (
-                  <span className="text-xs text-green-500 font-semibold">Resolved</span>
+                  <>
+                    <span className="text-xs text-green-500 font-semibold">Resolved</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        setIsProcessing(true);
+                        try {
+                          const res = await fetch('/api/clob/unresolve', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ marketId: market.marketId }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error || 'Failed to un-resolve');
+                          toast({ title: 'Market un-resolved', description: 'The market is now open again' });
+                        } catch (err) {
+                          toast({ variant: 'destructive', title: 'Failed', description: err instanceof Error ? err.message : 'Unknown error' });
+                        } finally {
+                          setIsProcessing(false);
+                        }
+                      }}
+                      disabled={isProcessing}
+                      className="text-xs"
+                    >
+                      Un-Resolve
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
