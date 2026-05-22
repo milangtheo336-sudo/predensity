@@ -251,7 +251,7 @@ const T: Record<LangCode, Translations> = {
     market: 'Market', averagePrice: 'Average Price', alphabetically: 'Alphabetically', date: 'Date',
   },
   ko: {
-    portfolio: '포트폴리오', balance: '잔액', deposit: '입금', withdraw: '출금',
+    portfolio: '포트폴리오', deposit: '입금', withdraw: '출금',
     notifications: '알림', settings: '설정', myBets: '내 베팅',
     signOut: '로그아웃', signIn: '로그인', location: '위치', language: '언어',
     switchLanguage: '언어 변경',
@@ -298,7 +298,7 @@ const T: Record<LangCode, Translations> = {
     market: '마켓', averagePrice: '평균 가격', alphabetically: '알파벳순', date: '날짜',
   },
   zh: {
-    portfolio: '投资组合', balance: '余额', deposit: '充值', withdraw: '提现',
+    portfolio: '投资组合', deposit: '充值', withdraw: '提现',
     notifications: '通知', settings: '设置', myBets: '我的预测',
     signOut: '退出登录', signIn: '登录', location: '位置', language: '语言',
     switchLanguage: '切换语言',
@@ -345,7 +345,7 @@ const T: Record<LangCode, Translations> = {
     market: '市场', averagePrice: '平均价格', alphabetically: '按字母排序', date: '日期',
   },
   ru: {
-    portfolio: 'Портфель', balance: 'Баланс', deposit: 'Пополнить', withdraw: 'Вывести',
+    portfolio: 'Портфель', deposit: 'Пополнить', withdraw: 'Вывести',
     notifications: 'Уведомления', settings: 'Настройки', myBets: 'Мои ставки',
     signOut: 'Выйти', signIn: 'Войти', location: 'Местоположение', language: 'Язык',
     switchLanguage: 'Сменить язык',
@@ -392,7 +392,7 @@ const T: Record<LangCode, Translations> = {
     market: 'Рынок', averagePrice: 'Средняя цена', alphabetically: 'По алфавиту', date: 'Дата',
   },
   es: {
-    portfolio: 'Portafolio', balance: 'Saldo', deposit: 'Depositar', withdraw: 'Retirar',
+    portfolio: 'Portafolio', deposit: 'Depositar', withdraw: 'Retirar',
     notifications: 'Notificaciones', settings: 'Configuración', myBets: 'Mis apuestas',
     signOut: 'Cerrar sesión', signIn: 'Iniciar sesión', location: 'Ubicación', language: 'Idioma',
     switchLanguage: 'Cambiar idioma',
@@ -439,7 +439,7 @@ const T: Record<LangCode, Translations> = {
     market: 'Mercado', averagePrice: 'Precio promedio', alphabetically: 'Alfabéticamente', date: 'Fecha',
   },
   fr: {
-    portfolio: 'Portefeuille', balance: 'Solde', deposit: 'Déposer', withdraw: 'Retirer',
+    portfolio: 'Portefeuille', deposit: 'Déposer', withdraw: 'Retirer',
     notifications: 'Notifications', settings: 'Paramètres', myBets: 'Mes paris',
     signOut: 'Se déconnecter', signIn: 'Se connecter', location: 'Localisation', language: 'Langue',
     switchLanguage: 'Changer de langue',
@@ -486,7 +486,7 @@ const T: Record<LangCode, Translations> = {
     market: 'Marché', averagePrice: 'Prix moyen', alphabetically: 'Alphabétiquement', date: 'Date',
   },
   hi: {
-    portfolio: 'पोर्टफोलियो', balance: 'शेष', deposit: 'जमा करें', withdraw: 'निकालें',
+    portfolio: 'पोर्टफोलियो', deposit: 'जमा करें', withdraw: 'निकालें',
     notifications: 'सूचनाएं', settings: 'सेटिंग्स', myBets: 'मेरी बेट्स',
     signOut: 'साइन आउट', signIn: 'साइन इन', location: 'स्थान', language: 'भाषा',
     switchLanguage: 'भाषा बदलें',
