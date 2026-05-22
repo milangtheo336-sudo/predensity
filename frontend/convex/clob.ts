@@ -430,6 +430,35 @@ export const getUserOrders = query({
   },
 });
 
+// Get all orders for a market (for activity feed)
+export const getMarketOrders = query({
+  args: { marketId: v.string() },
+  handler: async (ctx, args) => {
+    const orders = await ctx.db
+      .query("clobOrders")
+      .withIndex("by_market", (q) => q.eq("marketId", args.marketId))
+      .order("desc")
+      .take(100);
+    return orders;
+  },
+});
+
+// Get all user positions for a specific market (for activity section)
+export const getUserPositionsForMarket = query({
+  args: { marketId: v.string(), userId: v.string() },
+  handler: async (ctx, args) => {
+    const positions = await ctx.db
+      .query("clobPositions")
+      .withIndex("by_market", (q) => q.eq("marketId", args.marketId))
+      .collect();
+    
+    if (args.userId !== 'all') {
+      return positions.filter((p) => p.userId === args.userId);
+    }
+    return positions;
+  },
+});
+
 // Get user's positions across all markets
 export const getUserPositions = query({
   args: { userId: v.string() },
