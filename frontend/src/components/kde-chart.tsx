@@ -582,7 +582,13 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
           )}
         </div>
         {/* Chart area -- uses fixed height by default, inherits from parent className if set */}
-        <div ref={chartContainerRef} className={cn('w-full relative', className?.includes('h-full') ? 'h-[calc(100%-3rem)]' : 'h-64 sm:h-80')} />
+        <div ref={chartContainerRef} className={cn('w-full relative', className?.includes('h-full') ? 'h-[calc(100%-3rem)]' : 'h-64 sm:h-80')}>
+          {/* Predensity watermark -- top right of chart */}
+          <div className="absolute top-2 right-3 flex items-center gap-1.5 opacity-20 pointer-events-none select-none z-10">
+            <img src="/predensity-logo.png" alt="" width={16} height={16} />
+            <span className="text-xs font-medium text-gray-400">Predensity</span>
+          </div>
+        </div>
 
         {showControls && (
           <KDEChartModal
