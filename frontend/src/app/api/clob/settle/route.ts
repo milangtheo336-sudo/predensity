@@ -10,6 +10,7 @@ import {
   PrivateKey,
 } from '@hashgraph/sdk';
 import { ethers } from 'ethers';
+import { getClobExchangeContractId } from '@/lib/contracts/contract-config';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
 
@@ -50,10 +51,12 @@ export async function POST(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
-    const { exchangeContractId, maxTrades = 20 } = body;
+    const { maxTrades = 20 } = body;
 
+    // Use configured exchange contract ID (falls back to env var or hardcoded testnet)
+    const exchangeContractId = getClobExchangeContractId();
     if (!exchangeContractId) {
-      return NextResponse.json({ error: 'exchangeContractId required' }, { status: 400 });
+      return NextResponse.json({ error: 'Exchange contract not configured' }, { status: 500 });
     }
 
     // Fetch unsettled trades from Convex
