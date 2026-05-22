@@ -9,6 +9,7 @@ import ContextProvider from '../../context';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { ClerkProvider } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
+import { Analytics } from '@vercel/analytics/react';
 
 
 const appFont = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-app' });
@@ -80,6 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   {children}
                   <MobileBottomNav />
                   <SupportChat />
+                  <Analytics />
                 </ThemeProvider>
               </ContextProvider>
           </ConvexProvider>
