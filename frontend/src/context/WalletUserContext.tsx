@@ -21,7 +21,7 @@ export interface WalletUser {
   /** EVM address (0x…) — acts as the user's identity */
   publicAddress: string;
   /** Legacy field — same as publicAddress on Arc */
-  hederaAccountId: string;
+  accountId: string;
   /** Which wallet they used */
   walletType: 'metamask' | 'walletconnect' | 'hashpack' | 'blade' | 'kabila';
   /** userId stored in Convex managedWallets — uses address as the key */
