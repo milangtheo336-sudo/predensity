@@ -226,11 +226,11 @@ function WalletProfileTab({ walletUser }: { walletUser: NonNullable<ReturnType<t
                   </button>
                 </div>
               </div>
-              {walletUser.hederaAccountId && walletUser.hederaAccountId !== walletUser.publicAddress && (
+              {walletUser.accountId && walletUser.accountId !== walletUser.publicAddress && (
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground mb-2">Account ID</h4>
                   <code className="text-xs font-mono bg-muted px-2 py-1 rounded break-all">
-                    {walletUser.hederaAccountId}
+                    {walletUser.accountId}
                   </code>
                 </div>
               )}

@@ -7,7 +7,7 @@
 const SYMBOL_TO_COINGECKO_ID: Record<string, string> = {
   BTC: 'bitcoin',
   ETH: 'ethereum',
-  HBAR: 'hedera-hashgraph',
+  HBAR: 'hbar',  // CoinGecko slug
   SOL: 'solana',
   XRP: 'ripple',
   DOGE: 'dogecoin',
@@ -23,7 +23,7 @@ export function getCoinGeckoId(symbol: string): string {
   return SYMBOL_TO_COINGECKO_ID[symbol.toUpperCase()] || 'bitcoin';
 }
 
-export interface CoinGeckoHbarData {
+export interface CoinGeckoPriceData {
   usd: number;
   usd_24h_change: number;
   usd_24h_vol: number;
@@ -32,7 +32,7 @@ export interface CoinGeckoHbarData {
 }
 
 export interface CoinGeckoResponse {
-  'hedera-hashgraph': CoinGeckoHbarData;
+  [coinId: string]: CoinGeckoPriceData;
 }
 
 /**
@@ -71,11 +71,12 @@ export async function fetchHbarPriceAtTimestamp(
 }
 
 /**
- * Fetch current crypto price data from CoinGecko API (legacy HBAR endpoint)
+ * Fetch current HBAR price data from CoinGecko API
  */
 export async function fetchHbarPrice(): Promise<CoinGeckoResponse> {
+  const coinId = getCoinGeckoId('HBAR');
   const response = await fetch(
-    'https://api.coingecko.com/api/v3/simple/price?ids=hedera-hashgraph&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true&include_last_updated_at=true'
+    `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true&include_last_updated_at=true`
   );
 
   if (!response.ok) {

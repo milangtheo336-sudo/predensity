@@ -80,9 +80,9 @@ export async function POST(request: NextRequest) {
       magicEOAAddress: normalizedAddress,
       proxyWalletAddress: normalizedAddress,
       evmAddress: normalizedAddress,
-      hederaAccountId: normalizedAddress, // Backward compat field
+      accountId: normalizedAddress, // Backward compat field
       usdcBalance: '0',
-      hbarBalance: '0',
+      nativeBalance: '0',
       isActive: true,
       createdAt: Date.now(),
       lastActivity: Date.now(),

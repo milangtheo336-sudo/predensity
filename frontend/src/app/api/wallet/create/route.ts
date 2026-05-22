@@ -66,9 +66,9 @@ export async function POST(request: NextRequest) {
       magicEOAAddress,
       proxyWalletAddress: magicEOAAddress,
       evmAddress: magicEOAAddress,
-      hederaAccountId: magicEOAAddress, // Backward compat field — just store EVM address
+      accountId: magicEOAAddress, // Backward compat field — just store EVM address
       usdcBalance: '0',
-      hbarBalance: '0',
+      nativeBalance: '0',
       isActive: true,
       createdAt: Date.now(),
       lastActivity: Date.now(),
