@@ -217,15 +217,7 @@ export function SupportChat() {
   };
 
   if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-vibrant-purple hover:bg-vibrant-purple/90 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 z-50"
-        aria-label="Open support chat"
-      >
-        <MessageSquare className="w-6 h-6" />
-      </button>
-    );
+    return null;
   }
 
   return (
