@@ -133,8 +133,6 @@ if (process.env.TESTNET_ENDPOINT && process.env.TESTNET_OPERATOR_PRIVATE_KEY) {
   networks.testnet = {
     url: process.env.TESTNET_ENDPOINT,
     accounts: [process.env.TESTNET_OPERATOR_PRIVATE_KEY],
-    gasPrice: 2500000000000,
-    gas: 15000000,
     timeout: 180000,
   };
 }

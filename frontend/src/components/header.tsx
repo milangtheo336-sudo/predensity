@@ -254,10 +254,7 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          <Image src="/hashpack.jpg" alt="" width={20} height={20} className="rounded-full" />
           <Image src="/MetaMask-icon-fox.svg" alt="MetaMask" width={20} height={20} className="rounded-full" />
-          <Image src="/blade.png" alt="" width={20} height={20} className="rounded-full" />
-          <Image src="/kabila.jpg" alt="" width={20} height={20} className="rounded-full" />
         </div>
       </button>
 
@@ -695,7 +692,7 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
   ];
 
   // Filter out unsupported wallets from EIP-6963
-  const filteredEIP6963 = eip6963Wallets.filter((w: any) => !w.info.name.toLowerCase().includes('kabila'));
+  const filteredEIP6963 = eip6963Wallets;
 
   return (
     <div className="space-y-4">

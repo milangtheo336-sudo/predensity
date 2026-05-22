@@ -237,7 +237,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
     normalizedAddress: string,
     signature: string,
     nonce: string,
-    walletType: 'hashpack' | 'metamask' | 'blade' | 'kabila',
+    walletType: 'metamask' | 'walletconnect' | 'rabby' | 'trust',
   ) => {
     // Close the auth modal immediately and show the "Redirecting..." overlay
     // (same as Magic OAuth flow) while the slow proxy wallet creation happens
@@ -323,7 +323,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
         throw new Error('Failed to sign message. Please try again.');
       }
 
-      await finishWalletSignIn(normalizedAddress, signature, nonce, 'metamask');
+      await finishWalletSignIn(normalizedAddress, signature, nonce, 'walletconnect');
     } catch (err: any) {
       // User closed the modal — not an error worth showing
       if (err?.message?.includes('Modal closed') || err?.message?.includes('User closed')) return;
@@ -344,7 +344,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       let signature: string;
       try {
         setSigningWallet({ name: providerDetail.info.name, logoSrc: providerDetail.info.icon });
-        // Hex-encode for HashPack compatibility (MetaMask also accepts hex)
+        // Hex-encode the message for personal_sign
         const hexMsg = '0x' + Array.from(new TextEncoder().encode(message))
           .map(b => b.toString(16).padStart(2, '0')).join('');
         signature = await provider.request({ method: 'personal_sign', params: [hexMsg, normalizedAddress] });
@@ -358,10 +358,9 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       // Derive walletType from the provider's rdns / name
       const rdns = (providerDetail.info.rdns ?? '').toLowerCase();
       const wname = (providerDetail.info.name ?? '').toLowerCase();
-      let walletType: 'hashpack' | 'metamask' | 'blade' | 'kabila' = 'metamask';
-      if (rdns.includes('hashpack') || wname.includes('hashpack')) walletType = 'hashpack';
-      else if (rdns.includes('blade') || wname.includes('blade')) walletType = 'blade';
-      else if (rdns.includes('kabila') || wname.includes('kabila')) walletType = 'kabila';
+      let walletType: 'metamask' | 'walletconnect' | 'rabby' | 'trust' = 'metamask';
+      if (rdns.includes('rabby') || wname.includes('rabby')) walletType = 'rabby';
+      else if (rdns.includes('trust') || wname.includes('trust')) walletType = 'trust';
 
       await finishWalletSignIn(normalizedAddress, signature, nonce, walletType);
     } catch (err) {
