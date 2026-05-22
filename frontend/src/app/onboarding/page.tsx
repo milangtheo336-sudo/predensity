@@ -423,7 +423,7 @@ export default function OnboardingPage() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4 }}
-            className="flex-1 flex flex-col bg-gradient-to-b from-[#e8f5e9] to-[#c8e6c9]"
+            className="flex-1 flex flex-col bg-[#1e3a5f]"
           >
             <GamePlay
               match={MATCH}
@@ -443,7 +443,7 @@ export default function OnboardingPage() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4 }}
-            className="flex-1 flex flex-col bg-gradient-to-b from-[#e8f5e9] to-[#c8e6c9]"
+            className="flex-1 flex flex-col bg-[#1e3a5f]"
           >
             <WinnerPage
               match={MATCH}
