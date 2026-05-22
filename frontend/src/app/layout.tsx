@@ -55,30 +55,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="twitter:description" content="Trade on future events across crypto, politics, sports, and technology. Powered by Hedera." />
       </head>
       <body className={`${appFont.variable} font-sans`} style={{ backgroundColor: '#000' }}>
-        {/* Inline splash screen — visible before JS hydrates, animated so it never looks frozen */}
+        {/* Splash screen — slides up like a curtain to reveal page, never fades abruptly */}
         <style
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `
-              @keyframes splash-pulse {
+              @keyframes sp-pulse {
                 0%, 100% { opacity: 1; transform: scale(1); }
-                50% { opacity: 0.55; transform: scale(0.96); }
+                50% { opacity: 0.5; transform: scale(0.94); }
               }
-              @keyframes splash-fadein {
-                from { opacity: 0; transform: translateY(10px); }
+              @keyframes sp-in {
+                from { opacity: 0; transform: translateY(8px); }
                 to   { opacity: 1; transform: translateY(0); }
               }
-              @keyframes splash-spinner {
+              @keyframes sp-spin {
                 to { transform: rotate(360deg); }
               }
-              #splash-logo { animation: splash-pulse 1.6s ease-in-out infinite; }
-              #splash-name  { animation: splash-fadein 0.5s ease 0.15s both; }
-              #splash-spin  {
-                width: 28px; height: 28px; margin-top: 24px;
-                border: 2.5px solid rgba(124,58,237,0.25);
+              #splash { transition: transform 0.65s cubic-bezier(0.76,0,0.24,1); }
+              #splash-logo { animation: sp-pulse 1.8s ease-in-out infinite; }
+              #splash-name  { animation: sp-in 0.45s ease 0.1s both; }
+              #splash-ring  {
+                width: 32px; height: 32px; margin-top: 28px;
+                border: 2.5px solid rgba(124,58,237,0.2);
                 border-top-color: #7c3aed;
                 border-radius: 50%;
-                animation: splash-spinner 0.9s linear infinite;
+                animation: sp-spin 0.85s linear infinite;
               }
             `,
           }}
@@ -95,14 +96,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            transition: 'opacity 0.5s ease',
           }}
         >
           <img id="splash-logo" src="/predensity-logo.png" alt="" width={72} height={72} style={{ marginBottom: 16 }} />
-          <span id="splash-name" style={{ color: '#ffffff', fontSize: 22, fontWeight: 600, letterSpacing: 3 }}>
+          <span id="splash-name" style={{ color: '#fff', fontSize: 22, fontWeight: 600, letterSpacing: 3 }}>
             predensity
           </span>
-          <div id="splash-spin" />
+          <div id="splash-ring" />
         </div>
         <script
           dangerouslySetInnerHTML={{
@@ -112,30 +112,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 var isLight = theme === 'light' || (!theme && window.matchMedia('(prefers-color-scheme: light)').matches);
                 var s = document.getElementById('splash');
                 var logo = document.getElementById('splash-logo');
-                var name = document.getElementById('splash-name');
-                var spin = document.getElementById('splash-spin');
+                var txt  = document.getElementById('splash-name');
                 if (isLight && s) {
-                  s.style.backgroundColor = '#ffffff';
+                  s.style.backgroundColor = '#fff';
                   if (logo) logo.src = '/white the loading predensity logo.png';
-                  if (name) name.style.color = '#000000';
-                  if (spin) { spin.style.borderColor = 'rgba(124,58,237,0.18)'; spin.style.borderTopColor = '#7c3aed'; }
+                  if (txt)  txt.style.color = '#000';
                 }
-                var removed = false;
-                function removeSplash() {
-                  if (removed) return;
-                  removed = true;
-                  if (s) {
-                    s.style.opacity = '0';
-                    setTimeout(function() { if (s && s.parentNode) s.remove(); }, 520);
-                  }
+                var dismissed = false;
+                function dismiss() {
+                  if (dismissed || !s) return;
+                  dismissed = true;
+                  /* Slide the whole splash UP off screen — curtain raise */
+                  s.style.transform = 'translateY(-100%)';
+                  setTimeout(function() { if (s && s.parentNode) s.remove(); }, 700);
                 }
-                /* Minimum display time = 900ms so it never flickers */
-                var minTimer = setTimeout(function() {
-                  if (document.readyState === 'complete') removeSplash();
-                  else window.addEventListener('load', removeSplash, { once: true });
-                }, 900);
-                /* Safety cap — remove after 4s regardless */
-                setTimeout(removeSplash, 4000);
+                /* Wait for page to actually be interactive — DOMContentLoaded + 600ms min */
+                var ready = false;
+                var minDone = false;
+                function tryDismiss() { if (ready && minDone) dismiss(); }
+                setTimeout(function() { minDone = true; tryDismiss(); }, 600);
+                if (document.readyState !== 'loading') {
+                  ready = true;
+                } else {
+                  document.addEventListener('DOMContentLoaded', function() { ready = true; tryDismiss(); });
+                }
+                tryDismiss();
+                /* Hard cap: 3.5s max so it never blocks on slow connections */
+                setTimeout(dismiss, 3500);
               })();
             `,
           }}
