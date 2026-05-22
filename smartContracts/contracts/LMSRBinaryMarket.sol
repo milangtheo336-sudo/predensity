@@ -160,29 +160,26 @@ contract LMSRBinaryMarket is Ownable, ReentrancyGuard, Pausable {
         emit FeesWithdrawn(to, amount);
     }
 
-    /// @notice After resolution AND all winners have had the chance to claim,
-    ///         owner may reclaim the leftover subsidy+unclaimed winnings.
-    ///         Guarded by a cooldown (180 days) to protect late claimants.
+    /// @notice After resolution AND the late-claim cooldown (180 days), owner may
+    ///         reclaim THIS market's leftover subsidy + collateral. Bounded to the
+    ///         per-market accounting so multi-market balances never cross-contaminate.
+    ///         Unclaimed winner shares after 180 days are forfeited — this is the
+    ///         only way to recover the MM subsidy after a market concludes.
     function withdrawSurplus(uint256 marketId, address to) external onlyOwner nonReentrant {
         Market storage m = markets[marketId];
         require(m.state == State.RESOLVED, "NOT_RESOLVED");
         require(block.timestamp >= m.resolutionTimestamp + 180 days, "COOLDOWN");
         require(to != address(0), "TO_ZERO");
 
-        // Compute outstanding liability: every unclaimed share of winning side
-        // is worth 1 USDC. Since shares are per-user and we can't iterate, we
-        // track the liability implicitly: collateral + subsidy - already-paid.
-        // The safe bound is: m.collateral + m.subsidy >= max possible outstanding payout.
-        // After cooldown, remainder is withdrawable.
-        uint256 bal = usdc.balanceOf(address(this));
-        uint256 reserved = m.feesAccrued; // protect fees across all markets? No, per-market fees are separate.
-        // Subtract fees across all markets currently held (simple: bound by this market's fees).
-        require(bal > reserved, "NO_SURPLUS");
-        uint256 amount = bal - reserved;
+        // Per-market sweep only. Never touches balanceOf(this) — that would drain
+        // sibling markets' funds. subsidy + collateral are decremented as winners
+        // claim, so whatever remains here is strictly this market's orphaned value.
+        uint256 amount = m.subsidy + m.collateral;
+        require(amount > 0, "NO_SURPLUS");
 
-        // Zero out accounting so shares become unclaimable post-sweep.
-        m.collateral = 0;
         m.subsidy = 0;
+        m.collateral = 0;
+
         usdc.safeTransfer(to, amount);
         emit SurplusWithdrawn(marketId, to, amount);
     }
@@ -199,7 +196,7 @@ contract LMSRBinaryMarket is Ownable, ReentrancyGuard, Pausable {
         uint256 subsidyUsdcRaw,
         uint16 feeBps
     ) external onlyOwner whenNotPaused nonReentrant returns (uint256 marketId) {
-        require(resolutionTimestamp > block.timestamp + 60, "RESOLUTION_TOO_SOON");
+        require(resolutionTimestamp > block.timestamp + 300, "RESOLUTION_TOO_SOON");
         require(liquidityB >= MIN_B && liquidityB <= MAX_B, "B_OUT_OF_RANGE");
         require(feeBps <= MAX_FEE_BPS, "FEE_TOO_HIGH");
         require(bytes(question).length > 0 && bytes(question).length <= 512, "BAD_QUESTION");

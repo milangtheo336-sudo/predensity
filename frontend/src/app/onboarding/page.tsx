@@ -15,6 +15,12 @@ const CATEGORIES = [
 
 const AMOUNTS = ['5 USDC', '15 USDC', '50 USDC'];
 
+const MATCH = {
+  home: { name: 'England', flag: '/uk flag.avif' },
+  away: { name: 'USA', flag: '/us flag .avif' },
+  odds: { home: '38%', draw: 'Draw 29%', away: '33%' },
+};
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -42,7 +48,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen overflow-hidden relative flex flex-col font-sans"
-      style={{ backgroundColor: step === 'categories' ? '#141c22' : '#1a1a1a' }}>
+      style={{ backgroundColor: step === 'categories' ? '#0a1628' : '#1a1a1a' }}>
 
       {/* Skip */}
       <button
@@ -139,37 +145,28 @@ export default function OnboardingPage() {
             <div className="bg-white rounded-2xl p-5 w-full max-w-xs shadow-xl">
               <div className="flex justify-between items-center mb-4">
                 <div className="flex flex-col items-center gap-1">
-                  <span className="text-3xl">🇧🇷</span>
-                  <p className="text-xs font-medium text-gray-700">Brazil</p>
+                  <Image src={MATCH.home.flag} alt={MATCH.home.name} width={40} height={40} className="rounded-sm object-cover w-10 h-7" />
+                  <p className="text-xs font-medium text-gray-700">{MATCH.home.name}</p>
                 </div>
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-red-500 text-[10px] font-bold bg-red-50 px-2 py-0.5 rounded-full">LIVE 5'</span>
                   <p className="text-xl font-bold text-gray-900">0 : 0</p>
                 </div>
                 <div className="flex flex-col items-center gap-1">
-                  <span className="text-3xl">🇦🇷</span>
-                  <p className="text-xs font-medium text-gray-700">Argentina</p>
+                  <Image src={MATCH.away.flag} alt={MATCH.away.name} width={40} height={40} className="rounded-sm object-cover w-10 h-7" />
+                  <p className="text-xs font-medium text-gray-700">{MATCH.away.name}</p>
                 </div>
               </div>
 
               <div className="flex gap-2">
-                <button
-                  onClick={() => handleOddsClick('Brazil')}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 py-2 rounded-lg text-xs font-semibold text-gray-700 transition-colors"
-                >
-                  38%
+                <button onClick={() => handleOddsClick(MATCH.home.name)} className="flex-1 bg-gray-100 hover:bg-gray-200 py-2 rounded-lg text-xs font-semibold text-gray-700 transition-colors">
+                  {MATCH.odds.home}
                 </button>
-                <button
-                  onClick={() => handleOddsClick('Draw')}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 py-2 rounded-lg text-xs font-semibold text-gray-700 transition-colors"
-                >
-                  Draw 29%
+                <button onClick={() => handleOddsClick('Draw')} className="flex-1 bg-gray-100 hover:bg-gray-200 py-2 rounded-lg text-xs font-semibold text-gray-700 transition-colors">
+                  {MATCH.odds.draw}
                 </button>
-                <button
-                  onClick={() => handleOddsClick('Argentina')}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 py-2 rounded-lg text-xs font-semibold text-gray-700 transition-colors"
-                >
-                  33%
+                <button onClick={() => handleOddsClick(MATCH.away.name)} className="flex-1 bg-gray-100 hover:bg-gray-200 py-2 rounded-lg text-xs font-semibold text-gray-700 transition-colors">
+                  {MATCH.odds.away}
                 </button>
               </div>
             </div>
@@ -209,11 +206,14 @@ export default function OnboardingPage() {
 
               {/* Header */}
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-xl">
-                  {selectedOutcome === 'Brazil' ? '🇧🇷' : selectedOutcome === 'Argentina' ? '🇦🇷' : '⚖️'}
-                </span>
+                <Image
+                  src={selectedOutcome === MATCH.home.name ? MATCH.home.flag : selectedOutcome === MATCH.away.name ? MATCH.away.flag : '/predensity-logo.png'}
+                  alt={selectedOutcome}
+                  width={28} height={20}
+                  className="rounded-sm object-cover w-7 h-5"
+                />
                 <div>
-                  <p className="text-[10px] text-gray-400">Brazil vs Argentina</p>
+                  <p className="text-[10px] text-gray-400">{MATCH.home.name} vs {MATCH.away.name}</p>
                   <p className="text-sm font-bold text-gray-900 flex items-center gap-1">
                     {selectedOutcome}
                     <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" className="w-2.5 h-2.5 text-gray-400">
