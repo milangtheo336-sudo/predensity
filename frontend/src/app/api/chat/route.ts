@@ -44,7 +44,7 @@ PREDENSITY KNOWLEDGE BASE:
 **Deposits:**
 - Click the **Deposit** button in the header to fund your account.
 - Two deposit methods are available:
-  - **Connect Wallet**: Link a crypto wallet (HashPack, MetaMask, Blade, or Kabila) and transfer USDC directly.
+  - **Connect Wallet**: Link a crypto wallet (MetaMask or WalletConnect) and transfer USDC directly.
   - **M-Pesa**: For Kenyan users -- deposit via mobile money. KES is converted to USDC at the live exchange rate. You will receive an STK push on your phone to confirm.
 - When you sign up, a managed wallet is automatically created for you -- no setup needed.
 
