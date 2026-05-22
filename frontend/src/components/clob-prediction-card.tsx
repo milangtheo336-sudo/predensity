@@ -1109,7 +1109,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                 </div>
               ) : (
               /* Multi-outcome cards */
-              outcomes
+              <>
+              {outcomes
                 .filter((o, i) => {
                   const isEliminated = market.eliminatedOutcomes?.includes(i);
                   const isWinner = market.resolved && market.winningOutcome === i;
@@ -1366,6 +1367,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                     </div>
                   );
                 })}
+              </>
               )}
               
               {/* Hide resolved toggle */}
