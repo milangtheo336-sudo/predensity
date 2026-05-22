@@ -18,8 +18,8 @@ A Next.js-based prediction market platform with non-custodial wallet integration
 - **Framework**: Next.js 14 (App Router)
 - **Authentication**: Magic Link SDK
 - **Database**: Convex
-- **Blockchain**: Arc (EVM, chain ID 5042002)
-- **Wallet**: Magic Link / Browser Wallets
+- **Blockchain**: Hedera Hashgraph
+- **Wallet**: Hashgraph React Wallets
 - **Styling**: Tailwind CSS
 - **UI Components**: Radix UI
 - **State Management**: React Context + Convex
@@ -30,7 +30,7 @@ A Next.js-based prediction market platform with non-custodial wallet integration
 - npm or yarn
 - Convex account
 - Magic Link account
-- Arc RPC endpoint (for development)
+- Hedera testnet account (for development)
 
 ## Installation
 
