@@ -28,6 +28,7 @@ export function MagicProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = async () => {
     try {
       const userInfo = await getUserInfo();
+      console.log('[MagicContext] refreshUser - userInfo:', userInfo);
       if (userInfo) {
         setUser(userInfo);
         // Cache user data to prevent loss on page navigation
@@ -38,12 +39,14 @@ export function MagicProvider({ children }: { children: React.ReactNode }) {
       }
       setIsAuthenticating(false);
     } catch (error) {
+      console.error('[MagicContext] refreshUser error:', error);
       // If getUserInfo fails, check if we have cached data
       const cachedUser = sessionStorage.getItem('magic-user-cache');
       if (cachedUser) {
         try {
           const parsed = JSON.parse(cachedUser);
           if (parsed.email && parsed.publicAddress && parsed.issuer) {
+            console.log('[MagicContext] Using cached user:', parsed);
             setUser(parsed);
             setIsAuthenticating(false);
             return;
