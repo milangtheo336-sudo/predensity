@@ -3,6 +3,7 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
+import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 import ContextProvider from '../../context';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { ClerkProvider } from '@clerk/nextjs';
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   disableTransitionOnChange
                 >
                   {children}
+                  <MobileBottomNav />
                 </ThemeProvider>
               </ContextProvider>
           </ConvexProvider>
