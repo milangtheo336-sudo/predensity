@@ -148,7 +148,7 @@ export default function GamePlay({
               height={32}
               className="rounded object-cover w-12 h-8"
             />
-            <p className="text-xs font-semibold text-[#1e3a5f]">{match.home.name}</p>
+            <p className="text-xs font-semibold text-white">{match.home.name}</p>
           </div>
 
           {/* Center: time + score */}
@@ -158,15 +158,15 @@ export default function GamePlay({
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.1 }}
-              className="text-2xl font-bold text-[#1e3a5f]"
+              className="text-2xl font-bold text-white"
             >
               {minute}'
             </motion.p>
-            <p className="text-[10px] text-[#1e3a5f]/60">of 90 mins</p>
+            <p className="text-[10px] text-white/60">of 90 mins</p>
             <motion.p
               animate={goalFlash ? { scale: [1, 1.3, 1] } : {}}
               transition={{ duration: 0.3 }}
-              className="text-3xl font-extrabold text-[#1e3a5f] mt-1"
+              className="text-3xl font-extrabold text-white mt-1"
             >
               {score.home} : {score.away}
             </motion.p>
@@ -181,35 +181,35 @@ export default function GamePlay({
               height={32}
               className="rounded object-cover w-12 h-8"
             />
-            <p className="text-xs font-semibold text-[#1e3a5f]">{match.away.name}</p>
+            <p className="text-xs font-semibold text-white">{match.away.name}</p>
           </div>
         </div>
 
         {/* Progress bar */}
-        <div className="h-1.5 bg-[#1e3a5f]/20 rounded-full overflow-hidden mb-3">
+        <div className="h-1.5 bg-white/20 rounded-full overflow-hidden mb-3">
           <motion.div
-            className="h-full bg-[#1e3a5f] rounded-full"
+            className="h-full bg-white rounded-full"
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.05, ease: 'linear' }}
           />
         </div>
 
         {/* Prediction label */}
-        <p className="text-center text-sm font-semibold text-[#1e3a5f]">
+        <p className="text-center text-sm font-semibold text-white">
           Your prediction:{' '}
-          <span className="text-[#1e3a5f] font-extrabold">{getOutcomeDisplay()}</span>
+          <span className="text-[#3fdc8c] font-extrabold">{getOutcomeDisplay()}</span>
         </p>
       </div>
 
       {/* Bet info */}
       <div className="w-full max-w-xs mt-6 space-y-2">
-        <div className="flex justify-between items-center bg-white/30 rounded-xl px-4 py-3">
-          <span className="text-sm text-[#1e3a5f]/70">Demo bet:</span>
-          <span className="font-bold text-[#1e3a5f]">{selectedAmount} USDC</span>
+        <div className="flex justify-between items-center bg-white/10 rounded-xl px-4 py-3">
+          <span className="text-sm text-white/70">Demo bet:</span>
+          <span className="font-bold text-white">{selectedAmount} USDC</span>
         </div>
-        <div className="flex justify-between items-center bg-white/30 rounded-xl px-4 py-3">
-          <span className="text-sm text-[#1e3a5f]/70">Potential win:</span>
-          <span className="font-bold text-[#1e3a5f]">{winnings} USDC</span>
+        <div className="flex justify-between items-center bg-white/10 rounded-xl px-4 py-3">
+          <span className="text-sm text-white/70">Potential win:</span>
+          <span className="font-bold text-[#3fdc8c]">{winnings} USDC</span>
         </div>
       </div>
     </div>
