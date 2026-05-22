@@ -1134,12 +1134,13 @@ export function PredictionCard({
               console.log('[handlePlaceBet] Targeted match via EIP-6963:', targeted.info.name);
             } else if (addrs.length) {
               throw new Error(
-                `Your wallet returned account ${addrs[0].slice(0, 8)}… but you signed in with ${ownerAddress.slice(0, 8)}…. ` +
-                `Please switch to the correct account in your wallet and try again.`
+                `Wrong account selected in ${targeted.info.name}.\n\n` +
+                `You signed in with: ${ownerAddress}\n\n` +
+                `Please open ${targeted.info.name}, switch to that account, then try placing the bet again.`
               );
             }
           } catch (e: any) {
-            if (e.message?.includes('signed in with')) throw e;
+            if (e.message?.includes('Wrong account selected')) throw e;
             // Targeted wallet rejected — fall through to EIP-6963 scan
           }
         }
@@ -1180,9 +1181,9 @@ export function PredictionCard({
 
         if (!signingProvider) {
           throw new Error(
-            `Could not find an active wallet for address ${ownerAddress.slice(0, 8)}…. ` +
-            `Please make sure ${walletUser.walletType ?? 'your wallet'} is unlocked, ` +
-            `and the correct account (${ownerAddress.slice(0, 8)}…) is selected.`
+            `Could not find your signed-in account in any wallet.\n\n` +
+            `Expected: ${ownerAddress}\n\n` +
+            `Please open ${walletUser.walletType ?? 'your wallet'}, switch to that account, then try again.`
           );
         }
 
