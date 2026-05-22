@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     const keyHex = OPERATOR_KEY.startsWith('0x') ? OPERATOR_KEY.slice(2) : OPERATOR_KEY;
     const operatorKey = PrivateKey.fromStringECDSA(keyHex);
     
-    let actualAccountId: AccountId;
+    let actualAccountId: AccountId = evmAccountId;
 
     try {
       // Check if account exists and get the actual account ID
