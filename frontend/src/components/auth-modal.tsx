@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMagic } from '@/context/MagicContext';
-import { getDIDToken, getMagic } from '@/lib/magic';
+import { getDIDToken, getMagic, getUserInfo } from '@/lib/magic';
 import { useWallet } from '@buidlerlabs/hashgraph-react-wallets';
 import {
   HashpackConnector,
@@ -176,29 +176,29 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       // Save last used method
       localStorage.setItem('lastUsedAuthMethod', 'email');
       
-      // Step 1: Login with Magic Link
+      // Step 1: Login with Magic Link (this triggers OTP flow)
       await login(email);
       
-      // Step 2: Wait a moment for Magic Link to fully initialize
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Step 2: Poll for user state to be available (up to 10 seconds)
+      let attempts = 0;
+      const maxAttempts = 20; // 20 attempts * 500ms = 10 seconds
+      let currentUser = user;
       
-      // Step 3: Get user info AFTER login completes
-      const { getUserInfo } = await import('@/lib/magic');
-      const userInfo = await getUserInfo();
-      
-      if (!userInfo || !userInfo.issuer || !userInfo.publicAddress) {
-        // If we can't get user info, try refreshing the user state
+      while ((!currentUser || !currentUser.issuer || !currentUser.publicAddress) && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        // Trigger a re-check by calling refreshUser
         await refreshUser();
-        
-        // Check if user is now available in context
-        const { user: contextUser } = await import('@/context/MagicContext').then(m => ({ user: null }));
-        if (contextUser) {
-          console.log('[auth] User available in context, closing modal');
-          onClose();
-          window.location.reload();
-          return;
+        // Get fresh user from Magic directly
+        const userInfo = await getUserInfo();
+        if (userInfo && userInfo.issuer && userInfo.publicAddress) {
+          currentUser = userInfo;
+          break;
         }
-        
+        attempts++;
+      }
+      
+      // Step 3: Verify we have user info
+      if (!currentUser || !currentUser.issuer || !currentUser.publicAddress) {
         throw new Error('Failed to get user information from Magic Link. Please try again.');
       }
       
@@ -213,9 +213,9 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
           'Authorization': `Bearer ${didToken}`,
         },
         body: JSON.stringify({
-          userId: userInfo.issuer,
-          email: userInfo.email || email,
-          magicEOAAddress: userInfo.publicAddress,
+          userId: currentUser.issuer,
+          email: currentUser.email || email,
+          magicEOAAddress: currentUser.publicAddress,
         }),
       });
 
@@ -225,19 +225,34 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
         // Wallet already exists - this is fine
         if (response.status === 409) {
           console.log('[auth] Wallet already exists, logging in...');
-          await refreshUser();
           onClose();
-          window.location.reload();
           return;
         }
         
         throw new Error(data.error || 'Failed to create wallet');
       }
 
-      // Success - refresh user and close modal
-      await refreshUser();
+      // Step 6: Auto-associate USDC token (new users only)
+      // This eliminates friction - user can immediately receive USDC
+      try {
+        const { associateToken } = await import('@/lib/magic');
+        const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+        const usdcTokenId = network === 'mainnet' ? '0.0.456858' : '0.0.8229951';
+        
+        console.log('[auth] Auto-associating USDC token...');
+        await associateToken(usdcTokenId);
+        console.log('[auth] USDC token associated successfully');
+      } catch (associateErr) {
+        console.error('[auth] Token association failed:', associateErr);
+        // Don't fail the signup - user can associate later
+        // Show a non-blocking warning
+        setError('Account created, but token association failed. You may need to associate USDC manually.');
+        setTimeout(() => setError(''), 5000);
+      }
+
+      // Success - close modal
+      console.log('[auth] Login successful, closing modal');
       onClose();
-      window.location.reload();
     } catch (err) {
       console.error('[auth] Error:', err);
       setError(err instanceof Error ? err.message : 'Authentication failed');
@@ -343,7 +358,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
         wallets.push({
           name: 'Rabby Wallet',
           type: 'metamask' as const,
-          icon: '/rabby wallet.png',
+          icon: '/rabby.svg',
         });
       }
       
@@ -361,7 +376,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
         wallets.push({
           name: 'Trust Wallet',
           type: 'metamask' as const,
-          icon: '/Trust_Stacked Logo_Blue.png',
+          icon: '/trust.svg',
         });
       }
       
@@ -398,6 +413,35 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
           setView('main');
         }}
       />
+      
+      {/* Loading Overlay - shown during email OTP processing */}
+      {isLoading && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md">
+          <div className="flex flex-col items-center gap-6">
+            {/* Magic Logo with spinning ring */}
+            <div className="relative">
+              {/* Spinning ring */}
+              <div className="w-24 h-24 rounded-full border-4 border-purple-500/20 border-t-purple-500 animate-spin" />
+              {/* Magic Logo in center */}
+              <div className="absolute inset-0 flex items-center justify-center p-6">
+                <Image 
+                  src="/1-Icon_Magic_Color.png" 
+                  alt="Magic" 
+                  width={48} 
+                  height={48}
+                  className="object-contain"
+                />
+              </div>
+            </div>
+            
+            {/* Loading text */}
+            <div className="text-center">
+              <p className="text-white text-lg font-medium mb-2">Authenticating...</p>
+              <p className="text-gray-400 text-sm">Please wait while we verify your login</p>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Modal */}
       <div 
@@ -494,11 +538,6 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
                       </svg>
                     </button>
                   </div>
-                  {isLoading && (
-                    <p className="text-xs text-gray-400 text-center">
-                      Check your email for the login code. It may take a minute to arrive.
-                    </p>
-                  )}
                 </form>
 
                 {/* Passkey */}
