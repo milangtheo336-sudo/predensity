@@ -48,6 +48,11 @@ export default function AuthCallback() {
         
         const email = result.magic?.userMetadata?.email;
         const issuer = result.magic?.userMetadata?.issuer;
+        // OAuth profile picture (Google, etc.)
+        const picture: string | undefined =
+          result.oauth?.userInfo?.picture ||
+          result.magic?.userMetadata?.oauthProvider?.userInfo?.picture ||
+          undefined;
         
         // If still no wallet address, try to get it from the issuer DID
         if (!walletAddress && issuer) {
@@ -135,12 +140,13 @@ export default function AuthCallback() {
         sessionStorage.setItem('magic-user-address', walletAddress);
         sessionStorage.setItem('magic-user-issuer', issuer);
         
-        // Cache full user object
-        const userData = {
+        // Cache full user object (include OAuth picture if available)
+        const userData: Record<string, string> = {
           email,
           publicAddress: walletAddress,
           issuer,
         };
+        if (picture) userData.picture = picture;
         sessionStorage.setItem('magic-user-cache', JSON.stringify(userData));
 
         setStatus('Success! Redirecting...');

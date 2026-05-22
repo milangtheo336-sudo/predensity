@@ -7,6 +7,7 @@ interface MagicUser {
   email: string;
   publicAddress: string;
   issuer: string;
+  picture?: string; // Google/OAuth profile photo URL
 }
 
 interface MagicContextType {
