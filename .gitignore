@@ -70,5 +70,11 @@ frontend/**/*.test.tsx
 frontend/**/*.spec.ts
 frontend/**/*.spec.tsx
 
+# CLOB system (not in use)
+frontend/src/app/api/clob/
+frontend/src/components/clob-*
+frontend/src/lib/clob-*
+frontend/convex/clob*
+
 # Kiro/Claude worktrees
 .claude/

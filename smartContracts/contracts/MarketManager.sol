@@ -17,17 +17,17 @@ import "@openzeppelin/contracts/security/Pausable.sol";
  *   - 1 USDC splits into 1 of each outcome token (complete set)
  *   - Resolution picks one winning outcome
  *   - Winning token holders redeem 1:1 for USDC
- *   - All token operations use HTS pre-compiles for native Hedera performance
+ *   - All token operations use HTS pre-compiles for native Arc performance
  */
 
-// Hedera HTS System Contract interface (pre-compile at 0x167)
-interface IHederaTokenService {
+// Arc HTS System Contract interface (pre-compile at 0x167)
+interface ITokenService {
     struct TokenKey {
         uint256 keyType;
         bytes keyValue;
     }
 
-    struct HederaToken {
+    struct TokenInfo {
         string name;
         string symbol;
         address treasury;
@@ -46,7 +46,7 @@ interface IHederaTokenService {
     }
 
     function createFungibleToken(
-        HederaToken memory token,
+        TokenInfo memory token,
         int64 initialTotalSupply,
         int32 decimals
     ) external payable returns (int64 responseCode, address tokenAddress);
@@ -85,7 +85,7 @@ interface IERC20 {
 }
 
 contract MarketManager is Ownable, ReentrancyGuard, Pausable {
-    // HTS pre-compile address on Hedera
+    // HTS pre-compile address on Arc
     address constant HTS_PRECOMPILE = address(0x167);
 
     // USDC token address (EVM format)
@@ -192,7 +192,7 @@ contract MarketManager is Ownable, ReentrancyGuard, Pausable {
         totalFees += fee;
 
         // Transfer USDC from operator to this contract using HTS
-        IHederaTokenService hts = IHederaTokenService(HTS_PRECOMPILE);
+        ITokenService hts = ITokenService(HTS_PRECOMPILE);
         int64 rc = hts.transferToken(
             usdcToken,
             msg.sender,
@@ -245,7 +245,7 @@ contract MarketManager is Ownable, ReentrancyGuard, Pausable {
         require(tokenAmount > 0, "Amount must be > 0");
         require(tokenAmount <= m.totalCollateral, "Exceeds collateral");
 
-        IHederaTokenService hts = IHederaTokenService(HTS_PRECOMPILE);
+        ITokenService hts = ITokenService(HTS_PRECOMPILE);
         int64[] memory empty = new int64[](0);
 
         // Transfer and burn each outcome token from operator
@@ -321,7 +321,7 @@ contract MarketManager is Ownable, ReentrancyGuard, Pausable {
 
         address winningToken = m.outcomeTokens[m.winningOutcome];
 
-        IHederaTokenService hts = IHederaTokenService(HTS_PRECOMPILE);
+        ITokenService hts = ITokenService(HTS_PRECOMPILE);
         int64[] memory empty = new int64[](0);
 
         // Transfer winning tokens from operator to this contract
@@ -370,7 +370,7 @@ contract MarketManager is Ownable, ReentrancyGuard, Pausable {
         totalFees = 0;
         
         // Transfer fees using HTS
-        IHederaTokenService hts = IHederaTokenService(HTS_PRECOMPILE);
+        ITokenService hts = ITokenService(HTS_PRECOMPILE);
         int64 rc = hts.transferToken(
             usdcToken,
             address(this),
@@ -397,10 +397,10 @@ contract MarketManager is Ownable, ReentrancyGuard, Pausable {
 
 
     /**
-     * @notice Associate with a Hedera token (required before receiving HTS tokens).
-     * On Hedera, contracts must explicitly associate with tokens.
+     * @notice Associate with a Arc token (required before receiving HTS tokens).
+     * On Arc, contracts must explicitly associate with tokens.
      * 
-     * Hedera Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
+     * Arc Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
      */
     function associateToken(address token) external onlyOwner {
         // Call HTS associateToken function

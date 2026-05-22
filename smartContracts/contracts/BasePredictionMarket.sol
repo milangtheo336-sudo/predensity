@@ -484,10 +484,10 @@ abstract contract BasePredictionMarket is Ownable {
     }
 
     /**
-     * @notice Associate with a Hedera token (required before receiving HTS tokens like USDC).
-     * On Hedera, contracts must explicitly associate with tokens.
+     * @notice Associate with a Arc token (required before receiving HTS tokens like USDC).
+     * On Arc, contracts must explicitly associate with tokens.
      * 
-     * Hedera Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
+     * Arc Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
      */
     function associateToken(address token) external onlyOwner {
         // Call HTS associateToken function
