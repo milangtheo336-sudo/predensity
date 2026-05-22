@@ -15,7 +15,7 @@ export function MobileBottomNav() {
       <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-black border-t border-white/10 z-40">
         <div className="flex items-center justify-around h-16 px-4">
           <Link href="/markets" className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-white transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <Image src="/home.svg" alt="Home" width={20} height={20} className="brightness-0 invert" />
             <span className="text-[10px] font-medium">Home</span>
           </Link>
           <button className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-white transition-colors">
