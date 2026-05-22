@@ -47,17 +47,26 @@ export function getMagic(): any {
       // Dynamic imports to avoid SSR issues
       const { Magic } = require('magic-sdk');
       const { OAuthExtension } = require('@magic-ext/oauth2');
+      const { HederaExtension } = require('@magic-ext/hedera');
       
-      // Initialize Magic with default Ethereum provider
-      // We'll use Hedera's JSON-RPC separately for contract interactions
+      const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+      
+      // Initialize Magic with OAuth2 and Hedera extensions
       magicInstance = new Magic(publishableKey, {
-        extensions: {
-          oauth2: new OAuthExtension(),
-        },
+        extensions: [
+          new OAuthExtension(),
+          new HederaExtension({
+            network: network === 'mainnet' ? 'mainnet' : 'testnet'
+          })
+        ],
       });
       
       if (!magicInstance.oauth2) {
         throw new Error('OAuth2 extension not initialized');
+      }
+      
+      if (!magicInstance.hedera) {
+        throw new Error('Hedera extension not initialized');
       }
     } catch (error) {
       throw error;
@@ -114,17 +123,36 @@ export async function getUserInfo(): Promise<{
   if (!loggedIn) return null;
   
   const metadata = await magic.user.getInfo();
+  console.log('[getUserInfo] Raw metadata:', metadata);
   
   // If publicAddress is not in metadata, get it from eth_accounts
   let publicAddress = (metadata as any).publicAddress;
+  console.log('[getUserInfo] publicAddress from metadata:', publicAddress);
+  
   if (!publicAddress) {
     try {
       const provider = (magic as any).rpcProvider;
       const accounts = await provider.request({ method: 'eth_accounts' });
+      console.log('[getUserInfo] eth_accounts response:', accounts);
       publicAddress = accounts[0];
     } catch (error) {
-      console.error('[getUserInfo] Failed to get publicAddress:', error);
+      console.error('[getUserInfo] Failed to get publicAddress from eth_accounts:', error);
     }
+  }
+  
+  // If still no address, extract from issuer DID
+  if (!publicAddress) {
+    const issuer = (metadata as any).issuer;
+    console.log('[getUserInfo] Trying to extract from issuer:', issuer);
+    if (issuer && issuer.startsWith('did:ethr:')) {
+      publicAddress = issuer.replace('did:ethr:', '');
+      console.log('[getUserInfo] Extracted address from issuer:', publicAddress);
+    }
+  }
+  
+  if (!publicAddress) {
+    console.error('[getUserInfo] Could not determine publicAddress');
+    return null;
   }
   
   return {
@@ -360,51 +388,133 @@ export async function getTokenBalance(
 
 /**
  * Associate USDC token with user's Magic Link wallet.
- * User must sign this transaction via Magic Link.
  * 
- * On Hedera, accounts must explicitly associate with tokens before receiving them.
- * This transaction MUST be signed by the account owner (Magic Link wallet).
+ * IMPORTANT: On Hedera, token association MUST be signed by the account owner.
+ * The operator cannot do this on behalf of the user, even during initial setup.
+ * 
+ * This function is a placeholder. Token association will happen automatically
+ * when the user first tries to deposit USDC - the deposit transaction will
+ * trigger the association if needed.
  * 
  * @param tokenId USDC token ID (e.g., '0.0.8229951' for testnet)
  * @returns Transaction hash
  */
 export async function associateToken(tokenId: string): Promise<string> {
-  const magic = getMagic();
-  const provider = (magic as any).rpcProvider;
+  console.log('[associateToken] Token association will happen on first deposit for token:', tokenId);
   
-  // Get user's address
-  const accounts = await provider.request({ method: 'eth_accounts' });
-  const userAddress = accounts[0];
+  // This is a placeholder - actual association happens during first deposit
+  // when user signs the transaction via Magic Link
+  return 'pending-first-deposit';
+}
+
+/**
+ * Associate a token with user's Magic Link wallet.
+ * 
+ * On Hedera, token association MUST be signed by the account owner.
+ * Uses Magic Link's MagicWallet pattern with Hiero SDK for native Hedera transactions.
+ * 
+ * @param tokenId Hedera token ID (e.g., '0.0.8229951')
+ * @returns Transaction hash
+ */
+export async function associateTokenViaMagic(tokenId: string): Promise<string> {
+  console.log('[associateTokenViaMagic] Associating token', tokenId);
   
-  if (!userAddress) {
-    throw new Error('No account found. Please log in.');
+  try {
+    const magic = getMagic();
+    
+    // Step 1: Get user's public key from Magic
+    const { publicKeyDer } = await magic.hedera.getPublicKey();
+    console.log('[associateTokenViaMagic] Got public key');
+    
+    // Step 2: Get user's address
+    const userInfo = await getUserInfo();
+    if (!userInfo?.publicAddress) {
+      throw new Error('User not logged in');
+    }
+    
+    // Step 3: Create MagicWallet instance
+    const { MagicWallet, MagicProvider } = await import('@/lib/magic-hedera-wallet');
+    const { TokenAssociateTransaction, TokenId, AccountId } = await import('@hashgraph/sdk');
+    
+    const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+    const magicSign = (message: Uint8Array) => magic.hedera.sign(message);
+    const magicWallet = new MagicWallet(
+      userInfo.publicAddress,
+      new MagicProvider(network as 'mainnet' | 'testnet'),
+      publicKeyDer,
+      magicSign
+    );
+    
+    console.log('[associateTokenViaMagic] MagicWallet created');
+    
+    // Step 4: Build token association transaction
+    const accountId = AccountId.fromEvmAddress(0, 0, userInfo.publicAddress);
+    let transaction = new TokenAssociateTransaction()
+      .setAccountId(accountId)
+      .setTokenIds([TokenId.fromString(tokenId)])
+      .setNodeAccountIds([new AccountId(3)]);
+    
+    console.log('[associateTokenViaMagic] Transaction built, freezing...');
+    
+    // Step 5: Freeze and sign transaction with MagicWallet
+    transaction = await transaction.freezeWithSigner(magicWallet as any);
+    transaction = await transaction.signWithSigner(magicWallet as any);
+    
+    console.log('[associateTokenViaMagic] Transaction signed, executing...');
+    
+    // Step 6: Execute transaction
+    const result = await transaction.executeWithSigner(magicWallet as any);
+    const receipt = await result.getReceiptWithSigner(magicWallet as any);
+    
+    console.log('[associateTokenViaMagic] Transaction status:', receipt.status.toString());
+    
+    if (receipt.status.toString() === 'SUCCESS') {
+      return result.transactionId.toString();
+    } else {
+      throw new Error(`Transaction failed with status: ${receipt.status.toString()}`);
+    }
+  } catch (error: any) {
+    console.error('[associateTokenViaMagic] Error:', error);
+    
+    // Check if token is already associated
+    if (error.message?.includes('TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT')) {
+      console.log('[associateTokenViaMagic] Token already associated');
+      return 'already-associated';
+    }
+    
+    throw new Error(`Token association failed: ${error.message || 'Unknown error'}`);
   }
+}
+
+/**
+ * Approve USDC spending for a contract.
+ * User signs the approval transaction via Magic Link.
+ * 
+ * @param spenderAddress Contract address to approve
+ * @param amount Amount to approve (in smallest unit, e.g., 6 decimals for USDC)
+ * @returns Transaction hash
+ */
+export async function approveToken(
+  spenderAddress: string,
+  amount: string
+): Promise<string> {
+  const signer = await getMagicSigner();
   
-  console.log('[associateToken] Associating token', tokenId, 'with address', userAddress);
+  // ERC-20 approve function
+  const tokenAbi = ['function approve(address spender, uint256 amount) returns (bool)'];
+  const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+  const usdcAddress = network === 'mainnet' 
+    ? '0x000000000000000000000000000000000006f89a' // Mainnet USDC
+    : '0x0000000000000000000000000000000000007daf'; // Testnet USDC (0.0.8229951)
   
-  // Call backend to handle token association
-  // Backend will build the transaction and return it for user to sign
-  const didToken = await getDIDToken();
+  const tokenContract = new ethers.Contract(usdcAddress, tokenAbi, signer);
   
-  const response = await fetch('/api/wallet/associate-token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${didToken}`,
-    },
-    body: JSON.stringify({
-      tokenId,
-      userAddress,
-    }),
-  });
+  console.log('[approveToken] Approving', amount, 'for', spenderAddress);
   
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Token association failed');
-  }
+  const tx = await tokenContract.approve(spenderAddress, amount);
+  await tx.wait();
   
-  const data = await response.json();
-  console.log('[associateToken] Token association successful:', data.transactionId);
+  console.log('[approveToken] Approval successful:', tx.hash);
   
-  return data.transactionId;
+  return tx.hash;
 }
