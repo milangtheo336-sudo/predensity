@@ -22,21 +22,34 @@ const appFont = Inter({
 export const metadata: Metadata = {
   title: 'Predensity - Decentralized Prediction Market',
   description:
-    'Predensity is a decentralized prediction market on Hedera. Stay informed and profit from your knowledge by trading on future events across crypto, politics, sports, and technology.',
+    'Predensity is a decentralized prediction market on Hedera. Trade on crypto prices, politics, sports, and technology outcomes. Earn rewards by predicting the future.',
   manifest: '/manifest.json',
   themeColor: '#7c3aed',
+  keywords: ['prediction market', 'crypto predictions', 'decentralized', 'Hedera', 'HBAR', 'USDC', 'sports betting', 'politics market', 'web3'],
   openGraph: {
     title: 'Predensity - Decentralized Prediction Market',
     description:
       'Trade on future events across crypto, politics, sports, and technology. Powered by Hedera.',
     type: 'website',
     siteName: 'Predensity',
+    url: 'https://predensity.com',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Predensity - Decentralized Prediction Market',
     description:
       'Trade on future events across crypto, politics, sports, and technology. Powered by Hedera.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
+  alternates: {
+    canonical: 'https://predensity.com',
   },
 };
 
