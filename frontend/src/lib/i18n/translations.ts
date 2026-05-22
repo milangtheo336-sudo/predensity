@@ -151,6 +151,7 @@ export interface Translations {
   closedPositions: string;
   searchPositions: string;
   result: string;
+  market: string;
   totalTraded: string;
   amount: string;
   staked: string;
@@ -247,7 +248,7 @@ const T: Record<LangCode, Translations> = {
     profitLoss: 'Profit/Loss', positions: 'Positions', activity: 'Activity', active: 'Active', closedPositions: 'Closed',
     searchPositions: 'Search positions', result: 'Result', totalTraded: 'Total Traded', amount: 'Amount',
     staked: 'staked', noActivePositions: 'No active positions.', joined: 'Joined', total: 'total',
-    averagePrice: 'Average Price', alphabetically: 'Alphabetically', date: 'Date',
+    market: 'Market', averagePrice: 'Average Price', alphabetically: 'Alphabetically', date: 'Date',
   },
   ko: {
     portfolio: '포트폴리오', balance: '잔액', deposit: '입금', withdraw: '출금',
@@ -294,7 +295,7 @@ const T: Record<LangCode, Translations> = {
     profitLoss: '수익/손실', positions: '포지션', activity: '활동', active: '활성', closedPositions: '종료됨',
     searchPositions: '포지션 검색', result: '결과', totalTraded: '총 거래량', amount: '금액',
     staked: '스테이킹됨', noActivePositions: '활성 포지션이 없습니다.', joined: '가입', total: '합계',
-    averagePrice: '평균 가격', alphabetically: '알파벳순', date: '날짜',
+    market: '마켓', averagePrice: '평균 가격', alphabetically: '알파벳순', date: '날짜',
   },
   zh: {
     portfolio: '投资组合', balance: '余额', deposit: '充值', withdraw: '提现',
@@ -341,7 +342,7 @@ const T: Record<LangCode, Translations> = {
     profitLoss: '盈亏', positions: '持仓', activity: '活动', active: '活跃', closedPositions: '已关闭',
     searchPositions: '搜索持仓', result: '结果', totalTraded: '总交易额', amount: '金额',
     staked: '已质押', noActivePositions: '暂无活跃持仓。', joined: '加入于', total: '合计',
-    averagePrice: '平均价格', alphabetically: '按字母排序', date: '日期',
+    market: '市场', averagePrice: '平均价格', alphabetically: '按字母排序', date: '日期',
   },
   ru: {
     portfolio: 'Портфель', balance: 'Баланс', deposit: 'Пополнить', withdraw: 'Вывести',
@@ -388,7 +389,7 @@ const T: Record<LangCode, Translations> = {
     profitLoss: 'Прибыль/Убыток', positions: 'Позиции', activity: 'Активность', active: 'Активные', closedPositions: 'Закрытые',
     searchPositions: 'Поиск позиций', result: 'Результат', totalTraded: 'Всего торговано', amount: 'Сумма',
     staked: 'поставлено', noActivePositions: 'Нет активных позиций.', joined: 'Зарегистрирован', total: 'итого',
-    averagePrice: 'Средняя цена', alphabetically: 'По алфавиту', date: 'Дата',
+    market: 'Рынок', averagePrice: 'Средняя цена', alphabetically: 'По алфавиту', date: 'Дата',
   },
   es: {
     portfolio: 'Portafolio', balance: 'Saldo', deposit: 'Depositar', withdraw: 'Retirar',
@@ -435,7 +436,7 @@ const T: Record<LangCode, Translations> = {
     profitLoss: 'Ganancia/Pérdida', positions: 'Posiciones', activity: 'Actividad', active: 'Activo', closedPositions: 'Cerradas',
     searchPositions: 'Buscar posiciones', result: 'Resultado', totalTraded: 'Total operado', amount: 'Cantidad',
     staked: 'apostado', noActivePositions: 'Sin posiciones activas.', joined: 'Unido', total: 'total',
-    averagePrice: 'Precio promedio', alphabetically: 'Alfabéticamente', date: 'Fecha',
+    market: 'Mercado', averagePrice: 'Precio promedio', alphabetically: 'Alfabéticamente', date: 'Fecha',
   },
   fr: {
     portfolio: 'Portefeuille', balance: 'Solde', deposit: 'Déposer', withdraw: 'Retirer',
@@ -482,7 +483,7 @@ const T: Record<LangCode, Translations> = {
     profitLoss: 'Profit/Perte', positions: 'Positions', activity: 'Activité', active: 'Actif', closedPositions: 'Fermées',
     searchPositions: 'Rechercher positions', result: 'Résultat', totalTraded: 'Total tradé', amount: 'Montant',
     staked: 'misé', noActivePositions: 'Aucune position active.', joined: 'Inscrit', total: 'total',
-    averagePrice: 'Prix moyen', alphabetically: 'Alphabétiquement', date: 'Date',
+    market: 'Marché', averagePrice: 'Prix moyen', alphabetically: 'Alphabétiquement', date: 'Date',
   },
   hi: {
     portfolio: 'पोर्टफोलियो', balance: 'शेष', deposit: 'जमा करें', withdraw: 'निकालें',
@@ -529,7 +530,7 @@ const T: Record<LangCode, Translations> = {
     profitLoss: 'लाभ/हानि', positions: 'पोजीशन', activity: 'गतिविधि', active: 'सक्रिय', closedPositions: 'बंद',
     searchPositions: 'पोजीशन खोजें', result: 'परिणाम', totalTraded: 'कुल ट्रेड', amount: 'राशि',
     staked: 'स्टेक किया', noActivePositions: 'कोई सक्रिय पोजीशन नहीं।', joined: 'जुड़े', total: 'कुल',
-    averagePrice: 'औसत मूल्य', alphabetically: 'वर्णानुक्रम में', date: 'तारीख',
+    market: 'बाज़ार', averagePrice: 'औसत मूल्य', alphabetically: 'वर्णानुक्रम में', date: 'तारीख',
   },
 };
 
