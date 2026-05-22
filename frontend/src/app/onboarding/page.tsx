@@ -12,7 +12,13 @@ const CATEGORIES = [
   { id: 'sports', name: 'Sports', icon: '⚽' },
   { id: 'politics', name: 'Politics', icon: '🗳' },
   { id: 'finance', name: 'Finance', icon: '📈' },
-  { id: 'technology', name: 'Technology', icon: '💡' },
+  { id: 'tech', name: 'Tech & Science', icon: '🔬' },
+  { id: 'elections', name: 'Elections', icon: '🗳' },
+  { id: 'companies', name: 'Companies', icon: '🏢' },
+  { id: 'entertainment', name: 'Entertainment', icon: '🎬' },
+  { id: 'culture', name: 'Culture', icon: '🎭' },
+  { id: 'climate', name: 'Climate', icon: '🌍' },
+  { id: 'commodities', name: 'Commodities', icon: '�' },
 ];
 
 const MATCH = {
@@ -77,11 +83,11 @@ export default function OnboardingPage() {
       </button>
 
       <div className="absolute top-8 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-        {[0, 1, 2, 3].map((i) => (
+        {(['categories', 'trade', 'modal', 'gameplay', 'result'] as const).map((s) => (
           <div
-            key={i}
-            className="h-0.5 w-10 rounded-full"
-            style={{ backgroundColor: i === (step === 'categories' ? 0 : 1) ? '#fff' : '#ffffff20' }}
+            key={s}
+            className="h-0.5 w-8 rounded-full transition-colors duration-300"
+            style={{ backgroundColor: s === step ? '#fff' : '#ffffff25' }}
           />
         ))}
       </div>
