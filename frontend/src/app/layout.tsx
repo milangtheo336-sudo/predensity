@@ -7,7 +7,7 @@ import ContextProvider from '../../context';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { ClerkProvider } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
-import { SupportChat } from '@/components/support-chat';
+
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -62,7 +62,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   disableTransitionOnChange
                 >
                   {children}
-                  <SupportChat />
                 </ThemeProvider>
               </ContextProvider>
           </ConvexProvider>
