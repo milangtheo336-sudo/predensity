@@ -19,7 +19,7 @@ const COINGECKO_IDS: Record<string, string> = {
   XRP: 'ripple',
   USDC: 'usd-coin',
   USDT: 'tether',
-  HBAR: 'hedera-hashgraph',
+  HBAR: 'hbar',
   // Layer 1s
   ADA: 'cardano',
   AVAX: 'avalanche-2',
