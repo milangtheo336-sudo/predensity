@@ -697,6 +697,7 @@ export function PredictionCard({
   const { walletUser } = useWalletUser();
   const isSignedIn = !!user || !!walletUser;
   const effectivePublicAddress = user?.publicAddress ?? walletUser?.publicAddress;
+  const eip6963Wallets = useEIP6963Wallets();
   
   // Get proxy wallet address
   const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
