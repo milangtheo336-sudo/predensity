@@ -1961,7 +1961,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   >
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-                      <Avatar size={32} name={user?.issuer || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || 'default')} square={false} />
+                      <Avatar size={32} name={user?.issuer || walletUser?.publicAddress || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || walletUser?.publicAddress || 'default')} square={false} />
                     </div>
                     <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform duration-200', profileDropdownOpen && 'rotate-180')} />
                   </button>
@@ -2155,7 +2155,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   >
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-                      <Avatar size={32} name={user?.issuer || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || 'default')} square={false} />
+                      <Avatar size={32} name={user?.issuer || walletUser?.publicAddress || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || walletUser?.publicAddress || 'default')} square={false} />
                     </div>
                     <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform duration-200', profileDropdownOpen && 'rotate-180')} />
                   </button>
@@ -2210,7 +2210,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
         walletUser={walletUser}
         isConnected={isConnected}
         accountId={accountId}
-        evmAddress={managedWallet?.evmAddress || undefined}
+        evmAddress={managedWallet?.evmAddress || walletUser?.publicAddress || undefined}
         disconnect={disconnect}
         logout={logout}
         clearWalletUser={clearWalletUser}
@@ -2344,7 +2344,7 @@ function ProfileDropdownPortal({
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-            <Avatar size={32} name={user?.issuer || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || 'default')} square={false} />
+            <Avatar size={32} name={user?.issuer || walletUser?.publicAddress || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || walletUser?.publicAddress || 'default')} square={false} />
           </div>
           {displayAddress ? (
             <button
