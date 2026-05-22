@@ -120,7 +120,7 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
       className={cn(
         'bg-gray-50 dark:bg-neutral-900 rounded-lg p-4 cursor-pointer',
         'hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all',
-        'border border-gray-200 dark:border-transparent',
+        'border border-gray-300 dark:border-gray-700',
         'flex flex-col gap-3'
       )}
     >

@@ -271,7 +271,32 @@ export default function MarketsPage() {
           </div>
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation -- translucent with backdrop blur */}
+      <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-black/40 backdrop-blur-md border-t border-white/10">
+        <div className="flex items-center justify-around h-16 px-4">
+          <button className="flex flex-col items-center justify-center gap-1 py-2 px-3 text-gray-300 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span className="text-xs font-medium">Home</span>
+          </button>
+          <button className="flex flex-col items-center justify-center gap-1 py-2 px-3 text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <span className="text-xs font-medium">Search</span>
+          </button>
+          <button className="flex flex-col items-center justify-center gap-1 py-2 px-3 text-gray-300 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg>
+            <span className="text-xs font-medium">Breaking</span>
+          </button>
+          <button className="flex flex-col items-center justify-center gap-1 py-2 px-3 text-gray-300 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            <span className="text-xs font-medium">More</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Spacer for mobile to prevent content overlap with bottom nav */}
+      <div className="md:hidden h-16" />
+
     </div>
   );
 }
-
