@@ -95,6 +95,10 @@ export async function POST(request: NextRequest) {
           console.log(
             `[mpesa/callback] Credited ${amountUSDC} USDC to ${normalizedPhone} (new balance: ${newBalance})`
           );
+
+          // Trigger background split into outcome tokens for all open CLOB markets
+          const { triggerAutoSplit } = await import('@/lib/clob-auto-split');
+          triggerAutoSplit(amountUSDC);
         }
       } catch (balanceError) {
         // Log but don't fail the callback -- Safaricom needs a 200 response
