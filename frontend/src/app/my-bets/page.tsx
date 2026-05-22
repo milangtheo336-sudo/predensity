@@ -11,6 +11,7 @@ import { useUser } from '@clerk/nextjs';
 import { api } from '../../../convex/_generated/api';
 
 import { Bet } from '@/lib/types';
+import Image from 'next/image';
 import CryptoPredictionMarketABI from '../../../abi/CryptoPredictionMarket.json';
 import { CONTRACT_ADDRESSES, CONTRACT_IDS, getStakingCurrency, isTokenMode } from '@/lib/contracts/contract-config';
 import { Category } from '@/lib/types/categories';
@@ -1036,14 +1037,14 @@ export default function PortfolioPage() {
                 onClick={openDeposit}
                 className="flex-1 py-2.5 px-6 rounded-xl bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2"
               >
-                <CreditCard className="w-4 h-4" />
+                <Image src="/deposit icon.svg" alt="" width={16} height={16} className="brightness-0 invert" />
                 Deposit
               </button>
               <button
                 onClick={openWithdraw}
                 className="flex-1 py-2.5 px-6 rounded-xl border border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-900 font-medium text-sm transition-colors flex items-center justify-center gap-2"
               >
-                <ArrowUpRight className="w-4 h-4" />
+                <Image src="/withdraw icon.svg" alt="" width={16} height={16} className="brightness-0 invert" />
                 Withdraw
               </button>
             </div>
