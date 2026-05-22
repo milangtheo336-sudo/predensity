@@ -994,7 +994,7 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
   // We call balanceOf(address) directly via the wallet's own RPC.
   useEffect(() => {
     if (!eip6963Provider) return;
-    const tokenAddress = getStakingTokenAddress(); // e.g. 0x00000000000000000000000000000000007d943f
+    const tokenAddress = getStakingTokenAddress(); // USDC on Arc: 0x3600000000000000000000000000000000000000
     if (!tokenAddress || tokenAddress === '0x0000000000000000000000000000000000000000') return;
     let cancelled = false;
     const fetchEip6963Balance = async () => {

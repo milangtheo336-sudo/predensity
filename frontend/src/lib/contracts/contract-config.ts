@@ -11,9 +11,9 @@ export interface ContractConfig {
 // Staking token configuration — USDC on Arc
 export const STAKING_TOKEN_CONFIG = {
   // USDC on Arc Testnet
-  testnet: process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x2FbB5ef7C52a56c3314C0d91962e132061893434',
+  testnet: process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x3600000000000000000000000000000000000000',
   // USDC on Arc Mainnet
-  mainnet: process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x2FbB5ef7C52a56c3314C0d91962e132061893434',
+  mainnet: process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x3600000000000000000000000000000000000000',
   // Native mode (not used on Arc — always USDC)
   none: '0x0000000000000000000000000000000000000000',
 };
