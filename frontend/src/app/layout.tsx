@@ -32,7 +32,7 @@ export const metadata: Metadata = {
       'Profit from bold, early, and accurate price forecasts. The platform rewards boldness and sharpness of predictions. ',
     type: 'website',
     siteName: 'Predensity',
-    url: 'https://predensity.com',
+    url: 'https://www.predensity.com',
   },
   twitter: {
     card: 'summary_large_image',
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: 'https://predensity.com',
+    canonical: 'https://www.predensity.com',
   },
 };
 

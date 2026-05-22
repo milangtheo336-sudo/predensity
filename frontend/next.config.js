@@ -73,18 +73,6 @@ const nextConfig = {
     ],
   },
 
-  // Redirect www → non-www and http → https (canonical domain)
-  async redirects() {
-    return [
-      {
-        source: '/:path*',
-        has: [{ type: 'host', value: 'www.predensity.com' }],
-        destination: 'https://predensity.com/:path*',
-        permanent: true,
-      },
-    ];
-  },
-
   // Security headers for mainnet deployment
   async headers() {
     // Disable CSP in development to avoid issues with Magic Link and other services

@@ -3,7 +3,4 @@ Allow: /
 Disallow: /api/
 Disallow: /ctrl-x7k9m2/
 
-# Canonical domain — always https, no www
-Host: predensity.com
-
-Sitemap: https://predensity.com/sitemap.xml
+Sitemap: https://www.predensity.com/sitemap.xml
