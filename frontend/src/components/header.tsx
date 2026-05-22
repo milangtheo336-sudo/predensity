@@ -434,7 +434,7 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
               <input value={tokenSearch} onChange={e => setTokenSearch(e.target.value)} placeholder="Search token..."
                 className="w-full px-3 py-2 text-xs bg-transparent border-b border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none" />
               {filteredTokens.map(token => (
-                <button key={token.id} onClick={() => { setSelectedToken(token); setTokenDropdownOpen(false); setTokenSearch(''); }}
+                <button key={token.id} onClick={() => { setSelectedToken(token); setTokenDropdownOpen(false); setTokenSearch(''); if (token.needsSwap) setSelectedChain(SUPPORTED_CHAINS[0]); }}
                   className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/[0.05] text-sm text-gray-900 dark:text-white">
                   <Image src={token.icon} alt={token.name} width={18} height={18} className="rounded-full" />
                   {token.name}
