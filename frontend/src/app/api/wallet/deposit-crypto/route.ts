@@ -143,6 +143,10 @@ export async function POST(request: NextRequest) {
       usdcBalance: newBalance,
     });
 
+    // Trigger background split into outcome tokens for all open CLOB markets
+    const { triggerAutoSplit } = await import('@/lib/clob-auto-split');
+    triggerAutoSplit(creditAmount);
+
     return NextResponse.json({
       success: true,
       credited: creditAmount,
