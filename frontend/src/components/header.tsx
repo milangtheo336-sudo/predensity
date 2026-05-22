@@ -47,7 +47,7 @@ import { useWalletUser } from '@/context/WalletUserContext';
 import { getDIDToken, getUserInfo } from '@/lib/magic';
 import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { getStakingCurrency, getStakingTokenId, isTokenMode } from '@/lib/contracts/contract-config';
+import { getStakingCurrency, getStakingTokenId, getStakingTokenAddress, isTokenMode } from '@/lib/contracts/contract-config';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { QRCodeSVG } from 'qrcode.react';
 import { AuthModal } from '@/components/auth-modal';
