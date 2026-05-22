@@ -15,6 +15,8 @@
   "dependencies": {
     "@apollo/client": "^3.13.9",
     "@buidlerlabs/hashgraph-react-wallets": "^2.5.0",
+    "@circle-fin/adapter-viem-v2": "^1.11.0",
+    "@circle-fin/app-kit": "^1.5.1",
     "@dotlottie/react-player": "^1.6.19",
     "@hashgraph/proto": "^2.25.0",
     "@hashgraph/sdk": "^2.80.0",
