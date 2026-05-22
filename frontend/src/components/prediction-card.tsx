@@ -1112,44 +1112,51 @@ export function PredictionCard({
         // -------------------------------------------------------------------
         let signingProvider: any = null;
 
-        // 1. Silent check: find any EIP-6963 provider already holding ownerAddress
-        for (const detail of eip6963Wallets) {
+        // 1. Find the right provider by walletType first (targeted, no multi-popup)
+        //    then fall back to any EIP-6963 wallet that already has the address.
+        //    Always call eth_requestAccounts (not just eth_accounts) so HashPack
+        //    refreshes its signing authorization — code 4100 "Unauthorized" is
+        //    returned if signing is attempted after only a silent eth_accounts check.
+        const walletNameHint = (walletUser.walletType ?? '').toLowerCase();
+        const targeted = walletNameHint
+          ? eip6963Wallets.find(w =>
+              w.info.rdns?.toLowerCase().includes(walletNameHint) ||
+              w.info.name?.toLowerCase().includes(walletNameHint)
+            )
+          : null;
+
+        if (targeted) {
           try {
-            const addrs: string[] = await detail.provider.request({ method: 'eth_accounts' });
+            // eth_requestAccounts refreshes signing session (required by HashPack)
+            const addrs: string[] = await targeted.provider.request({ method: 'eth_requestAccounts' });
             if (addrs.some((a: string) => a.toLowerCase() === ownerAddress.toLowerCase())) {
-              signingProvider = detail.provider;
-              console.log('[handlePlaceBet] Silent match via EIP-6963:', detail.info.name);
-              break;
+              signingProvider = targeted.provider;
+              console.log('[handlePlaceBet] Targeted match via EIP-6963:', targeted.info.name);
+            } else if (addrs.length) {
+              throw new Error(
+                `Your wallet returned account ${addrs[0].slice(0, 8)}… but you signed in with ${ownerAddress.slice(0, 8)}…. ` +
+                `Please switch to the correct account in your wallet and try again.`
+              );
             }
-          } catch {
-            // provider not ready — skip silently
+          } catch (e: any) {
+            if (e.message?.includes('signed in with')) throw e;
+            // Targeted wallet rejected — fall through to EIP-6963 scan
           }
         }
 
-        // 2. Targeted prompt: find wallet by walletType and request accounts from it only
-        if (!signingProvider && walletUser.walletType) {
-          const walletNameHint = walletUser.walletType.toLowerCase(); // 'hashpack' | 'metamask' | 'blade'
-          const targeted = eip6963Wallets.find(w =>
-            w.info.rdns?.toLowerCase().includes(walletNameHint) ||
-            w.info.name?.toLowerCase().includes(walletNameHint)
-          );
-          if (targeted) {
+        // 2. Scan remaining EIP-6963 wallets (skip the targeted one already tried)
+        if (!signingProvider) {
+          for (const detail of eip6963Wallets) {
+            if (targeted && detail.info.uuid === targeted.info.uuid) continue;
             try {
-              const addrs: string[] = await targeted.provider.request({ method: 'eth_requestAccounts' });
+              const addrs: string[] = await detail.provider.request({ method: 'eth_requestAccounts' });
               if (addrs.some((a: string) => a.toLowerCase() === ownerAddress.toLowerCase())) {
-                signingProvider = targeted.provider;
-                console.log('[handlePlaceBet] Targeted match via EIP-6963:', targeted.info.name);
-              } else if (addrs.length) {
-                // HashPack returned a different account than the one stored at sign-in.
-                // This means the user selected a different account. Show a clear error.
-                throw new Error(
-                  `HashPack returned account ${addrs[0].slice(0, 8)}… but you signed in with ${ownerAddress.slice(0, 8)}…. ` +
-                  `Please switch to the correct account in your wallet and try again.`
-                );
+                signingProvider = detail.provider;
+                console.log('[handlePlaceBet] Fallback match via EIP-6963:', detail.info.name);
+                break;
               }
-            } catch (e: any) {
-              if (e.message?.includes('signed in with')) throw e; // re-throw the account mismatch error
-              // Otherwise provider rejected — fall through to window.ethereum
+            } catch {
+              // skip
             }
           }
         }
