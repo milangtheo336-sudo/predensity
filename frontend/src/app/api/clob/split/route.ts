@@ -1,40 +1,37 @@
-﻿
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  Client,
-  ContractExecuteTransaction,
-  ContractId,
-  PrivateKey,
-  AccountAllowanceApproveTransaction,
-  TokenId,
-} from '@hashgraph/sdk';
-import { ethers } from 'ethers';
 import { requireAdmin, rateLimit } from '@/lib/api-auth';
-import { STAKING_TOKEN_IDS, STAKING_MODE } from '@/lib/contracts/contract-config';
+import { getClobMarketManagerAddress, getStakingTokenAddress } from '@/lib/contracts/contract-config';
+import { publicClient, getOperatorWalletClient, getOperatorAddress } from '@/lib/arc-server';
+import { parseUnits } from 'viem';
 
-const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || process.env.NEXT_PUBLIC_OPERATOR_ID || '';
-const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || process.env.OPERATOR_PRIVATE_KEY || '';
-const HEDERA_NETWORK = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+const SPLIT_ABI = [{
+  name: 'splitPosition',
+  type: 'function',
+  stateMutability: 'nonpayable',
+  inputs: [
+    { name: 'marketId', type: 'uint256' },
+    { name: 'usdcAmount', type: 'uint256' },
+  ],
+  outputs: [],
+}] as const;
 
-const SPLIT_ABI = new ethers.utils.Interface([
-  'function splitPosition(uint256 marketId, uint256 usdcAmount) external',
-]);
-
-function getHederaClient(): Client {
-  const client = HEDERA_NETWORK === 'mainnet' ? Client.forMainnet() : Client.forTestnet();
-  if (OPERATOR_ID && OPERATOR_KEY) {
-    const keyHex = OPERATOR_KEY.startsWith('0x') ? OPERATOR_KEY.slice(2) : OPERATOR_KEY;
-    client.setOperator(OPERATOR_ID, PrivateKey.fromStringECDSA(keyHex));
-  }
-  return client;
-}
+const ERC20_APPROVE_ABI = [{
+  name: 'approve',
+  type: 'function',
+  stateMutability: 'nonpayable',
+  inputs: [
+    { name: 'spender', type: 'address' },
+    { name: 'amount', type: 'uint256' },
+  ],
+  outputs: [{ name: '', type: 'bool' }],
+}] as const;
 
 /**
  * POST /api/clob/split
- * Split USDC into outcome tokens for a market via MarketManager contract.
- * Admin-only -- operator splits USDC to provide liquidity for the order book.
- * Body: { marketManagerContractId, onChainMarketId, usdcAmount }
+ * Split USDC into outcome tokens for a market via MarketManager contract on Arc.
+ * Admin-only.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -45,50 +42,47 @@ export async function POST(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
-    const { marketManagerContractId, onChainMarketId, usdcAmount } = body;
+    const { onChainMarketId, usdcAmount } = body;
 
-    if (!marketManagerContractId || onChainMarketId === undefined || !usdcAmount) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (onChainMarketId === undefined || !usdcAmount) {
+      return NextResponse.json({ error: 'Missing required fields: onChainMarketId, usdcAmount' }, { status: 400 });
     }
 
-    const client = getHederaClient();
-    const keyHex = OPERATOR_KEY.startsWith('0x') ? OPERATOR_KEY.slice(2) : OPERATOR_KEY;
-    const operatorKey = PrivateKey.fromStringECDSA(keyHex);
-
-    // Approve USDC allowance for the MarketManager contract
-    const tokenId = STAKING_TOKEN_IDS[STAKING_MODE];
-    if (tokenId) {
-      const approveTx = new AccountAllowanceApproveTransaction()
-        .approveTokenAllowance(TokenId.fromString(tokenId), OPERATOR_ID, marketManagerContractId, Number(usdcAmount));
-      await approveTx.execute(client);
+    const marketManagerAddress = getClobMarketManagerAddress();
+    if (!marketManagerAddress) {
+      return NextResponse.json({ error: 'MarketManager contract not configured' }, { status: 500 });
     }
 
-    // Call splitPosition
-    const tokenAmount = ethers.utils.parseUnits(usdcAmount.toString(), 6);
-    const callData = SPLIT_ABI.encodeFunctionData('splitPosition', [
-      onChainMarketId,
-      tokenAmount,
-    ]);
+    const walletClient = getOperatorWalletClient();
+    const usdcAddress = getStakingTokenAddress();
+    const tokenAmount = parseUnits(usdcAmount.toString(), 6);
 
-    const tx = new ContractExecuteTransaction()
-      .setContractId(ContractId.fromString(marketManagerContractId))
-      .setGas(1500000)
-      .setFunctionParameters(Buffer.from(callData.slice(2), 'hex'))
-      .freezeWith(client);
+    // Approve USDC spending
+    const approveTx = await walletClient.writeContract({
+      address: usdcAddress,
+      abi: ERC20_APPROVE_ABI,
+      functionName: 'approve',
+      args: [marketManagerAddress, tokenAmount],
+    });
+    await publicClient.waitForTransactionReceipt({ hash: approveTx });
 
-    const signedTx = await tx.sign(operatorKey);
-    const response = await signedTx.execute(client);
-    const receipt = await response.getReceipt(client);
+    // Split position
+    const txHash = await walletClient.writeContract({
+      address: marketManagerAddress,
+      abi: SPLIT_ABI,
+      functionName: 'splitPosition',
+      args: [BigInt(onChainMarketId), tokenAmount],
+      gas: 1_500_000n,
+    });
 
-    client.close();
-
-    if (receipt.status.toString() !== 'SUCCESS') {
-      return NextResponse.json({ error: `Split failed: ${receipt.status}` }, { status: 500 });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    if (receipt.status !== 'success') {
+      return NextResponse.json({ error: 'Split transaction reverted' }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      transactionId: response.transactionId.toString(),
+      transactionHash: txHash,
       usdcAmount,
       onChainMarketId,
     });
@@ -100,5 +94,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-

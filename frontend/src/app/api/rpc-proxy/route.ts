@@ -1,26 +1,14 @@
-﻿
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/api-auth';
+import { getCurrentNetworkConfig } from '@/lib/contracts/contract-config';
 
-const RPC_URLS: Record<string, string> = {
-  mainnet: 'https://mainnet.hashio.io/api',
-  testnet: 'https://testnet.hashio.io/api',
-};
-
-const HEDERA_NETWORK = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-const TARGET_RPC = RPC_URLS[HEDERA_NETWORK] || RPC_URLS.testnet;
+const TARGET_RPC = getCurrentNetworkConfig().rpcUrl;
 
 /**
- * Read-only JSON-RPC methods we are willing to forward to Hashio.
- *
- * We intentionally DO NOT allow `eth_sendRawTransaction`, `eth_sendTransaction`,
- * `eth_sign`, `eth_signTransaction`, `personal_*`, `miner_*`, `admin_*`,
- * `debug_*`, or `txpool_*` through this proxy. Wallets that need to broadcast
- * a signed tx can talk to a public RPC directly â€” this proxy exists so the
- * client UI can make cheap read calls without exposing our API-key-bearing
- * RPC endpoint (if one is ever configured) and without being abused as an
- * open relay for arbitrary JSON-RPC methods.
+ * Read-only JSON-RPC proxy for the Arc chain.
+ * Prevents exposing API-key-bearing RPC endpoints and blocks write methods.
  */
 const METHOD_ALLOWLIST = new Set<string>([
   'eth_chainId',
@@ -45,7 +33,7 @@ const METHOD_ALLOWLIST = new Set<string>([
   'web3_clientVersion',
 ]);
 
-const MAX_BODY_BYTES = 64 * 1024; // 64 KiB â€” plenty for eth_call/eth_getLogs
+const MAX_BODY_BYTES = 64 * 1024;
 const MAX_BATCH_SIZE = 20;
 
 function rpcError(code: number, message: string, id: unknown = null, status = 400) {
@@ -70,13 +58,9 @@ function validateCall(call: unknown): { ok: true; id: unknown } | { ok: false; m
 }
 
 export async function POST(request: NextRequest) {
-  // Rate limit: generous for read traffic, but enough to stop a runaway loop
-  // or an attacker using this as a free RPC relay. 120/min/IP/route.
   const limited = rateLimit(request, { maxRequests: 120, windowMs: 60_000 });
   if (limited) return limited;
 
-  // Cap body size â€” prevents a malicious client from forcing a massive
-  // upstream POST via the declared Content-Length.
   const contentLength = Number(request.headers.get('content-length') || '0');
   if (contentLength > MAX_BODY_BYTES) {
     return rpcError(-32600, 'Request body too large', null, 413);
@@ -99,14 +83,9 @@ export async function POST(request: NextRequest) {
     return rpcError(-32700, 'Parse error', null, 400);
   }
 
-  // Validate single call or batch.
   if (Array.isArray(body)) {
-    if (body.length === 0) {
-      return rpcError(-32600, 'Empty batch', null, 400);
-    }
-    if (body.length > MAX_BATCH_SIZE) {
-      return rpcError(-32600, `Batch too large (max ${MAX_BATCH_SIZE})`, null, 400);
-    }
+    if (body.length === 0) return rpcError(-32600, 'Empty batch', null, 400);
+    if (body.length > MAX_BATCH_SIZE) return rpcError(-32600, `Batch too large (max ${MAX_BATCH_SIZE})`, null, 400);
     for (const call of body) {
       const v = validateCall(call);
       if (!v.ok) return rpcError(-32601, v.message, v.id, 400);
@@ -123,8 +102,6 @@ export async function POST(request: NextRequest) {
       body: raw,
     });
 
-    // Stream the upstream JSON back verbatim â€” don't re-serialize in a way
-    // that would strip valid fields the client depends on.
     const text = await response.text();
     return new NextResponse(text, {
       status: response.status,
@@ -134,5 +111,3 @@ export async function POST(request: NextRequest) {
     return rpcError(-32603, error?.message || 'RPC proxy error', null, 502);
   }
 }
-
-

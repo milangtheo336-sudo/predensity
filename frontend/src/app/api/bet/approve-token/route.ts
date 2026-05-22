@@ -1,77 +1,33 @@
-﻿/**
- * Backend endpoint to execute token approval on behalf of user
- * User signs a message proving intent, backend executes the approval
- * Backend pays gas, but user's tokens are being approved (not transferred)
+/**
+ * POST /api/bet/approve-token
+ *
+ * On Arc, token approval is done client-side via the user's wallet.
+ * The user calls USDC.approve(contractAddress, amount) directly.
+ * This endpoint is kept for backward compatibility but returns instructions.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ethers } from 'ethers';
+import { getStakingTokenAddress, CONTRACT_ADDRESSES } from '@/lib/contracts/contract-config';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      userAddress,
-      tokenAddress,
-      spenderAddress,
-      amount,
-      message,
-      signature,
-    } = body;
+    const { category } = body;
 
-    console.log('[approve-token] Request:', { userAddress, tokenAddress, spenderAddress, amount });
+    const usdcAddress = getStakingTokenAddress();
+    const spender = category ? CONTRACT_ADDRESSES[category] : '';
 
-    // 1. Verify signature
-    const recoveredAddress = ethers.utils.verifyMessage(message, signature);
-    if (recoveredAddress.toLowerCase() !== userAddress.toLowerCase()) {
-      return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 401 }
-      );
-    }
-
-    // 2. Verify message content
-    const messageData = JSON.parse(message);
-    if (
-      messageData.action !== 'approve' ||
-      messageData.token !== tokenAddress ||
-      messageData.spender !== spenderAddress ||
-      messageData.amount !== amount
-    ) {
-      return NextResponse.json(
-        { error: 'Message data mismatch' },
-        { status: 400 }
-      );
-    }
-
-    // 3. Check timestamp (prevent replay attacks)
-    const messageAge = Date.now() - messageData.timestamp;
-    if (messageAge > 5 * 60 * 1000) { // 5 minutes
-      return NextResponse.json(
-        { error: 'Message expired' },
-        { status: 400 }
-      );
-    }
-
-    console.log('[approve-token] Signature and message verified');
-
-    // 4. Execute approval transaction using operator account
-    // Note: This won't work because approval requires the TOKEN OWNER's signature
-    // We need a different approach - use Hedera's native allowance system
-    
-    return NextResponse.json(
-      { 
-        error: 'Token approval requires user signature on-chain. Magic Link Hedera extension limitation prevents this. Consider using HashPack wallet or implementing a proxy contract pattern.' 
+    return NextResponse.json({
+      success: false,
+      error: 'Token approval must be done client-side on Arc.',
+      instructions: {
+        tokenAddress: usdcAddress,
+        spenderAddress: spender,
+        method: 'approve(address,uint256)',
+        note: 'Call USDC.approve(spender, amount) from your connected wallet.',
       },
-      { status: 501 }
-    );
-
+    }, { status: 410 });
   } catch (error: any) {
-    console.error('[approve-token] Error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Approval failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Failed' }, { status: 500 });
   }
 }
-

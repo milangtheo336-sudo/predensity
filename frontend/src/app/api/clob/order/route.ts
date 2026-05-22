@@ -3,8 +3,9 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit, validateNumericRange, requireAuthMatchingUser } from '@/lib/api-auth';
 import { api } from '../../../../../convex/_generated/api';
-import { ethers } from 'ethers';
 import { getServerConvex } from '@/lib/convex-server';
+import { getCurrentNetworkConfig } from '@/lib/contracts/contract-config';
+import { verifyTypedData } from 'viem';
 
 const convex = getServerConvex();
 
@@ -54,12 +55,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Wallet not found' }, { status: 404 });
     }
 
-    // Verify signature
+    // Verify EIP-712 signature
+    const networkConfig = getCurrentNetworkConfig();
     const domain = {
       name: 'Predensity CLOB',
       version: '1',
-      chainId: 296, // Hedera testnet
-    };
+      chainId: networkConfig.chainId,
+    } as const;
 
     const types = {
       Order: [
@@ -70,15 +72,21 @@ export async function POST(request: NextRequest) {
         { name: 'quantity', type: 'uint256' },
         { name: 'nonce', type: 'uint256' },
       ],
-    };
+    } as const;
 
-    const message = { marketId, outcomeIndex, side, price, quantity, nonce };
+    const typedMessage = { marketId, outcomeIndex: BigInt(outcomeIndex), side, price: BigInt(price), quantity: BigInt(quantity), nonce: BigInt(nonce) };
 
-    const recoveredAddress = ethers.utils.verifyTypedData(domain, types, message, signature);
-    
-    // Verify signature matches user's Magic EOA address (if available) or evmAddress
-    const expectedAddress = (wallet as any).magicEOAAddress || wallet.evmAddress;
-    if (recoveredAddress.toLowerCase() !== expectedAddress.toLowerCase()) {
+    const expectedAddress = ((wallet as any).magicEOAAddress || wallet.evmAddress) as `0x${string}`;
+    const valid = await verifyTypedData({
+      address: expectedAddress,
+      domain,
+      types,
+      primaryType: 'Order',
+      message: typedMessage,
+      signature: signature as `0x${string}`,
+    });
+
+    if (!valid) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
     }
 
