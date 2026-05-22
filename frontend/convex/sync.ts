@@ -300,7 +300,7 @@ export const reconcileBet = internalMutation({
       expectedPayout: args.expectedPayout,
       qualityBps: args.qualityBps,
       bucket: args.bucket,
-      asset: args.asset,
+      asset: inferAssetFromPrice(args),
       entryBandWeight: args.entryBandWeight,
       exited: args.exited,
       status: "confirmed" as const,
@@ -308,12 +308,76 @@ export const reconcileBet = internalMutation({
     };
 
     if (existing) {
-      await ctx.db.patch(existing._id, betData);
+      // If the existing bet is a managed bet, preserve its userAddress
+      // so the portfolio page can still find it via managed:userId
+      const preserveAddress = existing.userAddress.startsWith("managed:");
+      await ctx.db.patch(existing._id, {
+        ...betData,
+        userAddress: preserveAddress ? existing.userAddress : betData.userAddress,
+      });
       return existing._id;
     }
 
-    // Check for a pending bet that matches
-    const pendingBet = await ctx.db
+    // Check for a managed bet that was already reconciled in a previous sync cycle.
+    // After first reconciliation the managed bet keeps its managed:userId address
+    // but its betId stays as "managed-xxx". We need to find it by on-chain params
+    // to avoid creating duplicates on subsequent syncs.
+    const alreadyReconciled = await ctx.db
+      .query("bets")
+      .withIndex("by_market_target", (q) =>
+        q.eq("marketId", args.marketId.toLowerCase()).eq("targetTimestamp", args.targetTimestamp)
+      )
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("priceMin"), args.priceMin),
+          q.eq(q.field("priceMax"), args.priceMax),
+          q.eq(q.field("stake"), args.stake),
+          q.eq(q.field("status"), "confirmed")
+        )
+      )
+      .first();
+
+    if (alreadyReconciled) {
+      // Update with latest on-chain data (finalized, won, payout, etc.)
+      // but preserve the managed userAddress
+      const preserveAddress = alreadyReconciled.userAddress.startsWith("managed:");
+      await ctx.db.patch(alreadyReconciled._id, {
+        ...betData,
+        userAddress: preserveAddress ? alreadyReconciled.userAddress : betData.userAddress,
+        betId: alreadyReconciled.betId, // keep original betId for consistency
+      });
+      return alreadyReconciled._id;
+    }
+
+    // Check for a pending managed bet that matches by market params.
+    // Managed bets use "managed:userId" as userAddress while on-chain events
+    // use the operator's EVM address, so we match without requiring userAddress.
+    const pendingManagedBet = await ctx.db
+      .query("bets")
+      .withIndex("by_market_target", (q) =>
+        q.eq("marketId", args.marketId.toLowerCase()).eq("targetTimestamp", args.targetTimestamp)
+      )
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("priceMin"), args.priceMin),
+          q.eq(q.field("priceMax"), args.priceMax)
+        )
+      )
+      .first();
+
+    if (pendingManagedBet) {
+      // Preserve the managed userAddress so portfolio queries still work
+      const preserveAddress = pendingManagedBet.userAddress.startsWith("managed:");
+      await ctx.db.patch(pendingManagedBet._id, {
+        ...betData,
+        userAddress: preserveAddress ? pendingManagedBet.userAddress : betData.userAddress,
+      });
+      return pendingManagedBet._id;
+    }
+
+    // Check for a pending wallet bet that matches exactly (including userAddress)
+    const pendingWalletBet = await ctx.db
       .query("bets")
       .withIndex("by_market_target", (q) =>
         q.eq("marketId", args.marketId.toLowerCase()).eq("targetTimestamp", args.targetTimestamp)
@@ -328,9 +392,9 @@ export const reconcileBet = internalMutation({
       )
       .first();
 
-    if (pendingBet) {
-      await ctx.db.patch(pendingBet._id, betData);
-      return pendingBet._id;
+    if (pendingWalletBet) {
+      await ctx.db.patch(pendingWalletBet._id, betData);
+      return pendingWalletBet._id;
     }
 
     return await ctx.db.insert("bets", betData);
@@ -343,19 +407,22 @@ export const reconcileBet = internalMutation({
 export const expireStalePendingBets = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
-    const cutoff = Date.now() - STALE_THRESHOLD_MS;
+    const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes for wallet bets
+    const MANAGED_STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes for managed bets (API-placed, always on-chain)
+    const now = Date.now();
 
     const staleBets = await ctx.db
       .query("bets")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .filter((q) => q.lt(q.field("timestamp"), cutoff))
       .collect();
 
     let expired = 0;
     for (const bet of staleBets) {
-      await ctx.db.patch(bet._id, { status: "failed" });
-      expired++;
+      const threshold = bet.userAddress.startsWith("managed:") ? MANAGED_STALE_THRESHOLD_MS : STALE_THRESHOLD_MS;
+      if (bet.timestamp < now - threshold) {
+        await ctx.db.patch(bet._id, { status: "failed" });
+        expired++;
+      }
     }
 
     return { expired };
@@ -818,5 +885,236 @@ export const getAllBetsByMarket = query({
     return bets
       .filter((b) => b.status !== "failed")
       .sort((a, b) => (a.bucket ?? 0) - (b.bucket ?? 0));
+  },
+});
+
+
+// ============================================
+// REPAIR: Fix orphaned managed bets
+// ============================================
+
+// Repair managed bets that were duplicated by mirror node sync.
+// When a managed bet (userAddress: "managed:xxx") was placed, the mirror node
+// sync may have created a separate bet with the operator's EVM address.
+// This mutation finds those duplicates and merges them, preserving the managed address.
+export const repairManagedBets = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Find all managed bets (both pending and failed)
+    const allBets = await ctx.db.query("bets").collect();
+    const managedBets = allBets.filter((b) => b.userAddress.startsWith("managed:"));
+    const nonManagedBets = allBets.filter((b) => !b.userAddress.startsWith("managed:"));
+
+    let repaired = 0;
+    let duplicatesRemoved = 0;
+
+    for (const managed of managedBets) {
+      // Find a matching non-managed bet (same market, timestamp, price range, stake)
+      const match = nonManagedBets.find(
+        (b) =>
+          b.marketId === managed.marketId &&
+          b.targetTimestamp === managed.targetTimestamp &&
+          b.priceMin === managed.priceMin &&
+          b.priceMax === managed.priceMax &&
+          b.stake === managed.stake &&
+          b.status !== "failed"
+      );
+
+      if (match) {
+        // Update the managed bet with on-chain data but keep managed userAddress
+        await ctx.db.patch(managed._id, {
+          status: match.status === "confirmed" ? "confirmed" : managed.status,
+          finalized: match.finalized,
+          won: match.won,
+          claimed: match.claimed,
+          payout: match.payout,
+          expectedPayout: match.expectedPayout,
+          weight: match.weight,
+          onChainBetId: match.onChainBetId,
+          bucket: match.bucket,
+          qualityBps: match.qualityBps,
+          entryBandWeight: match.entryBandWeight,
+          exited: match.exited,
+        });
+
+        // Delete the duplicate non-managed bet
+        await ctx.db.delete(match._id);
+        duplicatesRemoved++;
+        repaired++;
+      } else if (managed.status === "failed" && managed.transactionHash) {
+        // This managed bet was marked failed but has a transaction hash,
+        // meaning it was actually placed on-chain. Restore it to confirmed.
+        await ctx.db.patch(managed._id, { status: "confirmed" });
+        repaired++;
+      }
+    }
+
+    return { repaired, duplicatesRemoved, totalManaged: managedBets.length };
+  },
+});
+
+// Infer the correct crypto asset from price magnitude.
+// Used to fix bets that were stored with wrong/missing asset (e.g. default "HBAR"
+// when the bet was actually for BTC). Returns the best available asset string.
+function inferAssetFromPrice(bet: any, fallbackBet?: any): string | undefined {
+  const asset = bet.asset || fallbackBet?.asset;
+  const category = bet.category || fallbackBet?.category;
+  if (category !== "crypto") return asset;
+
+  // If asset looks correct (not a default/unknown), keep it
+  if (asset && asset !== "HBAR" && asset !== "UNKNOWN" && asset !== "hbar") {
+    return asset;
+  }
+
+  // Infer from price magnitude (prices stored with 8 decimals)
+  const midPrice = (Number(bet.priceMin || fallbackBet?.priceMin || 0) + Number(bet.priceMax || fallbackBet?.priceMax || 0)) / 2 / 1e8;
+  if (midPrice > 20000) return "BTC";
+  if (midPrice > 1000) return "ETH";
+  if (midPrice > 100) return "SOL";
+  if (midPrice > 1) return "XRP";
+  return "HBAR";
+}
+
+// Reassign bets from the operator/treasury EVM address to managed users.
+// This fixes bets that were synced from the mirror node with the operator address
+// instead of the managed:userId address. It matches by transactionHash first
+// (most reliable), then by bet params, and finally by userId for remaining bets.
+export const reassignOperatorBets = mutation({
+  args: {
+    operatorAddress: v.string(),
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const operatorAddr = args.operatorAddress.toLowerCase();
+    const managedAddr = `managed:${args.userId}`.toLowerCase();
+
+    // Get all bets from the operator address
+    const operatorBets = await ctx.db
+      .query("bets")
+      .withIndex("by_user", (q) => q.eq("userAddress", operatorAddr))
+      .collect();
+
+    // Get all managed bets for this user (including failed ones -- they have the link)
+    const managedBets = await ctx.db
+      .query("bets")
+      .withIndex("by_user", (q) => q.eq("userAddress", managedAddr))
+      .collect();
+
+    let reassigned = 0;
+    let merged = 0;
+    let failedCleaned = 0;
+
+    // Build a lookup of managed bets by transactionHash for fast matching
+    const managedByTxHash = new Map<string, typeof managedBets[0]>();
+    const managedByParams = new Map<string, typeof managedBets[0]>();
+    for (const m of managedBets) {
+      if (m.transactionHash) {
+        managedByTxHash.set(m.transactionHash, m);
+      }
+      // Key by market+timestamp+priceMin+priceMax+stake for param matching
+      const paramKey = `${m.marketId}:${m.targetTimestamp}:${m.priceMin}:${m.priceMax}:${m.stake}`;
+      managedByParams.set(paramKey, m);
+    }
+
+    const matchedManagedIds = new Set<string>();
+
+    for (const opBet of operatorBets) {
+      if (opBet.status === "failed") continue;
+
+      // Strategy 1: Match by transactionHash (most reliable)
+      let matchingManaged = opBet.transactionHash
+        ? managedByTxHash.get(opBet.transactionHash)
+        : undefined;
+
+      // Strategy 2: Match by bet params
+      if (!matchingManaged) {
+        const paramKey = `${opBet.marketId}:${opBet.targetTimestamp}:${opBet.priceMin}:${opBet.priceMax}:${opBet.stake}`;
+        const candidate = managedByParams.get(paramKey);
+        if (candidate && !matchedManagedIds.has(candidate._id)) {
+          matchingManaged = candidate;
+        }
+      }
+
+      if (matchingManaged) {
+        matchedManagedIds.add(matchingManaged._id);
+        // Merge: update the managed bet with on-chain data, delete the operator bet.
+        // Also fix the asset field: if the operator bet has a valid asset from on-chain
+        // decoding, prefer it over the managed bet's default (which may be wrong).
+        const fixedAsset = inferAssetFromPrice(opBet, matchingManaged);
+        await ctx.db.patch(matchingManaged._id, {
+          status: opBet.status === "confirmed" ? "confirmed" : matchingManaged.status,
+          finalized: opBet.finalized,
+          won: opBet.won,
+          claimed: opBet.claimed,
+          payout: opBet.payout,
+          expectedPayout: opBet.expectedPayout,
+          weight: opBet.weight,
+          onChainBetId: opBet.onChainBetId,
+          bucket: opBet.bucket,
+          asset: fixedAsset,
+        });
+        await ctx.db.delete(opBet._id);
+        merged++;
+      } else {
+        // No matching managed bet found -- reassign the operator bet to the user
+        // Also fix the asset if it was stored incorrectly
+        const fixedAsset = inferAssetFromPrice(opBet);
+        await ctx.db.patch(opBet._id, { userAddress: managedAddr, asset: fixedAsset });
+        reassigned++;
+      }
+    }
+
+    // Clean up failed managed bets that were matched (they are now merged)
+    for (const m of managedBets) {
+      if (m.status === "failed" && matchedManagedIds.has(m._id)) {
+        // Already updated above, just ensure status is confirmed
+        await ctx.db.patch(m._id, { status: "confirmed" });
+      } else if (m.status === "failed" && !matchedManagedIds.has(m._id)) {
+        // Orphaned failed managed bet with no on-chain match -- delete it
+        await ctx.db.delete(m._id);
+        failedCleaned++;
+      }
+    }
+
+    return {
+      operatorBetsFound: operatorBets.length,
+      reassigned,
+      merged,
+      failedCleaned,
+    };
+  },
+});
+
+// Fix the asset field on all crypto bets that have wrong/missing asset values.
+// This corrects bets stored with "HBAR" or "UNKNOWN" when they should be "BTC" etc.
+// Called from the portfolio page auto-repair or can be triggered manually.
+export const fixBetAssets = mutation({
+  args: {
+    userAddress: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let bets;
+    if (args.userAddress) {
+      bets = await ctx.db
+        .query("bets")
+        .withIndex("by_user", (q) => q.eq("userAddress", args.userAddress!.toLowerCase()))
+        .collect();
+    } else {
+      bets = await ctx.db
+        .query("bets")
+        .filter((q) => q.eq(q.field("category"), "crypto"))
+        .collect();
+    }
+
+    let fixed = 0;
+    for (const bet of bets) {
+      if (bet.category !== "crypto") continue;
+      const corrected = inferAssetFromPrice(bet);
+      if (corrected && corrected !== bet.asset) {
+        await ctx.db.patch(bet._id, { asset: corrected });
+        fixed++;
+      }
+    }
+    return { fixed, total: bets.length };
   },
 });

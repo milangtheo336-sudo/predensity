@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   useWallet,
@@ -6,7 +6,7 @@ import {
   useWriteContract,
   useWatchTransactionReceipt,
 } from '@buidlerlabs/hashgraph-react-wallets';
-import { useQuery as useConvexQuery } from 'convex/react';
+import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
 import { useUser } from '@clerk/nextjs';
 import { api } from '../../../convex/_generated/api';
 
@@ -87,6 +87,22 @@ function formatBetRange(value: number | string, category: string): string {
 }
 
 function mapConvexBet(cb: any): Bet {
+  // Infer the correct crypto asset from the price range if asset is missing/wrong.
+  // All crypto prices are stored with 8 decimals. We use the midpoint price
+  // to determine which token this bet is for.
+  let inferredAsset = cb.asset;
+  if (cb.category === 'crypto') {
+    const midPrice = (Number(cb.priceMin) + Number(cb.priceMax)) / 2 / 1e8;
+    if (!inferredAsset || inferredAsset === 'HBAR' || inferredAsset === 'UNKNOWN') {
+      // Infer from price magnitude
+      if (midPrice > 20000) inferredAsset = 'BTC';
+      else if (midPrice > 1000) inferredAsset = 'ETH';
+      else if (midPrice > 100) inferredAsset = 'SOL';
+      else if (midPrice > 1) inferredAsset = 'XRP';
+      else inferredAsset = 'HBAR';
+    }
+  }
+
   return {
     id: cb.betId,
     user: { id: cb.userAddress, bets: [], totalBets: 0, totalStaked: 0, totalPayout: 0 },
@@ -105,7 +121,7 @@ function mapConvexBet(cb: any): Bet {
     bucket: cb.bucket || 0,
     bucketRef: undefined,
     market: { id: cb.marketId, category: cb.category },
-    asset: cb.asset,
+    asset: inferredAsset,
   };
 }
 
@@ -120,9 +136,13 @@ function getMarketLabel(bet: Bet): string {
 
 function getCryptoQuestion(bet: Bet): string {
   const asset = bet.asset || 'HBAR';
-  const min = formatTinybarsToHbar(bet.priceMin, 2);
-  const max = formatTinybarsToHbar(bet.priceMax, 2);
-  return `Will ${asset} stay between $${min} and $${max}?`;
+  const min = Number(bet.priceMin) / 1e8;
+  const max = Number(bet.priceMax) / 1e8;
+  // Format prices based on magnitude -- large prices (BTC) get 2 decimals, small (HBAR) get 4
+  const decimals = min >= 1 ? 2 : 4;
+  const fmtMin = '$' + min.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  const fmtMax = '$' + max.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return `Predict ${asset} Price: ${fmtMin} - ${fmtMax}`;
 }
 
 function categoryFromMarketId(marketId: string): string {
@@ -363,10 +383,6 @@ function ActivePositionCard({
 
   const question = getCryptoQuestion(bet);
 
-  // implied price in cents (stake / expectedPayout * 100)
-  const expectedPayout = Number(formatAmount(bet.expectedPayout || bet.stake, 6));
-  const impliedCents = expectedPayout > 0 ? Math.round((stakeNum / expectedPayout) * 100) : 50;
-
   return (
     <tr
       className="border-b border-gray-100 dark:border-neutral-800/60 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors cursor-pointer"
@@ -401,7 +417,7 @@ function ActivePositionCard({
           <div>
             <div className="text-sm font-medium text-gray-900 dark:text-white leading-tight line-clamp-1">{question}</div>
             <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
-              {stakeNum.toFixed(1)} Yes at {impliedCents}¢
+              {stakeNum.toFixed(2)} {currency.symbol} staked
             </div>
           </div>
         </div>
@@ -413,13 +429,13 @@ function ActivePositionCard({
           >
             <div>
               <div className="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-500 mb-1">
-                <span>${minPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>${minPrice.toLocaleString(undefined, { minimumFractionDigits: minPrice >= 1 ? 2 : 4, maximumFractionDigits: minPrice >= 1 ? 2 : 4 })}</span>
                 <span className={`font-bold ${inRange ? 'text-green-500' : 'text-red-400'}`}>
                   {livePrice !== null
-                    ? `$${livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    ? '$' + livePrice.toLocaleString(undefined, { minimumFractionDigits: livePrice >= 1 ? 2 : 4, maximumFractionDigits: livePrice >= 1 ? 2 : 4 })
                     : '--'}
                 </span>
-                <span>${maxPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>${maxPrice.toLocaleString(undefined, { minimumFractionDigits: maxPrice >= 1 ? 2 : 4, maximumFractionDigits: maxPrice >= 1 ? 2 : 4 })}</span>
               </div>
               <div className="relative h-1.5 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                 <div className="absolute inset-0 bg-green-500/15 rounded-full" />
@@ -563,6 +579,7 @@ export default function PortfolioPage() {
 
   const managedUserAddress = isSignedIn && user ? `managed:${user.id}`.toLowerCase() : null;
   const walletAddress = evmAddress?.toLowerCase() || null;
+  const managedEvmAddress = managedWallet?.evmAddress?.toLowerCase() || null;
 
   const managedBetsRaw = useConvexQuery(
     api.sync.getBetsByUser,
@@ -572,21 +589,87 @@ export default function PortfolioPage() {
     api.sync.getBetsByUser,
     walletAddress ? { userAddress: walletAddress } : 'skip'
   );
+  // Also query by the managed wallet's EVM address to catch bets synced from mirror node
+  const managedEvmBetsRaw = useConvexQuery(
+    api.sync.getBetsByUser,
+    managedEvmAddress && managedEvmAddress !== walletAddress
+      ? { userAddress: managedEvmAddress }
+      : 'skip'
+  );
 
   const loading =
     (managedUserAddress && managedBetsRaw === undefined) ||
-    (walletAddress && walletBetsRaw === undefined);
+    (walletAddress && walletBetsRaw === undefined) ||
+    (managedEvmAddress && managedEvmAddress !== walletAddress && managedEvmBetsRaw === undefined);
 
   const allBets: Bet[] = useMemo(() => {
     const managed = (managedBetsRaw || []).filter((b: any) => b.status !== 'failed').map(mapConvexBet);
     const wallet = (walletBetsRaw || []).filter((b: any) => b.status !== 'failed').map(mapConvexBet);
+    const evmManaged = (managedEvmBetsRaw || []).filter((b: any) => b.status !== 'failed').map(mapConvexBet);
     const seen = new Set<string>();
     const combined: Bet[] = [];
-    for (const bet of [...managed, ...wallet]) {
+    for (const bet of [...managed, ...wallet, ...evmManaged]) {
       if (!seen.has(bet.id)) { seen.add(bet.id); combined.push(bet); }
     }
     return combined.sort((a, b) => b.timestamp - a.timestamp);
-  }, [managedBetsRaw, walletBetsRaw]);
+  }, [managedBetsRaw, walletBetsRaw, managedEvmBetsRaw]);
+
+  // Auto-repair: reassign operator-address bets to the managed user.
+  // This runs once when the page loads and the user has a managed wallet
+  // but no bets are showing (bets are stored under the operator EVM address).
+  const reassignOperatorBets = useConvexMutation(api.sync.reassignOperatorBets);
+  const fixBetAssets = useConvexMutation(api.sync.fixBetAssets);
+  const [repairAttempted, setRepairAttempted] = useState(false);
+  const [assetFixAttempted, setAssetFixAttempted] = useState(false);
+
+  useEffect(() => {
+    if (repairAttempted) return;
+    if (loading) return;
+    if (!isSignedIn || !user) return;
+    // Only repair if user has no bets but has a managed wallet
+    if (allBets.length > 0) return;
+    if (!managedWallet) return;
+
+    const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_EVM_ADDRESS;
+    if (!treasuryAddress) return;
+
+    setRepairAttempted(true);
+    reassignOperatorBets({
+      operatorAddress: treasuryAddress,
+      userId: user.id,
+    }).catch(() => {
+      // Silently ignore repair errors
+    });
+  }, [loading, allBets.length, isSignedIn, user, managedWallet, repairAttempted]);
+
+  // Auto-fix: correct asset field on crypto bets that have wrong values
+  // (e.g. "HBAR" or "UNKNOWN" when the price range indicates BTC).
+  // Runs once per page load when bets are loaded.
+  useEffect(() => {
+    if (assetFixAttempted) return;
+    if (loading) return;
+    if (!isSignedIn || !user) return;
+    if (allBets.length === 0) return;
+
+    // Check if any crypto bet has a suspicious asset (HBAR with high prices)
+    const needsFix = allBets.some(b => {
+      if (getBetCategory(b).toUpperCase() !== 'CRYPTO') return false;
+      const mid = (Number(b.priceMin) + Number(b.priceMax)) / 2 / 1e8;
+      const currentAsset = b.asset || 'HBAR';
+      // If asset is HBAR but price suggests otherwise, needs fix
+      if (currentAsset === 'HBAR' && mid > 1) return true;
+      if (currentAsset === 'UNKNOWN') return true;
+      return false;
+    });
+
+    if (!needsFix) return;
+
+    setAssetFixAttempted(true);
+    const addr = managedUserAddress || walletAddress;
+    if (addr) {
+      fixBetAssets({ userAddress: addr }).catch(() => {});
+    }
+  }, [loading, allBets, isSignedIn, user, assetFixAttempted, managedUserAddress, walletAddress]);
 
   const betCategories = useMemo(() => {
     const cats = new Set<string>();
@@ -666,6 +749,7 @@ export default function PortfolioPage() {
           userId: user.id,
           userAddress: walletAddress || '',
           phoneNumber: managedWallet?.phoneNumber || undefined,
+          managedEvmAddress: managedEvmAddress || undefined,
         }
       : 'skip'
   );
@@ -1038,8 +1122,12 @@ export default function PortfolioPage() {
               </div>
             </div>
 
-            {/* 3-stat grid */}
-            <div className="grid grid-cols-3 gap-3 mb-5">
+            {/* 4-stat grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+              <div className="bg-gray-50 dark:bg-neutral-900/60 rounded-xl p-3.5 text-center">
+                <div className="text-xl font-bold text-gray-900 dark:text-white">{formatUsd(cashBalance)}</div>
+                <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">Cash Balance</div>
+              </div>
               <div className="bg-gray-50 dark:bg-neutral-900/60 rounded-xl p-3.5 text-center">
                 <div className="text-xl font-bold text-gray-900 dark:text-white">{formatUsd(activePositionValue)}</div>
                 <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">Positions Value</div>
@@ -1279,8 +1367,6 @@ export default function PortfolioPage() {
                             const marketName = getMarketDisplayName(bet);
                             const marketImg = getMarketImage(bet);
                             const stakeVal = Number(formatAmount(bet.stake, 6));
-                            const expectedPayout = Number(formatAmount(bet.expectedPayout || bet.stake, 6));
-                            const impliedCents = expectedPayout > 0 ? Math.round((stakeVal / expectedPayout) * 100) : 50;
 
                             return (
                               <tr key={bet.id} className="border-b border-gray-100 dark:border-neutral-800/60 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors">
@@ -1306,7 +1392,7 @@ export default function PortfolioPage() {
                                     <div>
                                       <div className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">{marketName}</div>
                                       <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
-                                        {stakeVal.toFixed(1)} Yes at {impliedCents}¢
+                                        {stakeVal.toFixed(2)} {currency.symbol} staked
                                       </div>
                                     </div>
                                   </div>
@@ -1346,9 +1432,7 @@ export default function PortfolioPage() {
                             const isWon = bet.finalized && bet.won;
                             const isLost = bet.finalized && !bet.won;
                             const isUnredeemed = isWon && !bet.claimed;
-                            const isYes = cat.toUpperCase() !== 'CRYPTO';
                             const expectedPayout = Number(formatAmount(bet.expectedPayout || bet.stake, 6));
-                            const impliedCents = expectedPayout > 0 ? Math.round((stakeVal / expectedPayout) * 100) : 50;
                             const marketQuestion = cat.toUpperCase() === 'CRYPTO' ? getCryptoQuestion(bet) : marketName;
 
                             return (
@@ -1390,7 +1474,7 @@ export default function PortfolioPage() {
                                         {marketQuestion}
                                       </div>
                                       <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
-                                        {stakeVal.toFixed(1)} {isYes ? 'Yes' : 'No'} at {impliedCents}¢
+                                        {stakeVal.toFixed(2)} {currency.symbol} staked
                                       </div>
                                     </div>
                                   </div>

@@ -399,12 +399,13 @@ export const getUserActivity = query({
     userId: v.string(),
     userAddress: v.string(),
     phoneNumber: v.optional(v.string()),
+    managedEvmAddress: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 50;
 
-    // Fetch bets for this user (both managed and wallet addresses)
+    // Fetch bets for this user (managed address, wallet address, and managed wallet EVM address)
     const managedAddr = `managed:${args.userId}`.toLowerCase();
     const walletAddr = args.userAddress.toLowerCase();
 
@@ -422,10 +423,20 @@ export const getUserActivity = query({
           .take(limit)
       : [];
 
+    // Also fetch bets by managed wallet EVM address (mirror node synced bets)
+    const evmAddr = args.managedEvmAddress?.toLowerCase();
+    const evmBets = evmAddr && evmAddr !== walletAddr
+      ? await ctx.db
+          .query("bets")
+          .withIndex("by_user", (q) => q.eq("userAddress", evmAddr))
+          .order("desc")
+          .take(limit)
+      : [];
+
     // Deduplicate bets
     const seenBetIds = new Set<string>();
     const allBets = [];
-    for (const b of [...managedBets, ...walletBets]) {
+    for (const b of [...managedBets, ...walletBets, ...evmBets]) {
       if (!seenBetIds.has(b.betId)) {
         seenBetIds.add(b.betId);
         allBets.push(b);
