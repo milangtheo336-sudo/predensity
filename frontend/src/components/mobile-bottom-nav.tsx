@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { LANGUAGES } from '@/lib/i18n/translations';
@@ -19,7 +19,32 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const [langSheetOpen, setLangSheetOpen] = useState(false);
+  const [visible, setVisible] = useState(true);
   const currentLangMeta = LANGUAGES.find(l => l.code === lang);
+  const lastScrollY = useRef(0);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      const diff = currentY - lastScrollY.current;
+      // Hide when scrolling up, show when scrolling down
+      if (diff < -4) {
+        setVisible(false);
+      } else if (diff > 4) {
+        setVisible(true);
+      }
+      lastScrollY.current = currentY;
+      // Always reappear after user stops scrolling
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+      scrollTimerRef.current = setTimeout(() => setVisible(true), 800);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    };
+  }, []);
 
   const HIDDEN_PATHS = ['/auth/callback', '/auth', '/onboarding'];
   if (HIDDEN_PATHS.some(p => pathname?.startsWith(p))) return null;
@@ -27,7 +52,7 @@ export function MobileBottomNav() {
   return (
     <>
       {/* Mobile Bottom Navigation — floating island */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 md:hidden z-40 w-[calc(100%-32px)] max-w-sm">
+      <nav className={`fixed bottom-4 left-1/2 -translate-x-1/2 md:hidden z-40 w-[calc(100%-32px)] max-w-sm transition-all duration-300 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
         <div className="flex items-center justify-around h-16 px-4 bg-white/90 dark:bg-black/60 backdrop-blur-xl rounded-[28px] shadow-2xl border border-black/[0.08] dark:border-white/[0.12]">
           <Link href="/markets" className="flex flex-col items-center justify-center gap-1.5 py-2 text-black/40 dark:text-white/50 hover:text-black dark:hover:text-white transition-colors">
             <Image src="/home.svg" alt="Home" width={20} height={20} className="opacity-40 dark:brightness-0 dark:invert dark:opacity-50" />

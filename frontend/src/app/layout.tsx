@@ -82,9 +82,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <style dangerouslySetInnerHTML={{ __html: `
           *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
           html,body{background:#000;color:#fff;min-height:100vh}
+          @media(prefers-color-scheme:light){html,body{background:#f5f5f5;color:#000}}
         ` }} />
       </head>
-      <body className={`${appFont.variable} font-sans`} style={{ backgroundColor: '#000' }}>
+      <body className={`${appFont.variable} font-sans bg-[#f5f5f5] dark:bg-black`}>
         {/* SEO content — pure server HTML, outside all client providers, always in the DOM */}
         <SeoContent
           events={seoData.events}
