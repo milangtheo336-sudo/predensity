@@ -686,11 +686,6 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
     }
   };
 
-  const supportedWallets = [
-    { name: 'MetaMask', img: '/metamask.svg', type: 'metamask' },
-    { name: 'WalletConnect', img: '/walletconnect.svg', type: 'walletconnect' },
-  ];
-
   // Filter out unsupported wallets from EIP-6963
   const filteredEIP6963 = eip6963Wallets;
 
@@ -703,18 +698,27 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
 
       {/* Supported wallets */}
       <div className="grid grid-cols-2 gap-3">
-        {supportedWallets.map((w) => (
-          <button
-            key={w.type}
-            onClick={() => handleWalletConnect(w.type)}
-            disabled={connecting !== null}
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50"
-          >
-            <Image src={w.img} alt={w.name} width={48} height={48} className="rounded-full" />
-            <span className="text-xs text-gray-300 font-medium">{w.name}</span>
-            {connecting === w.type && <Loader2 className="w-3 h-3 animate-spin text-vibrant-purple" />}
-          </button>
-        ))}
+        <button
+          onClick={() => handleWalletConnect('metamask')}
+          disabled={connecting !== null}
+          className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50"
+        >
+          <Image src="/MetaMask-icon-fox.svg" alt="MetaMask" width={48} height={48} />
+          <span className="text-xs text-gray-300 font-medium">MetaMask</span>
+          {connecting === 'metamask' && <Loader2 className="w-3 h-3 animate-spin text-vibrant-purple" />}
+        </button>
+        <button
+          onClick={() => handleWalletConnect('walletconnect')}
+          disabled={connecting !== null}
+          className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50"
+        >
+          <svg width="48" height="48" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="10" fill="#3B99FC"/>
+            <path d="M11.5 17.2c4.7-4.6 12.3-4.6 17 0l.6.5a.6.6 0 010 .9l-2 2a.3.3 0 01-.4 0l-.8-.8c-3.3-3.2-8.6-3.2-11.9 0l-.8.8a.3.3 0 01-.4 0l-2-2a.6.6 0 010-.9l.7-.5zm21 3.9l1.8 1.7a.6.6 0 010 .9l-8 7.8a.6.6 0 01-.8 0l-5.7-5.5a.15.15 0 00-.2 0l-5.7 5.5a.6.6 0 01-.8 0l-8-7.8a.6.6 0 010-.9l1.8-1.7a.6.6 0 01.8 0l5.7 5.5c.1.1.2.1.2 0l5.7-5.5a.6.6 0 01.8 0l5.7 5.5c.1.1.2.1.2 0l5.7-5.5a.6.6 0 01.8 0z" fill="white"/>
+          </svg>
+          <span className="text-xs text-gray-300 font-medium">WalletConnect</span>
+          {connecting === 'walletconnect' && <Loader2 className="w-3 h-3 animate-spin text-vibrant-purple" />}
+        </button>
       </div>
 
       {/* Browser-detected EIP-6963 wallets (MetaMask, Rabby, etc.) */}
