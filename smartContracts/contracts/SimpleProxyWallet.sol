@@ -13,9 +13,8 @@ pragma solidity ^0.8.20;
  * - Withdrawal protection (withdrawals require owner signature)
  * - Execute any transaction
  * - Batch transactions (gas optimization)
- * - Receive USDC/HBAR
+ * - Receive USDC
  * - Change owner (account recovery)
- * - Arc token association (for USDC on Arc)
  */
 contract SimpleProxyWallet {
     address public owner;
@@ -58,7 +57,6 @@ contract SimpleProxyWallet {
     
     event Executed(address indexed target, uint256 value, bytes data);
     event OwnerChanged(address indexed previousOwner, address indexed newOwner);
-    event TokenAssociated(address indexed token);
     event SessionKeyCreated(address indexed delegate, uint256 maxAmount, uint256 dailyLimit, uint256 expiry);
     event SessionKeyRevoked(address indexed delegate);
     event WithdrawalInitiated(bytes32 indexed withdrawalId, address token, address to, uint256 amount, uint256 executeAfter);
@@ -188,23 +186,14 @@ contract SimpleProxyWallet {
         session.spentToday += amount;
     }
     
-    // ERC-20 / HTS selectors we know how to decode for limit enforcement.
+    // ERC-20 selectors we know how to decode for limit enforcement.
     bytes4 private constant SELECTOR_APPROVE       = 0x095ea7b3; // approve(address,uint256)
     bytes4 private constant SELECTOR_TRANSFER      = 0xa9059cbb; // transfer(address,uint256)
     bytes4 private constant SELECTOR_TRANSFER_FROM = 0x23b872dd; // transferFrom(address,address,uint256)
-    bytes4 private constant SELECTOR_HTS_TRANSFER  = 0xeca36917; // transferToken(address,address,address,int64)
 
     /**
-     * Decode the value/amount field of a known ERC-20 / HTS call.
-     *
-     * Returns (amount, recipient). `recipient` is address(0) for `approve`
-     * and HTS transfers where the recipient field is the pre-transfer sink
-     * we already trust (the prediction contract passed in as `target`).
-     *
-     * Reverts if the selector isn't one we can audit — we refuse to run
-     * unknown calldata under a session key because a bad selector with an
-     * unbounded `uint256` field would let a delegate drain funds without
-     * ever touching `_checkAndUpdateDailyLimit`.
+     * Decode the value/amount field of a known ERC-20 call.
+     * Reverts if the selector isn't one we can audit.
      */
     function _decodeERC20Amount(bytes calldata data)
         internal
@@ -244,18 +233,6 @@ contract SimpleProxyWallet {
             }
             return (amount, to);
         }
-        if (selector == SELECTOR_HTS_TRANSFER) {
-            // transferToken(address token, address from, address to, int64 amount)
-            require(data.length >= 4 + 32 * 4, "Bad HTS transfer calldata");
-            int64 amt;
-            address to;
-            assembly {
-                to  := calldataload(add(data.offset, 68))
-                amt := calldataload(add(data.offset, 100))
-            }
-            require(amt > 0, "HTS amount must be positive");
-            return (uint256(uint64(amt)), to);
-        }
         revert("Selector not allowed for session keys");
     }
 
@@ -265,7 +242,7 @@ contract SimpleProxyWallet {
      *
      * Session keys can only:
      * - Call whitelisted contracts
-     * - Using a known ERC-20/HTS selector (approve/transfer/transferFrom/HTS transferToken)
+     * - Using a known ERC-20 selector (approve/transfer/transferFrom)
      * - With the recipient/spender itself whitelisted, so funds cannot be
      *   swept to an arbitrary attacker address even if the token contract
      *   happens to be whitelisted.
@@ -287,11 +264,11 @@ contract SimpleProxyWallet {
             require(whitelistedContracts[target], "Contract not whitelisted");
             require(value == 0, "Session keys cannot send native tokens");
 
-            // Decode the ERC-20/HTS amount from calldata and charge it
+            // Decode the ERC-20 amount from calldata and charge it
             // against the daily + per-tx limits. Unknown selectors revert.
             (uint256 amount, address recipient) = _decodeERC20Amount(data);
 
-            // For transfer/transferFrom/HTS, restrict the recipient to a
+            // For transfer/transferFrom, restrict the recipient to a
             // whitelisted contract so a compromised session key can't
             // redirect USDC out of the proxy to an attacker-owned address.
             // For approve, the "recipient" is the spender — also must be
@@ -311,41 +288,28 @@ contract SimpleProxyWallet {
      * Execute a bet transaction with signature verification.
      * Backend calls this with user's signature to place bet.
      * Proxy wallet verifies the signature matches the owner.
-     * 
-     * Uses Arc Token Service (HTS) precompile for token transfers,
-     * then calls placeBetWithPreTransferredToken on the prediction market.
      */
     function executeBetWithSignature(
         address predictionContract,
         uint256 betAmount,
+        address usdcToken,
         bytes calldata betData,
         string calldata message,
         bytes calldata signature
     ) external returns (bytes memory) {
-        // Verify signature BEFORE incrementing nonce to prevent griefing
         require(recoverSigner(message, signature) == owner, "Invalid signature");
         nonces[owner]++;
-        
-        // Transfer USDC using HTS precompile
-        // HTS: 0x0000000000000000000000000000000000000167
-        // USDC: 0x00000000000000000000000000000000007d943F
-        // transferToken selector: 0xeca36917
-        (bool transferSuccess, bytes memory transferResult) = address(0x0000000000000000000000000000000000000167).call(
-            abi.encodeWithSelector(
-                bytes4(0xeca36917),
-                address(0x00000000000000000000000000000000007d943F),
-                address(this),
-                predictionContract,
-                int64(uint64(betAmount))
-            )
+
+        // Transfer USDC to prediction contract using standard ERC-20
+        (bool transferSuccess, bytes memory transferResult) = usdcToken.call(
+            abi.encodeWithSelector(SELECTOR_TRANSFER, predictionContract, betAmount)
         );
-        
-        require(transferSuccess, "HTS transfer failed");
-        
+        require(transferSuccess && (transferResult.length == 0 || abi.decode(transferResult, (bool))), "USDC transfer failed");
+
         // Execute bet
         (bool success, bytes memory result) = predictionContract.call(betData);
         require(success, "Bet execution failed");
-        
+
         emit Executed(predictionContract, 0, betData);
         return result;
     }
@@ -442,7 +406,7 @@ contract SimpleProxyWallet {
      * Initiate a withdrawal (OWNER ONLY - session keys CANNOT withdraw).
      * Withdrawals have a 24-hour delay for security.
      * 
-     * @param token Token address (or address(0) for native HBAR)
+     * @param token Token address (or address(0) for native USDC)
      * @param to Recipient address
      * @param amount Amount to withdraw
      */
@@ -482,9 +446,9 @@ contract SimpleProxyWallet {
         withdrawal.executed = true;
         
         if (withdrawal.token == address(0)) {
-            // Native HBAR withdrawal
+            // Native withdrawal
             (bool success, ) = withdrawal.to.call{value: withdrawal.amount}("");
-            require(success, "HBAR transfer failed");
+            require(success, "Native transfer failed");
         } else {
             // Token withdrawal (USDC)
             (bool success, ) = withdrawal.token.call(
@@ -529,7 +493,7 @@ contract SimpleProxyWallet {
 
         if (token == address(0)) {
             (bool success, ) = to.call{value: amount}("");
-            require(success, "Emergency HBAR withdrawal failed");
+            require(success, "Emergency native withdrawal failed");
         } else {
             (bool success, ) = token.call(
                 abi.encodeWithSignature("transfer(address,uint256)", to, amount)
@@ -567,40 +531,7 @@ contract SimpleProxyWallet {
         emit OwnerChanged(previousOwner, newOwner);
     }
     
-    /**
-     * Associate with a Arc token (required before receiving HTS tokens like USDC).
-     * On Arc, contracts must explicitly associate with tokens.
-     * 
-     * Arc Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
-     */
-    function associateToken(address token) external onlyOwner {
-        // Call HTS associateToken function
-        // Function selector: 0x49146bde (associateToken(address,address))
-        (bool success, ) = address(0x0000000000000000000000000000000000000167).call(
-            abi.encodeWithSelector(0x49146bde, address(this), token)
-        );
-        require(success, "Token association failed");
-        emit TokenAssociated(token);
-    }
     
-    /**
-     * Associate with multiple tokens in one transaction (gas optimization).
-     */
-    function associateTokens(address[] calldata tokens) external onlyOwner {
-        // Call HTS associateTokens function
-        // Function selector: 0x2e63879b (associateTokens(address,address[]))
-        (bool success, ) = address(0x0000000000000000000000000000000000000167).call(
-            abi.encodeWithSelector(0x2e63879b, address(this), tokens)
-        );
-        require(success, "Token association failed");
-        for (uint256 i = 0; i < tokens.length; i++) {
-            emit TokenAssociated(tokens[i]);
-        }
-    }
-    
-    /**
-     * Receive HBAR/ETH.
-     */
     receive() external payable {}
     
     /**

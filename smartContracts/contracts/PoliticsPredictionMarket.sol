@@ -69,7 +69,7 @@ contract PoliticsPredictionMarket is BasePredictionMarket {
     // ==============================================================
     
     /**
-     * @param _stakingToken ERC-20 token for stakes (address(0) = native HBAR mode)
+     * @param _stakingToken ERC-20 token for stakes (USDC on Arc)
      */
     constructor(address _stakingToken) BasePredictionMarket(_stakingToken) {}
 

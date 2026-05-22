@@ -23,7 +23,7 @@ import { UD60x18, ud, unwrap, exp, ln } from "@prb/math/src/UD60x18.sol";
  *   - Slippage guards: every buy/sell takes a user-supplied max-cost / min-payout bound.
  *   - ReentrancyGuard on every state-mutating external function.
  *   - Pausable emergency stop (owner only).
- *   - Shares tracked in ledger (not transferable tokens) to avoid per-outcome HTS complexity.
+ *   - Shares tracked in ledger (not transferable tokens) for simplicity.
  *   - Input bounds prevent exp() overflow inside PRBMath (cap q/b at 130e18).
  *   - Separate buy/sell ceil/floor rounding always favors the contract, never the user.
  *   - Replay-safe signed intents (EIP-712 + per-user nonce) when operator submits trades.

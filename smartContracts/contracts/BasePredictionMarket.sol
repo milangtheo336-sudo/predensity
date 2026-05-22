@@ -34,7 +34,7 @@ abstract contract BasePredictionMarket is Ownable {
     uint256 public constant BATCH_SIZE = 50;
     uint256 public constant REQUIRED_CONFIRMATIONS = 3; // Multisig requirement
     uint256 public constant MAX_EXIT_RATIO_BPS = 3000;  // max 30% of bucket pool can exit early
-    uint256 public constant MIN_K = 10 ether;           // minimum liquidity parameter (10 HBAR)
+    uint256 public constant MIN_K = 10 ether;           // minimum liquidity parameter
     
     // Public getter for required confirmations
     uint256 public requiredConfirmations = REQUIRED_CONFIRMATIONS;
@@ -43,11 +43,11 @@ abstract contract BasePredictionMarket is Ownable {
     // |                    State Variables                         |
     // ==============================================================
     uint256 public totalFeesCollected;
-    uint256 public totalObligations;  // HBAR reserved for unclaimed winning payouts
+    uint256 public totalObligations;  // reserved for unclaimed winning payouts
     uint256 public nextBetId;
     uint256 public knownTokenBalance;  // Track actual token balance to prevent fake deposits
 
-    // Staking token: address(0) = native HBAR mode, otherwise ERC-20 (e.g., USDC)
+    // Staking token (ERC-20, e.g. USDC on Arc)
     IERC20 public stakingToken;
 
     // Trusted oracle addresses (Phase 1: Multisig)
@@ -94,7 +94,7 @@ abstract contract BasePredictionMarket is Ownable {
         uint256 nextProcessIndex;
         bool aggregationComplete;
         // DPM fields
-        uint256 totalExited;  // total HBAR paid out via early exits
+        uint256 totalExited;  // total paid out via early exits
     }
 
     struct ValueSubmission {
@@ -483,21 +483,6 @@ abstract contract BasePredictionMarket is Ownable {
         _transferOut(owner(), surplus);
     }
 
-    /**
-     * @notice Associate with a Arc token (required before receiving HTS tokens like USDC).
-     * On Arc, contracts must explicitly associate with tokens.
-     * 
-     * Arc Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
-     */
-    function associateToken(address token) external onlyOwner {
-        // Call HTS associateToken function
-        // Function selector: 0x49146bde (associateToken(address,address))
-        (bool success, ) = address(0x0000000000000000000000000000000000000167).call(
-            abi.encodeWithSelector(0x49146bde, address(this), token)
-        );
-        require(success, "Token association failed");
-    }
-
     // ==============================================================
     // |                    Token Mode Functions                     |
     // ==============================================================
@@ -540,7 +525,7 @@ abstract contract BasePredictionMarket is Ownable {
 
     /**
      * @notice Place a bet with tokens that have already been transferred to this contract.
-     * Used by proxy wallets that transfer tokens via HTS before calling this function.
+     * Used by proxy wallets that transfer tokens before calling this function.
      * 
      * @param bettor The address to credit the bet to (usually the proxy wallet)
      * @param targetTimestamp The target timestamp for the prediction
@@ -589,29 +574,14 @@ abstract contract BasePredictionMarket is Ownable {
     // |                    Helper Functions                          |
     // ==============================================================
 
-    /**
-     * @notice Transfer funds out -- native HBAR or ERC-20 depending on mode
-     */
     function _transferOut(address to, uint256 amount) internal {
         if (amount == 0) return;
-        if (address(stakingToken) != address(0)) {
-            stakingToken.safeTransfer(to, amount);
-            // Keep knownTokenBalance in sync
-            knownTokenBalance = stakingToken.balanceOf(address(this));
-        } else {
-            (bool success, ) = payable(to).call{value: amount}("");
-            require(success, "Transfer failed");
-        }
+        stakingToken.safeTransfer(to, amount);
+        knownTokenBalance = stakingToken.balanceOf(address(this));
     }
 
-    /**
-     * @notice Get contract balance -- native HBAR or ERC-20 depending on mode
-     */
     function _contractBalance() internal view returns (uint256) {
-        if (address(stakingToken) != address(0)) {
-            return stakingToken.balanceOf(address(this));
-        }
-        return address(this).balance;
+        return stakingToken.balanceOf(address(this));
     }
 
     function _createBet(
