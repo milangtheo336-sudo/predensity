@@ -144,6 +144,8 @@ export function DepositModal({
     });
   }, [view, walletUser, eip6963Wallets]);
 
+  const { t } = useLanguage();
+
   if (!mounted || !isOpen) return null;
 
   const isWithdraw = view === 'withdraw';
@@ -161,10 +163,10 @@ export function DepositModal({
         <div className="flex items-center justify-between px-6 pt-5 pb-3">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {isWithdraw ? 'Withdraw' : 'Deposit'}
+              {isWithdraw ? t.withdraw : t.deposit}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Portfolio Balance: <span className="text-gray-900 dark:text-white font-medium">{balancesHidden ? '****' : `$${platformBalance.toFixed(2)}`}</span>
+              {t.portfolioBalance}: <span className="text-gray-900 dark:text-white font-medium">{balancesHidden ? '****' : `$${platformBalance.toFixed(2)}`}</span>
             </p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
@@ -185,7 +187,7 @@ export function DepositModal({
                 }`}
               >
                 <Image src="/hedera.svg" alt="" width={18} height={18} />
-                Use Crypto
+                {t.useCrypto}
               </button>
               <button
                 onClick={() => setView('cash')}
@@ -196,7 +198,7 @@ export function DepositModal({
                 }`}
               >
                 <Image src="/fiat.svg" alt="" width={18} height={18} className="brightness-0 invert" />
-                Use Fiat
+                {t.useFiat}
               </button>
             </div>
           </div>
@@ -222,6 +224,7 @@ export function DepositModal({
 // ---------------------------------------------------------------------------
 
 function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
+  const { t } = useLanguage();
   const { isConnected } = useWallet();
 
   return (
@@ -235,8 +238,8 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
           <QRCodeSVG value="deposit" size={22} level="L" bgColor="transparent" fgColor="#a78bfa" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-gray-900 dark:text-white">Transfer Crypto</div>
-          <div className="text-xs text-gray-400">No limit - Instant</div>
+          <div className="text-sm font-medium text-gray-900 dark:text-white">{t.transferCrypto}</div>
+          <div className="text-xs text-gray-400">{t.noLimitInstant}</div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           <Image src="/hedera.svg" alt="Hedera" width={20} height={20} />
@@ -253,10 +256,10 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium text-gray-900 dark:text-white">
-            {isConnected ? 'Transfer from Wallet' : 'Connect Wallet'}
+            {isConnected ? t.transferFromWallet : t.connectWallet}
           </div>
           <div className="text-xs text-gray-400">
-            {isConnected ? 'Send USDC directly' : 'No limit - Instant'}
+            {isConnected ? t.sendUSDCDirectly : t.noLimitInstant}
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
@@ -276,8 +279,8 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
           <ArrowUpRight className="w-5 h-5 text-gray-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-gray-900 dark:text-white">From Exchange</div>
-          <div className="text-xs text-gray-400">Withdraw USDC from CEX</div>
+          <div className="text-sm font-medium text-gray-900 dark:text-white">{t.fromExchange}</div>
+          <div className="text-xs text-gray-400">{t.withdrawUSDCFromCEX}</div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           <Image src="/binance logo.png" alt="Binance" width={40} height={40} className="rounded-md" />
@@ -293,6 +296,7 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
 // ---------------------------------------------------------------------------
 
 function CryptoDepositView({ onBack }: { onBack: () => void }) {
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const [depositDetected, setDepositDetected] = useState(false);
   const [detectedAmount, setDetectedAmount] = useState('');
@@ -417,7 +421,7 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Image src="/hedera.svg" alt="Hedera" width={20} height={20} />
-          <span className="text-sm text-gray-900 dark:text-white font-medium">Hedera</span>
+          <span className="text-sm text-gray-900 dark:text-white font-medium">{t.hedera}</span>
           <div className="relative group">
             <HelpCircle className="w-3.5 h-3.5 text-gray-500 cursor-help" />
             <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 p-2.5 rounded-lg bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-[11px] text-gray-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
@@ -821,6 +825,7 @@ function MpesaDepositView({ onBack, onClose }: { onBack: () => void; onClose: ()
 // ---------------------------------------------------------------------------
 
 function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderProp }: { onBack: () => void; onClose: () => void; eip6963Provider?: any }) {
+  const { t } = useLanguage();
   const { user } = useMagic();
   const { walletUser } = useWalletUser();
   const effectiveAddress = user?.publicAddress ?? walletUser?.publicAddress ?? null;
@@ -1061,7 +1066,7 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
           <div className="flex items-center gap-3 p-3 rounded-xl bg-vibrant-purple/10 border border-vibrant-purple/20">
             <ArrowRightLeft className="w-5 h-5 text-vibrant-purple flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-900 dark:text-white">Transfer from Wallet</div>
+              <div className="text-sm font-medium text-gray-900 dark:text-white">{t.transferFromWallet}</div>
               <div className="text-xs text-gray-400">
                 {evmAddress ? formatAddress(evmAddress, 6) : effectiveAddress ? formatAddress(effectiveAddress, 6) : 'Connected'}
               </div>

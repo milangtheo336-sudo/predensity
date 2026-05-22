@@ -111,6 +111,19 @@ export interface Translations {
   hideTechnology: string;
   clearFilters: string;
 
+  // Deposit modal
+  portfolioBalance: string;
+  useCrypto: string;
+  useFiat: string;
+  transferCrypto: string;
+  noLimitInstant: string;
+  hedera: string;
+  transferFromWallet: string;
+  connectWallet: string;
+  sendUSDCDirectly: string;
+  fromExchange: string;
+  withdrawUSDCFromCEX: string;
+
   // Market detail page
   marketNotFound: string;
 
@@ -219,6 +232,10 @@ const T: Record<LangCode, Translations> = {
     noPredictionsYet: 'No predictions yet. Place a bet to see the community forecast.',
     priceRangeUSD: 'Price Range (USD)', tradeMultipliers: 'Trade Multipliers & Fees', minLeadRequired: 'Min 24h lead required', minimum24hLead: 'Minimum 24h lead time required',
     balance: 'Balance', rules: 'Rules', marketContext: 'Market Context', showMore: 'Show more', showLess: 'Show less', max: 'MAX', approvingUSDC: 'Approving USDC...',
+    portfolioBalance: 'Portfolio Balance', useCrypto: 'Use Crypto', useFiat: 'Use Fiat',
+    transferCrypto: 'Transfer Crypto', noLimitInstant: 'No limit - Instant', hedera: 'Hedera',
+    transferFromWallet: 'Transfer from Wallet', connectWallet: 'Connect Wallet', sendUSDCDirectly: 'Send USDC directly',
+    fromExchange: 'From Exchange', withdrawUSDCFromCEX: 'Withdraw USDC from CEX',
     marketNotFound: 'Market Not Found',
     sharpness: 'Sharpness', leadTime: 'Lead Time', totalQuality: 'Total Quality', estFee: 'Est. Fee', estProfit: 'Est. Profit',
     availableToTrade: 'Available to trade', positionsValue: 'Positions Value', biggestWin: 'Biggest Win', predictions: 'Predictions',
@@ -261,6 +278,10 @@ const T: Record<LangCode, Translations> = {
     noPredictionsYet: '아직 예측이 없습니다. 베팅하여 커뮤니티 예측을 확인하세요.',
     priceRangeUSD: '가격 범위 (USD)', tradeMultipliers: '거래 배수 및 수수료', minLeadRequired: '최소 24시간 선행 필요', minimum24hLead: '최소 24시간 선행 시간 필요',
     balance: '잔액', rules: '규칙', marketContext: '마켓 컨텍스트', showMore: '더 보기', showLess: '접기', max: '최대', approvingUSDC: 'USDC 승인 중...',
+    portfolioBalance: '포트폴리오 잔액', useCrypto: '크립토 사용', useFiat: '법정화폐 사용',
+    transferCrypto: '크립토 전송', noLimitInstant: '한도 없음 - 즉시', hedera: 'Hedera',
+    transferFromWallet: '지갑에서 전송', connectWallet: '지갑 연결', sendUSDCDirectly: 'USDC 직접 전송',
+    fromExchange: '거래소에서', withdrawUSDCFromCEX: 'CEX에서 USDC 출금',
     marketNotFound: '마켓을 찾을 수 없습니다',
     sharpness: '정확도', leadTime: '리드 타임', totalQuality: '총 품질', estFee: '예상 수수료', estProfit: '예상 수익',
     availableToTrade: '거래 가능', positionsValue: '포지션 가치', biggestWin: '최대 수익', predictions: '예측',
@@ -303,6 +324,10 @@ const T: Record<LangCode, Translations> = {
     noPredictionsYet: '暂无预测。下注以查看社区预测。',
     priceRangeUSD: '价格范围 (USD)', tradeMultipliers: '交易倍数与费用', minLeadRequired: '需至少24小时提前', minimum24hLead: '最少需要24小时提前时间',
     balance: '余额', rules: '规则', marketContext: '市场背景', showMore: '显示更多', showLess: '收起', max: '最大', approvingUSDC: '正在授权 USDC...',
+    portfolioBalance: '投资组合余额', useCrypto: '使用加密货币', useFiat: '使用法币',
+    transferCrypto: '转账加密货币', noLimitInstant: '无限额 - 即时', hedera: 'Hedera',
+    transferFromWallet: '从钱包转账', connectWallet: '连接钱包', sendUSDCDirectly: '直接发送USDC',
+    fromExchange: '从交易所', withdrawUSDCFromCEX: '从CEX提取USDC',
     marketNotFound: '市场未找到',
     sharpness: '精准度', leadTime: '提前量', totalQuality: '综合质量', estFee: '预估费用', estProfit: '预估收益',
     availableToTrade: '可交易余额', positionsValue: '持仓价值', biggestWin: '最大盈利', predictions: '预测',
@@ -345,6 +370,10 @@ const T: Record<LangCode, Translations> = {
     noPredictionsYet: 'Прогнозов пока нет. Сделайте ставку, чтобы увидеть прогноз.',
     priceRangeUSD: 'Диапазон цен (USD)', tradeMultipliers: 'Множители и комиссии', minLeadRequired: 'Мин. 24ч упреждения', minimum24hLead: 'Требуется минимум 24ч упреждения',
     balance: 'Баланс', rules: 'Правила', marketContext: 'Контекст рынка', showMore: 'Подробнее', showLess: 'Свернуть', max: 'МАКС', approvingUSDC: 'Одобрение USDC...',
+    portfolioBalance: 'Баланс портфеля', useCrypto: 'Использовать крипто', useFiat: 'Использовать фиат',
+    transferCrypto: 'Перевод крипто', noLimitInstant: 'Без лимита - Мгновенно', hedera: 'Hedera',
+    transferFromWallet: 'Перевод с кошелька', connectWallet: 'Подключить кошелёк', sendUSDCDirectly: 'Отправить USDC напрямую',
+    fromExchange: 'С биржи', withdrawUSDCFromCEX: 'Вывести USDC с CEX',
     marketNotFound: 'Рынок не найден',
     sharpness: 'Точность', leadTime: 'Упреждение', totalQuality: 'Общее качество', estFee: 'Комиссия', estProfit: 'Ожид. прибыль',
     availableToTrade: 'Доступно для торговли', positionsValue: 'Стоимость позиций', biggestWin: 'Лучший выигрыш', predictions: 'Прогнозы',
@@ -387,6 +416,10 @@ const T: Record<LangCode, Translations> = {
     noPredictionsYet: 'Sin predicciones aún. Haz una apuesta para ver el pronóstico.',
     priceRangeUSD: 'Rango de precio (USD)', tradeMultipliers: 'Multiplicadores y comisiones', minLeadRequired: 'Mín. 24h de anticipación', minimum24hLead: 'Se requiere mínimo 24h de anticipación',
     balance: 'Saldo', rules: 'Reglas', marketContext: 'Contexto del mercado', showMore: 'Ver más', showLess: 'Ver menos', max: 'MÁX', approvingUSDC: 'Aprobando USDC...',
+    portfolioBalance: 'Saldo del portafolio', useCrypto: 'Usar Cripto', useFiat: 'Usar Fiat',
+    transferCrypto: 'Transferir Cripto', noLimitInstant: 'Sin límite - Instantáneo', hedera: 'Hedera',
+    transferFromWallet: 'Transferir desde Cartera', connectWallet: 'Conectar Cartera', sendUSDCDirectly: 'Enviar USDC directo',
+    fromExchange: 'Desde Exchange', withdrawUSDCFromCEX: 'Retirar USDC del CEX',
     marketNotFound: 'Mercado no encontrado',
     sharpness: 'Precisión', leadTime: 'Tiempo de anticipación', totalQuality: 'Calidad total', estFee: 'Tarifa est.', estProfit: 'Ganancia est.',
     availableToTrade: 'Disponible para operar', positionsValue: 'Valor de posiciones', biggestWin: 'Mayor ganancia', predictions: 'Predicciones',
@@ -429,6 +462,10 @@ const T: Record<LangCode, Translations> = {
     noPredictionsYet: "Pas encore de prédictions. Placez un pari pour voir la prévision.",
     priceRangeUSD: 'Plage de prix (USD)', tradeMultipliers: 'Multiplicateurs & frais', minLeadRequired: 'Min. 24h d\'avance requis', minimum24hLead: 'Délai minimum de 24h requis',
     balance: 'Solde', rules: 'Règles', marketContext: 'Contexte du marché', showMore: 'Afficher plus', showLess: 'Afficher moins', max: 'MAX', approvingUSDC: 'Approbation USDC...',
+    portfolioBalance: 'Solde du portefeuille', useCrypto: 'Utiliser Crypto', useFiat: 'Utiliser Fiat',
+    transferCrypto: 'Transférer Crypto', noLimitInstant: 'Sans limite - Instantané', hedera: 'Hedera',
+    transferFromWallet: 'Transférer depuis Portefeuille', connectWallet: 'Connecter Portefeuille', sendUSDCDirectly: 'Envoyer USDC directement',
+    fromExchange: 'Depuis Exchange', withdrawUSDCFromCEX: 'Retirer USDC du CEX',
     marketNotFound: 'Marché introuvable',
     sharpness: 'Précision', leadTime: 'Délai', totalQuality: 'Qualité totale', estFee: 'Frais est.', estProfit: 'Profit est.',
     availableToTrade: 'Disponible pour trader', positionsValue: 'Valeur des positions', biggestWin: 'Meilleur gain', predictions: 'Prédictions',
@@ -471,6 +508,10 @@ const T: Record<LangCode, Translations> = {
     noPredictionsYet: 'अभी तक कोई भविष्यवाणी नहीं। समुदाय पूर्वानुमान देखने के लिए दांव लगाएं।',
     priceRangeUSD: 'मूल्य सीमा (USD)', tradeMultipliers: 'ट्रेड गुणक और शुल्क', minLeadRequired: 'न्यूनतम 24 घंटे आवश्यक', minimum24hLead: 'न्यूनतम 24 घंटे की अग्रिम समय आवश्यक',
     balance: 'शेष', rules: 'नियम', marketContext: 'बाज़ार संदर्भ', showMore: 'अधिक दिखाएं', showLess: 'कम दिखाएं', max: 'अधिकतम', approvingUSDC: 'USDC स्वीकृत हो रहा है...',
+    portfolioBalance: 'पोर्टफोलियो बैलेंस', useCrypto: 'क्रिप्टो उपयोग करें', useFiat: 'फिएट उपयोग करें',
+    transferCrypto: 'क्रिप्टो ट्रांसफर करें', noLimitInstant: 'कोई सीमा नहीं - तुरंत', hedera: 'Hedera',
+    transferFromWallet: 'वॉलेट से ट्रांसफर', connectWallet: 'वॉलेट जोड़ें', sendUSDCDirectly: 'USDC सीधे भेजें',
+    fromExchange: 'एक्सचेंज से', withdrawUSDCFromCEX: 'CEX से USDC निकालें',
     marketNotFound: 'बाज़ार नहीं मिला',
     sharpness: 'सटीकता', leadTime: 'लीड टाइम', totalQuality: 'कुल गुणवत्ता', estFee: 'अनुमानित शुल्क', estProfit: 'अनुमानित लाभ',
     availableToTrade: 'ट्रेड के लिए उपलब्ध', positionsValue: 'पोजीशन मूल्य', biggestWin: 'सबसे बड़ी जीत', predictions: 'पूर्वानुमान',
