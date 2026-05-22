@@ -93,6 +93,19 @@ export interface Translations {
   support: string;
   termsOfUse: string;
   close: string;
+
+  // Header dropdown
+  darkMode: string;
+  helpCenter: string;
+  disconnectWallet: string;
+  disconnectAndLogOut: string;
+  logout: string;
+
+  // Time remaining (fully localized, no English prefix)
+  hoursRemaining: string;
+  minutesRemaining: string;
+  oneDayLeft: string;
+  oneMonthLeft: string;
 }
 
 export const LANGUAGES: { code: LangCode; name: string; nativeName: string; flag: string; countryCodes: string[] }[] = [
@@ -142,6 +155,8 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: 'Select Language', currentLanguage: 'Current Language', cancel: 'Cancel', apply: 'Apply',
     selectYourWallet: 'Select your wallet', lastUsed: 'Last used', requestingSignature: 'Requesting Signature', pleaseSign: 'Please sign to connect.', back: 'Back',
     home: 'Home', search: 'Search', breaking: 'Breaking', more: 'More', support: 'Support', termsOfUse: 'Terms of Use', close: 'Close',
+    darkMode: 'Dark Mode', helpCenter: 'Help Center', disconnectWallet: 'Disconnect Wallet', disconnectAndLogOut: 'Disconnect & Log Out', logout: 'Logout',
+    hoursRemaining: '{n}h remaining', minutesRemaining: '{n}m remaining', oneDayLeft: '1 day left', oneMonthLeft: '1 month left',
   },
   ko: {
     portfolio: '포트폴리오', balance: '잔액', deposit: '입금', withdraw: '출금',
@@ -170,6 +185,8 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: '언어 선택', currentLanguage: '현재 언어', cancel: '취소', apply: '적용',
     selectYourWallet: '지갑 선택', lastUsed: '최근 사용', requestingSignature: '서명 요청 중', pleaseSign: '지갑에서 서명해 주세요.', back: '뒤로',
     home: '홈', search: '검색', breaking: '속보', more: '더보기', support: '지원', termsOfUse: '이용약관', close: '닫기',
+    darkMode: '다크 모드', helpCenter: '도움말 센터', disconnectWallet: '지갑 연결 해제', disconnectAndLogOut: '연결 해제 및 로그아웃', logout: '로그아웃',
+    hoursRemaining: '{n}시간 남음', minutesRemaining: '{n}분 남음', oneDayLeft: '1일 남음', oneMonthLeft: '1개월 남음',
   },
   zh: {
     portfolio: '投资组合', balance: '余额', deposit: '充值', withdraw: '提现',
@@ -198,6 +215,8 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: '选择语言', currentLanguage: '当前语言', cancel: '取消', apply: '应用',
     selectYourWallet: '选择钱包', lastUsed: '最近使用', requestingSignature: '请求签名', pleaseSign: '请在钱包中签名。', back: '返回',
     home: '首页', search: '搜索', breaking: '突发', more: '更多', support: '支持', termsOfUse: '使用条款', close: '关闭',
+    darkMode: '深色模式', helpCenter: '帮助中心', disconnectWallet: '断开钱包', disconnectAndLogOut: '断开并退出', logout: '退出登录',
+    hoursRemaining: '{n}小时后', minutesRemaining: '{n}分钟后', oneDayLeft: '1天后结束', oneMonthLeft: '1个月后结束',
   },
   ru: {
     portfolio: 'Портфель', balance: 'Баланс', deposit: 'Пополнить', withdraw: 'Вывести',
@@ -226,6 +245,8 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: 'Выбор языка', currentLanguage: 'Текущий язык', cancel: 'Отмена', apply: 'Применить',
     selectYourWallet: 'Выберите кошелёк', lastUsed: 'Последний использованный', requestingSignature: 'Запрос подписи', pleaseSign: 'Подпишите запрос в кошельке.', back: 'Назад',
     home: 'Главная', search: 'Поиск', breaking: 'Срочно', more: 'Ещё', support: 'Поддержка', termsOfUse: 'Условия', close: 'Закрыть',
+    darkMode: 'Тёмный режим', helpCenter: 'Центр помощи', disconnectWallet: 'Отключить кошелёк', disconnectAndLogOut: 'Отключить и выйти', logout: 'Выйти',
+    hoursRemaining: 'осталось {n}ч', minutesRemaining: 'осталось {n}мин', oneDayLeft: '1 день осталось', oneMonthLeft: '1 мес. осталось',
   },
   es: {
     portfolio: 'Portafolio', balance: 'Saldo', deposit: 'Depositar', withdraw: 'Retirar',
@@ -254,6 +275,8 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: 'Seleccionar idioma', currentLanguage: 'Idioma actual', cancel: 'Cancelar', apply: 'Aplicar',
     selectYourWallet: 'Selecciona tu cartera', lastUsed: 'Último usado', requestingSignature: 'Solicitando firma', pleaseSign: 'Por favor firma en tu cartera.', back: 'Atrás',
     home: 'Inicio', search: 'Buscar', breaking: 'Urgente', more: 'Más', support: 'Soporte', termsOfUse: 'Términos de uso', close: 'Cerrar',
+    darkMode: 'Modo oscuro', helpCenter: 'Centro de ayuda', disconnectWallet: 'Desconectar cartera', disconnectAndLogOut: 'Desconectar y salir', logout: 'Cerrar sesión',
+    hoursRemaining: '{n}h restantes', minutesRemaining: '{n}min restantes', oneDayLeft: '1 día restante', oneMonthLeft: '1 mes restante',
   },
   fr: {
     portfolio: 'Portefeuille', balance: 'Solde', deposit: 'Déposer', withdraw: 'Retirer',
@@ -282,6 +305,8 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: 'Choisir la langue', currentLanguage: 'Langue actuelle', cancel: 'Annuler', apply: 'Appliquer',
     selectYourWallet: 'Choisissez votre portefeuille', lastUsed: 'Dernièrement utilisé', requestingSignature: 'Demande de signature', pleaseSign: 'Veuillez signer dans votre portefeuille.', back: 'Retour',
     home: 'Accueil', search: 'Rechercher', breaking: 'Urgent', more: 'Plus', support: 'Assistance', termsOfUse: "Conditions d'utilisation", close: 'Fermer',
+    darkMode: 'Mode sombre', helpCenter: "Centre d'aide", disconnectWallet: 'Déconnecter le portefeuille', disconnectAndLogOut: 'Déconnecter et quitter', logout: 'Se déconnecter',
+    hoursRemaining: '{n}h restantes', minutesRemaining: '{n}min restantes', oneDayLeft: '1 jour restant', oneMonthLeft: '1 mois restant',
   },
   hi: {
     portfolio: 'पोर्टफोलियो', balance: 'शेष', deposit: 'जमा करें', withdraw: 'निकालें',
@@ -310,6 +335,8 @@ const T: Record<LangCode, Translations> = {
     selectLanguage: 'भाषा चुनें', currentLanguage: 'वर्तमान भाषा', cancel: 'रद्द करें', apply: 'लागू करें',
     selectYourWallet: 'अपना वॉलेट चुनें', lastUsed: 'अंतिम उपयोग', requestingSignature: 'हस्ताक्षर का अनुरोध', pleaseSign: 'कृपया अपने वॉलेट में हस्ताक्षर करें।', back: 'वापस',
     home: 'होम', search: 'खोजें', breaking: 'ब्रेकिंग', more: 'और', support: 'सहायता', termsOfUse: 'उपयोग की शर्तें', close: 'बंद करें',
+    darkMode: 'डार्क मोड', helpCenter: 'सहायता केंद्र', disconnectWallet: 'वॉलेट डिस्कनेक्ट करें', disconnectAndLogOut: 'डिस्कनेक्ट करें और बाहर निकलें', logout: 'लॉग आउट',
+    hoursRemaining: '{n}घं. शेष', minutesRemaining: '{n}मि. शेष', oneDayLeft: '1 दिन बाकी', oneMonthLeft: '1 महीना बाकी',
   },
 };
 

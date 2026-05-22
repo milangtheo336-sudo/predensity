@@ -2539,7 +2539,7 @@ function ProfileDropdownPortal({
       <div className="py-1.5">
         <Link href="/my-bets" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors">
           <Wallet className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-          Portfolio
+          {t.portfolio}
         </Link>
         <div className="px-2 py-0.5">
           <ThemeToggle />
@@ -2553,22 +2553,22 @@ function ProfileDropdownPortal({
           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
         >
           <Phone className="w-4 h-4" />
-          Support
+          {t.support}
         </button>
         <button
-          onClick={() => showComingSoon('Help Center')}
+          onClick={() => showComingSoon(t.helpCenter)}
           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
         >
           <FileText className="w-4 h-4" />
-          Help Center
+          {t.helpCenter}
         </button>
         <Link href="/privacy" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
           <Shield className="w-4 h-4" />
-          Privacy Policy
+          {t.privacyPolicy}
         </Link>
         <Link href="/terms" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
           <FileText className="w-4 h-4" />
-          Terms of Use
+          {t.termsOfUse}
         </Link>
       </div>
 
@@ -2585,7 +2585,7 @@ function ProfileDropdownPortal({
             className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
           >
             <LogOut className="w-4 h-4" />
-            Disconnect &amp; Log Out
+            {t.disconnectAndLogOut}
           </button>
         ) : (
           /* Email/OAuth user: separate disconnect and logout buttons */
@@ -2596,7 +2596,7 @@ function ProfileDropdownPortal({
                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
               >
                 <Wallet className="w-4 h-4" />
-                Disconnect Wallet
+                {t.disconnectWallet}
               </button>
             )}
             <button
@@ -2609,7 +2609,7 @@ function ProfileDropdownPortal({
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
             >
               <LogOut className="w-4 h-4" />
-              Logout
+              {t.logout}
             </button>
           </>
         )}

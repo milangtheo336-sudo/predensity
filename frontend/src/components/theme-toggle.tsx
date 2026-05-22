@@ -3,8 +3,10 @@
 import * as React from 'react';
 import { Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useLanguage } from '@/context/LanguageContext';
 
 export function ThemeToggle() {
+  const { t } = useLanguage();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
@@ -24,7 +26,7 @@ export function ThemeToggle() {
     >
       <div className="flex items-center gap-2">
         <Moon className="w-4 h-4 text-blue-500" />
-        <span>Dark mode</span>
+        <span>{t.darkMode}</span>
       </div>
       <div
         className={`relative w-10 h-6 rounded-full transition-colors ${
