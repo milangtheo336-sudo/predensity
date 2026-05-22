@@ -58,13 +58,8 @@ function NotFoundView({ message, onBack }: { message: string; onBack: () => void
 
 function LoadingView() {
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
-      <Header />
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-lg mx-auto text-center">
-          <p className="text-gray-500 dark:text-gray-400">Loading market...</p>
-        </div>
-      </main>
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center">
+      <img src="/predensity-logo.png" alt="Predensity" className="w-32 h-32 object-contain animate-pulse" />
     </div>
   );
 }
