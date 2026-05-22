@@ -12,7 +12,7 @@ contract DeployPredensityPredictionMarketMainnetV2Script is Script {
         console.log("Deploying PredensityPredictionMarket V2 to MAINNET...");
         console.log("Deployer address:", deployerAddress);
         console.log("Current timestamp:", block.timestamp);
-        console.log("Note: This version has removed bet amount validation for Hedera compatibility");
+        console.log("Note: This version has removed bet amount validation for EVM compatibility");
         
         vm.startBroadcast(deployerPrivateKey);
         
