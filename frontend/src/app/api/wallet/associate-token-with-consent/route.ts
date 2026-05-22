@@ -1,5 +1,6 @@
 ﻿
 export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 import { Magic } from '@magic-sdk/admin';
@@ -207,4 +208,5 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
+
 

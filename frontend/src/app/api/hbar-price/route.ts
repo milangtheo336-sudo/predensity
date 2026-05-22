@@ -1,5 +1,6 @@
 ﻿
 export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/api-auth';
 
 // Server-side cache for crypto prices (avoids hammering CoinGecko)
@@ -159,4 +160,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
 

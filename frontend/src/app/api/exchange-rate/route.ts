@@ -1,5 +1,6 @@
 ﻿
 export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
 
 // Cache the rate for 10 minutes to avoid hammering the API
 let cachedRate: { rate: number; timestamp: number } | null = null;
@@ -34,4 +35,5 @@ export async function GET() {
     return NextResponse.json({ rate: cachedRate?.rate || FALLBACK_RATE, cached: true, fallback: true });
   }
 }
+
 
