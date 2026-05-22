@@ -105,11 +105,24 @@ export function useNonCustodialBetting() {
 
       // Check token balance
       console.log('[placeBet] Checking token balance...');
-      const balance = await getTokenBalance(tokenAddress);
-      console.log('[placeBet] Token balance:', ethers.utils.formatUnits(balance, 6), 'USDC');
+      console.log('[placeBet] Token address:', tokenAddress);
+      console.log('[placeBet] User address for balance check:', userAddress);
       
-      if (ethers.BigNumber.from(balance).lt(tokenAmount)) {
-        throw new Error(`Insufficient USDC balance. You have ${ethers.utils.formatUnits(balance, 6)} USDC`);
+      try {
+        const balance = await getTokenBalance(tokenAddress, userAddress);
+        console.log('[placeBet] Token balance:', ethers.utils.formatUnits(balance, 6), 'USDC');
+        
+        if (ethers.BigNumber.from(balance).lt(tokenAmount)) {
+          throw new Error(`Insufficient USDC balance. You have ${ethers.utils.formatUnits(balance, 6)} USDC`);
+        }
+      } catch (balanceError) {
+        console.error('[placeBet] Balance check failed:', balanceError);
+        // The user's Magic Link wallet doesn't have USDC on-chain
+        // Their balance is in the custodial managed wallet
+        throw new Error(
+          'Your USDC is in the custodial wallet. Non-custodial betting requires USDC in your Magic Link wallet on-chain. ' +
+          'Please contact support to enable non-custodial betting, or use the custodial betting system.'
+        );
       }
 
       // Check allowance
