@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿
+export const dynamic = 'force-dynamic';
 import {
   Client,
   ContractExecuteTransaction,
@@ -168,3 +169,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Transfer failed' }, { status: 500 });
   }
 }
+

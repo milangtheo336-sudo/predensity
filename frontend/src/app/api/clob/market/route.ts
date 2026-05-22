@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿
+export const dynamic = 'force-dynamic';
 import { requireAdmin, rateLimit } from '@/lib/api-auth';
 import { api } from '../../../../../convex/_generated/api';
 import { getServerConvex } from '@/lib/convex-server';
@@ -36,3 +37,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
+

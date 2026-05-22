@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿
+export const dynamic = 'force-dynamic';
 import { Client, ContractCallQuery, ContractId, PrivateKey } from '@hashgraph/sdk';
 import { ethers } from 'ethers';
 import { CONTRACT_IDS } from '@/lib/contracts/contract-config';
@@ -99,3 +100,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Simulation failed' }, { status: 500 });
   }
 }
+

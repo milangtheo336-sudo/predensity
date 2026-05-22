@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿
+export const dynamic = 'force-dynamic';
 import {
   Client,
   ContractCallQuery,
@@ -134,3 +135,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

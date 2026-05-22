@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿
+export const dynamic = 'force-dynamic';
 import { rateLimit } from '@/lib/api-auth';
 
 const RPC_URLS: Record<string, string> = {
@@ -15,7 +16,7 @@ const TARGET_RPC = RPC_URLS[HEDERA_NETWORK] || RPC_URLS.testnet;
  * We intentionally DO NOT allow `eth_sendRawTransaction`, `eth_sendTransaction`,
  * `eth_sign`, `eth_signTransaction`, `personal_*`, `miner_*`, `admin_*`,
  * `debug_*`, or `txpool_*` through this proxy. Wallets that need to broadcast
- * a signed tx can talk to a public RPC directly — this proxy exists so the
+ * a signed tx can talk to a public RPC directly â€” this proxy exists so the
  * client UI can make cheap read calls without exposing our API-key-bearing
  * RPC endpoint (if one is ever configured) and without being abused as an
  * open relay for arbitrary JSON-RPC methods.
@@ -43,7 +44,7 @@ const METHOD_ALLOWLIST = new Set<string>([
   'web3_clientVersion',
 ]);
 
-const MAX_BODY_BYTES = 64 * 1024; // 64 KiB — plenty for eth_call/eth_getLogs
+const MAX_BODY_BYTES = 64 * 1024; // 64 KiB â€” plenty for eth_call/eth_getLogs
 const MAX_BATCH_SIZE = 20;
 
 function rpcError(code: number, message: string, id: unknown = null, status = 400) {
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
   const limited = rateLimit(request, { maxRequests: 120, windowMs: 60_000 });
   if (limited) return limited;
 
-  // Cap body size — prevents a malicious client from forcing a massive
+  // Cap body size â€” prevents a malicious client from forcing a massive
   // upstream POST via the declared Content-Length.
   const contentLength = Number(request.headers.get('content-length') || '0');
   if (contentLength > MAX_BODY_BYTES) {
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
       body: raw,
     });
 
-    // Stream the upstream JSON back verbatim — don't re-serialize in a way
+    // Stream the upstream JSON back verbatim â€” don't re-serialize in a way
     // that would strip valid fields the client depends on.
     const text = await response.text();
     return new NextResponse(text, {
@@ -132,3 +133,4 @@ export async function POST(request: NextRequest) {
     return rpcError(-32603, error?.message || 'RPC proxy error', null, 502);
   }
 }
+

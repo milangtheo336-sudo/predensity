@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Force create proxy wallet for existing users
  * This is a one-time migration endpoint
  */
@@ -133,3 +133,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
