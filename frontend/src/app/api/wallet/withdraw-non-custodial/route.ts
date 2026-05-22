@@ -54,18 +54,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid EVM address format' }, { status: 400 });
     }
 
-    // Check user balance
+    // Get user wallet info (for verification only, balance is read from blockchain)
     const wallet = await convex.query(api.users.getManagedWalletByUserId, { userId });
     if (!wallet) {
       return NextResponse.json({ error: 'No wallet found' }, { status: 404 });
-    }
-
-    const currentBalance = parseFloat(wallet.usdcBalance || '0');
-    if (currentBalance < amount) {
-      return NextResponse.json(
-        { error: `Insufficient balance. Available: ${currentBalance.toFixed(2)} USDC` },
-        { status: 400 }
-      );
     }
 
     // Verify transaction on Hedera Mirror Node
@@ -121,19 +113,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Deduct balance in Convex
-    const newBalance = (currentBalance - parseFloat(actualAmount)).toFixed(6);
-    await convex.mutation(api.users.updateWalletBalance, {
-      userId,
-      usdcBalance: newBalance,
-    });
+    // Balance is read from blockchain, no need to update Convex
+    // The useBlockchainBalance hook will automatically reflect the new balance
 
     return NextResponse.json({
       success: true,
       transactionHash,
       amount: actualAmount,
       destination: destinationAddress,
-      newBalance,
     });
   } catch (error) {
     console.error('[withdraw-non-custodial] Error:', error);
