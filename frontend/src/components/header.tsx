@@ -283,14 +283,61 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// Crypto Deposit View -- QR code + treasury address
+// Crypto Deposit View -- Arc native (QR) + Cross-chain CCTP bridge
 // ---------------------------------------------------------------------------
+
+interface SupportedToken {
+  id: string;
+  name: string;
+  icon: string;
+  needsSwap?: boolean;
+}
+
+interface SupportedChain {
+  id: string;
+  name: string;
+  icon: string;
+  native?: boolean;
+}
+
+const IS_TESTNET = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || !process.env.NEXT_PUBLIC_NETWORK;
+
+const SUPPORTED_TOKENS: SupportedToken[] = IS_TESTNET
+  ? [
+      { id: 'usdc', name: 'USDC', icon: '/tokens/usdc.svg' },
+      { id: 'eurc', name: 'EURC', icon: '/tokens/eurc.svg', needsSwap: true },
+    ]
+  : [
+      { id: 'usdc', name: 'USDC', icon: '/tokens/usdc.svg' },
+      { id: 'eurc', name: 'EURC', icon: '/tokens/eurc.svg', needsSwap: true },
+      { id: 'usdt', name: 'USDT', icon: '/tokens/usdt.svg', needsSwap: true },
+      { id: 'dai', name: 'DAI', icon: '/tokens/dai.svg', needsSwap: true },
+      { id: 'pyusd', name: 'PYUSD', icon: '/tokens/pyusd.svg', needsSwap: true },
+    ];
+
+const SUPPORTED_CHAINS: SupportedChain[] = [
+  { id: 'arc', name: 'Arc', icon: '/chains/arc.svg', native: true },
+  { id: 'ethereum', name: 'Ethereum', icon: '/chains/ethereum.svg' },
+  { id: 'base', name: 'Base', icon: '/chains/base.svg' },
+  { id: 'arbitrum', name: 'Arbitrum', icon: '/chains/arbitrum.svg' },
+  { id: 'optimism', name: 'Optimism', icon: '/chains/optimism.svg' },
+  { id: 'polygon', name: 'Polygon', icon: '/chains/polygon.svg' },
+  { id: 'avalanche', name: 'Avalanche', icon: '/chains/avalanche.svg' },
+];
 
 function CryptoDepositView({ onBack }: { onBack: () => void }) {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
-  const [depositDetected, setDepositDetected] = useState(false);
-  const [detectedAmount, setDetectedAmount] = useState('');
+  const [selectedToken, setSelectedToken] = useState<SupportedToken>(SUPPORTED_TOKENS[0]);
+  const [selectedChain, setSelectedChain] = useState<SupportedChain>(SUPPORTED_CHAINS[0]);
+  const [tokenDropdownOpen, setTokenDropdownOpen] = useState(false);
+  const [chainDropdownOpen, setChainDropdownOpen] = useState(false);
+  const [tokenSearch, setTokenSearch] = useState('');
+  const [chainSearch, setChainSearch] = useState('');
+  const [amount, setAmount] = useState('');
+  const [bridging, setBridging] = useState(false);
+  const [bridgeError, setBridgeError] = useState('');
+  const [bridgeSuccess, setBridgeSuccess] = useState(false);
   const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
   const [loadingProxy, setLoadingProxy] = useState(false);
   const { user } = useMagic();
@@ -303,98 +350,36 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
   );
 
   const userAddress = user?.publicAddress ?? walletUser?.publicAddress ?? '';
-  
+
   // Fetch proxy wallet address with caching
   useEffect(() => {
     const fetchProxyWallet = async () => {
       if (!userAddress) return;
-      
-      // Check cache first
       try {
         const cached = localStorage.getItem(`predensity_proxy_wallet_${userAddress}`);
         if (cached) {
           const data = JSON.parse(cached);
-          if (Date.now() - data.timestamp < 86400000) { // 24 hour cache
+          if (Date.now() - data.timestamp < 86400000) {
             setProxyWalletAddress(data.proxyWallet);
-            setLoadingProxy(false);
             return;
           }
         }
-      } catch (e) {
-        console.error('[CryptoDepositView] Cache read error:', e);
-      }
-      
+      } catch { /* ignore */ }
       setLoadingProxy(true);
       try {
         const response = await fetch(`/api/proxy-wallet/create?userAddress=${userAddress}`);
         const data = await response.json();
         if (data.exists && data.proxyWalletAddress) {
           setProxyWalletAddress(data.proxyWalletAddress);
-          // Cache it
-          localStorage.setItem(
-            `predensity_proxy_wallet_${userAddress}`,
-            JSON.stringify({
-              proxyWallet: data.proxyWalletAddress,
-              timestamp: Date.now(),
-            })
-          );
+          localStorage.setItem(`predensity_proxy_wallet_${userAddress}`, JSON.stringify({ proxyWallet: data.proxyWalletAddress, timestamp: Date.now() }));
         }
-      } catch (error) {
-        console.error('[CryptoDepositView] Failed to fetch proxy wallet:', error);
-      } finally {
-        setLoadingProxy(false);
-      }
+      } catch { /* ignore */ } finally { setLoadingProxy(false); }
     };
-
     fetchProxyWallet();
   }, [userAddress]);
-  
-  // Use proxy wallet address for deposits, fallback to user address
+
   const depositAddress = proxyWalletAddress || userAddress;
-  const evmAddr = userAddress;
-
-  const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-  const mirrorBase = hederaNetwork === 'mainnet'
-    ? 'https://mainnet.mirrornode.hedera.com'
-    : 'https://testnet.mirrornode.hedera.com';
-  const usdcTokenId = hederaNetwork === 'mainnet' ? '0.0.456858' : '0.0.8229951';
-
-  // Poll mirror node for balance changes while modal is open
-  const initialOnChainRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (!depositAddress || depositDetected) return;
-    initialOnChainRef.current = null; // reset on mount
-
-    const poll = async () => {
-      try {
-        const res = await fetch(`${mirrorBase}/api/v1/accounts/${depositAddress}/tokens?token.id=${usdcTokenId}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const tokenEntry = data.tokens?.find((t: any) => t.token_id === usdcTokenId);
-        if (!tokenEntry) return;
-
-        const onChainBalance = parseInt(tokenEntry.balance) / 1e6;
-
-        if (initialOnChainRef.current === null) {
-          // First poll -- record baseline
-          initialOnChainRef.current = onChainBalance;
-          return;
-        }
-
-        // Only detect if on-chain increased since modal opened
-        if (onChainBalance > initialOnChainRef.current + 0.000001) {
-          const diff = (onChainBalance - initialOnChainRef.current).toFixed(6);
-          setDetectedAmount(diff);
-          setDepositDetected(true);
-          // Balance will be automatically updated by useBlockchainBalance hook
-        }
-      } catch { /* ignore polling errors */ }
-    };
-
-    const interval = setInterval(poll, 5000);
-    poll();
-    return () => clearInterval(interval);
-  }, [depositAddress, depositDetected]);
+  const isArcNative = selectedChain.native;
 
   const handleCopy = async () => {
     if (depositAddress) {
@@ -404,57 +389,110 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const handleBridge = async () => {
+    if (!amount || parseFloat(amount) <= 0) { setBridgeError('Enter a valid amount'); return; }
+    setBridging(true); setBridgeError(''); setBridgeSuccess(false);
+    try {
+      const { bridgeUSDCToArc, swapToUSDCOnArc, switchWalletChain } = await import('@/lib/arc-bridge');
+      const provider = (window as any).ethereum;
+      if (!provider) throw new Error('No wallet detected. Please install MetaMask or another wallet.');
+
+      await switchWalletChain(provider, selectedChain.id);
+      await bridgeUSDCToArc(provider, selectedChain.id, amount, depositAddress);
+
+      if (selectedToken.needsSwap) {
+        const kitKey = process.env.NEXT_PUBLIC_CIRCLE_KIT_KEY;
+        if (kitKey) {
+          await swapToUSDCOnArc(provider, selectedToken.id, amount, kitKey);
+        }
+      }
+      setBridgeSuccess(true);
+    } catch (err: any) {
+      setBridgeError(err?.message || 'Bridge failed. Please try again.');
+    } finally { setBridging(false); }
+  };
+
+  const filteredTokens = SUPPORTED_TOKENS.filter(t => t.name.toLowerCase().includes(tokenSearch.toLowerCase()));
+  const filteredChains = SUPPORTED_CHAINS.filter(c => c.name.toLowerCase().includes(chainSearch.toLowerCase()));
+
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back
-      </button>
+      <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back</button>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Image src="/hedera.svg" alt="Hedera" width={20} height={20} />
-          <span className="text-sm text-gray-900 dark:text-white font-medium">{t.hedera}</span>
-          <div className="relative group">
-            <HelpCircle className="w-3.5 h-3.5 text-gray-500 cursor-help" />
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 p-2.5 rounded-lg bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-[11px] text-gray-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-              Send {currency.symbol} on the Hedera network to this address. Your balance updates automatically.
-              {evmAddr && (
-                <div className="mt-1.5 pt-1.5 border-t border-white/10 text-[10px] text-gray-500 break-all">
-                  EVM: {evmAddr}
-                </div>
-              )}
+      {/* Token & Chain selectors */}
+      <div className="flex gap-2">
+        {/* Token selector */}
+        <div className="relative flex-1">
+          <button onClick={() => { setTokenDropdownOpen(!tokenDropdownOpen); setChainDropdownOpen(false); }}
+            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10 text-sm">
+            <Image src={selectedToken.icon} alt={selectedToken.name} width={20} height={20} className="rounded-full" />
+            <span className="text-gray-900 dark:text-white font-medium">{selectedToken.name}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-gray-400 ml-auto" />
+          </button>
+          {tokenDropdownOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+              <input value={tokenSearch} onChange={e => setTokenSearch(e.target.value)} placeholder="Search token..."
+                className="w-full px-3 py-2 text-xs bg-transparent border-b border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none" />
+              {filteredTokens.map(token => (
+                <button key={token.id} onClick={() => { setSelectedToken(token); setTokenDropdownOpen(false); setTokenSearch(''); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/[0.05] text-sm text-gray-900 dark:text-white">
+                  <Image src={token.icon} alt={token.name} width={18} height={18} className="rounded-full" />
+                  {token.name}
+                  {token.needsSwap && <span className="text-[10px] text-amber-400 ml-auto">swap</span>}
+                </button>
+              ))}
             </div>
-          </div>
+          )}
         </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10">
-          <span className="text-xs text-gray-300">{currency.symbol}</span>
+
+        {/* Chain selector */}
+        <div className="relative flex-1">
+          <button onClick={() => { setChainDropdownOpen(!chainDropdownOpen); setTokenDropdownOpen(false); }}
+            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10 text-sm">
+            <Image src={selectedChain.icon} alt={selectedChain.name} width={20} height={20} className="rounded-full" />
+            <span className="text-gray-900 dark:text-white font-medium">{selectedChain.name}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-gray-400 ml-auto" />
+          </button>
+          {chainDropdownOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+              <input value={chainSearch} onChange={e => setChainSearch(e.target.value)} placeholder="Search chain..."
+                className="w-full px-3 py-2 text-xs bg-transparent border-b border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none" />
+              {filteredChains.map(chain => (
+                <button key={chain.id} onClick={() => { setSelectedChain(chain); setChainDropdownOpen(false); setChainSearch(''); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/[0.05] text-sm text-gray-900 dark:text-white">
+                  <Image src={chain.icon} alt={chain.name} width={18} height={18} className="rounded-full" />
+                  {chain.name}
+                  {chain.native && <span className="text-[10px] text-green-400 ml-auto">native</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {depositDetected ? (
-        <div className="text-center py-6">
-          <Check className="w-8 h-8 text-green-500 mx-auto mb-2" />
-          <p className="text-lg text-green-400 font-semibold">{detectedAmount} {currency.symbol} received</p>
-          <p className="text-xs text-gray-400 mt-1">Your balance has been updated</p>
+      {/* Swap notice */}
+      {selectedToken.needsSwap && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+          <HelpCircle className="w-3.5 h-3.5 flex-shrink-0" />
+          {selectedToken.name} will be bridged via CCTP then swapped to USDC on Arc.
         </div>
-      ) : (
+      )}
+
+      {/* Arc native: QR + copy address */}
+      {isArcNative ? (
         <>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-400">Send {selectedToken.name} on Arc network</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10">
+              <span className="text-xs text-gray-300">{currency.symbol}</span>
+            </div>
+          </div>
+
           {depositAddress ? (
             <div className="flex justify-center py-3">
               <div className="bg-white p-3 rounded-xl">
-                <QRCodeSVG
-                  value={depositAddress}
-                  size={180}
-                  level="H"
-                  includeMargin={false}
-                  imageSettings={{
-                    src: '/hedera.svg',
-                    x: undefined,
-                    y: undefined,
-                    height: 32,
-                    width: 32,
-                    excavate: true,
-                  }}
-                />
+                <QRCodeSVG value={depositAddress} size={180} level="H" includeMargin={false}
+                  imageSettings={{ src: '/chains/arc.svg', x: undefined, y: undefined, height: 32, width: 32, excavate: true }} />
               </div>
             </div>
           ) : (
@@ -464,37 +502,73 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
           )}
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs text-gray-400">Wallet Address (Proxy Wallet)</label>
-              <Link href="/terms" className="text-xs text-gray-400 underline hover:text-white transition-colors">
-                Terms apply
-              </Link>
-            </div>
+            <label className="text-xs text-gray-400 mb-1.5 block">Deposit Address</label>
             <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10">
               <span className="text-sm text-gray-900 dark:text-white font-mono truncate flex-1">
                 {loadingProxy ? 'Loading...' : (depositAddress || 'Not available')}
               </span>
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">
-              Send USDC to this address for gasless betting. Funds are held in your smart contract wallet.
-            </p>
-            <button
-              onClick={handleCopy}
-              disabled={!depositAddress}
-              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-gray-200 dark:border-white/10 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50"
-            >
+            <p className="text-xs text-gray-400 mt-1.5">Send USDC to this address. Funds are held in your smart contract wallet.</p>
+            <button onClick={handleCopy} disabled={!depositAddress}
+              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-gray-200 dark:border-white/10 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50">
               {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
               {copied ? 'Copied' : 'Copy address'}
             </button>
           </div>
-
-          {depositAddress && (
-            <div className="flex items-center justify-center gap-2 py-2">
-              <Loader2 className="w-3.5 h-3.5 text-vibrant-purple animate-spin" />
-              <span className="text-xs text-gray-400">Waiting for deposit...</span>
+        </>
+      ) : (
+        /* Cross-chain CCTP bridge flow */
+        <>
+          {bridgeSuccess ? (
+            <div className="text-center py-6">
+              <Check className="w-8 h-8 text-green-500 mx-auto mb-2" />
+              <p className="text-lg text-green-400 font-semibold">Bridge successful!</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {selectedToken.needsSwap
+                  ? `${selectedToken.name} bridged and swapped to USDC on Arc`
+                  : `${amount} USDC bridged to Arc`}
+              </p>
             </div>
-          )}
+          ) : (
+            <>
+              <div>
+                <label className="text-xs text-gray-400 mb-1.5 block">Amount</label>
+                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" min="0" step="any"
+                  className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-vibrant-purple" />
+              </div>
 
+              {/* Fee breakdown */}
+              <div className="space-y-1.5 px-1">
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>Bridge fee</span><span>~$0.00</span>
+                </div>
+                {selectedToken.needsSwap && (
+                  <div className="flex justify-between text-xs text-amber-400">
+                    <span>Swap fee ({selectedToken.name} → USDC)</span><span>~0.3%</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-xs text-gray-300 font-medium border-t border-white/10 pt-1.5">
+                  <span>You receive (est.)</span>
+                  <span>{amount ? (selectedToken.needsSwap ? (parseFloat(amount) * 0.997).toFixed(2) : parseFloat(amount).toFixed(2)) : '0.00'} USDC</span>
+                </div>
+              </div>
+
+              {bridgeError && <p className="text-xs text-red-400 text-center">{bridgeError}</p>}
+
+              <button onClick={handleBridge} disabled={bridging || !amount}
+                className="w-full py-2.5 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                {bridging ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" />Bridging...</>
+                ) : (
+                  `Bridge ${selectedToken.name} from ${selectedChain.name}`
+                )}
+              </button>
+
+              <p className="text-[10px] text-gray-500 text-center">
+                Powered by Circle CCTP. Bridge takes ~1-2 minutes.
+              </p>
+            </>
+          )}
         </>
       )}
     </div>
