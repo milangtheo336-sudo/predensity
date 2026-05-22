@@ -31,6 +31,7 @@ import { api } from '../../convex/_generated/api';
 import BoringAvatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
 import { useBalanceVisibility } from '@/components/header';
+import { useEIP6963Wallets } from '@/hooks/useEIP6963Wallets';
 
 interface PredictionCardProps {
   className?: string;
@@ -194,6 +195,7 @@ function CryptoActivitySection({
   const { walletUser } = useWalletUser();
   const isSignedIn = !!user || !!walletUser;
   const effectiveIssuer = user?.issuer ?? walletUser?.userId;
+  const eip6963Wallets = useEIP6963Wallets();
 
   // Ideas (comments)
   const marketIdForComments = `crypto-${tokenSymbol.toLowerCase()}`;
@@ -1095,25 +1097,55 @@ export function PredictionCard({
         const proxyWalletAddr = await resolveProxyWallet(ownerAddress);
 
         setBetError('Approve the signature in your wallet...');
-        const provider = (window as any).ethereum;
-        if (!provider) throw new Error('Wallet provider not found. Make sure your wallet extension is active.');
 
-        // Use eth_requestAccounts (not eth_accounts) so HashPack / any wallet
-        // that hasn't yet connected via EVM mode will show its connection popup.
-        let accounts: string[] = await provider.request({ method: 'eth_accounts' });
-        if (!accounts.length) {
-          // Prompt connection — shows wallet popup once per dApp
-          accounts = await provider.request({ method: 'eth_requestAccounts' });
+        // -------------------------------------------------------------------
+        // Find the correct EIP-1193 provider for this owner address.
+        // Multiple wallets (e.g. Rabby + HashPack) each announce via EIP-6963;
+        // window.ethereum is just whichever took it last (usually Rabby).
+        // We iterate all announced providers and pick the one whose accounts
+        // include ownerAddress. This avoids prompting the wrong wallet.
+        // -------------------------------------------------------------------
+        let signingProvider: any = null;
+
+        // 1. Check all EIP-6963 announced wallets
+        for (const detail of eip6963Wallets) {
+          try {
+            let addrs: string[] = await detail.provider.request({ method: 'eth_accounts' });
+            if (!addrs.length) {
+              addrs = await detail.provider.request({ method: 'eth_requestAccounts' });
+            }
+            if (addrs.some((a: string) => a.toLowerCase() === ownerAddress.toLowerCase())) {
+              signingProvider = detail.provider;
+              console.log('[handlePlaceBet] Found matching wallet via EIP-6963:', detail.info.name);
+              break;
+            }
+          } catch {
+            // provider rejected or not ready — skip
+          }
         }
-        if (!accounts.length) throw new Error('No wallet accounts found. Please approve access in your wallet.');
 
-        // Verify the active wallet account matches the signed-in address
-        if (accounts[0].toLowerCase() !== ownerAddress.toLowerCase()) {
-          throw new Error(`Wrong account active in wallet. Expected ${ownerAddress.slice(0, 6)}…, got ${accounts[0].slice(0, 6)}….`);
+        // 2. Fall back to window.ethereum if EIP-6963 didn't find a match
+        if (!signingProvider) {
+          const fallback = (window as any).ethereum;
+          if (fallback) {
+            let addrs: string[] = await fallback.request({ method: 'eth_accounts' });
+            if (!addrs.length) addrs = await fallback.request({ method: 'eth_requestAccounts' });
+            if (addrs.some((a: string) => a.toLowerCase() === ownerAddress.toLowerCase())) {
+              signingProvider = fallback;
+              console.log('[handlePlaceBet] Found matching wallet via window.ethereum fallback');
+            }
+          }
+        }
+
+        if (!signingProvider) {
+          throw new Error(
+            `Could not find an active wallet for address ${ownerAddress.slice(0, 8)}…. ` +
+            `Please make sure your wallet (${walletUser.walletType ?? 'wallet'}) is unlocked and connected.`
+          );
         }
 
         setBetError('Signing bet...');
-        const signature: string = await provider.request({
+        const signature: string = await signingProvider.request({
           method: 'personal_sign',
           params: [message, ownerAddress],
         });
