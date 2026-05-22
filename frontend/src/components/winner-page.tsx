@@ -29,7 +29,6 @@ export default function WinnerPage({
       transition={{ duration: 0.5 }}
       className="flex-1 flex flex-col items-center justify-center px-6 pt-16 pb-10"
     >
-      {/* Success checkmark */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -43,12 +42,10 @@ export default function WinnerPage({
         </div>
       </motion.div>
 
-      {/* Victory text */}
       <h1 className="text-3xl font-bold text-white mb-2">
         {selectedOutcome} Won!
       </h1>
 
-      {/* Match card result */}
       <div className="bg-white rounded-2xl p-6 w-full max-w-xs shadow-xl mb-6">
         <div className="flex justify-between items-center mb-4">
           <div className="flex flex-col items-center gap-1">
@@ -77,7 +74,6 @@ export default function WinnerPage({
           </div>
         </div>
 
-        {/* Bet details */}
         <div className="border-t border-gray-200 pt-4">
           <div className="flex justify-between mb-3">
             <span className="text-sm text-gray-600">Demo bet:</span>
@@ -90,7 +86,6 @@ export default function WinnerPage({
         </div>
       </div>
 
-      {/* Continue button */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
