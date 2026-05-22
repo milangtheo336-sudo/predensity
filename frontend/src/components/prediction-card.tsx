@@ -389,7 +389,7 @@ export function PredictionCard({
   const cryptoContractIdString = contractId || getContractId(Category.CRYPTO);
   const contractAddress = getContractAddress(Category.CRYPTO);
 
-  // Polymarket model: all users use platform balance
+  //  all users use platform balance
   const { user, isSignedIn } = useUser();
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
