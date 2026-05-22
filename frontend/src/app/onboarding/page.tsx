@@ -48,7 +48,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen overflow-hidden relative flex flex-col font-sans"
-      style={{ backgroundColor: step === 'categories' ? '#0a1628' : '#1a1a1a' }}>
+      style={{ backgroundColor: step === 'categories' ? '#1e3a5f' : '#1a1a1a' }}>
 
       {/* Skip */}
       <button
