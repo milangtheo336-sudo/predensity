@@ -203,7 +203,7 @@ export function DepositModal({
           {view === 'crypto' && <CryptoMenuView onSelect={setView} />}
           {view === 'crypto-transfer' && <CryptoDepositView onBack={() => setView('crypto')} />}
           {view === 'wallet-connect' && <WalletConnectView onBack={() => setView('crypto')} onConnected={(provider) => { setEip6963Provider(provider || null); setView('wallet-transfer'); }} />}
-          {view === 'wallet-transfer' && <WalletTransferView onBack={() => setView('wallet-connect')} onClose={onClose} eip6963Provider={eip6963Provider} />}
+          {view === 'wallet-transfer' && <WalletTransferView onBack={() => setView(walletUser ? 'crypto' : 'wallet-connect')} onClose={onClose} eip6963Provider={eip6963Provider} />}
           {view === 'cex-deposit' && <CexDepositView onBack={() => setView('crypto')} />}
           {view === 'cash' && <CashMenuView />}
           {view === 'withdraw' && <WithdrawView onBack={() => setView('crypto')} onClose={onClose} />}
@@ -908,7 +908,8 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
   }, [accountId, tokenId, currency.decimals, step]);
 
   // Fetch USDC balance via Hedera mirror node for EIP-6963 wallets (MetaMask, Rabby, etc.)
-  // The mirror node accepts EVM addresses (0x...) as the account identifier.
+  // Step 1: resolve EVM address → Hedera account ID via /api/v1/accounts/{evmAddr}
+  // Step 2: query token balance with that account ID
   useEffect(() => {
     if (!eip6963Provider || !tokenId) return;
     let cancelled = false;
@@ -916,16 +917,24 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
       try {
         const accounts: string[] = await eip6963Provider.request({ method: 'eth_accounts' });
         if (!accounts.length || cancelled) return;
-        const evmAddr = accounts[0]; // e.g. 0xa2f8...
+        const evmAddr = accounts[0].toLowerCase();
         const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
         const base = network === 'mainnet'
           ? 'https://mainnet.mirrornode.hedera.com'
           : 'https://testnet.mirrornode.hedera.com';
-        // Query token balance by EVM address — mirror node resolves it to the Hedera account
-        const res = await fetch(`${base}/api/v1/tokens/${tokenId}/balances?account.id=${evmAddr}&limit=1`);
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        const entry = data?.balances?.[0];
+
+        // Step 1: resolve EVM address to Hedera account ID
+        const accountRes = await fetch(`${base}/api/v1/accounts/${evmAddr}`);
+        if (!accountRes.ok || cancelled) return;
+        const accountData = await accountRes.json();
+        const hederaAccountId: string | undefined = accountData?.account; // e.g. "0.0.12345"
+        if (!hederaAccountId || cancelled) return;
+
+        // Step 2: fetch token balance with the Hedera account ID
+        const balRes = await fetch(`${base}/api/v1/tokens/${tokenId}/balances?account.id=${hederaAccountId}&limit=1`);
+        if (!balRes.ok || cancelled) return;
+        const balData = await balRes.json();
+        const entry = balData?.balances?.[0];
         if (entry && !cancelled) {
           const bal = Number(entry.balance) / Math.pow(10, currency.decimals);
           setWalletUsdcBalance(bal.toFixed(2));
