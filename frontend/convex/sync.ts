@@ -254,20 +254,15 @@ export const getUnfinalizedBetsByMarket = query({
 });
 
 // ============================================
-// RECONCILIATION (Hedera Mirror Node -> Convex sync)
+// RECONCILIATION (Arc RPC -> Convex sync)
 // ============================================
 
-// Contract addresses and their categories for mirror node polling.
+// Contract addresses and their categories for event log polling.
 // Reads from Convex env vars (set in dashboard for prod), defaults to testnet.
 const CRYPTO_CONTRACT_ADDRESS = process.env.CRYPTO_CONTRACT_ADDRESS || "0x00000000000000000000000000000000007e8166";
 const POLITICS_CONTRACT_ADDRESS = process.env.POLITICS_CONTRACT_ADDRESS || "0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8";
 const SPORTS_CONTRACT_ADDRESS = process.env.SPORTS_CONTRACT_ADDRESS || "0x8f62C698a26888424b5170a11610Fa5Fd7DF540b";
 const TECH_CONTRACT_ADDRESS = process.env.TECH_CONTRACT_ADDRESS || "0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8";
-
-const CRYPTO_CONTRACT_ID = process.env.CRYPTO_CONTRACT_ID || "0.0.8290662";
-const POLITICS_CONTRACT_ID = process.env.POLITICS_CONTRACT_ID || "0.0.8232724";
-const SPORTS_CONTRACT_ID = process.env.SPORTS_CONTRACT_ID || "0.0.8232726";
-const TECH_CONTRACT_ID = process.env.TECH_CONTRACT_ID || "0.0.8232727";
 
 const CONTRACTS: { address: string; category: string; type: "crypto" | "base" }[] = [
   { address: CRYPTO_CONTRACT_ADDRESS, category: "crypto", type: "crypto" },
@@ -276,20 +271,10 @@ const CONTRACTS: { address: string; category: string; type: "crypto" | "base" }[
   { address: TECH_CONTRACT_ADDRESS, category: "technology", type: "base" },
 ];
 
-// Hedera contract IDs (0.0.X format) for mirror node API
-const CONTRACT_IDS: Record<string, string> = {
-  [CRYPTO_CONTRACT_ADDRESS]: CRYPTO_CONTRACT_ID,
-  [POLITICS_CONTRACT_ADDRESS]: POLITICS_CONTRACT_ID,
-  [SPORTS_CONTRACT_ADDRESS]: SPORTS_CONTRACT_ID,
-  [TECH_CONTRACT_ADDRESS]: TECH_CONTRACT_ID,
-};
+// Arc RPC URL for event log fetching
+const ARC_RPC_URL = process.env.ARC_RPC_URL || "https://rpc-arc-testnet.arcplatform.io";
 
-// BetPlaced topic hashes
-// Crypto: BetPlaced(uint256 indexed betId, address indexed bettor, uint256 stake, uint256 priceMin, uint256 priceMax, uint256 targetTimestamp, string asset)
-const CRYPTO_BET_PLACED_TOPIC = "0x" + "a3e6f9e0"; // Will compute properly below
-// Base: BetPlaced(uint256 indexed betId, address indexed bettor, uint256 bucket, uint256 stake, uint256 rangeMin, uint256 rangeMax, uint256 targetTimestamp)
-
-// BetClaimed topic: BetClaimed(uint256 indexed betId, address indexed bettor, uint256 payout)
+// Event signatures (matched by data chunk count heuristic rather than topic hash)
 
 // Upsert a single bet from on-chain data. Called by the sync job.
 export const reconcileBet = internalMutation({
@@ -510,42 +495,43 @@ function decodeString(dataChunks: string[], offsetChunkIndex: number): string {
   return String.fromCharCode(...bytes);
 }
 
-// Fetch contract logs from Hedera Mirror Node for a given contract
-async function fetchMirrorNodeLogs(
-  contractId: string,
-  afterTimestamp?: string
+// Fetch contract logs from Arc RPC using eth_getLogs
+async function fetchContractLogs(
+  contractAddress: string,
+  fromBlock: string = "0x0"
 ): Promise<any[]> {
-  const network = process.env.HEDERA_NETWORK || "testnet";
-  const baseUrl = network === "mainnet"
-    ? "https://mainnet.mirrornode.hedera.com"
-    : "https://testnet.mirrornode.hedera.com";
+  try {
+    const response = await fetch(ARC_RPC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_getLogs",
+        params: [{
+          address: contractAddress,
+          fromBlock,
+          toBlock: "latest",
+        }],
+      }),
+    });
 
-  let allLogs: any[] = [];
-  let nextUrl = `${baseUrl}/api/v1/contracts/${contractId}/results/logs?order=asc&limit=100`;
-  if (afterTimestamp) {
-    nextUrl += `&timestamp=gt:${afterTimestamp}`;
-  }
-
-  // Paginate through all results
-  while (nextUrl) {
-    const response = await fetch(nextUrl);
     if (!response.ok) {
-      console.error(`[MirrorSync] Failed to fetch logs for ${contractId}: ${response.status}`);
-      break;
+      console.error(`[ArcSync] Failed to fetch logs for ${contractAddress}: ${response.status}`);
+      return [];
     }
-    const json = await response.json();
-    if (json.logs && json.logs.length > 0) {
-      allLogs = allLogs.concat(json.logs);
-    }
-    // Follow pagination link
-    if (json.links?.next) {
-      nextUrl = `${baseUrl}${json.links.next}`;
-    } else {
-      nextUrl = "";
-    }
-  }
 
-  return allLogs;
+    const json = await response.json();
+    if (json.error) {
+      console.error(`[ArcSync] RPC error:`, json.error);
+      return [];
+    }
+
+    return json.result || [];
+  } catch (err) {
+    console.error(`[ArcSync] Fetch error for ${contractAddress}:`, err);
+    return [];
+  }
 }
 
 // Parse a BetPlaced log for the Crypto contract
@@ -581,12 +567,10 @@ function parseCryptoBetPlaced(log: any, contractAddress: string) {
     priceMin,
     priceMax,
     targetTimestamp,
-    // Crypto BetPlaced event doesn't emit bucket, so derive it from targetTimestamp.
-    // Uses the same formula as the contract: (targetTs - startTimestamp) / SECONDS_PER_DAY
     bucket: getOnChainBucket(targetTimestamp, "crypto"),
     asset,
-    timestamp: log.timestamp ? parseFloat(log.timestamp) : Date.now() / 1000,
-    transactionHash: log.transaction_hash || "",
+    timestamp: log.blockNumber ? Number(BigInt(log.blockNumber)) : Date.now() / 1000,
+    transactionHash: log.transactionHash || "",
   };
 }
 
@@ -624,8 +608,8 @@ function parseBaseBetPlaced(log: any, contractAddress: string, category: string)
     targetTimestamp,
     bucket,
     asset: undefined,
-    timestamp: log.timestamp ? parseFloat(log.timestamp) : Date.now() / 1000,
-    transactionHash: log.transaction_hash || "",
+    timestamp: log.blockNumber ? Number(BigInt(log.blockNumber)) : Date.now() / 1000,
+    transactionHash: log.transactionHash || "",
   };
 }
 
@@ -644,13 +628,8 @@ function parseBetClaimed(log: any, contractAddress: string) {
   };
 }
 
-// Keccak-256 topic hashes for event matching
-// BetPlaced(uint256,address,uint256,uint256,uint256,uint256,string) -- crypto
-const CRYPTO_BET_PLACED = "0xb075e5b7e9b8e0e1e0e5b7e9b8e0e1e0"; // placeholder, matched by position
-// We match by topic[0] which is the event signature hash.
-// Rather than hardcoding, we match by the number of data chunks to distinguish.
-
-// The main sync action: fetches events from Hedera Mirror Node and reconciles with Convex.
+// The main sync action: fetches events from Arc RPC and reconciles with Convex.
+// We match event type by the number of data chunks (same heuristic as before).
 export const syncFromMirrorNode = internalAction({
   args: {},
   handler: async (ctx): Promise<{ success: boolean; reconciled?: number; expired?: number; claimed?: number; error?: string }> => {
@@ -665,12 +644,9 @@ export const syncFromMirrorNode = internalAction({
       let totalReconciled = 0;
       let totalClaimed = 0;
 
-      // Step 2: For each contract, fetch logs from mirror node
+      // Step 2: For each contract, fetch logs from Arc RPC
       for (const contract of CONTRACTS) {
-        const contractId = CONTRACT_IDS[contract.address];
-        if (!contractId) continue;
-
-        const logs = await fetchMirrorNodeLogs(contractId);
+        const logs = await fetchContractLogs(contract.address);
 
         for (const log of logs) {
           const topics = log.topics || [];
@@ -1225,14 +1201,11 @@ export const fixBetAssets = mutation({
 
 
 // ============================================
-// DEPOSIT AUTO-DETECTION (Mirror Node -> Convex)
+// DEPOSIT AUTO-DETECTION (Arc RPC -> Convex)
 // ============================================
 
-// Treasury account ID and USDC token ID from env vars
-const TREASURY_ACCOUNT_ID = process.env.TREASURY_ACCOUNT_ID || "0.0.10394209";
-const USDC_TOKEN_ID = process.env.USDC_TOKEN_ID || (
-  (process.env.HEDERA_NETWORK || "testnet") === "mainnet" ? "0.0.456858" : "0.0.8229951"
-);
+// USDC contract address on Arc
+const USDC_CONTRACT_ADDRESS = process.env.USDC_CONTRACT_ADDRESS || "0x29219dd400f2Bf60E5a23d13Be72B486D4038894";
 
 // Store processed deposit transaction IDs to avoid double-crediting
 export const recordProcessedDeposit = internalMutation({
@@ -1251,7 +1224,7 @@ export const recordProcessedDeposit = internalMutation({
       .first();
     if (existing) return { credited: false, reason: "already_processed" };
 
-    // Find the managed wallet by EVM address or Hedera account ID
+    // Find the managed wallet by EVM address
     const senderLower = args.senderAccount.toLowerCase();
 
     // Try matching by evmAddress
@@ -1260,11 +1233,11 @@ export const recordProcessedDeposit = internalMutation({
       .withIndex("by_evm_address", (q) => q.eq("evmAddress", senderLower))
       .first();
 
-    // Try matching by hederaAccountId
+    // Try matching by proxyWalletAddress
     if (!wallet) {
       wallet = await ctx.db
         .query("managedWallets")
-        .withIndex("by_hedera_id", (q) => q.eq("hederaAccountId", args.senderAccount))
+        .withIndex("by_proxy_wallet", (q) => q.eq("proxyWalletAddress", senderLower))
         .first();
     }
 
@@ -1319,18 +1292,11 @@ export const recordProcessedDeposit = internalMutation({
   },
 });
 
-// Poll mirror node for USDC balances on managed wallets and credit any new deposits
+// Poll Arc RPC for USDC balances on managed wallets and credit any new deposits
 export const detectDeposits = internalAction({
   args: {},
   handler: async (ctx) => {
     if (process.env.DISABLE_SYNC === "true") return { detected: 0 };
-
-    const network = process.env.HEDERA_NETWORK || "testnet";
-    const baseUrl = network === "mainnet"
-      ? "https://mainnet.mirrornode.hedera.com"
-      : "https://testnet.mirrornode.hedera.com";
-
-    const usdcTokenId = network === "mainnet" ? "0.0.456858" : "0.0.8229951";
 
     try {
       // Get all active managed wallets
@@ -1341,19 +1307,33 @@ export const detectDeposits = internalAction({
 
       for (const wallet of wallets) {
         try {
-          // Query mirror node for this wallet's USDC balance
-          const url = `${baseUrl}/api/v1/accounts/${wallet.hederaAccountId}/tokens?token.id=${usdcTokenId}`;
-          const res = await fetch(url);
+          // Query USDC ERC-20 balanceOf via eth_call
+          const evmAddress = wallet.evmAddress || wallet.proxyWalletAddress;
+          if (!evmAddress) continue;
+
+          // balanceOf(address) selector = 0x70a08231
+          const paddedAddr = evmAddress.replace("0x", "").padStart(64, "0");
+          const callData = "0x70a08231" + paddedAddr;
+
+          const res = await fetch(ARC_RPC_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "eth_call",
+              params: [{ to: USDC_CONTRACT_ADDRESS, data: callData }, "latest"],
+            }),
+          });
+
           if (!res.ok) continue;
+          const json = await res.json();
+          if (json.error || !json.result) continue;
 
-          const data = await res.json();
-          const tokenEntry = data.tokens?.find((t: any) => t.token_id === usdcTokenId);
-          if (!tokenEntry) continue;
-
-          const onChainBalance = (parseInt(tokenEntry.balance) / 1e6).toFixed(6);
+          const rawBalance = BigInt(json.result);
+          const onChainBalance = (Number(rawBalance) / 1e6).toFixed(6);
           const storedBalance = wallet.usdcBalance || "0";
 
-          // If on-chain balance is higher than stored, credit the difference
           const onChainNum = parseFloat(onChainBalance);
           const storedNum = parseFloat(storedBalance);
 
@@ -1368,7 +1348,6 @@ export const detectDeposits = internalAction({
             detected++;
           }
         } catch {
-          // Skip individual wallet errors
           continue;
         }
       }
