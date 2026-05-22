@@ -50,12 +50,14 @@ export default function OnboardingPage() {
     return () => clearInterval(interval);
   }, [step]);
 
-  const handleOddsClick = (outcome: string) => {
-    setSelectedOutcome(outcome);
+  const handleOddsClick = (outcomeIndex: number) => {
+    setSelectedOutcomeIndex(outcomeIndex);
     setStep('modal');
   };
 
-  const toWin = selectedSide === 'yes' ? '13.16' : '8.42';
+  const toWin = selectedAmount
+    ? (parseFloat(selectedAmount) * 100 / (selectedSide === 'yes' ? currentOutcome.yesPrice : currentOutcome.noPrice)).toFixed(2)
+    : '0';
 
   return (
     <div className="min-h-screen overflow-hidden relative flex flex-col font-sans"
