@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 
@@ -16,6 +16,36 @@ interface GamePlayProps {
   onGameEnd: (won: boolean, winnings: string) => void;
 }
 
+// Build a final score consistent with the user's prediction
+function buildFinalScore(
+  selectedOutcome: string,
+  selectedSide: 'yes' | 'no',
+  homeName: string,
+  awayName: string
+): { home: number; away: number } {
+  const userWins = selectedSide === 'yes';
+
+  if (userWins) {
+    if (selectedOutcome === 'Draw') return { home: 1, away: 1 };
+    if (selectedOutcome === homeName) return { home: 2, away: 1 };
+    if (selectedOutcome === awayName) return { home: 1, away: 2 };
+  } else {
+    // user bet NO — outcome is the opposite
+    if (selectedOutcome === 'Draw') {
+      // NO draw means someone wins
+      return { home: 2, away: 1 };
+    }
+    if (selectedOutcome === homeName) {
+      // NO home win — away wins or draw; pick away win
+      return { home: 1, away: 2 };
+    }
+    if (selectedOutcome === awayName) {
+      return { home: 2, away: 1 };
+    }
+  }
+  return { home: 1, away: 1 };
+}
+
 export default function GamePlay({
   match,
   selectedOutcome,
@@ -24,192 +54,163 @@ export default function GamePlay({
   oddPrice,
   onGameEnd,
 }: GamePlayProps) {
-  const [timeRemaining, setTimeRemaining] = useState(90);
-  const [gameStarted, setGameStarted] = useState(false);
-  const [dynamicScore, setDynamicScore] = useState({ home: 0, away: 0 });
-  const [isAnimating, setIsAnimating] = useState(false);
+  const finalScore = useRef(
+    buildFinalScore(selectedOutcome, selectedSide, match.home.name, match.away.name)
+  );
+
+  // minute displayed: 0 -> 90 over ~2 seconds real time
+  // We tick every ~22ms to go from 0 to 90 in ~2s
+  const [minute, setMinute] = useState(0);
+  const [score, setScore] = useState({ home: 0, away: 0 });
+  const [goalFlash, setGoalFlash] = useState(false);
 
   const betAmount = parseFloat(selectedAmount) || 0;
   const winnings = (betAmount * 100 / oddPrice).toFixed(2);
 
   const getQuestion = () => {
     if (selectedOutcome === 'Draw') {
-      return selectedSide === 'yes'
-        ? 'Will the match end in a Draw?'
-        : 'Will there be a winner?';
+      return selectedSide === 'yes' ? 'Will the match end in a Draw?' : 'Will there be a winner?';
     }
-    const teamName = selectedOutcome;
     return selectedSide === 'yes'
-      ? `Will ${teamName} win the match?`
-      : `Will ${teamName} NOT win the match?`;
+      ? `Will ${selectedOutcome} win the match?`
+      : `Will ${selectedOutcome} NOT win the match?`;
   };
 
   const getOutcomeDisplay = () => {
-    if (selectedSide === 'yes') {
-      return `${selectedOutcome} WINS`;
-    } else {
-      if (selectedOutcome === 'Draw') {
-        return 'NO DRAW';
-      }
-      return `${selectedOutcome} LOSES`;
-    }
+    if (selectedSide === 'yes') return `${selectedOutcome} WINS`;
+    if (selectedOutcome === 'Draw') return 'NO DRAW';
+    return `${selectedOutcome} LOSES`;
   };
 
-  // Dynamic timer with varying intervals for flowing effect
   useEffect(() => {
-    if (!gameStarted) {
-      setGameStarted(true);
-      return;
+    // Total duration: 2000ms for 90 minutes
+    const TOTAL_MS = 2000;
+    const TICK_MS = Math.floor(TOTAL_MS / 90); // ~22ms per minute
+
+    const fs = finalScore.current;
+
+    // Pre-plan when goals happen (spread them across the 90 mins)
+    const goalMinutes: Array<{ minute: number; side: 'home' | 'away' }> = [];
+    const totalGoals = fs.home + fs.away;
+    const spread = Math.floor(90 / (totalGoals + 1));
+    let homeLeft = fs.home;
+    let awayLeft = fs.away;
+    for (let i = 1; i <= totalGoals; i++) {
+      const m = spread * i;
+      const side = homeLeft > awayLeft ? 'home' : awayLeft > homeLeft ? 'away' : Math.random() > 0.5 ? 'home' : 'away';
+      if (side === 'home') homeLeft--; else awayLeft--;
+      goalMinutes.push({ minute: m, side });
     }
 
-    if (timeRemaining <= 0) {
-      onGameEnd(true, winnings);
-      return;
-    }
+    let current = 0;
+    const interval = setInterval(() => {
+      current += 1;
+      setMinute(current);
 
-    // Varying intervals for flowing effect: 5, 5, 10, 15
-    const getInterval = () => {
-      const elapsed = 90 - timeRemaining;
-      if (elapsed < 10) return 500;      // Fast: 5ms * 100 for visual effect
-      if (elapsed < 20) return 500;      // Fast
-      if (elapsed < 45) return 1000;     // Normal: 1s
-      if (elapsed < 75) return 1500;     // Slower
-      return 2000;                        // Slowest near end
-    };
+      const goal = goalMinutes.find(g => g.minute === current);
+      if (goal) {
+        setScore(prev => ({
+          home: goal.side === 'home' ? prev.home + 1 : prev.home,
+          away: goal.side === 'away' ? prev.away + 1 : prev.away,
+        }));
+        setGoalFlash(true);
+        setTimeout(() => setGoalFlash(false), 400);
+      }
 
-    // Simulate score changes
-    const simulateScore = () => {
-      setIsAnimating(true);
-      setTimeout(() => {
-        const change = Math.random();
-        if (change < 0.15) { // 15% chance of goal
-          setDynamicScore(prev => {
-            const isHomeGoal = Math.random() > 0.5;
-            return {
-              home: isHomeGoal ? prev.home + 1 : prev.home,
-              away: !isHomeGoal ? prev.away + 1 : prev.away
-            };
-          });
-        }
-        setIsAnimating(false);
-      }, 300);
-    };
+      if (current >= 90) {
+        clearInterval(interval);
+        setTimeout(() => onGameEnd(true, winnings), 300);
+      }
+    }, TICK_MS);
 
-    const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        const next = prev - 1;
-        if (next % 5 === 0 && next > 0) {
-          simulateScore();
-        }
-        return next;
-      });
-    }, getInterval());
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    return () => clearInterval(timer);
-  }, [gameStarted, timeRemaining, onGameEnd, winnings, selectedSide, selectedOutcome]);
-
-  const formatTime = () => {
-    if (timeRemaining === 0) return '90';
-    const displayed = 90 - timeRemaining;
-    return displayed.toString();
-  };
-
-  const progressPercentage = ((90 - timeRemaining) / 90) * 100;
+  const progress = (minute / 90) * 100;
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 pt-8 pb-10">
-      <div className="text-center mb-8">
-        <h2 className="text-white text-xl font-bold mb-4">
-          {getQuestion()}
-        </h2>
+    <div className="flex-1 flex flex-col items-center justify-between px-6 pt-16 pb-10">
+      {/* Question */}
+      <div className="text-center mb-6">
+        <p className="text-[#1e3a5f] text-lg font-semibold">{getQuestion()}</p>
       </div>
 
-      <div className="bg-white rounded-2xl p-5 w-full max-w-xs shadow-xl mb-6 relative overflow-hidden">
-        {/* Flowing gradient background */}
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-[#3fdc8c]/5 via-[#3fdc8c]/10 to-[#3fdc8c]/5"
-          animate={{ x: ['-100%', '100%'] }}
-          transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-        />
-              
-        <div className="relative z-10">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex flex-col items-center gap-1">
-              <Image
-                src={match.home.flag}
-                alt={match.home.name}
-                width={40}
-                height={40}
-                className="rounded-sm object-cover w-10 h-7"
-              />
-              <p className="text-xs font-medium text-gray-700">{match.home.name}</p>
-            </div>
-      
-            <div className="flex flex-col items-center gap-2">
-              <motion.div
-                key={formatTime()}
-                initial={{ opacity: 0, scale: 0.8, y: -10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.3, type: 'spring' }}
-                className="text-center"
-              >
-                <p className="text-4xl font-bold text-gray-900">{formatTime()}'</p>
-              </motion.div>
-              <p className="text-[10px] text-gray-500">of 90 mins</p>
-            </div>
-      
-            <div className="flex flex-col items-center gap-1">
-              <Image
-                src={match.away.flag}
-                alt={match.away.name}
-                width={40}
-                height={40}
-                className="rounded-sm object-cover w-10 h-7"
-              />
-              <p className="text-xs font-medium text-gray-700">{match.away.name}</p>
-            </div>
-          </div>
-      
-          {/* Dynamic score display */}
-          <motion.div
-            className="text-center mb-6"
-            animate={isAnimating ? { scale: [1, 1.1, 1] } : {}}
-            transition={{ duration: 0.3 }}
-          >
-            <p className="text-3xl font-bold text-gray-900">
-              {dynamicScore.home} : {dynamicScore.away}
-            </p>
-          </motion.div>
-      
-          {/* Flowing progress bar */}
-          <div className="mb-4 relative h-2 bg-gray-200 rounded-full overflow-hidden">
-            <motion.div
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#3fdc8c] via-[#5fef9e] to-[#3fdc8c]"
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPercentage}%` }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
+      {/* Score card */}
+      <div className="w-full max-w-xs">
+        <div className="flex items-center justify-between mb-3">
+          {/* Home */}
+          <div className="flex flex-col items-center gap-1.5 w-20">
+            <Image
+              src={match.home.flag}
+              alt={match.home.name}
+              width={48}
+              height={32}
+              className="rounded object-cover w-12 h-8"
             />
-            {/* Flowing shine effect */}
-            <motion.div
-              className="absolute inset-y-0 w-12 bg-gradient-to-r from-transparent via-white/40 to-transparent"
-              animate={{ left: ['-10%', `${progressPercentage}%`] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-            />
+            <p className="text-xs font-semibold text-[#1e3a5f]">{match.home.name}</p>
           </div>
-      
-          <div className="text-center">
-            <p className="text-sm font-bold text-gray-900">
-              Your prediction: <span className="text-[#3fdc8c]">{getOutcomeDisplay()}</span>
-            </p>
+
+          {/* Center: time + score */}
+          <div className="flex flex-col items-center gap-1">
+            <motion.p
+              key={minute}
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.1 }}
+              className="text-2xl font-bold text-[#1e3a5f]"
+            >
+              {minute}'
+            </motion.p>
+            <p className="text-[10px] text-[#1e3a5f]/60">of 90 mins</p>
+            <motion.p
+              animate={goalFlash ? { scale: [1, 1.3, 1] } : {}}
+              transition={{ duration: 0.3 }}
+              className="text-3xl font-extrabold text-[#1e3a5f] mt-1"
+            >
+              {score.home} : {score.away}
+            </motion.p>
+          </div>
+
+          {/* Away */}
+          <div className="flex flex-col items-center gap-1.5 w-20">
+            <Image
+              src={match.away.flag}
+              alt={match.away.name}
+              width={48}
+              height={32}
+              className="rounded object-cover w-12 h-8"
+            />
+            <p className="text-xs font-semibold text-[#1e3a5f]">{match.away.name}</p>
           </div>
         </div>
+
+        {/* Progress bar */}
+        <div className="h-1.5 bg-[#1e3a5f]/20 rounded-full overflow-hidden mb-3">
+          <motion.div
+            className="h-full bg-[#1e3a5f] rounded-full"
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.05, ease: 'linear' }}
+          />
+        </div>
+
+        {/* Prediction label */}
+        <p className="text-center text-sm font-semibold text-[#1e3a5f]">
+          Your prediction:{' '}
+          <span className="text-[#1e3a5f] font-extrabold">{getOutcomeDisplay()}</span>
+        </p>
       </div>
 
-      <div className="w-full max-w-xs bg-white/10 backdrop-blur rounded-xl p-4 text-white text-center">
-        <p className="text-xs text-white/70 mb-1">Demo bet:</p>
-        <p className="text-2xl font-bold mb-3">{selectedAmount} USDC</p>
-        <p className="text-xs text-white/70 mb-1">Potential win:</p>
-        <p className="text-2xl font-bold text-[#3fdc8c]">{winnings} USDC</p>
+      {/* Bet info */}
+      <div className="w-full max-w-xs mt-6 space-y-2">
+        <div className="flex justify-between items-center bg-white/30 rounded-xl px-4 py-3">
+          <span className="text-sm text-[#1e3a5f]/70">Demo bet:</span>
+          <span className="font-bold text-[#1e3a5f]">{selectedAmount} USDC</span>
+        </div>
+        <div className="flex justify-between items-center bg-white/30 rounded-xl px-4 py-3">
+          <span className="text-sm text-[#1e3a5f]/70">Potential win:</span>
+          <span className="font-bold text-[#1e3a5f]">{winnings} USDC</span>
+        </div>
       </div>
     </div>
   );
