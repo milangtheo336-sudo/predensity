@@ -978,12 +978,14 @@ export function Header({ children }: { children?: React.ReactNode }) {
             {!isSignedIn && mounted && (
               <>
                 <SignInButton mode="modal">
-                  <Button variant="ghost" size="sm" className="text-sm text-gray-300 hover:text-white">
-                    Sign in
+                  <Button variant="ghost" size="sm" className="text-sm text-gray-300 hover:text-white flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                    Log in
                   </Button>
                 </SignInButton>
                 <SignUpButton mode="modal">
-                  <Button size="sm" className="bg-vibrant-purple hover:bg-vibrant-purple/90 text-white text-sm">
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg px-5 py-2 flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
                     Sign up
                   </Button>
                 </SignUpButton>
@@ -1331,10 +1333,10 @@ function MobileMenu({
       {!isSignedIn && mounted && (
         <div className="flex gap-2 px-3 pt-2">
           <SignInButton mode="modal">
-            <Button variant="outline" size="sm" className="flex-1 text-sm">Sign in</Button>
+            <Button variant="outline" size="sm" className="flex-1 text-sm">Log in</Button>
           </SignInButton>
           <SignUpButton mode="modal">
-            <Button size="sm" className="flex-1 bg-vibrant-purple hover:bg-vibrant-purple/90 text-white text-sm">Sign up</Button>
+            <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm">Sign up</Button>
           </SignUpButton>
         </div>
       )}
