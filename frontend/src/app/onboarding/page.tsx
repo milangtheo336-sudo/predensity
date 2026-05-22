@@ -24,7 +24,7 @@ const MATCH = {
 export default function OnboardingPage() {
   const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [step, setStep] = useState<'categories' | 'trade'>('categories');
+  const [step, setStep] = useState<'categories' | 'trade' | 'modal'>('categories');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState('Brazil');
   const [selectedAmount, setSelectedAmount] = useState('5 USDC');
@@ -41,14 +41,14 @@ export default function OnboardingPage() {
 
   const handleOddsClick = (outcome: string) => {
     setSelectedOutcome(outcome);
-    setModalOpen(true);
+    setStep('modal');
   };
 
   const toWin = selectedSide === 'yes' ? '13.16' : '8.42';
 
   return (
     <div className="min-h-screen overflow-hidden relative flex flex-col font-sans"
-      style={{ backgroundColor: step === 'categories' ? '#1e3a5f' : '#1a1a1a' }}>
+      style={{ backgroundColor: '#1e3a5f' }}>
 
       {/* Skip */}
       <button
@@ -174,36 +174,26 @@ export default function OnboardingPage() {
         )}
       </AnimatePresence>
 
-      {/* Trading Modal */}
-      <AnimatePresence>
-        {modalOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setModalOpen(false)}
-              className="fixed inset-0 bg-black/80 z-40"
-            />
-
-            {/* Modal */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed z-50 bg-white rounded-2xl w-[320px] max-w-[90vw] p-5 shadow-2xl"
-              style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+        {/* STEP 3: Full-screen trading UI */}
+        {step === 'modal' && (
+          <motion.div
+            key="trading"
+            initial={{ opacity: 0, y: '100%' }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="flex-1 flex flex-col items-center justify-center px-6 pt-16 pb-10"
+          >
+            {/* Back button */}
+            <button
+              onClick={() => setStep('trade')}
+              className="absolute top-12 left-4 text-white/60 hover:text-white text-sm flex items-center gap-1"
             >
-              {/* Close */}
-              <button
-                onClick={() => setModalOpen(false)}
-                className="absolute -top-10 right-0 bg-white rounded-full w-8 h-8 flex items-center justify-center text-gray-600 font-bold shadow"
-              >
-                x
-              </button>
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 rotate-90"><path d="M2 3.5l3 3 3-3"/></svg>
+              Back
+            </button>
 
+            {/* Trading card */}
+            <div className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl">
               {/* Header */}
               <div className="flex items-center gap-2 mb-4">
                 <Image
@@ -223,18 +213,14 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              {/* Buy label */}
               <p className="text-sm font-semibold text-gray-900 mb-1">Buy</p>
               <div className="h-px bg-gray-200 mb-3" />
 
-              {/* YES / NO */}
               <div className="flex gap-2 mb-5">
                 <button
                   onClick={() => setSelectedSide('yes')}
                   className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors ${
-                    selectedSide === 'yes'
-                      ? 'bg-[#3fdc8c] text-white'
-                      : 'bg-[#3fdc8c]/10 text-[#3fdc8c] border border-[#3fdc8c]/30'
+                    selectedSide === 'yes' ? 'bg-[#3fdc8c] text-white' : 'bg-[#3fdc8c]/10 text-[#3fdc8c] border border-[#3fdc8c]/30'
                   }`}
                 >
                   YES 38%
@@ -242,28 +228,22 @@ export default function OnboardingPage() {
                 <button
                   onClick={() => setSelectedSide('no')}
                   className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors ${
-                    selectedSide === 'no'
-                      ? 'bg-red-400 text-white'
-                      : 'bg-red-50 text-red-400 border border-red-200'
+                    selectedSide === 'no' ? 'bg-red-400 text-white' : 'bg-red-50 text-red-400 border border-red-200'
                   }`}
                 >
                   NO 62%
                 </button>
               </div>
 
-              {/* Amount label */}
               <p className="text-[10px] text-gray-400 text-center mb-3">Set your trade amount:</p>
 
-              {/* Amount chips */}
               <div className="flex gap-2 mb-5">
                 {AMOUNTS.map((amt) => (
                   <button
                     key={amt}
                     onClick={() => setSelectedAmount(amt)}
                     className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors ${
-                      selectedAmount === amt
-                        ? 'border-gray-900 bg-gray-900 text-white'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
+                      selectedAmount === amt ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
                     }`}
                   >
                     {amt}
@@ -271,23 +251,20 @@ export default function OnboardingPage() {
                 ))}
               </div>
 
-              {/* To Win */}
               <div className="flex justify-between items-center mb-5">
                 <span className="text-sm text-gray-500">To Win:</span>
                 <span className="text-xl font-bold text-[#3fdc8c]">{toWin} <span className="text-sm font-normal text-[#3fdc8c]/70">USDC</span></span>
               </div>
 
-              {/* Predict button */}
               <button
-                onClick={() => { setModalOpen(false); router.push('/markets'); }}
+                onClick={() => router.push('/markets')}
                 className="w-full bg-black text-white font-bold py-3.5 rounded-xl hover:bg-neutral-800 transition-colors"
               >
                 Predict
               </button>
-            </motion.div>
-          </>
+            </div>
+          </motion.div>
         )}
-      </AnimatePresence>
     </div>
   );
 }
