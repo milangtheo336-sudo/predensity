@@ -1,0 +1,22 @@
+{
+  "network": "testnet",
+  "startBlock": 87248805,
+  "contracts": {
+    "CryptoPredictionMarket": {
+      "address": "0x6838b522df4E7666E72dbDe1d79B4CA0fE00c683",
+      "startBlock": 87248805
+    },
+    "PoliticsPredictionMarket": {
+      "address": "0xA5004b50F5806b2008415E9189721D57A0cd5cdB",
+      "startBlock": 87248805
+    },
+    "SportsPredictionMarket": {
+      "address": "0x556972230eb075dc2B8De643EBd6E81b25A234a4",
+      "startBlock": 87248805
+    },
+    "TechnologyPredictionMarket": {
+      "address": "0x6C72970f92c96955b1b0C169b0C442444cd3c119",
+      "startBlock": 87248805
+    }
+  }
+}

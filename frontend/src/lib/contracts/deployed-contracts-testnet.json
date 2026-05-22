@@ -1,0 +1,27 @@
+{
+  "network": "testnet",
+  "deployer": "0xC560e9F7FB38b5EfcbB507F42E7c1613A9FB164C",
+  "timestamp": "2026-03-15T15:01:44.031Z",
+  "stakingToken": "0x00000000000000000000000000000000007d943f",
+  "isTokenMode": true,
+  "contracts": {
+    "CryptoPredictionMarket": {
+      "address": "0x0DE38B6eCBb09eF05584C9607EE941D4938D1da8",
+      "assetSymbol": "HBAR",
+      "priceDecimals": 8,
+      "stakingToken": "0x00000000000000000000000000000000007d943f"
+    },
+    "PoliticsPredictionMarket": {
+      "address": "0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8",
+      "stakingToken": "0x00000000000000000000000000000000007d943f"
+    },
+    "SportsPredictionMarket": {
+      "address": "0x8f62C698a26888424b5170a11610Fa5Fd7DF540b",
+      "stakingToken": "0x00000000000000000000000000000000007d943f"
+    },
+    "TechnologyPredictionMarket": {
+      "address": "0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8",
+      "stakingToken": "0x00000000000000000000000000000000007d943f"
+    }
+  }
+}

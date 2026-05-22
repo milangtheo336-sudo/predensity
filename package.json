@@ -1,0 +1,14 @@
+{
+  "name": "predensity",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "convex:dev": "convex dev",
+    "convex:deploy": "convex deploy"
+  },
+  "dependencies": {
+    "convex": "^1.16.0"
+  }
+}

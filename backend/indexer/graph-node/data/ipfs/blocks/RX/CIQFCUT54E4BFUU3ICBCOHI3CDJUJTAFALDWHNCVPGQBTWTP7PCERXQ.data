@@ -1,0 +1,186 @@
+
+õ2í2dataSources:
+  - kind: ethereum/contract
+    mapping:
+      abis:
+        - file:
+            /: /ipfs/QmcMBiJcMSLPLsttwZVnCNAe43KxF6LEUbED4UeY6GmYiP
+          name: CryptoPredictionMarket
+      apiVersion: 0.0.6
+      entities:
+        - User
+        - UserStats
+        - Market
+        - Bet
+        - Fee
+        - Bucket
+        - PriceAtTimestamp
+      eventHandlers:
+        - event: >-
+            BetPlaced(indexed uint256,indexed
+            address,uint256,uint256,uint256,uint256,string)
+          handler: handleBetPlaced
+        - event: BetClaimed(indexed uint256,indexed address,uint256)
+          handler: handleBetClaimed
+        - event: FeeCollected(uint256)
+          handler: handleFeeCollected
+        - event: AggregationCompleted(indexed uint256,uint256)
+          handler: handleAggregationCompleted
+        - event: BucketPriceSet(indexed uint256,uint256)
+          handler: handleBucketPriceSet
+        - event: BatchProcessed(indexed uint256,uint256,uint256)
+          handler: handleBatchProcessed
+        - event: SharesSold(indexed uint256,indexed address,uint256,uint256)
+          handler: handleSharesSold
+      file:
+        /: /ipfs/QmPP9vQibgUo9e8AjUqSSHJFAh8zAXUuDmDNWmUJ1hw4pK
+      kind: ethereum/events
+      language: wasm/assemblyscript
+    name: CryptoPredictionMarket
+    network: testnet
+    source:
+      abi: CryptoPredictionMarket
+      address: '0x0DE38B6eCBb09eF05584C9607EE941D4938D1da8'
+      startBlock: 32769500
+  - kind: ethereum/contract
+    mapping:
+      abis:
+        - file:
+            /: /ipfs/QmQ8wRed88bkwAMpWN21jmoVWckdKB671Q5YZKYhH6ZbVF
+          name: BasePredictionMarket
+        - file:
+            /: /ipfs/QmcMBiJcMSLPLsttwZVnCNAe43KxF6LEUbED4UeY6GmYiP
+          name: CryptoPredictionMarket
+      apiVersion: 0.0.6
+      entities:
+        - User
+        - UserStats
+        - Market
+        - Bet
+        - Fee
+        - Bucket
+        - PriceAtTimestamp
+      eventHandlers:
+        - event: >-
+            BetPlaced(indexed uint256,indexed
+            address,uint256,uint256,uint256,uint256,uint256)
+          handler: handleBaseBetPlaced
+        - event: BetClaimed(indexed uint256,indexed address,uint256)
+          handler: handleBaseBetClaimed
+        - event: FeeCollected(uint256)
+          handler: handleBaseFeeCollected
+        - event: AggregationCompleted(indexed uint256,uint256)
+          handler: handleBaseAggregationCompleted
+        - event: BucketValueSet(indexed uint256,uint256)
+          handler: handleBaseBucketPriceSet
+        - event: BatchProcessed(indexed uint256,uint256,uint256)
+          handler: handleBaseBatchProcessed
+        - event: SharesSold(indexed uint256,indexed address,uint256,uint256)
+          handler: handleBaseSharesSold
+      file:
+        /: /ipfs/QmPP9vQibgUo9e8AjUqSSHJFAh8zAXUuDmDNWmUJ1hw4pK
+      kind: ethereum/events
+      language: wasm/assemblyscript
+    name: PoliticsPredictionMarket
+    network: testnet
+    source:
+      abi: BasePredictionMarket
+      address: '0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8'
+      startBlock: 32769500
+  - kind: ethereum/contract
+    mapping:
+      abis:
+        - file:
+            /: /ipfs/QmQ8wRed88bkwAMpWN21jmoVWckdKB671Q5YZKYhH6ZbVF
+          name: BasePredictionMarket
+        - file:
+            /: /ipfs/QmcMBiJcMSLPLsttwZVnCNAe43KxF6LEUbED4UeY6GmYiP
+          name: CryptoPredictionMarket
+      apiVersion: 0.0.6
+      entities:
+        - User
+        - UserStats
+        - Market
+        - Bet
+        - Fee
+        - Bucket
+        - PriceAtTimestamp
+      eventHandlers:
+        - event: >-
+            BetPlaced(indexed uint256,indexed
+            address,uint256,uint256,uint256,uint256,uint256)
+          handler: handleBaseBetPlaced
+        - event: BetClaimed(indexed uint256,indexed address,uint256)
+          handler: handleBaseBetClaimed
+        - event: FeeCollected(uint256)
+          handler: handleBaseFeeCollected
+        - event: AggregationCompleted(indexed uint256,uint256)
+          handler: handleBaseAggregationCompleted
+        - event: BucketValueSet(indexed uint256,uint256)
+          handler: handleBaseBucketPriceSet
+        - event: BatchProcessed(indexed uint256,uint256,uint256)
+          handler: handleBaseBatchProcessed
+        - event: SharesSold(indexed uint256,indexed address,uint256,uint256)
+          handler: handleBaseSharesSold
+      file:
+        /: /ipfs/QmPP9vQibgUo9e8AjUqSSHJFAh8zAXUuDmDNWmUJ1hw4pK
+      kind: ethereum/events
+      language: wasm/assemblyscript
+    name: SportsPredictionMarket
+    network: testnet
+    source:
+      abi: BasePredictionMarket
+      address: '0x8f62C698a26888424b5170a11610Fa5Fd7DF540b'
+      startBlock: 32769500
+  - kind: ethereum/contract
+    mapping:
+      abis:
+        - file:
+            /: /ipfs/QmQ8wRed88bkwAMpWN21jmoVWckdKB671Q5YZKYhH6ZbVF
+          name: BasePredictionMarket
+        - file:
+            /: /ipfs/QmcMBiJcMSLPLsttwZVnCNAe43KxF6LEUbED4UeY6GmYiP
+          name: CryptoPredictionMarket
+      apiVersion: 0.0.6
+      entities:
+        - User
+        - UserStats
+        - Market
+        - Bet
+        - Fee
+        - Bucket
+        - PriceAtTimestamp
+      eventHandlers:
+        - event: >-
+            BetPlaced(indexed uint256,indexed
+            address,uint256,uint256,uint256,uint256,uint256)
+          handler: handleBaseBetPlaced
+        - event: BetClaimed(indexed uint256,indexed address,uint256)
+          handler: handleBaseBetClaimed
+        - event: FeeCollected(uint256)
+          handler: handleBaseFeeCollected
+        - event: AggregationCompleted(indexed uint256,uint256)
+          handler: handleBaseAggregationCompleted
+        - event: BucketValueSet(indexed uint256,uint256)
+          handler: handleBaseBucketPriceSet
+        - event: BatchProcessed(indexed uint256,uint256,uint256)
+          handler: handleBaseBatchProcessed
+        - event: SharesSold(indexed uint256,indexed address,uint256,uint256)
+          handler: handleBaseSharesSold
+      file:
+        /: /ipfs/QmPP9vQibgUo9e8AjUqSSHJFAh8zAXUuDmDNWmUJ1hw4pK
+      kind: ethereum/events
+      language: wasm/assemblyscript
+    name: TechnologyPredictionMarket
+    network: testnet
+    source:
+      abi: BasePredictionMarket
+      address: '0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8'
+      startBlock: 32769500
+description: Multi-category prediction market subgraph for Hedera
+repository: https://github.com/hashgraph/hedera-subgraph-example
+schema:
+  file:
+    /: /ipfs/QmYV5ezdB1BAdnCL9LiGcpu2tYktRbBUXxsQZwCS42Bg3Q
+specVersion: 0.0.4
+í2

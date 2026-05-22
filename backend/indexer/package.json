@@ -1,0 +1,27 @@
+{
+  "name": "predensity-subgraph",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "compile": "graph codegen && graph build",
+    "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ predensity-prediction-market",
+    "create-local": "graph create --node http://localhost:8020/ PredensityPredictionMarket",
+    "remove-local": "graph remove --node http://localhost:8020/ PredensityPredictionMarket",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 PredensityPredictionMarket",
+    "test": "graph test",
+    "graph-node": "docker-compose -f ./graph-node/docker-compose.yaml up -d",
+    "graph-local-clean": "docker-compose -f ./graph-node/docker-compose.yaml down -v; if (Test-Path ./graph-node/data/ipfs) { Remove-Item -Recurse -Force ./graph-node/data/ipfs }; if (Test-Path ./graph-node/data/postgres) { Remove-Item -Recurse -Force ./graph-node/data/postgres }",
+    "graph-codegen": "graph codegen"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@graphprotocol/graph-cli": "^0.97.1",
+    "@graphprotocol/graph-ts": "^0.38.1"
+  },
+  "devDependencies": {
+    "matchstick-as": "^0.6.0"
+  }
+}

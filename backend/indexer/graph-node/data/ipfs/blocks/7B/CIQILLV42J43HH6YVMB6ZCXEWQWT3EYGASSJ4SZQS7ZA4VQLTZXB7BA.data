@@ -1,0 +1,48 @@
+
+��dataSources:
+  - kind: ethereum/contract
+    mapping:
+      abis:
+        - file:
+            /: /ipfs/QmPaVBW8SNGVYFAV56ZNoyDydwQmDm9LafTHBYVSCtLCVR
+          name: PredensityPredictionMarket
+      apiVersion: 0.0.6
+      entities:
+        - User
+        - UserStats
+        - Bet
+        - Fee
+        - Bucket
+        - PriceAtTimestamp
+      eventHandlers:
+        - event: >-
+            BetPlaced(indexed uint256,indexed
+            address,uint256,uint256,uint256,uint256,uint256)
+          handler: handleBetPlaced
+        - event: BetClaimed(indexed uint256,indexed address,uint256)
+          handler: handleBetClaimed
+        - event: FeeCollected(uint256)
+          handler: handleFeeCollected
+        - event: AggregationCompleted(indexed uint256,uint256)
+          handler: handleAggregationCompleted
+        - event: BucketPriceSet(indexed uint256,uint256)
+          handler: handleBucketPriceSet
+        - event: BatchProcessed(indexed uint256,uint256,uint256)
+          handler: handleBatchProcessed
+      file:
+        /: /ipfs/Qmdo1iQF2VVi8tRcoZXBUg5LEcnFtg1M7T6WCvgruZ2F3x
+      kind: ethereum/events
+      language: wasm/assemblyscript
+    name: PredensityPredictionMarket
+    network: testnet
+    source:
+      abi: PredensityPredictionMarket
+      address: '0x4c944A8257E805b757c6CffcA562CF92b8b619bd'
+      startBlock: 32326197
+description: Predensity prediction market subgraph
+repository: https://github.com/hashgraph/hedera-subgraph-example
+schema:
+  file:
+    /: /ipfs/QmVzNFYA1Qb59KE1Pt25Qhj5Wkn34nbz8991XQv7BYhg81
+specVersion: 0.0.4
+�

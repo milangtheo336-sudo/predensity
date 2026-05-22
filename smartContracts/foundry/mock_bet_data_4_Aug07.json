@@ -1,0 +1,1898 @@
+[
+ {
+  "targetTimestamp": 1754579794,
+  "stake": 0.00867,
+  "quality": 1,
+  "betWeight": 0.00867,
+  "priceMin": 0.2376,
+  "priceMax": 0.24539999999999998
+ },
+ {
+  "targetTimestamp": 1754582022,
+  "stake": 0.01262,
+  "quality": 0.4,
+  "betWeight": 0.03155,
+  "priceMin": 0.2437,
+  "priceMax": 0.24750000000000003
+ },
+ {
+  "targetTimestamp": 1754584122,
+  "stake": 0.029848,
+  "quality": 1.3,
+  "betWeight": 0.02296,
+  "priceMin": 0.23640000000000003,
+  "priceMax": 0.25039999999999996
+ },
+ {
+  "targetTimestamp": 1754590000,
+  "stake": 0.12,
+  "quality": 0.4,
+  "betWeight": 0.3,
+  "priceMin": 0.4,
+  "priceMax": 0.5
+ },
+ {
+  "targetTimestamp": 1754591352,
+  "stake": 0.023352,
+  "quality": 1.2,
+  "betWeight": 0.01946,
+  "priceMin": 0.2347,
+  "priceMax": 0.251
+ },
+ {
+  "targetTimestamp": 1754592954,
+  "stake": 0.00644,
+  "quality": 1,
+  "betWeight": 0.00644,
+  "priceMin": 0.24150000000000002,
+  "priceMax": 0.2528
+ },
+ {
+  "targetTimestamp": 1754590000,
+  "stake": 0.2,
+  "quality": 1,
+  "betWeight": 0.2,
+  "priceMin": 0.3,
+  "priceMax": 0.35
+ },
+ {
+  "targetTimestamp": 1754593314,
+  "stake": 0.11715,
+  "quality": 1.5,
+  "betWeight": 0.07809999999999999,
+  "priceMin": 0.2492,
+  "priceMax": 0.25229999999999997
+ },
+ {
+  "targetTimestamp": 1754892147,
+  "stake": 0.5,
+  "quality": 1,
+  "betWeight": 0.5,
+  "priceMin": 0.2,
+  "priceMax": 0.25
+ },
+ {
+  "targetTimestamp": 1754594652,
+  "stake": 0.076362,
+  "quality": 1.3,
+  "betWeight": 0.05874,
+  "priceMin": 0.2432,
+  "priceMax": 0.25849999999999995
+ },
+ {
+  "targetTimestamp": 1754597411,
+  "stake": 0.002181,
+  "quality": 0.1,
+  "betWeight": 0.02181,
+  "priceMin": 0.23379999999999998,
+  "priceMax": 0.24639999999999998
+ },
+ {
+  "targetTimestamp": 1754600000,
+  "stake": 0.56,
+  "quality": 1.4,
+  "betWeight": 0.4,
+  "priceMin": 0.1744,
+  "priceMax": 0.18460000000000001
+ },
+ {
+  "targetTimestamp": 1754600411,
+  "stake": 0.068647,
+  "quality": 1.9,
+  "betWeight": 0.03613,
+  "priceMin": 0.22530000000000003,
+  "priceMax": 0.2436
+ },
+ {
+  "targetTimestamp": 1754606331,
+  "stake": 0.165248,
+  "quality": 1.6,
+  "betWeight": 0.10328,
+  "priceMin": 0.23840000000000003,
+  "priceMax": 0.25249999999999995
+ },
+ {
+  "targetTimestamp": 1754600000,
+  "stake": 0.03,
+  "quality": 0.1,
+  "betWeight": 0.3,
+  "priceMin": 0.5,
+  "priceMax": 0.7
+ },
+ {
+  "targetTimestamp": 1754606511,
+  "stake": 0.002472,
+  "quality": 0.4,
+  "betWeight": 0.00618,
+  "priceMin": 0.2461,
+  "priceMax": 0.25029999999999997
+ },
+ {
+  "targetTimestamp": 1754610360,
+  "stake": 0.03672,
+  "quality": 2,
+  "betWeight": 0.018359999999999998,
+  "priceMin": 0.2322,
+  "priceMax": 0.24689999999999998
+ },
+ {
+  "targetTimestamp": 1754610720,
+  "stake": 0.04904,
+  "quality": 1,
+  "betWeight": 0.04904,
+  "priceMin": 0.2406,
+  "priceMax": 0.25039999999999996
+ },
+ {
+  "targetTimestamp": 1754610000,
+  "stake": 0.64,
+  "quality": 1.6,
+  "betWeight": 0.4,
+  "priceMin": 0.37,
+  "priceMax": 0.4
+ },
+ {
+  "targetTimestamp": 1754617184,
+  "stake": 0.011186,
+  "quality": 0.7,
+  "betWeight": 0.01598,
+  "priceMin": 0.24400000000000002,
+  "priceMax": 0.24800000000000003
+ },
+ {
+  "targetTimestamp": 1754610000,
+  "stake": 0.04,
+  "quality": 0.2,
+  "betWeight": 0.2,
+  "priceMin": 0.15,
+  "priceMax": 0.2
+ },
+ {
+  "targetTimestamp": 1754617244,
+  "stake": 0.009306,
+  "quality": 1.1,
+  "betWeight": 0.00846,
+  "priceMin": 0.2327,
+  "priceMax": 0.2422
+ },
+ {
+  "targetTimestamp": 1754617292,
+  "stake": 0.072504,
+  "quality": 0.9,
+  "betWeight": 0.08056,
+  "priceMin": 0.2411,
+  "priceMax": 0.2478
+ },
+ {
+  "targetTimestamp": 1754620000,
+  "stake": 0.6,
+  "quality": 1.2,
+  "betWeight": 0.5,
+  "priceMin": 0.57,
+  "priceMax": 0.63
+ },
+ {
+  "targetTimestamp": 1754620412,
+  "stake": 0.00664,
+  "quality": 1.6,
+  "betWeight": 0.00415,
+  "priceMin": 0.2468,
+  "priceMax": 0.26149999999999995
+ },
+ {
+  "targetTimestamp": 1754628780,
+  "stake": 0.43083,
+  "quality": 1,
+  "betWeight": 0.43083,
+  "priceMin": 0.1933,
+  "priceMax": 0.209
+ },
+ {
+  "targetTimestamp": 1754629449,
+  "stake": 0.021831,
+  "quality": 1.9,
+  "betWeight": 0.01149,
+  "priceMin": 0.2456,
+  "priceMax": 0.2529
+ },
+ {
+  "targetTimestamp": 1754620000,
+  "stake": 0.02,
+  "quality": 0.1,
+  "betWeight": 0.2,
+  "priceMin": 0.09,
+  "priceMax": 0.13
+ },
+ {
+  "targetTimestamp": 1754629689,
+  "stake": 0.0063,
+  "quality": 1.5,
+  "betWeight": 0.004200000000000001,
+  "priceMin": 0.24950000000000003,
+  "priceMax": 0.25970000000000004
+ },
+ {
+  "targetTimestamp": 1754629844,
+  "stake": 0.08262,
+  "quality": 2,
+  "betWeight": 0.04131,
+  "priceMin": 0.2432,
+  "priceMax": 0.2458
+ },
+ {
+  "targetTimestamp": 1754630000,
+  "stake": 0.04,
+  "quality": 0.1,
+  "betWeight": 0.4,
+  "priceMin": 0.30989999999999995,
+  "priceMax": 0.32499999999999996
+ },
+ {
+  "targetTimestamp": 1754631224,
+  "stake": 0.068048,
+  "quality": 0.2,
+  "betWeight": 0.34024,
+  "priceMin": 0.23550000000000001,
+  "priceMax": 0.24450000000000002
+ },
+ {
+  "targetTimestamp": 1754640159,
+  "stake": 0.002429,
+  "quality": 0.7,
+  "betWeight": 0.0034699999999999996,
+  "priceMin": 0.23290000000000002,
+  "priceMax": 0.25260000000000005
+ },
+ {
+  "targetTimestamp": 1754640000,
+  "stake": 0.15,
+  "quality": 0.3,
+  "betWeight": 0.5,
+  "priceMin": 0.22,
+  "priceMax": 0.25
+ },
+ {
+  "targetTimestamp": 1754640629,
+  "stake": 0.034738,
+  "quality": 1.1,
+  "betWeight": 0.03158,
+  "priceMin": 0.23679999999999998,
+  "priceMax": 0.2461
+ },
+ {
+  "targetTimestamp": 1754641469,
+  "stake": 0.001852,
+  "quality": 0.2,
+  "betWeight": 0.00926,
+  "priceMin": 0.23790000000000003,
+  "priceMax": 0.255
+ },
+ {
+  "targetTimestamp": 1754640000,
+  "stake": 0.24,
+  "quality": 0.8,
+  "betWeight": 0.3,
+  "priceMin": 0.30989999999999995,
+  "priceMax": 0.3295
+ },
+ {
+  "targetTimestamp": 1754642499,
+  "stake": 0.025064,
+  "quality": 1.3,
+  "betWeight": 0.019280000000000002,
+  "priceMin": 0.2401,
+  "priceMax": 0.258
+ },
+ {
+  "targetTimestamp": 1754650000,
+  "stake": 0.14,
+  "quality": 0.7,
+  "betWeight": 0.2,
+  "priceMin": 0.17,
+  "priceMax": 0.22
+ },
+ {
+  "targetTimestamp": 1754650939,
+  "stake": 0.098985,
+  "quality": 1.5,
+  "betWeight": 0.06599,
+  "priceMin": 0.24800000000000003,
+  "priceMax": 0.2508
+ },
+ {
+  "targetTimestamp": 1754653257,
+  "stake": 0.18388,
+  "quality": 0.8,
+  "betWeight": 0.22985,
+  "priceMin": 0.24860000000000002,
+  "priceMax": 0.2558
+ },
+ {
+  "targetTimestamp": 1754650000,
+  "stake": 0.48,
+  "quality": 1.6,
+  "betWeight": 0.3,
+  "priceMin": 0.29569999999999996,
+  "priceMax": 0.30489999999999995
+ },
+ {
+  "targetTimestamp": 1754653939,
+  "stake": 0.003417,
+  "quality": 1.7,
+  "betWeight": 0.0020099999999999996,
+  "priceMin": 0.2511,
+  "priceMax": 0.2613
+ },
+ {
+  "targetTimestamp": 1754654457,
+  "stake": 0.022066,
+  "quality": 1.7,
+  "betWeight": 0.01298,
+  "priceMin": 0.2401,
+  "priceMax": 0.25270000000000004
+ },
+ {
+  "targetTimestamp": 1754650000,
+  "stake": 0.4,
+  "quality": 2,
+  "betWeight": 0.2,
+  "priceMin": 0.3025,
+  "priceMax": 0.3115
+ },
+ {
+  "targetTimestamp": 1754658989,
+  "stake": 0.010486,
+  "quality": 1.4,
+  "betWeight": 0.00749,
+  "priceMin": 0.2478,
+  "priceMax": 0.2529
+ },
+ {
+  "targetTimestamp": 1754661329,
+  "stake": 0.149188,
+  "quality": 1.3,
+  "betWeight": 0.11476,
+  "priceMin": 0.25739999999999996,
+  "priceMax": 0.2609
+ },
+ {
+  "targetTimestamp": 1754660000,
+  "stake": 0.24,
+  "quality": 0.8,
+  "betWeight": 0.3,
+  "priceMin": 0.12,
+  "priceMax": 0.15
+ },
+ {
+  "targetTimestamp": 1754661531,
+  "stake": 0.004842,
+  "quality": 1.8,
+  "betWeight": 0.00269,
+  "priceMin": 0.2335,
+  "priceMax": 0.25549999999999995
+ },
+ {
+  "targetTimestamp": 1754663691,
+  "stake": 0.00472,
+  "quality": 0.4,
+  "betWeight": 0.011800000000000001,
+  "priceMin": 0.2321,
+  "priceMax": 0.2463
+ },
+ {
+  "targetTimestamp": 1754667596,
+  "stake": 0.006042,
+  "quality": 1.9,
+  "betWeight": 0.00318,
+  "priceMin": 0.25470000000000004,
+  "priceMax": 0.2633
+ },
+ {
+  "targetTimestamp": 1754670356,
+  "stake": 0.001304,
+  "quality": 0.8,
+  "betWeight": 0.00163,
+  "priceMin": 0.255,
+  "priceMax": 0.269
+ },
+ {
+  "targetTimestamp": 1754676782,
+  "stake": 0.318263,
+  "quality": 1.1,
+  "betWeight": 0.28933,
+  "priceMin": 0.2591,
+  "priceMax": 0.264
+ },
+ {
+  "targetTimestamp": 1754670000,
+  "stake": 0.24,
+  "quality": 0.6,
+  "betWeight": 0.4,
+  "priceMin": 0.7,
+  "priceMax": 0.9
+ },
+ {
+  "targetTimestamp": 1754679722,
+  "stake": 0.03432,
+  "quality": 1.2,
+  "betWeight": 0.0286,
+  "priceMin": 0.2508,
+  "priceMax": 0.2601
+ },
+ {
+  "targetTimestamp": 1754688913,
+  "stake": 0.00991,
+  "quality": 0.5,
+  "betWeight": 0.01982,
+  "priceMin": 0.2559,
+  "priceMax": 0.25980000000000003
+ },
+ {
+  "targetTimestamp": 1754689033,
+  "stake": 0.170478,
+  "quality": 1.4,
+  "betWeight": 0.12176999999999999,
+  "priceMin": 0.25349999999999995,
+  "priceMax": 0.26180000000000003
+ },
+ {
+  "targetTimestamp": 1754690000,
+  "stake": 0.8,
+  "quality": 1.6,
+  "betWeight": 0.5,
+  "priceMin": 0.56,
+  "priceMax": 0.63
+ },
+ {
+  "targetTimestamp": 1754697071,
+  "stake": 0.002425,
+  "quality": 0.5,
+  "betWeight": 0.004849999999999999,
+  "priceMin": 0.24789999999999998,
+  "priceMax": 0.2559
+ },
+ {
+  "targetTimestamp": 1754698631,
+  "stake": 0.001115,
+  "quality": 0.5,
+  "betWeight": 0.0022299999999999998,
+  "priceMin": 0.2529,
+  "priceMax": 0.25980000000000003
+ },
+ {
+  "targetTimestamp": 1754711567,
+  "stake": 0.20606,
+  "quality": 1,
+  "betWeight": 0.20606,
+  "priceMin": 0.24539999999999998,
+  "priceMax": 0.2508
+ },
+ {
+  "targetTimestamp": 1754712522,
+  "stake": 0.129136,
+  "quality": 1.4,
+  "betWeight": 0.09223999999999999,
+  "priceMin": 0.23879999999999998,
+  "priceMax": 0.24910000000000002
+ },
+ {
+  "targetTimestamp": 1754710000,
+  "stake": 0.72,
+  "quality": 1.8,
+  "betWeight": 0.4,
+  "priceMin": 0.51,
+  "priceMax": 0.6
+ },
+ {
+  "targetTimestamp": 1754714267,
+  "stake": 0.006578,
+  "quality": 1.1,
+  "betWeight": 0.00598,
+  "priceMin": 0.24750000000000003,
+  "priceMax": 0.2682
+ },
+ {
+  "targetTimestamp": 1754715942,
+  "stake": 0.037226,
+  "quality": 1.4,
+  "betWeight": 0.02659,
+  "priceMin": 0.24150000000000002,
+  "priceMax": 0.253
+ },
+ {
+  "targetTimestamp": 1754710000,
+  "stake": 0.39,
+  "quality": 1.3,
+  "betWeight": 0.3,
+  "priceMin": 0.52,
+  "priceMax": 0.55
+ },
+ {
+  "targetTimestamp": 1754717295,
+  "stake": 0.006768,
+  "quality": 1.8,
+  "betWeight": 0.00376,
+  "priceMin": 0.25539999999999996,
+  "priceMax": 0.2603
+ },
+ {
+  "targetTimestamp": 1754719215,
+  "stake": 0.0062,
+  "quality": 0.4,
+  "betWeight": 0.0155,
+  "priceMin": 0.24839999999999998,
+  "priceMax": 0.25770000000000004
+ },
+ {
+  "targetTimestamp": 1754759127,
+  "stake": 0.019248,
+  "quality": 1.6,
+  "betWeight": 0.012029999999999999,
+  "priceMin": 0.24860000000000002,
+  "priceMax": 0.2651
+ },
+ {
+  "targetTimestamp": 1754759667,
+  "stake": 0.02244,
+  "quality": 0.5,
+  "betWeight": 0.04488,
+  "priceMin": 0.25849999999999995,
+  "priceMax": 0.26559999999999995
+ },
+ {
+  "targetTimestamp": 1754760038,
+  "stake": 0.113778,
+  "quality": 1.8,
+  "betWeight": 0.06321,
+  "priceMin": 0.2561,
+  "priceMax": 0.2613
+ },
+ {
+  "targetTimestamp": 1754760278,
+  "stake": 0.009646,
+  "quality": 0.7,
+  "betWeight": 0.013779999999999999,
+  "priceMin": 0.2602,
+  "priceMax": 0.2641
+ },
+ {
+  "targetTimestamp": 1754760000,
+  "stake": 0.05,
+  "quality": 0.1,
+  "betWeight": 0.5,
+  "priceMin": 0.43,
+  "priceMax": 0.65
+ },
+ {
+  "targetTimestamp": 1754761734,
+  "stake": 0.128506,
+  "quality": 0.7,
+  "betWeight": 0.18358000000000002,
+  "priceMin": 0.25980000000000003,
+  "priceMax": 0.2669
+ },
+ {
+  "targetTimestamp": 1754763774,
+  "stake": 0.06416,
+  "quality": 1,
+  "betWeight": 0.06416,
+  "priceMin": 0.2611,
+  "priceMax": 0.26439999999999997
+ },
+ {
+  "targetTimestamp": 1754790749,
+  "stake": 0.001385,
+  "quality": 0.5,
+  "betWeight": 0.00277,
+  "priceMin": 0.2569,
+  "priceMax": 0.26549999999999996
+ },
+ {
+  "targetTimestamp": 1754791469,
+  "stake": 0.004249,
+  "quality": 0.7,
+  "betWeight": 0.00607,
+  "priceMin": 0.2591,
+  "priceMax": 0.27470000000000006
+ },
+ {
+  "targetTimestamp": 1754821566,
+  "stake": 0.00996,
+  "quality": 1,
+  "betWeight": 0.00996,
+  "priceMin": 0.26459999999999995,
+  "priceMax": 0.28080000000000005
+ },
+ {
+  "targetTimestamp": 1754821626,
+  "stake": 0.011853,
+  "quality": 0.9,
+  "betWeight": 0.01317,
+  "priceMin": 0.26249999999999996,
+  "priceMax": 0.2683
+ },
+ {
+  "targetTimestamp": 1754828779,
+  "stake": 0.272678,
+  "quality": 1.4,
+  "betWeight": 0.19477,
+  "priceMin": 0.25549999999999995,
+  "priceMax": 0.26280000000000003
+ },
+ {
+  "targetTimestamp": 1754829199,
+  "stake": 0.0033,
+  "quality": 1.1,
+  "betWeight": 0.003,
+  "priceMin": 0.26,
+  "priceMax": 0.2693
+ },
+ {
+  "targetTimestamp": 1754830107,
+  "stake": 0.004122,
+  "quality": 1.8,
+  "betWeight": 0.00229,
+  "priceMin": 0.2549,
+  "priceMax": 0.2731
+ },
+ {
+  "targetTimestamp": 1754831787,
+  "stake": 0.2607,
+  "quality": 1.5,
+  "betWeight": 0.1738,
+  "priceMin": 0.262,
+  "priceMax": 0.2811
+ },
+ {
+  "targetTimestamp": 1754830000,
+  "stake": 0.28,
+  "quality": 1.4,
+  "betWeight": 0.2,
+  "priceMin": 0.28890000000000005,
+  "priceMax": 0.3054
+ },
+ {
+  "targetTimestamp": 1754833380,
+  "stake": 0.10574,
+  "quality": 0.5,
+  "betWeight": 0.21148,
+  "priceMin": 0.1636,
+  "priceMax": 0.1868
+ },
+ {
+  "targetTimestamp": 1754835153,
+  "stake": 0.20524,
+  "quality": 0.8,
+  "betWeight": 0.25655,
+  "priceMin": 0.25470000000000004,
+  "priceMax": 0.2603
+ },
+ {
+  "targetTimestamp": 1754835993,
+  "stake": 0.025539,
+  "quality": 0.3,
+  "betWeight": 0.08513,
+  "priceMin": 0.25649999999999995,
+  "priceMax": 0.26
+ },
+ {
+  "targetTimestamp": 1754851722,
+  "stake": 0.24412,
+  "quality": 1.7,
+  "betWeight": 0.1436,
+  "priceMin": 0.2613,
+  "priceMax": 0.2752
+ },
+ {
+  "targetTimestamp": 1754854602,
+  "stake": 0.001718,
+  "quality": 0.1,
+  "betWeight": 0.01718,
+  "priceMin": 0.2662,
+  "priceMax": 0.2701
+ },
+ {
+  "targetTimestamp": 1754870474,
+  "stake": 0.010773,
+  "quality": 0.3,
+  "betWeight": 0.03591,
+  "priceMin": 0.264,
+  "priceMax": 0.2691
+ },
+ {
+  "targetTimestamp": 1754870534,
+  "stake": 0.000731,
+  "quality": 1.7,
+  "betWeight": 0.00043,
+  "priceMin": 0.2679,
+  "priceMax": 0.27259999999999995
+ },
+ {
+  "targetTimestamp": 1754871380,
+  "stake": 0.030864,
+  "quality": 1.2,
+  "betWeight": 0.02572,
+  "priceMin": 0.25980000000000003,
+  "priceMax": 0.2772
+ },
+ {
+  "targetTimestamp": 1754873180,
+  "stake": 0.03342,
+  "quality": 2,
+  "betWeight": 0.01671,
+  "priceMin": 0.2711,
+  "priceMax": 0.2742
+ },
+ {
+  "targetTimestamp": 1754885138,
+  "stake": 0.001911,
+  "quality": 1.3,
+  "betWeight": 0.00147,
+  "priceMin": 0.2531,
+  "priceMax": 0.2721
+ },
+ {
+  "targetTimestamp": 1754886698,
+  "stake": 0.097596,
+  "quality": 1.8,
+  "betWeight": 0.05422,
+  "priceMin": 0.265,
+  "priceMax": 0.27090000000000003
+ },
+ {
+  "targetTimestamp": 1754889480,
+  "stake": 0.309358,
+  "quality": 0.7,
+  "betWeight": 0.44194,
+  "priceMin": 0.1742,
+  "priceMax": 0.2017
+ },
+ {
+  "targetTimestamp": 1754894847,
+  "stake": 0.01026,
+  "quality": 1.5,
+  "betWeight": 0.00684,
+  "priceMin": 0.26160000000000005,
+  "priceMax": 0.27070000000000005
+ },
+ {
+  "targetTimestamp": 1754908801,
+  "stake": 0.083008,
+  "quality": 1.6,
+  "betWeight": 0.05188,
+  "priceMin": 0.2672,
+  "priceMax": 0.2855
+ },
+ {
+  "targetTimestamp": 1754912101,
+  "stake": 0.001912,
+  "quality": 0.8,
+  "betWeight": 0.00239,
+  "priceMin": 0.26349999999999996,
+  "priceMax": 0.2724
+ },
+ {
+  "targetTimestamp": 1754939706,
+  "stake": 0.032148,
+  "quality": 0.4,
+  "betWeight": 0.08037000000000001,
+  "priceMin": 0.26559999999999995,
+  "priceMax": 0.2724
+ },
+ {
+  "targetTimestamp": 1754940906,
+  "stake": 0.00558,
+  "quality": 1.2,
+  "betWeight": 0.0046500000000000005,
+  "priceMin": 0.27549999999999997,
+  "priceMax": 0.28
+ },
+ {
+  "targetTimestamp": 1754943219,
+  "stake": 0.012456,
+  "quality": 0.6,
+  "betWeight": 0.02076,
+  "priceMin": 0.2579,
+  "priceMax": 0.26780000000000004
+ },
+ {
+  "targetTimestamp": 1754945499,
+  "stake": 0.00528,
+  "quality": 1.6,
+  "betWeight": 0.0033,
+  "priceMin": 0.2673,
+  "priceMax": 0.2772
+ },
+ {
+  "targetTimestamp": 1754970149,
+  "stake": 0.038233,
+  "quality": 1.7,
+  "betWeight": 0.02249,
+  "priceMin": 0.2619,
+  "priceMax": 0.277
+ },
+ {
+  "targetTimestamp": 1754971289,
+  "stake": 0.012688,
+  "quality": 1.3,
+  "betWeight": 0.00976,
+  "priceMin": 0.26849999999999996,
+  "priceMax": 0.2845
+ },
+ {
+  "targetTimestamp": 1754990923,
+  "stake": 0.001263,
+  "quality": 0.1,
+  "betWeight": 0.01263,
+  "priceMin": 0.2702,
+  "priceMax": 0.28269999999999995
+ },
+ {
+  "targetTimestamp": 1754994350,
+  "stake": 0.060732,
+  "quality": 0.9,
+  "betWeight": 0.06748,
+  "priceMin": 0.25680000000000003,
+  "priceMax": 0.26959999999999995
+ },
+ {
+  "targetTimestamp": 1754997590,
+  "stake": 0.000225,
+  "quality": 0.5,
+  "betWeight": 0.00045,
+  "priceMin": 0.2681,
+  "priceMax": 0.27159999999999995
+ },
+ {
+  "targetTimestamp": 1755008474,
+  "stake": 0.025098,
+  "quality": 0.3,
+  "betWeight": 0.08366,
+  "priceMin": 0.268,
+  "priceMax": 0.272
+ },
+ {
+  "targetTimestamp": 1755010934,
+  "stake": 0.060742,
+  "quality": 1.1,
+  "betWeight": 0.05522,
+  "priceMin": 0.2612,
+  "priceMax": 0.26439999999999997
+ },
+ {
+  "targetTimestamp": 1755062913,
+  "stake": 0.087792,
+  "quality": 1.2,
+  "betWeight": 0.07316,
+  "priceMin": 0.27259999999999995,
+  "priceMax": 0.27659999999999996
+ },
+ {
+  "targetTimestamp": 1755064233,
+  "stake": 0.093522,
+  "quality": 1.1,
+  "betWeight": 0.08502,
+  "priceMin": 0.2763,
+  "priceMax": 0.2883
+ },
+ {
+  "targetTimestamp": 1755066729,
+  "stake": 0.050127,
+  "quality": 1.1,
+  "betWeight": 0.04557,
+  "priceMin": 0.27259999999999995,
+  "priceMax": 0.28590000000000004
+ },
+ {
+  "targetTimestamp": 1755068049,
+  "stake": 0.005816,
+  "quality": 0.8,
+  "betWeight": 0.0072699999999999996,
+  "priceMin": 0.2702,
+  "priceMax": 0.2802
+ },
+ {
+  "targetTimestamp": 1755080612,
+  "stake": 0.018326,
+  "quality": 0.2,
+  "betWeight": 0.09162999999999999,
+  "priceMin": 0.26370000000000005,
+  "priceMax": 0.26980000000000004
+ },
+ {
+  "targetTimestamp": 1755081512,
+  "stake": 0.007572,
+  "quality": 1.2,
+  "betWeight": 0.00631,
+  "priceMin": 0.2642,
+  "priceMax": 0.28069999999999995
+ },
+ {
+  "targetTimestamp": 1755106161,
+  "stake": 0.068224,
+  "quality": 1.3,
+  "betWeight": 0.05248,
+  "priceMin": 0.2855,
+  "priceMax": 0.2914
+ },
+ {
+  "targetTimestamp": 1755114164,
+  "stake": 0.00594,
+  "quality": 2,
+  "betWeight": 0.0029699999999999996,
+  "priceMin": 0.27180000000000004,
+  "priceMax": 0.28669999999999995
+ },
+ {
+  "targetTimestamp": 1755116444,
+  "stake": 0.307632,
+  "quality": 1.7,
+  "betWeight": 0.18096,
+  "priceMin": 0.27749999999999997,
+  "priceMax": 0.2844
+ },
+ {
+  "targetTimestamp": 1755120109,
+  "stake": 0.07379,
+  "quality": 0.5,
+  "betWeight": 0.14758000000000002,
+  "priceMin": 0.2751,
+  "priceMax": 0.278
+ },
+ {
+  "targetTimestamp": 1755123529,
+  "stake": 0.010701,
+  "quality": 0.3,
+  "betWeight": 0.03567,
+  "priceMin": 0.2733,
+  "priceMax": 0.2893
+ },
+ {
+  "targetTimestamp": 1755132561,
+  "stake": 0.009136,
+  "quality": 0.4,
+  "betWeight": 0.02284,
+  "priceMin": 0.26639999999999997,
+  "priceMax": 0.28269999999999995
+ },
+ {
+  "targetTimestamp": 1755133461,
+  "stake": 0.1197,
+  "quality": 1.9,
+  "betWeight": 0.063,
+  "priceMin": 0.269,
+  "priceMax": 0.28090000000000004
+ },
+ {
+  "targetTimestamp": 1755140220,
+  "stake": 0.169328,
+  "quality": 0.8,
+  "betWeight": 0.21166,
+  "priceMin": 0.1588,
+  "priceMax": 0.1762
+ },
+ {
+  "targetTimestamp": 1755144326,
+  "stake": 0.016352,
+  "quality": 0.7,
+  "betWeight": 0.02336,
+  "priceMin": 0.2732,
+  "priceMax": 0.2822
+ },
+ {
+  "targetTimestamp": 1755147746,
+  "stake": 0.009114,
+  "quality": 0.7,
+  "betWeight": 0.01302,
+  "priceMin": 0.26439999999999997,
+  "priceMax": 0.28280000000000005
+ },
+ {
+  "targetTimestamp": 1755173398,
+  "stake": 0.004744,
+  "quality": 0.4,
+  "betWeight": 0.011859999999999999,
+  "priceMin": 0.26480000000000004,
+  "priceMax": 0.28159999999999996
+ },
+ {
+  "targetTimestamp": 1755201316,
+  "stake": 0.00778,
+  "quality": 2,
+  "betWeight": 0.0038900000000000002,
+  "priceMin": 0.27090000000000003,
+  "priceMax": 0.2824
+ },
+ {
+  "targetTimestamp": 1755202396,
+  "stake": 0.0402,
+  "quality": 2,
+  "betWeight": 0.0201,
+  "priceMin": 0.2681,
+  "priceMax": 0.2733
+ },
+ {
+  "targetTimestamp": 1755204343,
+  "stake": 0.000636,
+  "quality": 0.2,
+  "betWeight": 0.00318,
+  "priceMin": 0.27990000000000004,
+  "priceMax": 0.2844
+ },
+ {
+  "targetTimestamp": 1755206623,
+  "stake": 0.049588,
+  "quality": 0.7,
+  "betWeight": 0.07084,
+  "priceMin": 0.2762,
+  "priceMax": 0.2885
+ },
+ {
+  "targetTimestamp": 1755211617,
+  "stake": 0.003572,
+  "quality": 0.4,
+  "betWeight": 0.00893,
+  "priceMin": 0.27649999999999997,
+  "priceMax": 0.29510000000000003
+ },
+ {
+  "targetTimestamp": 1755214137,
+  "stake": 0.012512,
+  "quality": 0.4,
+  "betWeight": 0.03128,
+  "priceMin": 0.2771,
+  "priceMax": 0.29100000000000004
+ },
+ {
+  "targetTimestamp": 1755219533,
+  "stake": 0.006358,
+  "quality": 1.1,
+  "betWeight": 0.00578,
+  "priceMin": 0.26890000000000003,
+  "priceMax": 0.2854
+ },
+ {
+  "targetTimestamp": 1755221993,
+  "stake": 0.327156,
+  "quality": 1.2,
+  "betWeight": 0.27263,
+  "priceMin": 0.2741,
+  "priceMax": 0.2854
+ },
+ {
+  "targetTimestamp": 1755239914,
+  "stake": 0.034342,
+  "quality": 0.7,
+  "betWeight": 0.04906,
+  "priceMin": 0.2714,
+  "priceMax": 0.2764
+ },
+ {
+  "targetTimestamp": 1755242595,
+  "stake": 0.00168,
+  "quality": 1.6,
+  "betWeight": 0.0010500000000000002,
+  "priceMin": 0.27649999999999997,
+  "priceMax": 0.27959999999999996
+ },
+ {
+  "targetTimestamp": 1755245678,
+  "stake": 0.005028,
+  "quality": 0.6,
+  "betWeight": 0.00838,
+  "priceMin": 0.2743,
+  "priceMax": 0.2911
+ },
+ {
+  "targetTimestamp": 1755246195,
+  "stake": 0.75096,
+  "quality": 1.6,
+  "betWeight": 0.46935000000000004,
+  "priceMin": 0.2742,
+  "priceMax": 0.2872
+ },
+ {
+  "targetTimestamp": 1755247598,
+  "stake": 0.000504,
+  "quality": 1.2,
+  "betWeight": 0.00041999999999999996,
+  "priceMin": 0.27769999999999995,
+  "priceMax": 0.2811
+ },
+ {
+  "targetTimestamp": 1755273874,
+  "stake": 0.010998,
+  "quality": 1.8,
+  "betWeight": 0.00611,
+  "priceMin": 0.2743,
+  "priceMax": 0.28180000000000005
+ },
+ {
+  "targetTimestamp": 1755274954,
+  "stake": 0.018105,
+  "quality": 0.3,
+  "betWeight": 0.06035,
+  "priceMin": 0.271,
+  "priceMax": 0.2872
+ },
+ {
+  "targetTimestamp": 1755313636,
+  "stake": 0.267345,
+  "quality": 0.9,
+  "betWeight": 0.29705000000000004,
+  "priceMin": 0.28790000000000004,
+  "priceMax": 0.29369999999999996
+ },
+ {
+  "targetTimestamp": 1755314596,
+  "stake": 0.000282,
+  "quality": 0.3,
+  "betWeight": 0.00094,
+  "priceMin": 0.2825,
+  "priceMax": 0.2862
+ },
+ {
+  "targetTimestamp": 1755345933,
+  "stake": 0.22814,
+  "quality": 2,
+  "betWeight": 0.11406999999999999,
+  "priceMin": 0.2841,
+  "priceMax": 0.2881
+ },
+ {
+  "targetTimestamp": 1755348513,
+  "stake": 0.06684,
+  "quality": 2,
+  "betWeight": 0.03342,
+  "priceMin": 0.2921,
+  "priceMax": 0.29879999999999995
+ },
+ {
+  "targetTimestamp": 1755395611,
+  "stake": 0.006097,
+  "quality": 0.7,
+  "betWeight": 0.00871,
+  "priceMin": 0.28700000000000003,
+  "priceMax": 0.29500000000000004
+ },
+ {
+  "targetTimestamp": 1755403698,
+  "stake": 0.092264,
+  "quality": 1.9,
+  "betWeight": 0.04856,
+  "priceMin": 0.26739999999999997,
+  "priceMax": 0.28290000000000004
+ },
+ {
+  "targetTimestamp": 1755406938,
+  "stake": 0.000438,
+  "quality": 0.3,
+  "betWeight": 0.00146,
+  "priceMin": 0.26970000000000005,
+  "priceMax": 0.2852
+ },
+ {
+  "targetTimestamp": 1755428418,
+  "stake": 0.006798,
+  "quality": 0.6,
+  "betWeight": 0.01133,
+  "priceMin": 0.26570000000000005,
+  "priceMax": 0.27690000000000003
+ },
+ {
+  "targetTimestamp": 1755429138,
+  "stake": 0.001248,
+  "quality": 0.2,
+  "betWeight": 0.00624,
+  "priceMin": 0.27159999999999995,
+  "priceMax": 0.28690000000000004
+ },
+ {
+  "targetTimestamp": 1755458318,
+  "stake": 0.046656,
+  "quality": 1.8,
+  "betWeight": 0.025920000000000002,
+  "priceMin": 0.28,
+  "priceMax": 0.2924
+ },
+ {
+  "targetTimestamp": 1755460478,
+  "stake": 0.004644,
+  "quality": 1.8,
+  "betWeight": 0.0025800000000000003,
+  "priceMin": 0.28580000000000005,
+  "priceMax": 0.2903
+ },
+ {
+  "targetTimestamp": 1755484767,
+  "stake": 0.003556,
+  "quality": 1.4,
+  "betWeight": 0.00254,
+  "priceMin": 0.26959999999999995,
+  "priceMax": 0.28569999999999995
+ },
+ {
+  "targetTimestamp": 1755486567,
+  "stake": 0.00255,
+  "quality": 1,
+  "betWeight": 0.0025499999999999997,
+  "priceMin": 0.25880000000000003,
+  "priceMax": 0.27780000000000005
+ },
+ {
+  "targetTimestamp": 1755502700,
+  "stake": 0.15788,
+  "quality": 0.5,
+  "betWeight": 0.31576,
+  "priceMin": 0.28049999999999997,
+  "priceMax": 0.29279999999999995
+ },
+ {
+  "targetTimestamp": 1755548468,
+  "stake": 0.139118,
+  "quality": 1.9,
+  "betWeight": 0.07322,
+  "priceMin": 0.2814,
+  "priceMax": 0.2912
+ },
+ {
+  "targetTimestamp": 1755549093,
+  "stake": 0.006174,
+  "quality": 0.7,
+  "betWeight": 0.00882,
+  "priceMin": 0.28390000000000004,
+  "priceMax": 0.2902
+ },
+ {
+  "targetTimestamp": 1755550533,
+  "stake": 0.004267,
+  "quality": 1.7,
+  "betWeight": 0.0025099999999999996,
+  "priceMin": 0.28400000000000003,
+  "priceMax": 0.29510000000000003
+ },
+ {
+  "targetTimestamp": 1755551228,
+  "stake": 0.006201,
+  "quality": 1.3,
+  "betWeight": 0.00477,
+  "priceMin": 0.2845,
+  "priceMax": 0.29579999999999995
+ },
+ {
+  "targetTimestamp": 1755603263,
+  "stake": 0.00824,
+  "quality": 1.6,
+  "betWeight": 0.00515,
+  "priceMin": 0.2783,
+  "priceMax": 0.29069999999999996
+ },
+ {
+  "targetTimestamp": 1755606503,
+  "stake": 0.010004,
+  "quality": 0.4,
+  "betWeight": 0.02501,
+  "priceMin": 0.27959999999999996,
+  "priceMax": 0.29369999999999996
+ },
+ {
+  "targetTimestamp": 1755640208,
+  "stake": 0.008279,
+  "quality": 1.7,
+  "betWeight": 0.00487,
+  "priceMin": 0.2841,
+  "priceMax": 0.2931
+ },
+ {
+  "targetTimestamp": 1755640928,
+  "stake": 0.02458,
+  "quality": 0.2,
+  "betWeight": 0.12290000000000001,
+  "priceMin": 0.27190000000000003,
+  "priceMax": 0.28769999999999996
+ },
+ {
+  "targetTimestamp": 1755649545,
+  "stake": 0.012096,
+  "quality": 0.9,
+  "betWeight": 0.013439999999999999,
+  "priceMin": 0.28559999999999997,
+  "priceMax": 0.30010000000000003
+ },
+ {
+  "targetTimestamp": 1755651705,
+  "stake": 0.387885,
+  "quality": 1.9,
+  "betWeight": 0.20415,
+  "priceMin": 0.2884,
+  "priceMax": 0.30090000000000006
+ },
+ {
+  "targetTimestamp": 1755695075,
+  "stake": 0.00909,
+  "quality": 1.5,
+  "betWeight": 0.006059999999999999,
+  "priceMin": 0.2792,
+  "priceMax": 0.30079999999999996
+ },
+ {
+  "targetTimestamp": 1755759480,
+  "stake": 0.040955,
+  "quality": 0.5,
+  "betWeight": 0.08191,
+  "priceMin": 0.36,
+  "priceMax": 0.37470000000000003
+ },
+ {
+  "targetTimestamp": 1755760159,
+  "stake": 0.045414,
+  "quality": 0.6,
+  "betWeight": 0.07569,
+  "priceMin": 0.28469999999999995,
+  "priceMax": 0.2922
+ },
+ {
+  "targetTimestamp": 1755760928,
+  "stake": 0.005304,
+  "quality": 1.2,
+  "betWeight": 0.00442,
+  "priceMin": 0.2884,
+  "priceMax": 0.2995
+ },
+ {
+  "targetTimestamp": 1755760939,
+  "stake": 0.018936,
+  "quality": 0.8,
+  "betWeight": 0.02367,
+  "priceMin": 0.2882,
+  "priceMax": 0.30479999999999996
+ },
+ {
+  "targetTimestamp": 1755761888,
+  "stake": 0.005979,
+  "quality": 0.3,
+  "betWeight": 0.01993,
+  "priceMin": 0.2975,
+  "priceMax": 0.31420000000000003
+ },
+ {
+  "targetTimestamp": 1755764228,
+  "stake": 0.11949,
+  "quality": 1.4,
+  "betWeight": 0.08535,
+  "priceMin": 0.2921,
+  "priceMax": 0.30069999999999997
+ },
+ {
+  "targetTimestamp": 1755764468,
+  "stake": 0.119782,
+  "quality": 1.7,
+  "betWeight": 0.07046,
+  "priceMin": 0.2845,
+  "priceMax": 0.3024
+ },
+ {
+  "targetTimestamp": 1755806423,
+  "stake": 0.082464,
+  "quality": 1.6,
+  "betWeight": 0.05154,
+  "priceMin": 0.2924,
+  "priceMax": 0.30879999999999996
+ },
+ {
+  "targetTimestamp": 1755830339,
+  "stake": 0.002282,
+  "quality": 1.4,
+  "betWeight": 0.00163,
+  "priceMin": 0.28969999999999996,
+  "priceMax": 0.30689999999999995
+ },
+ {
+  "targetTimestamp": 1755859201,
+  "stake": 0.00828,
+  "quality": 2,
+  "betWeight": 0.00414,
+  "priceMin": 0.2913,
+  "priceMax": 0.30469999999999997
+ },
+ {
+  "targetTimestamp": 1755859861,
+  "stake": 0.15115,
+  "quality": 0.5,
+  "betWeight": 0.3023,
+  "priceMin": 0.2915,
+  "priceMax": 0.30000000000000004
+ },
+ {
+  "targetTimestamp": 1755867790,
+  "stake": 0.018785,
+  "quality": 1.7,
+  "betWeight": 0.01105,
+  "priceMin": 0.29190000000000005,
+  "priceMax": 0.29979999999999996
+ },
+ {
+  "targetTimestamp": 1755868150,
+  "stake": 0.000548,
+  "quality": 0.1,
+  "betWeight": 0.0054800000000000005,
+  "priceMin": 0.29900000000000004,
+  "priceMax": 0.30389999999999995
+ },
+ {
+  "targetTimestamp": 1755899340,
+  "stake": 0.024086,
+  "quality": 0.1,
+  "betWeight": 0.24086000000000002,
+  "priceMin": 0.1519,
+  "priceMax": 0.1691
+ },
+ {
+  "targetTimestamp": 1755922555,
+  "stake": 0.005502,
+  "quality": 0.6,
+  "betWeight": 0.00917,
+  "priceMin": 0.2895,
+  "priceMax": 0.3106
+ },
+ {
+  "targetTimestamp": 1755922675,
+  "stake": 0.208968,
+  "quality": 0.8,
+  "betWeight": 0.26121,
+  "priceMin": 0.29490000000000005,
+  "priceMax": 0.30589999999999995
+ },
+ {
+  "targetTimestamp": 1755925505,
+  "stake": 0.010868,
+  "quality": 0.4,
+  "betWeight": 0.027170000000000003,
+  "priceMin": 0.28780000000000006,
+  "priceMax": 0.30579999999999996
+ },
+ {
+  "targetTimestamp": 1755952218,
+  "stake": 0.07703,
+  "quality": 1,
+  "betWeight": 0.07703,
+  "priceMin": 0.2915,
+  "priceMax": 0.30920000000000003
+ },
+ {
+  "targetTimestamp": 1756000290,
+  "stake": 0.02036,
+  "quality": 1,
+  "betWeight": 0.02036,
+  "priceMin": 0.29610000000000003,
+  "priceMax": 0.30110000000000003
+ },
+ {
+  "targetTimestamp": 1756002990,
+  "stake": 0.320372,
+  "quality": 1.3,
+  "betWeight": 0.24644,
+  "priceMin": 0.28390000000000004,
+  "priceMax": 0.3004
+ },
+ {
+  "targetTimestamp": 1756005830,
+  "stake": 0.037258,
+  "quality": 1.3,
+  "betWeight": 0.02866,
+  "priceMin": 0.3004,
+  "priceMax": 0.3066
+ },
+ {
+  "targetTimestamp": 1756007150,
+  "stake": 0.2711,
+  "quality": 1,
+  "betWeight": 0.2711,
+  "priceMin": 0.2911,
+  "priceMax": 0.3016
+ },
+ {
+  "targetTimestamp": 1756023143,
+  "stake": 0.002184,
+  "quality": 0.7,
+  "betWeight": 0.00312,
+  "priceMin": 0.29810000000000003,
+  "priceMax": 0.3026
+ },
+ {
+  "targetTimestamp": 1756026203,
+  "stake": 0.011972,
+  "quality": 0.1,
+  "betWeight": 0.11972,
+  "priceMin": 0.29090000000000005,
+  "priceMax": 0.29900000000000004
+ },
+ {
+  "targetTimestamp": 1756052670,
+  "stake": 0.034434,
+  "quality": 1.8,
+  "betWeight": 0.019129999999999998,
+  "priceMin": 0.29400000000000004,
+  "priceMax": 0.3046
+ },
+ {
+  "targetTimestamp": 1756053450,
+  "stake": 0.002244,
+  "quality": 1.7,
+  "betWeight": 0.00132,
+  "priceMin": 0.29179999999999995,
+  "priceMax": 0.30720000000000003
+ },
+ {
+  "targetTimestamp": 1756083057,
+  "stake": 0.218365,
+  "quality": 1.7,
+  "betWeight": 0.12844999999999998,
+  "priceMin": 0.30279999999999996,
+  "priceMax": 0.30979999999999996
+ },
+ {
+  "targetTimestamp": 1756110272,
+  "stake": 0.008476,
+  "quality": 1.3,
+  "betWeight": 0.00652,
+  "priceMin": 0.28800000000000003,
+  "priceMax": 0.30589999999999995
+ },
+ {
+  "targetTimestamp": 1756113692,
+  "stake": 0.064936,
+  "quality": 0.4,
+  "betWeight": 0.16234,
+  "priceMin": 0.2985,
+  "priceMax": 0.3085
+ },
+ {
+  "targetTimestamp": 1756155688,
+  "stake": 0.000725,
+  "quality": 0.1,
+  "betWeight": 0.00725,
+  "priceMin": 0.2992,
+  "priceMax": 0.3044
+ },
+ {
+  "targetTimestamp": 1756158928,
+  "stake": 0.02321,
+  "quality": 0.2,
+  "betWeight": 0.11605,
+  "priceMin": 0.2884,
+  "priceMax": 0.3055
+ },
+ {
+  "targetTimestamp": 1756211733,
+  "stake": 0.024992,
+  "quality": 1.6,
+  "betWeight": 0.015619999999999998,
+  "priceMin": 0.30090000000000006,
+  "priceMax": 0.31489999999999996
+ },
+ {
+  "targetTimestamp": 1756212595,
+  "stake": 0.00942,
+  "quality": 1.5,
+  "betWeight": 0.00628,
+  "priceMin": 0.29879999999999995,
+  "priceMax": 0.31300000000000006
+ },
+ {
+  "targetTimestamp": 1756213713,
+  "stake": 0.00654,
+  "quality": 0.5,
+  "betWeight": 0.01308,
+  "priceMin": 0.29669999999999996,
+  "priceMax": 0.30489999999999995
+ },
+ {
+  "targetTimestamp": 1756214875,
+  "stake": 0.001128,
+  "quality": 0.6,
+  "betWeight": 0.00188,
+  "priceMin": 0.30400000000000005,
+  "priceMax": 0.31510000000000005
+ },
+ {
+  "targetTimestamp": 1756255513,
+  "stake": 0.235315,
+  "quality": 1.9,
+  "betWeight": 0.12384999999999999,
+  "priceMin": 0.30369999999999997,
+  "priceMax": 0.3134
+ },
+ {
+  "targetTimestamp": 1756265065,
+  "stake": 0.212394,
+  "quality": 1.3,
+  "betWeight": 0.16338,
+  "priceMin": 0.2982,
+  "priceMax": 0.3127
+ },
+ {
+  "targetTimestamp": 1756267045,
+  "stake": 0.01326,
+  "quality": 2,
+  "betWeight": 0.00663,
+  "priceMin": 0.29779999999999995,
+  "priceMax": 0.3144
+ },
+ {
+  "targetTimestamp": 1756305013,
+  "stake": 0.015598,
+  "quality": 1.1,
+  "betWeight": 0.01418,
+  "priceMin": 0.29490000000000005,
+  "priceMax": 0.31000000000000005
+ },
+ {
+  "targetTimestamp": 1756307833,
+  "stake": 0.008442,
+  "quality": 0.9,
+  "betWeight": 0.009380000000000001,
+  "priceMin": 0.30300000000000005,
+  "priceMax": 0.3155
+ },
+ {
+  "targetTimestamp": 1756356119,
+  "stake": 0.037086,
+  "quality": 0.7,
+  "betWeight": 0.05298,
+  "priceMin": 0.30679999999999996,
+  "priceMax": 0.31889999999999996
+ },
+ {
+  "targetTimestamp": 1756356479,
+  "stake": 0.224,
+  "quality": 1.6,
+  "betWeight": 0.14,
+  "priceMin": 0.30900000000000005,
+  "priceMax": 0.32730000000000004
+ },
+ {
+  "targetTimestamp": 1756365280,
+  "stake": 0.00048,
+  "quality": 0.4,
+  "betWeight": 0.0012,
+  "priceMin": 0.3042,
+  "priceMax": 0.30810000000000004
+ },
+ {
+  "targetTimestamp": 1756369894,
+  "stake": 0.070434,
+  "quality": 1.8,
+  "betWeight": 0.039130000000000005,
+  "priceMin": 0.3137,
+  "priceMax": 0.3278
+ },
+ {
+  "targetTimestamp": 1756372474,
+  "stake": 0.028764,
+  "quality": 1.7,
+  "betWeight": 0.01692,
+  "priceMin": 0.3096,
+  "priceMax": 0.32310000000000005
+ },
+ {
+  "targetTimestamp": 1756448759,
+  "stake": 0.15587,
+  "quality": 1.1,
+  "betWeight": 0.1417,
+  "priceMin": 0.3096,
+  "priceMax": 0.3224
+ },
+ {
+  "targetTimestamp": 1756467273,
+  "stake": 0.00035,
+  "quality": 0.1,
+  "betWeight": 0.0035,
+  "priceMin": 0.2986,
+  "priceMax": 0.31799999999999995
+ },
+ {
+  "targetTimestamp": 1756470180,
+  "stake": 0.639165,
+  "quality": 1.5,
+  "betWeight": 0.42611,
+  "priceMin": 0.3053,
+  "priceMax": 0.32089999999999996
+ },
+ {
+  "targetTimestamp": 1756473060,
+  "stake": 0.055575,
+  "quality": 1.5,
+  "betWeight": 0.03705,
+  "priceMin": 0.30589999999999995,
+  "priceMax": 0.3228
+ },
+ {
+  "targetTimestamp": 1756479780,
+  "stake": 0.062814,
+  "quality": 0.3,
+  "betWeight": 0.20937999999999998,
+  "priceMin": 0.34040000000000004,
+  "priceMax": 0.3529
+ },
+ {
+  "targetTimestamp": 1756514266,
+  "stake": 0.16416,
+  "quality": 1.6,
+  "betWeight": 0.1026,
+  "priceMin": 0.3113,
+  "priceMax": 0.31599999999999995
+ },
+ {
+  "targetTimestamp": 1756514647,
+  "stake": 0.015883,
+  "quality": 0.7,
+  "betWeight": 0.022690000000000002,
+  "priceMin": 0.3087,
+  "priceMax": 0.3185
+ },
+ {
+  "targetTimestamp": 1756515106,
+  "stake": 0.094905,
+  "quality": 1.5,
+  "betWeight": 0.06327,
+  "priceMin": 0.30079999999999996,
+  "priceMax": 0.3183
+ },
+ {
+  "targetTimestamp": 1756515925,
+  "stake": 0.001458,
+  "quality": 0.3,
+  "betWeight": 0.004860000000000001,
+  "priceMin": 0.3134,
+  "priceMax": 0.31699999999999995
+ },
+ {
+  "targetTimestamp": 1756517827,
+  "stake": 0.001284,
+  "quality": 0.3,
+  "betWeight": 0.00428,
+  "priceMin": 0.30500000000000005,
+  "priceMax": 0.31000000000000005
+ },
+ {
+  "targetTimestamp": 1756613375,
+  "stake": 0.10008,
+  "quality": 2,
+  "betWeight": 0.05004,
+  "priceMin": 0.3067,
+  "priceMax": 0.3264
+ },
+ {
+  "targetTimestamp": 1756615425,
+  "stake": 0.037646,
+  "quality": 1.4,
+  "betWeight": 0.02689,
+  "priceMin": 0.3116,
+  "priceMax": 0.32530000000000003
+ },
+ {
+  "targetTimestamp": 1756616863,
+  "stake": 0.00156,
+  "quality": 0.4,
+  "betWeight": 0.0039,
+  "priceMin": 0.3107,
+  "priceMax": 0.31789999999999996
+ },
+ {
+  "targetTimestamp": 1756618425,
+  "stake": 0.054315,
+  "quality": 0.9,
+  "betWeight": 0.06035,
+  "priceMin": 0.3116,
+  "priceMax": 0.3258
+ },
+ {
+  "targetTimestamp": 1756619203,
+  "stake": 0.063208,
+  "quality": 0.8,
+  "betWeight": 0.07901000000000001,
+  "priceMin": 0.29969999999999997,
+  "priceMax": 0.3157
+ },
+ {
+  "targetTimestamp": 1756695444,
+  "stake": 0.009339,
+  "quality": 1.1,
+  "betWeight": 0.008490000000000001,
+  "priceMin": 0.3113,
+  "priceMax": 0.31920000000000004
+ },
+ {
+  "targetTimestamp": 1756698564,
+  "stake": 0.004697,
+  "quality": 1.1,
+  "betWeight": 0.0042699999999999995,
+  "priceMin": 0.3095,
+  "priceMax": 0.3147
+ },
+ {
+  "targetTimestamp": 1756713839,
+  "stake": 0.00643,
+  "quality": 1,
+  "betWeight": 0.00643,
+  "priceMin": 0.31410000000000005,
+  "priceMax": 0.3266
+ },
+ {
+  "targetTimestamp": 1756715383,
+  "stake": 0.005436,
+  "quality": 1.2,
+  "betWeight": 0.00453,
+  "priceMin": 0.3157,
+  "priceMax": 0.33030000000000004
+ },
+ {
+  "targetTimestamp": 1756717079,
+  "stake": 0.003924,
+  "quality": 1.8,
+  "betWeight": 0.00218,
+  "priceMin": 0.30820000000000003,
+  "priceMax": 0.3254
+ },
+ {
+  "targetTimestamp": 1756757485,
+  "stake": 0.009616,
+  "quality": 1.6,
+  "betWeight": 0.00601,
+  "priceMin": 0.3123,
+  "priceMax": 0.32420000000000004
+ },
+ {
+  "targetTimestamp": 1756758865,
+  "stake": 0.00267,
+  "quality": 0.3,
+  "betWeight": 0.0089,
+  "priceMin": 0.31699999999999995,
+  "priceMax": 0.32130000000000003
+ },
+ {
+  "targetTimestamp": 1756766764,
+  "stake": 0.02369,
+  "quality": 0.2,
+  "betWeight": 0.11845,
+  "priceMin": 0.3225,
+  "priceMax": 0.32909999999999995
+ },
+ {
+  "targetTimestamp": 1756785134,
+  "stake": 0.0022,
+  "quality": 2,
+  "betWeight": 0.0011,
+  "priceMin": 0.31499999999999995,
+  "priceMax": 0.3236
+ },
+ {
+  "targetTimestamp": 1756788434,
+  "stake": 0.001386,
+  "quality": 0.7,
+  "betWeight": 0.00198,
+  "priceMin": 0.31120000000000003,
+  "priceMax": 0.32699999999999996
+ }
+]

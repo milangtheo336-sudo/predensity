@@ -1,0 +1,7 @@
+# Mark third-party dependencies and build artifacts as vendored
+# so GitHub language stats only reflect our actual code
+
+smartContracts/foundry/lib/** linguist-vendored
+backend/indexer/build/** linguist-vendored
+backend/indexer/generated/** linguist-vendored
+backend/indexer/graph-node/** linguist-vendored
