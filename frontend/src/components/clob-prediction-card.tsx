@@ -1,19 +1,455 @@
-// @ts-nocheck
+// CLOB Prediction Card -- Polymarket-style multi-outcome trading
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { ArrowLeft, Clock, Share2, Twitter, Link2, Check as CheckIcon, Loader2, Activity as ActivityIcon } from 'lucide-react';
+import { ArrowLeft, Clock, Share2, Twitter, Link2, Check as CheckIcon, Loader2, Activity as ActivityIcon, Heart, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PredictionCardSkeleton } from '@/components/prediction-card-skeleton';
-import { useQuery as useConvexQuery } from 'convex/react';
+import { useQuery as useConvexQuery, useMutation } from 'convex/react';
 import { useUser } from '@clerk/nextjs';
 import { api } from '../../convex/_generated/api';
 import { useBalanceVisibility } from '@/components/header';
+import BoringAvatar from 'boring-avatars';
+import { getAvatarPalette } from '@/lib/utils';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+// User Avatar component
+function UserAvatar({ addr, size = 28, imageUrl }: { addr: string; avatar?: string; size?: number; imageUrl?: string }) {
+  if (imageUrl && !imageUrl.includes('gravatar')) {
+    return (
+      <img src={imageUrl} alt="" className="rounded-full object-cover flex-shrink-0" style={{ width: size, height: size }} />
+    );
+  }
+  const seed = addr.startsWith('managed:') ? addr.slice(8) : addr;
+  return (
+    <div className="rounded-full overflow-hidden flex-shrink-0 bg-[#0a0a0c]" style={{ width: size, height: size }}>
+      <BoringAvatar size={size} name={seed} variant="marble" colors={getAvatarPalette(seed)} square={false} />
+    </div>
+  );
+}
+
+// Market Info Section (Rules / Context tabs)
+function ClobMarketInfoSection({
+  market,
+}: {
+  market: any;
+}) {
+  const [activeTab, setActiveTab] = useState<'rules' | 'context'>('rules');
+  const [expanded, setExpanded] = useState(false);
+
+  const rulesText = `This market allows you to trade on the outcome of "${market.question}". You can buy or sell shares in each possible outcome. Each share pays out $1 if the outcome occurs, $0 otherwise. Prices represent the market's estimated probability of that outcome occurring. Trading is continuous until market resolution. Payouts are distributed proportionally to shareholders of the winning outcome.`;
+
+  const contextText = market.description
+    ? market.description
+    : `Trade on the outcome of ${market.question}. This market resolves based on verified real-world data. All trades are recorded on Convex and settled through the CLOB system.`;
+
+  const displayText = activeTab === 'rules' ? rulesText : contextText;
+  const isLong = displayText.length > 200;
+  const truncatedText = isLong && !expanded ? displayText.slice(0, 200) + '...' : displayText;
+
+  return (
+    <div>
+      <div className="flex items-center gap-6">
+        <button
+          onClick={() => { setActiveTab('rules'); setExpanded(false); }}
+          className={`pb-2.5 text-sm font-semibold transition-colors ${
+            activeTab === 'rules'
+              ? 'text-gray-900 dark:text-white'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+          }`}
+        >
+          Rules
+        </button>
+        <button
+          onClick={() => { setActiveTab('context'); setExpanded(false); }}
+          className={`pb-2.5 text-sm font-semibold transition-colors ${
+            activeTab === 'context'
+              ? 'text-gray-900 dark:text-white'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+          }`}
+        >
+          Market Context
+        </button>
+      </div>
+      <div className="pt-4 pb-3">
+        <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+          {truncatedText}
+          {isLong && !expanded && (
+            <button onClick={() => setExpanded(true)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 ml-1 text-sm">
+              Show more
+            </button>
+          )}
+        </p>
+        {expanded && (
+          <button onClick={() => setExpanded(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm mt-2 block">
+            Show less
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Activity Section (Ideas / Positions / Activity tabs)
+function ClobActivitySection({
+  marketId,
+  currentUser,
+}: {
+  marketId: string;
+  currentUser?: { id: string; name: string; imageUrl?: string };
+}) {
+  const [activeTab, setActiveTab] = useState<'ideas' | 'positions' | 'activity'>('ideas');
+  const { user, isSignedIn } = useUser();
+
+  // Comments/Ideas
+  const comments = useConvexQuery(api.social.getMarketComments, { marketId });
+  const addCommentMutation = useMutation(api.social.addComment);
+  const likeCommentMutation = useMutation(api.social.likeComment);
+  const [newComment, setNewComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+
+  const handleSubmitComment = async () => {
+    if (!newComment.trim() || !isSignedIn || !user) return;
+    setSubmittingComment(true);
+    try {
+      await addCommentMutation({
+        marketId,
+        userAddress: `managed:${user.id}`.toLowerCase(),
+        content: newComment.trim(),
+      });
+      setNewComment('');
+    } catch { /* ignore */ }
+    setSubmittingComment(false);
+  };
+
+  // Orders/Trades for activity
+  const allOrders = useConvexQuery(api.clob.getMarketOrders, { marketId });
+  const [showAll, setShowAll] = useState(false);
+  const sortedOrders = useMemo(() => {
+    if (!allOrders) return [];
+    return [...allOrders].sort((a, b) => (b._creationTime || 0) - (a._creationTime || 0));
+  }, [allOrders]);
+  const displayOrders = showAll ? sortedOrders : sortedOrders.slice(0, 10);
+
+  // User profiles batch
+  const uniqueAddresses = useMemo(() => {
+    const set = new Set<string>();
+    if (allOrders) {
+      for (const o of allOrders) if (o.userId) set.add(o.userId);
+    }
+    if (comments) {
+      for (const c of comments) if (c.userAddress) set.add(c.userAddress);
+    }
+    return Array.from(set);
+  }, [allOrders, comments]);
+
+  const profilesRaw = useConvexQuery(
+    api.social.getUserProfilesBatch,
+    uniqueAddresses.length > 0 ? { addresses: uniqueAddresses } : 'skip'
+  );
+  const profiles = profilesRaw || {};
+
+  const formatTimeAgo = (ts: number) => {
+    const diff = Date.now() - ts;
+    const secs = Math.floor(diff / 1000);
+    if (secs < 5) return 'just now';
+    if (secs < 60) return `${secs}s ago`;
+    const mins = Math.floor(secs / 60);
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    const months = Math.floor(days / 30);
+    return `${months}mo ago`;
+  };
+
+  const truncateAddr = (addr: string) => {
+    if (addr.startsWith('managed:')) {
+      const id = addr.slice(8);
+      return id.length <= 12 ? id : id.slice(0, 8) + '...';
+    }
+    return addr.length <= 12 ? addr : addr.slice(0, 6) + '...' + addr.slice(-4);
+  };
+
+  // Positions aggregation
+  const userPositions = useConvexQuery(api.clob.getUserPositionsForMarket, { marketId, userId: 'all' });
+  const positions = useMemo(() => {
+    if (!userPositions) return [];
+    const map = new Map<string, { totalShares: number; totalCost: number; positionCount: number }>();
+    for (const pos of userPositions) {
+      if (pos.shares <= 0) continue;
+      const existing = map.get(pos.userId) || { totalShares: 0, totalCost: 0, positionCount: 0 };
+      existing.totalShares += pos.shares;
+      existing.totalCost += pos.costBasis;
+      existing.positionCount += 1;
+      map.set(pos.userId, existing);
+    }
+    return Array.from(map.entries())
+      .map(([userId, data]) => ({ userId, ...data }))
+      .sort((a, b) => b.totalCost - a.totalCost);
+  }, [userPositions]);
+
+  const tabs: Array<{ key: 'ideas' | 'positions' | 'activity'; label: string; count?: number; icon?: React.ReactNode }> = [
+    { key: 'ideas', label: 'Ideas', count: comments?.length },
+    { key: 'positions', label: 'Positions', count: positions.length },
+    { key: 'activity', label: 'Activity', icon: <ActivityIcon className="w-4 h-4" /> },
+  ];
+
+  return (
+    <div style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '16px', lineHeight: 1.5 }}>
+      <div className="flex items-center gap-6 pb-2">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as 'ideas' | 'positions' | 'activity')}
+              className={`flex items-center gap-2 text-sm font-semibold transition-colors ${
+                isActive
+                  ? 'text-gray-900 dark:text-white'
+                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}{tab.count !== undefined && tab.count > 0 ? ` (${tab.count})` : ''}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Ideas tab */}
+      {activeTab === 'ideas' && (
+        <div className="pt-4">
+          <div className="mb-4">
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmitComment()}
+                placeholder="What's your prediction?"
+                className="flex-1 bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.06] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                disabled={!isSignedIn || submittingComment}
+              />
+              <button
+                onClick={handleSubmitComment}
+                disabled={!newComment.trim() || !isSignedIn || submittingComment}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-40 transition-colors"
+              >
+                Post
+              </button>
+            </div>
+            {!isSignedIn && (
+              <p className="text-xs text-gray-400 mt-1.5">Sign in to share your prediction</p>
+            )}
+          </div>
+
+          {!comments || comments.length === 0 ? (
+            <div className="py-8 text-center text-sm text-gray-500">No ideas yet. Be the first one to comment.</div>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-white/[0.04]">
+              {comments.filter((c: any) => !c.parentId).map((comment: any) => {
+                const prof = profiles[comment.userAddress];
+                const isCurrentUser = currentUser && comment.userAddress === `managed:${currentUser.id}`.toLowerCase();
+                const displayName = isCurrentUser ? currentUser.name : (prof?.displayName || truncateAddr(comment.userAddress));
+                const avatarImageUrl = isCurrentUser ? currentUser.imageUrl : undefined;
+                const profileLink = comment.userAddress.startsWith('managed:') ? `/profile/${comment.userAddress.slice(8)}` : undefined;
+                const replies = comments.filter((c: any) => c.parentId === comment._id);
+                return (
+                  <div key={comment._id} className="py-3">
+                    <div className="flex items-start gap-3">
+                      <UserAvatar addr={comment.userAddress} size={28} imageUrl={avatarImageUrl} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {profileLink ? (
+                            <a href={profileLink} className="text-sm text-gray-900 dark:text-white hover:underline" style={{ fontWeight: 521 }}>{displayName}</a>
+                          ) : (
+                            <span className="text-sm text-gray-900 dark:text-white" style={{ fontWeight: 521 }}>{displayName}</span>
+                          )}
+                          <span className="text-xs text-gray-400">{formatTimeAgo(comment.timestamp)}</span>
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-neutral-300 mt-1" style={{ fontWeight: 300 }}>
+                          {comment.content}
+                        </p>
+                        <div className="flex items-center gap-4 mt-1.5">
+                          {(() => {
+                            const currentAddr = isSignedIn && user ? `managed:${user.id}`.toLowerCase() : '';
+                            const hasLiked = (comment.likedBy || []).includes(currentAddr);
+                            return (
+                              <button
+                                onClick={() => {
+                                  if (!isSignedIn || !user) return;
+                                  likeCommentMutation({ commentId: comment._id, userAddress: currentAddr });
+                                }}
+                                className={`flex items-center gap-1 transition-colors ${hasLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                              >
+                                <Heart className={`w-3.5 h-3.5 ${hasLiked ? 'fill-red-500' : ''}`} />
+                                {comment.likes > 0 && <span className="text-xs">{comment.likes}</span>}
+                              </button>
+                            );
+                          })()}
+                          <button
+                            onClick={() => setReplyingTo(replyingTo === comment._id ? null : comment._id)}
+                            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                          >
+                            Reply
+                          </button>
+                        </div>
+
+                        {replyingTo === comment._id && (
+                          <div className="flex gap-2 mt-2">
+                            <input
+                              type="text"
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && replyText.trim()) {
+                                  addCommentMutation({
+                                    marketId,
+                                    userAddress: `managed:${user?.id}`.toLowerCase(),
+                                    content: replyText.trim(),
+                                    parentId: comment._id,
+                                  }).then(() => { setReplyText(''); setReplyingTo(null); });
+                                }
+                              }}
+                              placeholder="Write a reply..."
+                              className="flex-1 bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.06] rounded-lg px-3 py-1.5 text-xs text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                        )}
+
+                        {replies.length > 0 && (
+                          <div className="mt-2 ml-2 pl-3 border-l border-gray-200 dark:border-white/[0.06] space-y-2">
+                            {replies.map((reply: any) => {
+                              const rProf = profiles[reply.userAddress];
+                              const isReplyCurrentUser = currentUser && reply.userAddress === `managed:${currentUser.id}`.toLowerCase();
+                              const rName = isReplyCurrentUser ? currentUser.name : (rProf?.displayName || truncateAddr(reply.userAddress));
+                              const rImageUrl = isReplyCurrentUser ? currentUser.imageUrl : undefined;
+                              const rProfileLink = reply.userAddress.startsWith('managed:') ? `/profile/${reply.userAddress.slice(8)}` : undefined;
+                              return (
+                                <div key={reply._id} className="flex items-start gap-2">
+                                  <UserAvatar addr={reply.userAddress} size={20} imageUrl={rImageUrl} />
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      {rProfileLink ? (
+                                        <a href={rProfileLink} className="text-xs text-gray-900 dark:text-white hover:underline" style={{ fontWeight: 521 }}>{rName}</a>
+                                      ) : (
+                                        <span className="text-xs text-gray-900 dark:text-white" style={{ fontWeight: 521 }}>{rName}</span>
+                                      )}
+                                      <span className="text-[10px] text-gray-400">{formatTimeAgo(reply.timestamp)}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-600 dark:text-neutral-400" style={{ fontWeight: 300 }}>
+                                      {reply.content}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Activity tab */}
+      {activeTab === 'activity' && (
+        <div className="pt-2">
+          {sortedOrders.length === 0 ? (
+            <div className="py-8 text-center text-sm text-gray-500">No activity yet.</div>
+          ) : (
+            <>
+              <div className="divide-y divide-gray-100 dark:divide-white/[0.04]">
+                {displayOrders.map((order: any) => {
+                  const prof = profiles[order.userId];
+                  const isOrderCurrentUser = currentUser && order.userId === `managed:${currentUser.id}`.toLowerCase();
+                  const orderImageUrl = isOrderCurrentUser ? currentUser.imageUrl : undefined;
+                  const orderDisplayName = isOrderCurrentUser ? currentUser.name : (prof?.displayName || truncateAddr(order.userId));
+                  const sideColor = order.side === 'buy' ? 'text-green-500' : 'text-red-400';
+                  return (
+                    <div key={order._id} className="py-3 flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative flex-shrink-0">
+                          <UserAvatar addr={order.userId} size={28} imageUrl={orderImageUrl} />
+                          <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-neutral-950 ${order.status === 'filled' ? 'bg-gray-400' : 'bg-bright-green'}`} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`${sideColor} font-medium`}>{order.side.toUpperCase()}</span>
+                            <span className="text-gray-900 dark:text-light-gray font-medium">{order.quantity - order.filledQuantity || order.quantity} @ {order.price}c</span>
+                            <span className="text-gray-400 text-xs">{order.status === 'filled' ? 'Filled' : order.status === 'cancelled' ? 'Cancelled' : 'Open'}</span>
+                          </div>
+                          <span className="text-xs text-gray-500 truncate block">{orderDisplayName}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs text-gray-500">{formatTimeAgo(order._creationTime || Date.now())}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {sortedOrders.length > 10 && (
+                <div className="py-3 border-t border-gray-200 dark:border-white/[0.06]">
+                  <button onClick={() => setShowAll(!showAll)} className="w-full text-center text-sm text-blue-500 hover:underline">
+                    {showAll ? 'Show less' : `Show all ${sortedOrders.length} orders`}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Positions tab */}
+      {activeTab === 'positions' && (
+        <div className="pt-2">
+          {positions.length === 0 ? (
+            <div className="py-8 text-center text-sm text-gray-500">No positions yet.</div>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-white/[0.04]">
+              {positions.map((pos) => {
+                const prof = profiles[pos.userId];
+                const isPosCurrentUser = currentUser && pos.userId === `managed:${currentUser.id}`.toLowerCase();
+                const posImageUrl = isPosCurrentUser ? currentUser.imageUrl : undefined;
+                const posDisplayName = isPosCurrentUser ? currentUser.name : (prof?.displayName || truncateAddr(pos.userId));
+                const posProfileLink = pos.userId.startsWith('managed:') ? `/profile/${pos.userId.slice(8)}` : undefined;
+                return (
+                  <div key={pos.userId} className="py-3 flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <UserAvatar addr={pos.userId} size={28} imageUrl={posImageUrl} />
+                      <div className="min-w-0">
+                        {posProfileLink ? (
+                          <a href={posProfileLink} className="text-gray-900 dark:text-light-gray block truncate hover:underline" style={{ fontWeight: 521 }}>{posDisplayName}</a>
+                        ) : (
+                          <span className="text-gray-900 dark:text-light-gray block truncate" style={{ fontWeight: 521 }}>{posDisplayName}</span>
+                        )}
+                        <span className="text-xs text-gray-500">{pos.positionCount} position{pos.positionCount !== 1 ? 's' : ''}</span>
+                      </div>
+                    </div>
+                    <span className="text-gray-900 dark:text-light-gray font-medium text-sm flex-shrink-0">
+                      ${pos.totalCost.toFixed(2)} USDC
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Price Chart (multi-outcome probability over time)
 interface ClobPredictionCardProps {
   marketId: string;
 }
@@ -44,12 +480,12 @@ const OUTCOME_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '
 
 function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: OutcomePrice[] }) {
   // Get price history for all outcomes
-  const histories = outcomes.map((o: any) => {
+  const histories = outcomes.map((o: OutcomePrice) => {
     const history = useConvexQuery(api.clob.getPriceHistory, {
       marketId,
       outcomeIndex: o.outcomeIndex,
     });
-    return { ...o, history: history || [] };
+    return { ...o, history: (history || []) as Array<{ timestamp: number; price: number }> };
   });
 
   const allPoints = histories.flatMap((h) => h.history);
@@ -61,8 +497,8 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
     );
   }
 
-  const minTime = Math.min(...allPoints.map((p) => p.timestamp));
-  const maxTime = Math.max(...allPoints.map((p) => p.timestamp));
+  const minTime = Math.min(...allPoints.map((p: { timestamp: number }) => p.timestamp));
+  const maxTime = Math.max(...allPoints.map((p: { timestamp: number }) => p.timestamp));
   const timeRange = maxTime - minTime || 1;
   const W = 500;
   const H = 160;
@@ -82,7 +518,7 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
         {histories.map((h, i) => {
           if (h.history.length < 2) return null;
           const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
-          const points = h.history.map((p: any) => {
+          const points = h.history.map((p: { timestamp: number; price: number }) => {
             const x = ((p.timestamp - minTime) / timeRange) * W;
             const y = H - (p.price / 100) * (H - 10) - 5;
             return `${x},${y}`;
@@ -102,9 +538,11 @@ function OrderBookView({ marketId, outcomeIndex }: { marketId: string; outcomeIn
 
   if (!orderBook) return <div className="py-4 text-center text-sm text-gray-400"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>;
 
+  type OrderLevel = { price: number; quantity: number };
+
   const maxQty = Math.max(
-    ...orderBook.bids.map((b: any) => b.quantity),
-    ...orderBook.asks.map((a: any) => a.quantity),
+    ...orderBook.bids.map((b: OrderLevel) => b.quantity),
+    ...orderBook.asks.map((a: OrderLevel) => a.quantity),
     1
   );
 
@@ -118,7 +556,7 @@ function OrderBookView({ marketId, outcomeIndex }: { marketId: string; outcomeIn
         {orderBook.bids.length === 0 ? (
           <div className="text-center text-gray-400 py-2">No bids</div>
         ) : (
-          orderBook.bids.slice(0, 8).map((b, i) => (
+          orderBook.bids.slice(0, 8).map((b: OrderLevel, i: number) => (
             <div key={i} className="flex justify-between items-center px-1 py-0.5 relative">
               <div className="absolute inset-0 bg-green-500/10 rounded" style={{ width: `${(b.quantity / maxQty) * 100}%` }} />
               <span className="text-green-600 dark:text-green-400 font-mono relative z-10">{b.price}c</span>
@@ -135,7 +573,7 @@ function OrderBookView({ marketId, outcomeIndex }: { marketId: string; outcomeIn
         {orderBook.asks.length === 0 ? (
           <div className="text-center text-gray-400 py-2">No asks</div>
         ) : (
-          orderBook.asks.slice(0, 8).map((a, i) => (
+          orderBook.asks.slice(0, 8).map((a: OrderLevel, i: number) => (
             <div key={i} className="flex justify-between items-center px-1 py-0.5 relative">
               <div className="absolute inset-0 right-0 bg-red-500/10 rounded" style={{ width: `${(a.quantity / maxQty) * 100}%`, marginLeft: 'auto' }} />
               <span className="text-red-600 dark:text-red-400 font-mono relative z-10">{a.price}c</span>
@@ -180,6 +618,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState<'chart' | 'orderbook'>('chart');
+  const [infoExpanded, setInfoExpanded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
 
   const platformBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
@@ -187,7 +626,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   // Positions for this market
   const marketPositions = useMemo(() => {
     if (!userPositions) return [];
-    return userPositions.filter((p) => p.marketId === marketId && p.shares > 0);
+    return userPositions.filter((p: { marketId: string; shares: number }) => p.marketId === marketId && p.shares > 0);
   }, [userPositions, marketId]);
 
   if (!market) return <PredictionCardSkeleton />;
@@ -349,6 +788,31 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
             {activeTab === 'chart' && <PriceChart marketId={marketId} outcomes={outcomes} />}
             {activeTab === 'orderbook' && <OrderBookView marketId={marketId} outcomeIndex={selectedOutcome} />}
+
+            {/* Market Info (Rules/Context) - Collapsible */}
+            <div className="border-t border-gray-200 dark:border-white/[0.06] pt-4 mt-4">
+              <button
+                onClick={() => setInfoExpanded(!infoExpanded)}
+                className="flex items-center justify-between w-full text-left"
+              >
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">Market Information</span>
+                {infoExpanded ? (
+                  <ChevronUp className="w-4 h-4 text-gray-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                )}
+              </button>
+              {infoExpanded && (
+                <div className="mt-3">
+                  <ClobMarketInfoSection market={market} />
+                </div>
+              )}
+            </div>
+
+            {/* Activity Section (Ideas/Positions/Activity) */}
+            <div className="border-t border-gray-200 dark:border-white/[0.06] pt-4 mt-4">
+              <ClobActivitySection marketId={marketId} currentUser={isSignedIn && user ? { id: user.id, name: user.fullName || user.username || '', imageUrl: user.imageUrl } : undefined} />
+            </div>
           </div>
 
           {/* RIGHT COLUMN -- Trading Panel */}
