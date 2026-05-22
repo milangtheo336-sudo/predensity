@@ -7,17 +7,7 @@ import { cn } from '@/lib/utils';
 import { TrendingUp, Flame, Sparkles, Clock } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
-const SEARCH_HINTS = [
-  'Where Will HBAR Price Land?',
-  'Will BTC hit $150K?',
-  'Where will ETH price land?',
-  'World Cup winner?',
-  'Fed interest rates?',
-  'Tesla stock price?',
-  'FIFA World Cup 2026?',
-];
-
-function AnimatedSearchPlaceholder() {
+function AnimatedSearchPlaceholder({ hints }: { hints: string[] }) {
   const [index, setIndex] = useState(0);
   const [animClass, setAnimClass] = useState('hint-visible');
 
@@ -26,7 +16,7 @@ function AnimatedSearchPlaceholder() {
       // slide up & fade out
       setAnimClass('hint-exit');
       setTimeout(() => {
-        setIndex(i => (i + 1) % SEARCH_HINTS.length);
+        setIndex(i => (i + 1) % hints.length);
         // instantly place new text below, then animate up
         setAnimClass('hint-enter');
         requestAnimationFrame(() => {
@@ -39,7 +29,7 @@ function AnimatedSearchPlaceholder() {
 
   return (
     <span className={`search-hint ${animClass} pointer-events-none absolute left-10 top-1/2 text-sm font-bold text-gray-500 dark:text-gray-400 select-none whitespace-nowrap`}>
-      {SEARCH_HINTS[index]}
+      {hints[index]}
     </span>
   );
 }
@@ -91,10 +81,10 @@ export function MarketFilters({
   ];
 
   const categoryToggles: { value: Category; label: string }[] = [
-    { value: Category.CRYPTO, label: 'Hide crypto' },
-    { value: Category.POLITICS, label: 'Hide politics' },
-    { value: Category.SPORTS, label: 'Hide sports' },
-    { value: Category.TECHNOLOGY, label: 'Hide technology' },
+    { value: Category.CRYPTO, label: t.hideCrypto },
+    { value: Category.POLITICS, label: t.hidePolitics },
+    { value: Category.SPORTS, label: t.hideSports },
+    { value: Category.TECHNOLOGY, label: t.hideTechnology },
   ];
 
   useEffect(() => { setMounted(true); }, []);
@@ -175,7 +165,7 @@ export function MarketFilters({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           {/* Animated placeholder — only shows when input is empty */}
-          {!searchQuery && <AnimatedSearchPlaceholder />}
+          {!searchQuery && <AnimatedSearchPlaceholder hints={t.searchHints} />}
         </div>
 
         <button
@@ -264,7 +254,7 @@ export function MarketFilters({
 
           {hasActiveFilters && (
             <button onClick={onClearFilters} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors whitespace-nowrap flex-shrink-0 ml-2">
-              Clear filters
+              {t.clearFilters}
             </button>
           )}
         </div>
