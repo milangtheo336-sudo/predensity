@@ -4,16 +4,20 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
+import { LANGUAGES } from '@/lib/i18n/translations';
+import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMagic } from '@/context/MagicContext';
 import { useWalletUser } from '@/context/WalletUserContext';
 
 export function MobileBottomNav() {
-  const { t } = useLanguage();
+  const { t, lang, setLang, countryCode } = useLanguage();
   const { user } = useMagic();
   const { walletUser } = useWalletUser();
   const isSignedIn = !!user || !!walletUser;
   const [moreOpen, setMoreOpen] = useState(false);
+  const [langSheetOpen, setLangSheetOpen] = useState(false);
+  const currentLangMeta = LANGUAGES.find(l => l.code === lang);
 
   return (
     <>
@@ -80,6 +84,29 @@ export function MobileBottomNav() {
             {/* Nav items */}
             <div className="flex flex-col px-5 gap-1">
 
+              {/* Language selector row */}
+              <button
+                onClick={() => setLangSheetOpen(true)}
+                className="flex items-center justify-between py-4 text-white w-full text-left"
+              >
+                <div className="flex items-center gap-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                  </svg>
+                  <div>
+                    <div className="text-[11px] text-white/40 leading-tight">{t.language}</div>
+                    <span className="text-lg font-medium">{currentLangMeta?.nativeName ?? 'English'}</span>
+                  </div>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+
+              <div className="h-px bg-white/10 my-1" />
+
               {/* Support */}
               <a
                 href="mailto:support@predensity.com"
@@ -127,6 +154,56 @@ export function MobileBottomNav() {
             {/* Copyright pinned to bottom */}
             <div className="mt-auto px-5 pb-10 pt-6">
               <p className="text-white/30 text-sm">© 2026 Predensity. All rights reserved.</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Language bottom-sheet — slides up over the More panel */}
+      <AnimatePresence>
+        {langSheetOpen && (
+          <motion.div
+            key="lang-sheet"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'tween', duration: 0.25, ease: 'easeInOut' }}
+            className="fixed inset-0 z-[60] bg-black flex flex-col md:hidden"
+          >
+            {/* Header */}
+            <button
+              onClick={() => setLangSheetOpen(false)}
+              className="flex items-center gap-3 px-5 pt-12 pb-6 text-white"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 5l-7 7 7 7" />
+              </svg>
+              <span className="text-base font-medium">{t.selectLanguage}</span>
+            </button>
+
+            {/* Language list */}
+            <div className="flex-1 overflow-y-auto px-5">
+              {LANGUAGES.map((l) => (
+                <button
+                  key={l.code}
+                  onClick={() => { setLang(l.code); setLangSheetOpen(false); }}
+                  className={cn(
+                    'w-full flex items-center gap-4 py-4 text-left border-b border-white/[0.06] transition-colors',
+                    lang === l.code ? 'text-violet-400' : 'text-white'
+                  )}
+                >
+                  <span className="text-2xl w-8 flex-shrink-0">{l.flag}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-base font-medium leading-tight">{l.nativeName}</div>
+                    <div className="text-sm text-white/40 leading-tight">{l.name}</div>
+                  </div>
+                  {lang === l.code && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-violet-400 flex-shrink-0">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  )}
+                </button>
+              ))}
             </div>
           </motion.div>
         )}
