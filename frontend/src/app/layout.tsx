@@ -17,6 +17,36 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} style={{ backgroundColor: '#000' }}>
+        {/* Inline splash screen visible before JS hydrates */}
+        <div
+          id="splash"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: '#000',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'opacity 0.4s ease',
+          }}
+        >
+          <img src="/predensity-logo.png" alt="" width={64} height={64} style={{ marginBottom: 20 }} />
+          <span style={{ color: '#7c3aed', fontSize: 24, fontWeight: 600, letterSpacing: 2 }}>
+            predensity
+          </span>
+        </div>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('load', function() {
+                var s = document.getElementById('splash');
+                if (s) { s.style.opacity = '0'; setTimeout(function() { s.remove(); }, 400); }
+              });
+            `,
+          }}
+        />
         <ClerkProvider
           appearance={{
             baseTheme: dark,
