@@ -367,7 +367,10 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       let signature: string;
       try {
         setSigningWallet({ name: providerDetail.info.name, logoSrc: providerDetail.info.icon });
-        signature = await provider.request({ method: 'personal_sign', params: [message, normalizedAddress] });
+        // Hex-encode for HashPack compatibility (MetaMask also accepts hex)
+        const hexMsg = '0x' + Array.from(new TextEncoder().encode(message))
+          .map(b => b.toString(16).padStart(2, '0')).join('');
+        signature = await provider.request({ method: 'personal_sign', params: [hexMsg, normalizedAddress] });
       } catch (signErr: any) {
         const msg = (signErr?.message || '').toLowerCase();
         if (msg.includes('user rejected') || msg.includes('user denied') || signErr?.code === 4001) {
