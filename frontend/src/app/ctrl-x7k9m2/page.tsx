@@ -985,7 +985,7 @@ function AdminPage() {
   const [clobMarketForm, setClobMarketForm] = useState({
     question: '',
     category: 'politics',
-    marketType: 'binary' as 'binary' | 'multi',
+    marketType: 'binary' as 'binary' | 'multi' | 'match',
     outcomes: [
       { name: 'Yes', imageUrl: '' },
       { name: 'No', imageUrl: '' }
@@ -2449,7 +2449,10 @@ function AdminPage() {
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">CLOB Market Management</h2>
                 <p className="text-sm text-gray-400 mt-1">Create prediction markets with YES/NO or multi-outcome trading</p>
               </div>
-              <Button variant="predensity" onClick={() => setShowClobMarketModal(true)} className="flex items-center gap-2">
+              <Button variant="predensity" onClick={() => {
+                setShowClobMarketModal(true);
+                setClobMarketForm(prev => ({ ...prev, category: selectedCategory.toLowerCase() }));
+              }} className="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 Create CLOB Market
               </Button>
@@ -2945,12 +2948,9 @@ function AdminPage() {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
-                <select value={clobMarketForm.category} onChange={(e) => setClobMarketForm({ ...clobMarketForm, category: e.target.value })} className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm">
-                  <option value="politics">Politics</option>
-                  <option value="sports">Sports</option>
-                  <option value="technology">Technology</option>
-                  <option value="international">International</option>
-                </select>
+                <div className="w-full px-3 py-2 bg-gray-100 dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm capitalize">
+                  {clobMarketForm.category}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Market Type</label>
@@ -2958,7 +2958,7 @@ function AdminPage() {
                   <button
                     type="button"
                     onClick={() => setClobMarketForm({ ...clobMarketForm, marketType: 'binary', outcomes: [{ name: 'Yes', imageUrl: '' }, { name: 'No', imageUrl: '' }] })}
-                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                    className={`flex-1 py-2 text-xs font-medium transition-colors ${
                       clobMarketForm.marketType === 'binary'
                         ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -2968,8 +2968,19 @@ function AdminPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => setClobMarketForm({ ...clobMarketForm, marketType: 'match', outcomes: [{ name: '', imageUrl: '' }, { name: 'Tie', imageUrl: '' }, { name: '', imageUrl: '' }] })}
+                    className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                      clobMarketForm.marketType === 'match'
+                        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Match Result
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setClobMarketForm({ ...clobMarketForm, marketType: 'multi', outcomes: [{ name: '', imageUrl: '' }, { name: '', imageUrl: '' }] })}
-                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                    className={`flex-1 py-2 text-xs font-medium transition-colors ${
                       clobMarketForm.marketType === 'multi'
                         ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -2979,13 +2990,56 @@ function AdminPage() {
                   </button>
                 </div>
                 {clobMarketForm.marketType === 'binary' && (
-                  <p className="text-xs text-gray-400 mt-1.5">Outcomes are fixed to Yes and No. No images needed.</p>
+                  <p className="text-xs text-gray-400 mt-1.5">Outcomes are fixed to Yes and No.</p>
+                )}
+                {clobMarketForm.marketType === 'match' && (
+                  <p className="text-xs text-gray-400 mt-1.5">3 outcomes: Team A, Tie, Team B. Enter team names and images below.</p>
                 )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Question *</label>
                 <input type="text" value={clobMarketForm.question} onChange={(e) => setClobMarketForm({ ...clobMarketForm, question: e.target.value })} placeholder="Who will win the 2026 World Cup?" className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm placeholder:text-gray-400" />
               </div>
+              {clobMarketForm.marketType === 'match' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Teams *</label>
+                <div className="space-y-2">
+                  {[0, 2].map((idx) => (
+                    <div key={idx} className="flex gap-2 p-3 bg-gray-50 dark:bg-neutral-900 rounded border border-gray-200 dark:border-neutral-700">
+                      <div className="flex-1 space-y-2">
+                        <input
+                          type="text"
+                          placeholder={idx === 0 ? 'Home Team (e.g., Arsenal FC)' : 'Away Team (e.g., Atletico Madrid)'}
+                          value={clobMarketForm.outcomes[idx]?.name || ''}
+                          onChange={(e) => {
+                            const newOutcomes = [...clobMarketForm.outcomes];
+                            if (!newOutcomes[idx]) newOutcomes[idx] = { name: '', imageUrl: '' };
+                            newOutcomes[idx].name = e.target.value;
+                            setClobMarketForm({ ...clobMarketForm, outcomes: newOutcomes });
+                          }}
+                          className="w-full px-3 py-1.5 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-sm text-gray-900 dark:text-white"
+                        />
+                        <input
+                          type="url"
+                          placeholder="Team Logo URL"
+                          value={clobMarketForm.outcomes[idx]?.imageUrl || ''}
+                          onChange={(e) => {
+                            const newOutcomes = [...clobMarketForm.outcomes];
+                            if (!newOutcomes[idx]) newOutcomes[idx] = { name: '', imageUrl: '' };
+                            newOutcomes[idx].imageUrl = e.target.value;
+                            setClobMarketForm({ ...clobMarketForm, outcomes: newOutcomes });
+                          }}
+                          className="w-full px-3 py-1.5 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-sm text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-center py-2 text-xs text-gray-400 font-medium">
+                    -- Tie (fixed middle outcome) --
+                  </div>
+                </div>
+              </div>
+              )}
               {clobMarketForm.marketType === 'multi' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Outcomes (Minimum 2) *</label>
