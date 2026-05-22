@@ -145,11 +145,11 @@ type PnlRange = '1D' | '1W' | '1M' | 'ALL';
 function PnlSparkline({ data, color }: { data: number[]; color: string }) {
   if (data.length < 2) {
     return (
-      <div className="w-full h-24 rounded-lg bg-neutral-900/50 flex items-center justify-center relative">
-        <span className="text-xs text-neutral-600">No activity yet</span>
+      <div className="w-full h-24 rounded-lg bg-gray-100 dark:bg-neutral-900/50 flex items-center justify-center relative">
+        <span className="text-xs text-gray-400 dark:text-neutral-600">No activity yet</span>
         <div className="absolute top-1 right-2 flex items-center gap-1 pointer-events-none select-none opacity-20">
           <Image src="/predensity-icon.png" alt="" width={14} height={14} className="rounded-sm" />
-          <span className="text-[11px] text-white font-semibold tracking-wide">Predensity</span>
+          <span className="text-[11px] text-gray-900 dark:text-white font-semibold tracking-wide">Predensity</span>
         </div>
       </div>
     );
@@ -200,7 +200,7 @@ function PnlSparkline({ data, color }: { data: number[]; color: string }) {
       {/* Watermark — top right, subtle with logo */}
       <div className="absolute top-1 right-2 flex items-center gap-1 pointer-events-none select-none opacity-20">
         <Image src="/predensity-icon.png" alt="" width={14} height={14} className="rounded-sm" />
-        <span className="text-[11px] text-white font-semibold tracking-wide">Predensity</span>
+        <span className="text-[11px] text-gray-900 dark:text-white font-semibold tracking-wide">Predensity</span>
       </div>
     </div>
   );
@@ -249,7 +249,7 @@ function ActivityRow({ item, hashscanBase }: { item: any; hashscanBase: string }
     ? (amountNum / Math.pow(10, currency.decimals)).toFixed(2)
     : formatTinybarsToHbar(amountNum, 2);
 
-  const amountColor = (isDeposit || isBetWon) ? 'text-green-500' : (isWithdrawal || isBetLost) ? 'text-red-400' : 'text-white';
+  const amountColor = (isDeposit || isBetWon) ? 'text-green-500' : (isWithdrawal || isBetLost) ? 'text-red-400' : 'text-gray-900 dark:text-white';
   const amountPrefix = (isDeposit || isBetWon) ? '+' : (isWithdrawal || isBetLost) ? '-' : '';
 
   const date = new Date(item.timestamp);
@@ -257,17 +257,17 @@ function ActivityRow({ item, hashscanBase }: { item: any; hashscanBase: string }
   const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="flex items-center gap-3 px-5 py-3.5 border-b border-neutral-800/50 hover:bg-neutral-900/20 transition-colors">
+    <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100 dark:border-neutral-800/50 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors">
       {icon}
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-white">{label}</div>
-        <div className="text-xs text-neutral-500 truncate">{sublabel}</div>
+        <div className="text-sm font-medium text-gray-900 dark:text-white">{label}</div>
+        <div className="text-xs text-gray-500 dark:text-neutral-500 truncate">{sublabel}</div>
       </div>
       <div className="text-right flex-shrink-0">
         <div className={`text-sm font-semibold ${amountColor}`}>
           {amountPrefix}{displayAmount} {currency.symbol}
         </div>
-        <div className="text-[11px] text-neutral-600">{dateStr} {timeStr}</div>
+        <div className="text-[11px] text-gray-400 dark:text-neutral-600">{dateStr} {timeStr}</div>
       </div>
       <div className="flex-shrink-0 ml-1">
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
@@ -286,7 +286,7 @@ function ActivityRow({ item, hashscanBase }: { item: any; hashscanBase: string }
             href={`${hashscanBase}/transaction/${item.txHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-1 rounded text-neutral-600 hover:text-vibrant-purple transition-colors"
+            className="p-1 rounded text-gray-400 dark:text-neutral-600 hover:text-vibrant-purple transition-colors"
             title="View on HashScan"
           >
             <ExternalLink className="w-3.5 h-3.5" />
@@ -369,7 +369,7 @@ function ActivePositionCard({
 
   return (
     <tr
-      className="border-b border-neutral-800/60 hover:bg-neutral-900/20 transition-colors cursor-pointer"
+      className="border-b border-gray-100 dark:border-neutral-800/60 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors cursor-pointer"
       onClick={() => setExpanded(e => !e)}
     >
       {/* STATUS */}
@@ -379,7 +379,7 @@ function ActivePositionCard({
             ? 'bg-yellow-500/10 text-yellow-400'
             : inRange
             ? 'bg-green-500/10 text-green-500'
-            : 'bg-neutral-800 text-neutral-400'
+            : 'bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400'
         }`}>
           <span className={`w-1.5 h-1.5 rounded-full ${isPast ? 'bg-yellow-400' : inRange ? 'bg-green-500' : 'bg-neutral-500'}`} />
           {isPast ? 'Pending' : inRange ? 'In Range' : 'Active'}
@@ -399,8 +399,8 @@ function ActivePositionCard({
             )}
           </div>
           <div>
-            <div className="text-sm font-medium text-white leading-tight line-clamp-1">{question}</div>
-            <div className="text-xs text-neutral-500 mt-0.5">
+            <div className="text-sm font-medium text-gray-900 dark:text-white leading-tight line-clamp-1">{question}</div>
+            <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
               {stakeNum.toFixed(1)} Yes at {impliedCents}¢
             </div>
           </div>
@@ -408,11 +408,11 @@ function ActivePositionCard({
         {/* Expanded row detail */}
         {expanded && (
           <div
-            className="mt-3 bg-neutral-900/60 rounded-lg p-3 space-y-2.5"
+            className="mt-3 bg-gray-50 dark:bg-neutral-900/60 rounded-lg p-3 space-y-2.5"
             onClick={e => e.stopPropagation()}
           >
             <div>
-              <div className="flex items-center justify-between text-xs text-neutral-500 mb-1">
+              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-500 mb-1">
                 <span>${minPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 <span className={`font-bold ${inRange ? 'text-green-500' : 'text-red-400'}`}>
                   {livePrice !== null
@@ -421,7 +421,7 @@ function ActivePositionCard({
                 </span>
                 <span>${maxPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
-              <div className="relative h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+              <div className="relative h-1.5 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                 <div className="absolute inset-0 bg-green-500/15 rounded-full" />
                 {livePrice !== null && (
                   <div
@@ -431,11 +431,11 @@ function ActivePositionCard({
                 )}
               </div>
             </div>
-            <div className="flex items-center justify-between text-xs text-neutral-500">
+            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-500">
               <span>Resolves: {resolutionLocal} ({getLocalTimezoneAbbr()})</span>
-              <span className={`font-mono font-medium ${isPast ? 'text-yellow-400' : 'text-white'}`}>{timeLeft}</span>
+              <span className={`font-mono font-medium ${isPast ? 'text-yellow-400' : 'text-gray-900 dark:text-white'}`}>{timeLeft}</span>
             </div>
-            <div className="relative h-1 bg-neutral-800 rounded-full overflow-hidden">
+            <div className="relative h-1 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-1000 ${isPast ? 'bg-yellow-400' : 'bg-vibrant-purple'}`}
                 style={{ width: `${progressPct}%` }}
@@ -447,20 +447,20 @@ function ActivePositionCard({
 
       {/* TOTAL TRADED */}
       <td className="px-4 py-3.5 text-right">
-        <span className="text-sm text-white font-medium">{formatUsd(stakeNum)}</span>
+        <span className="text-sm text-gray-900 dark:text-white font-medium">{formatUsd(stakeNum)}</span>
       </td>
 
       {/* AMOUNT */}
       <td className="px-4 py-3.5 text-right">
         <div className="flex flex-col items-end">
-          <span className="text-sm text-white font-medium">{formatUsd(stakeNum)}</span>
-          <span className="text-xs text-neutral-500 mt-0.5">Active</span>
+          <span className="text-sm text-gray-900 dark:text-white font-medium">{formatUsd(stakeNum)}</span>
+          <span className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">Active</span>
         </div>
       </td>
 
       {/* LINK */}
       <td className="px-4 py-3.5 w-10">
-        <Link2 className="w-4 h-4 text-neutral-700 hover:text-neutral-400 transition-colors" />
+        <Link2 className="w-4 h-4 text-gray-300 dark:text-neutral-700 hover:text-gray-500 dark:hover:text-neutral-400 transition-colors" />
       </td>
     </tr>
   );
@@ -500,19 +500,19 @@ function SortDropdown({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-xs font-medium text-neutral-300 hover:text-white hover:border-neutral-600 transition-colors"
+        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-xs font-medium text-gray-600 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-neutral-600 transition-colors"
       >
-        <SortAsc className="w-3.5 h-3.5 text-neutral-500" />
+        <SortAsc className="w-3.5 h-3.5 text-gray-400 dark:text-neutral-500" />
         {current}
-        <ChevronDown className={`w-3 h-3 text-neutral-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3 h-3 text-gray-400 dark:text-neutral-500 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute right-0 mt-1.5 w-44 bg-[#1a1a1a] border border-neutral-800 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+        <div className="absolute right-0 mt-1.5 w-44 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-neutral-800 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
           {options.map(opt => (
             <button
               key={opt.value}
               onClick={() => { onChange(opt.value); setOpen(false); }}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-neutral-300 hover:text-white hover:bg-neutral-800/50 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-600 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors"
             >
               {opt.label}
               {value === opt.value && (
@@ -965,19 +965,19 @@ export default function PortfolioPage() {
 
   if (!isSignedIn) {
     return (
-      <div className="min-h-screen bg-black">
+      <div className="min-h-screen bg-white dark:bg-black">
         <Header />
         <div className="max-w-4xl mx-auto px-4 py-24 text-center">
-          <Wallet className="w-10 h-10 text-neutral-600 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-white mb-2">Sign in to view your portfolio</h1>
-          <p className="text-sm text-neutral-500">Create an account or sign in to start trading on prediction markets.</p>
+          <Wallet className="w-10 h-10 text-gray-400 dark:text-neutral-600 mx-auto mb-4" />
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Sign in to view your portfolio</h1>
+          <p className="text-sm text-gray-500 dark:text-neutral-500">Create an account or sign in to start trading on prediction markets.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
       <Header />
       <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} />
 
@@ -987,7 +987,7 @@ export default function PortfolioPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
 
           {/* ── Profile Card ── */}
-          <div className="bg-[#111111] border border-neutral-800 rounded-2xl p-5 sm:p-6">
+          <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6">
             {/* Header row */}
             <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
@@ -995,34 +995,34 @@ export default function PortfolioPage() {
                   <img
                     src={user.imageUrl}
                     alt=""
-                    className="w-12 h-12 rounded-full object-cover ring-1 ring-neutral-700"
+                    className="w-12 h-12 rounded-full object-cover ring-1 ring-gray-200 dark:ring-neutral-700"
                   />
                 ) : (
-                  <div className="w-12 h-12 bg-gradient-to-br from-vibrant-purple to-pink-500 rounded-full flex items-center justify-center text-white text-lg font-bold ring-1 ring-neutral-700">
+                  <div className="w-12 h-12 bg-gradient-to-br from-vibrant-purple to-pink-500 rounded-full flex items-center justify-center text-white text-lg font-bold ring-1 ring-gray-200 dark:ring-neutral-700">
                     {(user?.firstName || user?.primaryEmailAddress?.emailAddress || 'U').charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <div className="text-base font-bold text-white">
+                  <div className="text-base font-bold text-gray-900 dark:text-white">
                     {user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Trader'}
                   </div>
-                  <div className="text-xs text-neutral-500 flex items-center gap-1 mt-0.5">
+                  <div className="text-xs text-gray-500 dark:text-neutral-500 flex items-center gap-1 mt-0.5">
                     Joined {joinDate}
                   </div>
                 </div>
               </div>
 
-              {/* Action icons — top right, */}
+              {/* Action icons -- top right */}
               <div className="flex items-center gap-0.5">
                 <button
                   onClick={handleShareProfile}
-                  className="p-2 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                  className="p-2 rounded-lg text-gray-400 dark:text-neutral-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
                   title={copied ? 'Copied!' : 'Share profile'}
                 >
                   {copied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
                 </button>
                 <button
-                  className="p-2 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                  className="p-2 rounded-lg text-gray-400 dark:text-neutral-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
                   title="Rewards"
                 >
                   <Gift className="w-4 h-4" />
@@ -1030,7 +1030,7 @@ export default function PortfolioPage() {
                 <button
                   onClick={handleExportCsv}
                   disabled={exportingCsv || allBets.length === 0}
-                  className="p-2 rounded-lg text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors disabled:opacity-30"
+                  className="p-2 rounded-lg text-gray-400 dark:text-neutral-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors disabled:opacity-30"
                   title="Export CSV"
                 >
                   <Upload className="w-4 h-4" />
@@ -1038,21 +1038,21 @@ export default function PortfolioPage() {
               </div>
             </div>
 
-            {/* 3-stat grid matching : Positions Value | Biggest Win | Predictions */}
+            {/* 3-stat grid */}
             <div className="grid grid-cols-3 gap-3 mb-5">
-              <div className="bg-neutral-900/60 rounded-xl p-3.5 text-center">
-                <div className="text-xl font-bold text-white">{formatUsd(activePositionValue)}</div>
-                <div className="text-[11px] text-neutral-500 mt-1">Positions Value</div>
+              <div className="bg-gray-50 dark:bg-neutral-900/60 rounded-xl p-3.5 text-center">
+                <div className="text-xl font-bold text-gray-900 dark:text-white">{formatUsd(activePositionValue)}</div>
+                <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">Positions Value</div>
               </div>
-              <div className="bg-neutral-900/60 rounded-xl p-3.5 text-center">
-                <div className="text-xl font-bold text-white">
+              <div className="bg-gray-50 dark:bg-neutral-900/60 rounded-xl p-3.5 text-center">
+                <div className="text-xl font-bold text-gray-900 dark:text-white">
                   {biggestWin > 0 ? formatUsd(biggestWin) : '$0.00'}
                 </div>
-                <div className="text-[11px] text-neutral-500 mt-1">Biggest Win</div>
+                <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">Biggest Win</div>
               </div>
-              <div className="bg-neutral-900/60 rounded-xl p-3.5 text-center">
-                <div className="text-xl font-bold text-white">{totalPredictions}</div>
-                <div className="text-[11px] text-neutral-500 mt-1">Predictions</div>
+              <div className="bg-gray-50 dark:bg-neutral-900/60 rounded-xl p-3.5 text-center">
+                <div className="text-xl font-bold text-gray-900 dark:text-white">{totalPredictions}</div>
+                <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">Predictions</div>
               </div>
             </div>
 
@@ -1067,23 +1067,23 @@ export default function PortfolioPage() {
               </button>
               <button
                 onClick={openWithdraw}
-                className="flex-1 py-2.5 rounded-xl border border-neutral-700 text-neutral-300 hover:bg-neutral-800 hover:text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-neutral-700 text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
               >
-                <Image src="/withdraw icon.svg" alt="" width={15} height={15} className="brightness-0 invert" />
+                <Image src="/withdraw icon.svg" alt="" width={15} height={15} className="dark:brightness-0 dark:invert" />
                 Withdraw
               </button>
             </div>
           </div>
 
           {/* ── P&L Card — style ── */}
-          <div className="bg-[#111111] border border-neutral-800 rounded-2xl p-5 sm:p-6">
+          <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6">
             {/* Header: label + range buttons */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${totalPnl >= 0 ? 'bg-green-500' : 'bg-red-400'}`} />
-                <span className="text-sm text-neutral-400 font-medium">Profit/Loss</span>
+                <span className="text-sm text-gray-500 dark:text-neutral-400 font-medium">Profit/Loss</span>
               </div>
-              <div className="flex items-center gap-0.5 bg-neutral-900 rounded-lg p-0.5">
+              <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-neutral-900 rounded-lg p-0.5">
                 {(['1D', '1W', '1M', 'ALL'] as PnlRange[]).map(r => (
                   <button
                     key={r}
@@ -1091,7 +1091,7 @@ export default function PortfolioPage() {
                     className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
                       pnlRange === r
                         ? 'bg-vibrant-purple text-white'
-                        : 'text-neutral-500 hover:text-neutral-300'
+                        : 'text-gray-500 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300'
                     }`}
                   >
                     {r}
@@ -1100,11 +1100,11 @@ export default function PortfolioPage() {
               </div>
             </div>
 
-            {/* Main big P&L number (like  shows PnL, not portfolio value) */}
-            <div className={`text-4xl font-bold mb-1 ${totalPnl >= 0 ? 'text-white' : 'text-white'}`}>
+            {/* Main big P&L number */}
+            <div className="text-4xl font-bold mb-1 text-gray-900 dark:text-white">
               {totalPnl >= 0 ? '' : '-'}{formatUsd(Math.abs(totalPnl))}
             </div>
-            <div className="text-xs text-neutral-500 mb-4">{pnlRangeLabel}</div>
+            <div className="text-xs text-gray-500 dark:text-neutral-500 mb-4">{pnlRangeLabel}</div>
 
             {/* Sparkline */}
             <PnlSparkline data={pnlData} color={pnlColor} />
@@ -1112,13 +1112,13 @@ export default function PortfolioPage() {
         </div>
 
         {/* ============ MAIN TABS ============ */}
-        <div className="flex items-end gap-0 mb-0 border-b border-neutral-800">
+        <div className="flex items-end gap-0 mb-0 border-b border-gray-200 dark:border-neutral-800">
           <button
             onClick={() => setMainTab('positions')}
             className={`px-1 pb-3 mr-6 text-base font-semibold transition-colors border-b-2 -mb-px ${
               mainTab === 'positions'
-                ? 'text-white border-white'
-                : 'text-neutral-500 border-transparent hover:text-neutral-300'
+                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
+                : 'text-gray-400 dark:text-neutral-500 border-transparent hover:text-gray-600 dark:hover:text-neutral-300'
             }`}
           >
             Positions
@@ -1127,8 +1127,8 @@ export default function PortfolioPage() {
             onClick={() => setMainTab('activity')}
             className={`px-1 pb-3 text-base font-semibold transition-colors border-b-2 -mb-px ${
               mainTab === 'activity'
-                ? 'text-white border-white'
-                : 'text-neutral-500 border-transparent hover:text-neutral-300'
+                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
+                : 'text-gray-400 dark:text-neutral-500 border-transparent hover:text-gray-600 dark:hover:text-neutral-300'
             }`}
           >
             Activity
@@ -1143,13 +1143,13 @@ export default function PortfolioPage() {
               {/* Row 1: Active/Closed toggle + Search + Sort */}
               <div className="flex items-center gap-3">
                 {/* Toggle */}
-                <div className="flex items-center gap-0.5 bg-neutral-900 border border-neutral-800 rounded-lg p-1 flex-shrink-0">
+                <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-lg p-1 flex-shrink-0">
                   <button
                     onClick={() => setPositionSub('active')}
                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                       positionSub === 'active'
-                        ? 'bg-neutral-700 text-white'
-                        : 'text-neutral-500 hover:text-neutral-300'
+                        ? 'bg-white dark:bg-neutral-700 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300'
                     }`}
                   >
                     Active
@@ -1158,8 +1158,8 @@ export default function PortfolioPage() {
                     onClick={() => setPositionSub('closed')}
                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                       positionSub === 'closed'
-                        ? 'bg-neutral-700 text-white'
-                        : 'text-neutral-500 hover:text-neutral-300'
+                        ? 'bg-white dark:bg-neutral-700 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300'
                     }`}
                   >
                     Closed
@@ -1168,13 +1168,13 @@ export default function PortfolioPage() {
 
                 {/* Search */}
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-neutral-600" />
                   <input
                     type="text"
                     placeholder="Search positions"
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600 transition-colors"
+                    className="w-full pl-8 pr-3 py-2 rounded-lg bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-600 focus:outline-none focus:border-gray-400 dark:focus:border-neutral-600 transition-colors"
                   />
                 </div>
 
@@ -1190,7 +1190,7 @@ export default function PortfolioPage() {
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       categoryFilter === 'all'
                         ? 'bg-vibrant-purple text-white'
-                        : 'bg-neutral-900 text-neutral-500 hover:text-neutral-300 border border-neutral-800'
+                        : 'bg-gray-100 dark:bg-neutral-900 text-gray-500 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300 border border-gray-200 dark:border-neutral-800'
                     }`}
                   >
                     All
@@ -1227,21 +1227,21 @@ export default function PortfolioPage() {
 
             {/* Table */}
             {!loading && (
-              <div className="bg-[#111111] border border-neutral-800 rounded-xl overflow-hidden">
+              <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-neutral-800">
-                      <th className="px-5 py-3 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider w-28">
+                    <tr className="border-b border-gray-200 dark:border-neutral-800">
+                      <th className="px-5 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-neutral-500 uppercase tracking-wider w-28">
                         Result
                       </th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-neutral-500 uppercase tracking-wider">
                         Market
-                        <ChevronDown className="inline w-3 h-3 ml-0.5 text-neutral-600" />
+                        <ChevronDown className="inline w-3 h-3 ml-0.5 text-gray-400 dark:text-neutral-600" />
                       </th>
-                      <th className="px-4 py-3 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-neutral-500 uppercase tracking-wider">
                         Total Traded
                       </th>
-                      <th className="px-4 py-3 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-neutral-500 uppercase tracking-wider">
                         Amount
                       </th>
                       <th className="px-4 py-3 w-10" />
@@ -1257,7 +1257,7 @@ export default function PortfolioPage() {
                       if (!hasBets) {
                         return (
                           <tr>
-                            <td colSpan={5} className="py-16 text-center text-sm text-neutral-600">
+                            <td colSpan={5} className="py-16 text-center text-sm text-gray-400 dark:text-neutral-600">
                               No active positions.
                             </td>
                           </tr>
@@ -1283,10 +1283,10 @@ export default function PortfolioPage() {
                             const impliedCents = expectedPayout > 0 ? Math.round((stakeVal / expectedPayout) * 100) : 50;
 
                             return (
-                              <tr key={bet.id} className="border-b border-neutral-800/60 hover:bg-neutral-900/20 transition-colors">
+                              <tr key={bet.id} className="border-b border-gray-100 dark:border-neutral-800/60 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors">
                                 <td className="px-5 py-3.5">
-                                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-400">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-500" />
+                                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-neutral-500" />
                                     Active
                                   </span>
                                 </td>
@@ -1304,21 +1304,21 @@ export default function PortfolioPage() {
                                       </div>
                                     )}
                                     <div>
-                                      <div className="text-sm font-medium text-white line-clamp-1">{marketName}</div>
-                                      <div className="text-xs text-neutral-500 mt-0.5">
+                                      <div className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">{marketName}</div>
+                                      <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
                                         {stakeVal.toFixed(1)} Yes at {impliedCents}¢
                                       </div>
                                     </div>
                                   </div>
                                 </td>
                                 <td className="px-4 py-3.5 text-right">
-                                  <span className="text-sm text-white font-medium">{formatUsd(stakeVal)}</span>
+                                  <span className="text-sm text-gray-900 dark:text-white font-medium">{formatUsd(stakeVal)}</span>
                                 </td>
                                 <td className="px-4 py-3.5 text-right">
-                                  <span className="text-sm text-white font-medium">{formatUsd(stakeVal)}</span>
+                                  <span className="text-sm text-gray-900 dark:text-white font-medium">{formatUsd(stakeVal)}</span>
                                 </td>
                                 <td className="px-4 py-3.5">
-                                  <Link2 className="w-4 h-4 text-neutral-700 hover:text-neutral-400 transition-colors cursor-pointer" onClick={() => handleSharePosition(bet)} />
+                                  <Link2 className="w-4 h-4 text-gray-300 dark:text-neutral-700 hover:text-gray-500 dark:hover:text-neutral-400 transition-colors cursor-pointer" onClick={() => handleSharePosition(bet)} />
                                 </td>
                               </tr>
                             );
@@ -1332,7 +1332,7 @@ export default function PortfolioPage() {
                       <>
                         {displayBets.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="py-16 text-center text-sm text-neutral-600">
+                            <td colSpan={5} className="py-16 text-center text-sm text-gray-400 dark:text-neutral-600">
                               No closed positions yet.
                             </td>
                           </tr>
@@ -1352,7 +1352,7 @@ export default function PortfolioPage() {
                             const marketQuestion = cat.toUpperCase() === 'CRYPTO' ? getCryptoQuestion(bet) : marketName;
 
                             return (
-                              <tr key={bet.id} className="border-b border-neutral-800/60 hover:bg-neutral-900/20 transition-colors">
+                              <tr key={bet.id} className="border-b border-gray-100 dark:border-neutral-800/60 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors">
                                 {/* RESULT */}
                                 <td className="px-5 py-4">
                                   {isWon ? (
@@ -1366,7 +1366,7 @@ export default function PortfolioPage() {
                                       Lost
                                     </span>
                                   ) : (
-                                    <span className="text-xs text-neutral-500">—</span>
+                                    <span className="text-xs text-gray-400 dark:text-neutral-500">--</span>
                                   )}
                                 </td>
 
@@ -1386,10 +1386,10 @@ export default function PortfolioPage() {
                                       </div>
                                     )}
                                     <div>
-                                      <div className="text-sm font-medium text-white line-clamp-2 leading-snug">
+                                      <div className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 leading-snug">
                                         {marketQuestion}
                                       </div>
-                                      <div className="text-xs text-neutral-500 mt-0.5">
+                                      <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
                                         {stakeVal.toFixed(1)} {isYes ? 'Yes' : 'No'} at {impliedCents}¢
                                       </div>
                                     </div>
@@ -1398,13 +1398,13 @@ export default function PortfolioPage() {
 
                                 {/* TOTAL TRADED */}
                                 <td className="px-4 py-4 text-right">
-                                  <span className="text-sm text-white font-medium">{formatUsd(stakeVal)}</span>
+                                  <span className="text-sm text-gray-900 dark:text-white font-medium">{formatUsd(stakeVal)}</span>
                                 </td>
 
                                 {/* AMOUNT / P&L */}
                                 <td className="px-4 py-4 text-right">
                                   <div className="flex flex-col items-end gap-0.5">
-                                    <span className={`text-sm font-bold ${isWon ? 'text-white' : isLost ? 'text-white' : 'text-white'}`}>
+                                    <span className="text-sm font-bold text-gray-900 dark:text-white">
                                       {formatUsd(value)}
                                     </span>
                                     {pnlAbs !== 0 && (
@@ -1427,7 +1427,7 @@ export default function PortfolioPage() {
                                 {/* CHAIN LINK */}
                                 <td className="px-4 py-4">
                                   <Link2
-                                    className="w-4 h-4 text-neutral-700 hover:text-neutral-400 transition-colors cursor-pointer"
+                                    className="w-4 h-4 text-gray-300 dark:text-neutral-700 hover:text-gray-500 dark:hover:text-neutral-400 transition-colors cursor-pointer"
                                     onClick={() => handleSharePosition(bet)}
                                   />
                                 </td>
@@ -1447,14 +1447,14 @@ export default function PortfolioPage() {
         {/* ============ ACTIVITY TAB ============ */}
         {mainTab === 'activity' && (
           <div className="mt-4">
-            <div className="bg-[#111111] border border-neutral-800 rounded-xl overflow-hidden">
+            <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden">
               {!activityData && (
                 <div className="flex justify-center py-16">
                   <Loader2 className="h-6 w-6 animate-spin text-vibrant-purple" />
                 </div>
               )}
               {activityData && activityData.length === 0 && (
-                <div className="py-16 text-center text-sm text-neutral-600">
+                <div className="py-16 text-center text-sm text-gray-400 dark:text-neutral-600">
                   No activity yet. Place your first prediction to get started.
                 </div>
               )}
