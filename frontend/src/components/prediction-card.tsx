@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Image from 'next/image';
-import { Minus, Plus, AlertTriangle, Clock, ArrowLeft, ChevronDown, ChevronUp, ExternalLink, Share2, Twitter, Link2, Check as CheckIcon, Heart } from 'lucide-react';
+import { Minus, Plus, AlertTriangle, Clock, ArrowLeft, ChevronDown, ChevronUp, ExternalLink, Share2, Twitter, Link2, Check as CheckIcon, Heart, Activity as ActivityIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KDEChart } from '@/components/kde-chart';
 import { PriceRangeSelector } from '@/components/price-range-selector';
@@ -99,32 +99,26 @@ function CryptoMarketInfoSection({
 
   return (
     <div>
-      <div className="flex items-center gap-6 border-b border-gray-200 dark:border-white/[0.06]">
+      <div className="flex items-center gap-6">
         <button
           onClick={() => { setActiveTab('rules'); setExpanded(false); }}
-          className={`pb-2.5 text-sm font-semibold transition-colors relative ${
+          className={`pb-2.5 text-sm font-semibold transition-colors ${
             activeTab === 'rules'
               ? 'text-gray-900 dark:text-white'
               : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
           }`}
         >
           Rules
-          {activeTab === 'rules' && (
-            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 dark:bg-white rounded-full" />
-          )}
         </button>
         <button
           onClick={() => { setActiveTab('context'); setExpanded(false); }}
-          className={`pb-2.5 text-sm font-semibold transition-colors relative ${
+          className={`pb-2.5 text-sm font-semibold transition-colors ${
             activeTab === 'context'
               ? 'text-gray-900 dark:text-white'
               : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
           }`}
         >
           Market Context
-          {activeTab === 'context' && (
-            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 dark:bg-white rounded-full" />
-          )}
         </button>
       </div>
       <div className="pt-4 pb-3">
@@ -295,31 +289,32 @@ function CryptoActivitySection({
       .sort((a, b) => b.totalStake - a.totalStake);
   }, [allBets]);
 
-  const tabs: Array<{ key: 'ideas' | 'positions' | 'activity'; label: string; count?: number }> = [
+  const tabs: Array<{ key: 'ideas' | 'positions' | 'activity'; label: string; count?: number; icon?: React.ReactNode }> = [
     { key: 'ideas', label: 'Ideas', count: comments?.length },
     { key: 'positions', label: 'Positions', count: positions.length },
-    { key: 'activity', label: 'Activity' },
+    { key: 'activity', label: 'Activity', icon: <ActivityIcon className="w-4 h-4" /> },
   ];
 
   return (
-    <div>
-      <div className="flex items-center gap-6 border-b border-gray-200 dark:border-white/[0.06]">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`pb-2.5 text-sm font-semibold transition-colors relative ${
-              activeTab === tab.key
-                ? 'text-gray-900 dark:text-white'
-                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-            }`}
-          >
-            {tab.label}{tab.count !== undefined && tab.count > 0 ? ` (${tab.count})` : ''}
-            {activeTab === tab.key && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 dark:bg-white rounded-full" />
-            )}
-          </button>
-        ))}
+    <div style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '16px', lineHeight: 1.5 }}>
+      <div className="flex items-center gap-6 pb-2">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 text-sm font-semibold transition-colors ${
+                isActive
+                  ? 'text-gray-900 dark:text-white'
+                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}{tab.count !== undefined && tab.count > 0 ? ` (${tab.count})` : ''}
+            </button>
+          );
+        })}
       </div>
 
       {/* Ideas tab */}
@@ -896,7 +891,7 @@ export function PredictionCard({
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white font-sans selection:bg-vibrant-purple/30">
+    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white selection:bg-vibrant-purple/30" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
         {/* Back nav */}
@@ -994,7 +989,7 @@ export function PredictionCard({
                   </span>
                 </div>
                 <span className="text-xs text-gray-400">
-                  Resolution: {formatMonth(resolutionDate)} {resolutionDate.getDate()}, {resolutionDate.getFullYear()} at {resolutionTime} UTC
+                  Resolution: {formatMonth(resolutionDate)} {resolutionDate.getDate()}, {resolutionDate.getFullYear()} at {resolutionTime} {getLocalTzAbbr()}
                 </span>
               </div>
             </div>

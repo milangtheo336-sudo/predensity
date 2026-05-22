@@ -43,6 +43,7 @@ import {
   Upload,
   SortAsc,
   Twitter,
+  Activity as ActivityIcon,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -857,14 +858,21 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
 
   const activityData = useConvexQuery(
     api.users.getUserActivity,
-    isSignedIn && user
+    isPublicView
       ? {
-          userId: user.id,
-          userAddress: walletAddress || '',
-          phoneNumber: managedWallet?.phoneNumber || undefined,
-          managedEvmAddress: managedEvmAddress || undefined,
+          userId: publicViewUserId || '',
+          userAddress: '',
+          phoneNumber: undefined,
+          managedEvmAddress: undefined,
         }
-      : 'skip'
+      : (isSignedIn && user
+        ? {
+            userId: user.id,
+            userAddress: walletAddress || '',
+            phoneNumber: managedWallet?.phoneNumber || undefined,
+            managedEvmAddress: managedEvmAddress || undefined,
+          }
+        : 'skip')
   );
 
   const currency = getStakingCurrency();
@@ -1391,25 +1399,26 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
         </div>
 
         {/* ============ MAIN TABS ============ */}
-        <div className="flex items-end gap-0 mb-0 border-b border-gray-200 dark:border-neutral-800">
+        <div className="flex items-center gap-6 mb-4" style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '16px', lineHeight: 1.5 }}>
           <button
             onClick={() => setMainTab('positions')}
-            className={`px-1 pb-3 mr-6 text-base font-semibold transition-colors border-b-2 -mb-px ${
+            className={`text-base font-semibold transition-colors ${
               mainTab === 'positions'
-                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                : 'text-gray-400 dark:text-neutral-500 border-transparent hover:text-gray-600 dark:hover:text-neutral-300'
+                ? 'text-gray-900 dark:text-white'
+                : 'text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300'
             }`}
           >
             Positions
           </button>
           <button
             onClick={() => setMainTab('activity')}
-            className={`px-1 pb-3 text-base font-semibold transition-colors border-b-2 -mb-px ${
+            className={`flex items-center gap-2 text-base font-semibold transition-colors ${
               mainTab === 'activity'
-                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                : 'text-gray-400 dark:text-neutral-500 border-transparent hover:text-gray-600 dark:hover:text-neutral-300'
+                ? 'text-gray-900 dark:text-white'
+                : 'text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300'
             }`}
           >
+            <ActivityIcon className="w-4 h-4" />
             Activity
           </button>
         </div>
