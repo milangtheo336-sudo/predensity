@@ -43,7 +43,7 @@ export function getFinanceLeague(groupId: string, leagueId: string): League | un
 }
 
 // Each Finance sub-category has a fixed shape that drives the admin form and
-// the resulting CLOB market payload.
+// the resulting market payload.
 //   above-price      -> Binary "{Asset} ({SYM}) above ${price} on {date} UTC?"
 //   asset-vs-asset   -> Binary, outcomes = [A, B] (no Draw)
 //   template-or-multi -> Admin chooses Binary (above-price template) OR Multi (freeform)

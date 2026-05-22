@@ -202,7 +202,7 @@ export async function signMessage(message: string): Promise<string> {
  * 
  * Example domain:
  * {
- *   name: 'Predensity CLOB',
+ *   name: 'Predensity Exchange',
  *   version: '1',
  *   chainId: 296,
  *   verifyingContract: '0x...'

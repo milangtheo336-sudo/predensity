@@ -73,28 +73,6 @@ export function getOnChainBucket(targetTimestamp: number, category: string): num
   return Math.floor((targetTimestamp - start) / 86400);
 }
 
-// =========================================================================
-// CLOB SYSTEM CONTRACTS (Politics, Sports, Technology, International)
-// MarketManager: multi-outcome markets, split/merge/resolve/redeem
-// ExchangeSettlement: dual-mode operator + EIP-712 signed trades
-// =========================================================================
-export const CLOB_CONTRACTS = {
-  marketManager: {
-    address: process.env.NEXT_PUBLIC_CLOB_MARKET_MANAGER_ADDRESS || '',
-  },
-  exchange: {
-    address: process.env.NEXT_PUBLIC_CLOB_EXCHANGE_ADDRESS || '',
-  },
-};
-
-export function getClobMarketManagerAddress(): `0x${string}` {
-  return CLOB_CONTRACTS.marketManager.address as `0x${string}`;
-}
-
-export function getClobExchangeAddress(): `0x${string}` {
-  return CLOB_CONTRACTS.exchange.address as `0x${string}`;
-}
-
 // Network configuration for Arc
 export const NETWORK_CONFIG = {
   testnet: {

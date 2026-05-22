@@ -1285,7 +1285,7 @@ export function PredictionCard({
 
             {/* Sticky header */}
             <div className="sticky top-0 z-20 bg-white dark:bg-black pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-gray-200 dark:border-[#2a2a2a]">
-              {/* Header: logo + badge + title + share -- matches CLOB layout */}
+              {/* Header: logo + badge + title + share */}
               <div className="flex gap-3 items-start pt-2 mb-3">
                 <Image src={tokenLogo} alt={tokenName} width={40} height={40} className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
@@ -1381,7 +1381,7 @@ export function PredictionCard({
               />
             </div>
 
-            {/* Volume row with time range buttons -- matches CLOB layout */}
+            {/* Volume row with time range buttons */}
             <div className="flex items-center justify-end text-xs sm:text-[13px] text-gray-500 dark:text-[#888888] px-4 lg:px-0">
               <div className="flex items-center gap-1">
                 {(['1d', '1w', '1m', 'all'] as const).map((range) => (

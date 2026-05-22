@@ -136,15 +136,8 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
   const timeRemaining = localizedTimeLeft(market.targetTimestamp, t);
 
   const isCrypto = market.category === Category.CRYPTO;
-  const isClob = market.isClob === true;
-  const isEventBased = !isCrypto && !isClob;
+  const isEventBased = !isCrypto;
   const contractAddress = getContractAddress(market.category)?.toLowerCase() || '';
-
-  // For CLOB markets, fetch live prices from the order book
-  const clobPrices = useConvexQuery(
-    api.clob.getMarketPrices,
-    isClob ? { marketId: market.id } : 'skip'
-  );
 
   // For old event-based categories, fetch bets by contract + timestamp
   const eventBets = useConvexQuery(
@@ -207,107 +200,10 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
   const hasBets = betCount > 0;
 
   // Display volume
-  const displayVolume = isClob
-    ? parseFloat(market.totalVolume || '0')
-    : computedVolume;
+  const displayVolume = computedVolume;
   const volumeStr = displayVolume >= 1000
     ? `$${(displayVolume / 1000).toFixed(1)}k`
     : `$${displayVolume.toFixed(0)}`;
-
-  // CLOB outcomes (max 3 shown on card, rest hidden)
-  // Use live prices from Convex if available, otherwise fall back to static data
-  const outcomes = (clobPrices && clobPrices.length > 0)
-    ? clobPrices.map((p: { outcomeIndex: number; name: string; price: number }) => ({
-        name: p.name,
-        price: p.price,
-      }))
-    : (market.outcomes || []);
-  const visibleOutcomes = outcomes.slice(0, 3);
-  const hiddenCount = outcomes.length - 3;
-
-  // -----------------------------------------------------------------------
-  // CLOB Market Card -- Polymarket style with outcome rows + Yes/No buttons
-  // -----------------------------------------------------------------------
-  if (isClob) {
-    return (
-      <div
-        onClick={onClick}
-        className={cn(
-          'group bg-gray-50 dark:bg-neutral-900 rounded-xl cursor-pointer',
-          'hover:bg-gray-100 dark:hover:bg-neutral-800/80 transition-all',
-          'border border-gray-200 dark:border-neutral-800',
-          'flex flex-col'
-        )}
-      >
-        {/* Header: image + question */}
-        <div className="flex items-start gap-3 p-4 pb-2">
-          {market.imageUrl ? (
-            <img
-              src={market.imageUrl}
-              alt={market.question}
-              className="w-12 h-12 rounded-xl object-cover flex-shrink-0 bg-white dark:bg-neutral-800"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-xl bg-gray-200 dark:bg-neutral-800 flex items-center justify-center flex-shrink-0 text-base font-bold text-gray-700 dark:text-white">
-              {categoryConfig.icon}
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h3 className="text-gray-900 dark:text-white text-[15px] font-bold leading-snug line-clamp-2">
-              {market.question}
-            </h3>
-          </div>
-        </div>
-
-        {/* Outcome rows -- Polymarket style */}
-        <div className="px-4 pb-1 space-y-1.5">
-          {visibleOutcomes.map((outcome, i) => (
-            <div key={i} className="flex items-center justify-between gap-2">
-              <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1 min-w-0">
-                {outcome.name}
-              </span>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-sm font-bold text-gray-900 dark:text-white w-10 text-right">
-                  {outcome.price}%
-                </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-                  className="px-3 py-1 text-xs font-semibold rounded-md bg-green-600/15 text-green-600 dark:bg-green-500/20 dark:text-green-400 hover:bg-green-600/25 dark:hover:bg-green-500/30 transition-colors"
-                >
-                  {t.yes}
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-                  className="px-3 py-1 text-xs font-semibold rounded-md bg-red-600/15 text-red-600 dark:bg-red-500/20 dark:text-red-400 hover:bg-red-600/25 dark:hover:bg-red-500/30 transition-colors"
-                >
-                  {t.no}
-                </button>
-              </div>
-            </div>
-          ))}
-          {hiddenCount > 0 && (
-            <div className="text-xs text-gray-400 dark:text-neutral-500 pl-0.5">
-              {t.moreOutcomes.replace('{n}', String(hiddenCount))}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between text-xs px-4 py-3 mt-auto border-t border-gray-100 dark:border-neutral-800/60">
-          <div className="flex items-center gap-1 text-gray-400">
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>{volumeStr} {t.vol}.</span>
-          </div>
-          <span className="text-gray-400">{timeRemaining}</span>
-        </div>
-      </div>
-    );
-  }
-
-  // -----------------------------------------------------------------------
-  // DPM / Crypto / Legacy Event Card
-  // -----------------------------------------------------------------------
   return (
     <div
       onClick={onClick}

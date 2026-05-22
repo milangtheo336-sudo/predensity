@@ -3,10 +3,9 @@
  * Renders directly into the HTML stream before any client JS runs.
  * This is what crawlers and scrapers see.
  */
-export default function SeoContent({ events, cryptoMarkets, clobMarkets }: {
+export default function SeoContent({ events, cryptoMarkets }: {
   events: any[];
   cryptoMarkets: any[];
-  clobMarkets: any[];
 }) {
   const allMarkets = [
     ...cryptoMarkets.map((m: any) => ({
@@ -18,11 +17,6 @@ export default function SeoContent({ events, cryptoMarkets, clobMarkets }: {
       id: e.eventId,
       question: e.eventName,
       category: e.category,
-    })),
-    ...clobMarkets.map((m: any) => ({
-      id: m.marketId,
-      question: m.question,
-      category: m.category,
     })),
   ].slice(0, 50);
 

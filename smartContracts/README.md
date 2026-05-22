@@ -20,7 +20,7 @@ Contracts are deployed on Arc mainnet. See `contract-config.ts` in the frontend 
 - **BasePredictionMarket.sol** — Core prediction market logic (DPM-based pricing)
 - **CryptoPredictionMarket.sol** — Crypto-specific market with Chainlink price feeds
 - **MarketManager.sol** — Multi-category market management
-- **ExchangeSettlement.sol** — CLOB-style exchange settlement
+- **ExchangeSettlement.sol** — Exchange settlement (operator + EIP-712 signed trades)
 - **SimpleProxyWallet.sol** — Proxy wallet for gasless UX
 
 ## 🛠 Development
