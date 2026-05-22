@@ -1717,6 +1717,17 @@ export function Header({ children }: { children?: React.ReactNode }) {
     managedEoaAddress ? { userAddress: managedEoaAddress } : 'skip'
   );
 
+  // Wallet-auth users: bets stored as managed:<walletUser.publicAddress>
+  const walletUserBetAddress = walletUser?.publicAddress
+    ? `managed:${walletUser.publicAddress}`.toLowerCase()
+    : null;
+  const walletUserBetsRaw = useConvexQuery(
+    api.sync.getBetsByUser,
+    walletUserBetAddress && walletUserBetAddress !== managedEoaAddress
+      ? { userAddress: walletUserBetAddress }
+      : 'skip'
+  );
+
   // Calculate portfolio value: active positions value + unrealized P&L
   const portfolioValue = React.useMemo(() => {
     const allRaw = [
@@ -1724,6 +1735,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
       ...(walletBetsRaw || []),
       ...(managedEvmBetsRaw || []),
       ...(managedEoaBetsRaw || []),
+      ...(walletUserBetsRaw || []),
     ].filter((b: any) => b.status !== 'failed');
     // Deduplicate by betId
     const seen = new Set<string>();
@@ -1748,7 +1760,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
     const totalResolvedStake = resolvedBets.reduce((sum, b) => sum + formatStake(b.stake), 0);
     const unrealizedPnl = totalWonPayout - totalResolvedStake;
     return activeValue + unrealizedPnl;
-  }, [managedBetsRaw, walletBetsRaw, managedEvmBetsRaw, managedEoaBetsRaw]);
+  }, [managedBetsRaw, walletBetsRaw, managedEvmBetsRaw, managedEoaBetsRaw, walletUserBetsRaw]);
 
   // Auto-create managed wallet for new users who don't have one yet
   const walletCreationAttempted = useRef(false);
