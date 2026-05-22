@@ -872,6 +872,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const guestCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifBtnRef = useRef<HTMLButtonElement>(null);
+  const mobileNotifBtnRef = useRef<HTMLButtonElement>(null);
   const notifPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMounted(true), []);
@@ -905,9 +906,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
   useEffect(() => {
     if (!notifOpen) return;
     const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
       if (
-        notifPanelRef.current && !notifPanelRef.current.contains(e.target as Node) &&
-        notifBtnRef.current && !notifBtnRef.current.contains(e.target as Node)
+        notifPanelRef.current && !notifPanelRef.current.contains(target) &&
+        (!notifBtnRef.current || !notifBtnRef.current.contains(target)) &&
+        (!mobileNotifBtnRef.current || !mobileNotifBtnRef.current.contains(target))
       ) {
         setNotifOpen(false);
       }
@@ -944,7 +947,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
       <header className="border-b border-border bg-neutral-950 backdrop-blur supports-[backdrop-filter]:bg-background/60 relative z-50">
         <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
           {/* Logo */}
-          <Link href="/markets" className="flex items-center space-x-2 flex-shrink-0">
+          <Link href="/markets" className="flex items-center space-x-1 flex-shrink-0">
             <Image src="/predensity logo.svg" alt="Predensity" width={50} height={50} className="sm:w-13 sm:h-11 rounded-md invert dark:invert-0" />
             <span className="text-base sm:text-xl font-bold text-light-gray">Predensity</span>
           </Link>
@@ -1103,6 +1106,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                 {/* Notification icon */}
                 <div className="relative">
                   <button
+                    ref={mobileNotifBtnRef}
                     className="p-1 text-gray-400 hover:text-white transition-colors relative"
                     onClick={() => {
                       setNotifOpen(o => !o);
@@ -1157,10 +1161,12 @@ export function Header({ children }: { children?: React.ReactNode }) {
                   className="relative"
                   onMouseEnter={() => {
                     if (profileCloseTimer.current) { clearTimeout(profileCloseTimer.current); profileCloseTimer.current = null; }
-                    setProfileDropdownOpen(true);
+                    if (window.matchMedia('(hover: hover)').matches) setProfileDropdownOpen(true);
                   }}
                   onMouseLeave={() => {
-                    profileCloseTimer.current = setTimeout(() => setProfileDropdownOpen(false), 200);
+                    if (window.matchMedia('(hover: hover)').matches) {
+                      profileCloseTimer.current = setTimeout(() => setProfileDropdownOpen(false), 200);
+                    }
                   }}
                 >
                   <button
@@ -1301,7 +1307,9 @@ function ProfileDropdownPortal({
         if (parentCloseTimer.current) { clearTimeout(parentCloseTimer.current); parentCloseTimer.current = null; }
       }}
       onMouseLeave={() => {
-        onClose();
+        if (window.matchMedia('(hover: hover)').matches) {
+          onClose();
+        }
       }}
       style={{
         position: 'fixed',
