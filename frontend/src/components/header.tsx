@@ -817,7 +817,7 @@ function MpesaDepositView({ onBack, onClose }: { onBack: () => void; onClose: ()
 // Wallet Transfer View -- ERC-20 approve + transfer
 // ---------------------------------------------------------------------------
 
-function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () => void; onClose: () => void; eip6963Provider?: any }) {
+function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderProp }: { onBack: () => void; onClose: () => void; eip6963Provider?: any }) {
   const { user } = useMagic();
   const { walletUser } = useWalletUser();
   const effectiveAddress = user?.publicAddress ?? walletUser?.publicAddress ?? null;
@@ -826,15 +826,34 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
   const { data: accountId } = useAccountId();
   const { writeContract } = useWriteContract();
   const { watch } = useWatchTransactionReceipt();
+  const eip6963Wallets = useEIP6963Wallets();
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState<'input' | 'transferring' | 'done' | 'error'>('input');
   const [errorMsg, setErrorMsg] = useState('');
   const [walletUsdcBalance, setWalletUsdcBalance] = useState<string | null>(null);
   const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
   const [loadingProxy, setLoadingProxy] = useState(false);
+  // Resolved EIP-6963 provider: use prop if set, otherwise find it from walletUser.walletType
+  const [resolvedProvider, setResolvedProvider] = useState<any>(eip6963ProviderProp ?? null);
 
   const tokenId = getStakingTokenId();
   const currency = getStakingCurrency();
+
+  // If the prop provider arrives later or walletUser is a wallet-auth user without an explicit
+  // prop provider, resolve the matching EIP-6963 provider from the detected wallet list.
+  useEffect(() => {
+    if (eip6963ProviderProp) { setResolvedProvider(eip6963ProviderProp); return; }
+    if (!walletUser?.walletType) return;
+    const hint = walletUser.walletType.toLowerCase();
+    const matched = eip6963Wallets.find((w: any) =>
+      w.info.rdns?.toLowerCase().includes(hint) ||
+      w.info.name?.toLowerCase().includes(hint)
+    );
+    if (matched) setResolvedProvider(matched.provider);
+  }, [eip6963ProviderProp, walletUser, eip6963Wallets]);
+
+  // Use resolvedProvider everywhere instead of the raw prop
+  const eip6963Provider = resolvedProvider;
 
   // Fetch proxy wallet address with caching
   useEffect(() => {
