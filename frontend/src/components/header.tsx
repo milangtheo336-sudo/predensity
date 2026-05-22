@@ -35,7 +35,7 @@ import {
   useWatchTransactionReceipt,
 } from '@buidlerlabs/hashgraph-react-wallets';
 import { SignInButton, SignUpButton, useUser, useClerk } from '@clerk/nextjs';
-import { useQuery as useConvexQuery } from 'convex/react';
+import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { getStakingCurrency, getStakingTokenId } from '@/lib/contracts/contract-config';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -870,6 +870,9 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const profileCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const guestCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifBtnRef = useRef<HTMLButtonElement>(null);
+  const notifPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -885,6 +888,33 @@ export function Header({ children }: { children?: React.ReactNode }) {
     isSignedIn && user ? { userId: user.id } : 'skip'
   );
   const platformBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
+
+  // Notifications
+  const notifications = useConvexQuery(
+    api.notifications.getUserNotifications,
+    isSignedIn && user ? { userId: user.id } : 'skip'
+  );
+  const unreadCount = useConvexQuery(
+    api.notifications.getUnreadCount,
+    isSignedIn && user ? { userId: user.id } : 'skip'
+  );
+  const markAllRead = useConvexMutation(api.notifications.markAllNotificationsRead);
+  const hasNotifications = (unreadCount ?? 0) > 0;
+
+  // Close notification panel on outside click
+  useEffect(() => {
+    if (!notifOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        notifPanelRef.current && !notifPanelRef.current.contains(e.target as Node) &&
+        notifBtnRef.current && !notifBtnRef.current.contains(e.target as Node)
+      ) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [notifOpen]);
 
   // HBAR balance from connected wallet
   const hbarBalance = React.useMemo(() => {
@@ -945,6 +975,61 @@ export function Header({ children }: { children?: React.ReactNode }) {
                 >
                   Deposit
                 </button>
+
+                {/* Notification icon */}
+                <div className="relative">
+                  <button
+                    ref={notifBtnRef}
+                    className="p-1 text-gray-400 hover:text-white transition-colors relative"
+                    onClick={() => {
+                      setNotifOpen(o => !o);
+                      if (!notifOpen && hasNotifications && user) {
+                        markAllRead({ userId: user.id });
+                      }
+                    }}
+                    aria-label="Notifications"
+                  >
+                    <Image
+                      src="/notification.svg"
+                      alt="Notifications"
+                      width={24}
+                      height={24}
+                      className="brightness-0 invert"
+                    />
+                    {hasNotifications && (
+                      <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
+                    )}
+                  </button>
+                  {notifOpen && (
+                    <div
+                      ref={notifPanelRef}
+                      className="absolute right-0 mt-2 w-80 bg-[#111] rounded-xl shadow-2xl z-[100] overflow-hidden"
+                    >
+                      <div className="px-4 py-3">
+                        <span className="text-sm font-semibold text-white">Notifications</span>
+                      </div>
+                      {(!notifications || notifications.length === 0) ? (
+                        <div className="flex flex-col items-center justify-center py-10 px-4">
+                          <Image src="/no notification.svg" alt="" width={36} height={36} className="brightness-0 invert opacity-40 mb-3" />
+                          <span className="text-sm text-neutral-500">You have no notifications.</span>
+                        </div>
+                      ) : (
+                        <div className="max-h-72 overflow-y-auto divide-y divide-neutral-800/50">
+                          {notifications.map((n: any) => (
+                            <div key={n._id} className={`px-4 py-3 text-sm ${n.read ? 'text-neutral-500' : 'text-white'} hover:bg-neutral-900/50 transition-colors`}>
+                              <div className="leading-snug">{n.message}</div>
+                              <div className="text-[11px] text-neutral-600 mt-1">
+                                {new Date(n.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                {' '}
+                                {new Date(n.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* Profile avatar -- hover or click to expand dropdown */}
                 <div
@@ -1014,30 +1099,54 @@ export function Header({ children }: { children?: React.ReactNode }) {
           {/* Mobile: Profile avatar when signed in, Login/Signup when not */}
           <div className="md:hidden flex items-center gap-2">
             {isSignedIn && mounted && (
-              <div
-                className="relative"
-                onMouseEnter={() => {
-                  if (profileCloseTimer.current) { clearTimeout(profileCloseTimer.current); profileCloseTimer.current = null; }
-                  setProfileDropdownOpen(true);
-                }}
-                onMouseLeave={() => {
-                  profileCloseTimer.current = setTimeout(() => setProfileDropdownOpen(false), 200);
-                }}
-              >
+              <>
+                {/* Notification icon */}
                 <button
-                  ref={mobileProfileBtnRef}
-                  className="flex items-center gap-1"
-                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="p-1 text-gray-400 hover:text-white transition-colors relative"
+                  onClick={() => {
+                    setNotifOpen(o => !o);
+                    if (!notifOpen && hasNotifications && user) {
+                      markAllRead({ userId: user.id });
+                    }
+                  }}
+                  aria-label="Notifications"
                 >
-                  {user?.imageUrl ? (
-                    <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-8 h-8 bg-vibrant-purple rounded-full flex items-center justify-center text-white text-xs font-medium">
-                      {(user?.firstName || user?.primaryEmailAddress?.emailAddress || 'U').charAt(0).toUpperCase()}
-                    </div>
+                  <Image
+                    src="/notification.svg"
+                    alt="Notifications"
+                    width={22}
+                    height={22}
+                    className="brightness-0 invert"
+                  />
+                  {hasNotifications && (
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
                   )}
                 </button>
-              </div>
+                <div
+                  className="relative"
+                  onMouseEnter={() => {
+                    if (profileCloseTimer.current) { clearTimeout(profileCloseTimer.current); profileCloseTimer.current = null; }
+                    setProfileDropdownOpen(true);
+                  }}
+                  onMouseLeave={() => {
+                    profileCloseTimer.current = setTimeout(() => setProfileDropdownOpen(false), 200);
+                  }}
+                >
+                  <button
+                    ref={mobileProfileBtnRef}
+                    className="flex items-center gap-1"
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  >
+                    {user?.imageUrl ? (
+                      <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 bg-vibrant-purple rounded-full flex items-center justify-center text-white text-xs font-medium">
+                        {(user?.firstName || user?.primaryEmailAddress?.emailAddress || 'U').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </button>
+                </div>
+              </>
             )}
             {!isSignedIn && mounted && (
               <>
