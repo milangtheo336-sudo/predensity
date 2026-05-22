@@ -85,7 +85,7 @@ export function useBetSimulation(category?: Category) {
       try {
         const contractAddress = getContractAddressForCategory(targetCategory || category);
 
-        // Use provided stake or default to 1 HBAR
+        // Use provided stake or default to 1 USDC
         const stake = stakeAmount && parseFloat(stakeAmount) > 0 ? stakeAmount : '1';
 
         // Contract expects basis points (1% = 100 BPS, so $0.15 = 1500 BPS)

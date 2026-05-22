@@ -13,7 +13,7 @@ export async function generateMetadata({
     ? `Predict ${symbol} Price | Predensity`
     : `${marketId} | Predensity`;
   const description = isCrypto
-    ? `Predict ${symbol} price and win USDC. Trade on Predensity prediction markets powered by Hedera.`
+    ? `Predict ${symbol} price and win USDC. Trade on Predensity prediction markets powered by Arc.`
     : `Trade on this prediction market at Predensity.`;
 
   // Known crypto token logos for OG images
@@ -21,7 +21,7 @@ export async function generateMetadata({
     BTC: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
     ETH: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
     SOL: 'https://assets.coingecko.com/coins/images/4128/small/solana.png',
-    HBAR: 'https://predensity.com/hedera.svg',
+    HBAR: 'https://predensity.com/hedera.svg', // Keep for HBAR market OG image
     XRP: 'https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png',
     DOGE: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png',
     ADA: 'https://assets.coingecko.com/coins/images/975/small/cardano.png',

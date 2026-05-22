@@ -20,7 +20,7 @@ const SYMBOL_TO_COINGECKO_ID: Record<string, string> = {
 };
 
 export function getCoinGeckoId(symbol: string): string {
-  return SYMBOL_TO_COINGECKO_ID[symbol.toUpperCase()] || 'hedera-hashgraph';
+  return SYMBOL_TO_COINGECKO_ID[symbol.toUpperCase()] || 'bitcoin';
 }
 
 export interface CoinGeckoHbarData {
@@ -39,13 +39,13 @@ export interface CoinGeckoResponse {
  * Fetch price history for any supported crypto asset within a time range.
  * @param startTimestamp - Unix timestamp in seconds
  * @param endTimestamp - Unix timestamp in seconds
- * @param symbol - Token symbol (e.g. 'BTC', 'ETH', 'HBAR'). Defaults to 'HBAR'.
+ * @param symbol - Token symbol (e.g. 'BTC', 'ETH', 'HBAR'). Defaults to 'BTC'.
  * @returns Promise resolving to array of [timestampMs, priceUsd] tuples
  */
 export async function fetchCryptoPriceAtTimestamp(
   startTimestamp: number,
   endTimestamp: number,
-  symbol: string = 'HBAR'
+  symbol: string = 'BTC'
 ): Promise<{ usd: [number, number][] }> {
   const coinId = getCoinGeckoId(symbol);
   const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart/range?vs_currency=usd&from=${startTimestamp}&to=${endTimestamp}`;
@@ -71,7 +71,7 @@ export async function fetchHbarPriceAtTimestamp(
 }
 
 /**
- * Fetch current HBAR price data from CoinGecko API
+ * Fetch current crypto price data from CoinGecko API (legacy HBAR endpoint)
  */
 export async function fetchHbarPrice(): Promise<CoinGeckoResponse> {
   const response = await fetch(

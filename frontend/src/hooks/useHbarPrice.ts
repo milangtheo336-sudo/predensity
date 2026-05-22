@@ -10,7 +10,7 @@ interface HbarPriceData {
   retryFetch: () => void;
 }
 
-// Chainlink Price Feed addresses on Hedera Mainnet
+// Chainlink Price Feed addresses on Arc Mainnet
 const PRICE_FEEDS: Record<string, string> = {
   HBAR: '0xAF685FB45C12b92b5054ccb9313e135525F9b5d5',
   // Other tokens will use CoinGecko fallback
@@ -39,14 +39,14 @@ const ABI = [
   },
 ];
 
-const provider = new ethers.providers.JsonRpcProvider('https://mainnet.hashio.io/api');
+const provider = new ethers.providers.JsonRpcProvider('/api/rpc-proxy');
 
 // Module-level cache for crypto prices
 const priceCache: Map<string, { price: number; timestamp: number }> = new Map();
 const CACHE_TTL_MS = 60000; // 60 seconds -- CoinGecko free tier allows ~30 req/min
 const COINGECKO_BACKOFF_UNTIL: { time: number } = { time: 0 }; // Rate limit backoff
 
-export function useHbarPrice(tokenSymbol: string = 'HBAR') {
+export function useHbarPrice(tokenSymbol: string = 'BTC') {
   const [priceData, setPriceData] = useState<Omit<HbarPriceData, 'isStale' | 'retryFetch'>>({
     price: 0,
     lastUpdated: new Date(),

@@ -157,10 +157,10 @@ function WalletProfileTab({ walletUser }: { walletUser: NonNullable<ReturnType<t
         <CardContent className="p-6">
           <h3 className="text-sm font-medium text-muted-foreground mb-2">Auth Method</h3>
           <p className="text-sm capitalize">{
-            walletUser.walletType === 'hashpack' ? 'HashPack' :
             walletUser.walletType === 'metamask' ? 'MetaMask' :
+            walletUser.walletType === 'walletconnect' ? 'WalletConnect' :
+            walletUser.walletType === 'hashpack' ? 'HashPack' :
             walletUser.walletType === 'blade' ? 'Blade' :
-            walletUser.walletType === 'kabila' ? 'Kabila' :
             walletUser.walletType
           } Wallet</p>
         </CardContent>
@@ -228,7 +228,7 @@ function WalletProfileTab({ walletUser }: { walletUser: NonNullable<ReturnType<t
               </div>
               {walletUser.hederaAccountId && walletUser.hederaAccountId !== walletUser.publicAddress && (
                 <div>
-                  <h4 className="text-xs font-medium text-muted-foreground mb-2">Hedera Account ID</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2">Account ID</h4>
                   <code className="text-xs font-mono bg-muted px-2 py-1 rounded break-all">
                     {walletUser.hederaAccountId}
                   </code>

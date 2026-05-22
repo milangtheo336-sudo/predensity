@@ -85,7 +85,7 @@ function ClobMarketInfoSection({
         </p>
         {expanded && activeTab === 'rules' && (
           <div className="flex items-center gap-3 mt-3 text-xs text-gray-500">
-            <span>Resolved on-chain via Hedera</span>
+            <span>Resolved on-chain via Arc</span>
           </div>
         )}
         {expanded && (
@@ -894,7 +894,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
       const domain = {
         name: 'Predensity CLOB',
         version: '1',
-        chainId: 296, // Hedera testnet
+        chainId: 5042002, // Arc
       };
 
       const types = {

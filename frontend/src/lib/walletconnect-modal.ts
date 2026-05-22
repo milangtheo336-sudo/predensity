@@ -18,13 +18,11 @@ const PROJECT_ID =
   process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID ||
   '';
 
-// Hedera testnet chain in CAIP-2 format
-const HEDERA_TESTNET_CHAIN = 'eip155:296';
-const HEDERA_MAINNET_CHAIN = 'eip155:295';
+// Arc chain in CAIP-2 format
+const ARC_CHAIN = 'eip155:5042002';
 
 function getChain() {
-  const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-  return network === 'mainnet' ? HEDERA_MAINNET_CHAIN : HEDERA_TESTNET_CHAIN;
+  return ARC_CHAIN;
 }
 
 let signClient: any = null;
@@ -36,7 +34,7 @@ export async function getSignClient() {
     projectId: PROJECT_ID,
     metadata: {
       name: 'Predensity',
-      description: 'Decentralized Prediction Market on Hedera',
+      description: 'Decentralized Prediction Market on Arc',
       url: typeof window !== 'undefined' ? window.location.origin : 'https://predensity.com',
       icons: [typeof window !== 'undefined' ? `${window.location.origin}/predensity-logo.png` : ''],
     },

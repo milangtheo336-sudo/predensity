@@ -177,7 +177,7 @@ export function DepositModal({
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
-                <Image src="/hedera.svg" alt="" width={18} height={18} />
+                <Image src="/arc-logo.svg" alt="" width={18} height={18} />
                 {t.useCrypto}
               </button>
               <button
@@ -233,7 +233,7 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
           <div className="text-xs text-gray-400">{t.noLimitInstant}</div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          <Image src="/hedera.svg" alt="Hedera" width={20} height={20} />
+          <Image src="/arc-logo.svg" alt="Arc" width={20} height={20} />
         </div>
       </button>
 
@@ -655,9 +655,9 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
   const [connecting, setConnecting] = useState<string | null>(null);
   const eip6963Wallets = useEIP6963Wallets();
 
-  const hederaWalletMap: Record<string, any> = {};
+  const walletMap: Record<string, any> = {};
 
-  // Auto-transition when a Hedera wallet connects
+  // Auto-transition when a wallet connects
   useEffect(() => {
     if (!prevConnected.current && isConnected) {
       onConnected();
@@ -665,10 +665,10 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
     prevConnected.current = isConnected;
   }, [isConnected, onConnected]);
 
-  const handleHederaConnect = async (type: string) => {
+  const handleWalletConnect = async (type: string) => {
     setConnecting(type);
     try {
-      const wallet = hederaWalletMap[type];
+      const wallet = walletMap[type];
       if (wallet) await wallet.connect();
     } catch (err) {
       console.error('Wallet connect failed:', err);
@@ -689,12 +689,12 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
     }
   };
 
-  const hederaWallets = [
-    { name: 'HashPack', img: '/hashpack.jpg', type: 'hashpack' },
-    { name: 'Blade', img: '/blade.png', type: 'blade' },
+  const supportedWallets = [
+    { name: 'MetaMask', img: '/metamask.svg', type: 'metamask' },
+    { name: 'WalletConnect', img: '/walletconnect.svg', type: 'walletconnect' },
   ];
 
-  // Filter out Kabila from EIP-6963 (it rejects EIP-1193)
+  // Filter out unsupported wallets from EIP-6963
   const filteredEIP6963 = eip6963Wallets.filter((w: any) => !w.info.name.toLowerCase().includes('kabila'));
 
   return (
@@ -704,12 +704,12 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
       </button>
       <p className="text-sm text-gray-400 text-center">Select a wallet to connect</p>
 
-      {/* Hedera native wallets */}
+      {/* Supported wallets */}
       <div className="grid grid-cols-2 gap-3">
-        {hederaWallets.map((w) => (
+        {supportedWallets.map((w) => (
           <button
             key={w.type}
-            onClick={() => handleHederaConnect(w.type)}
+            onClick={() => handleWalletConnect(w.type)}
             disabled={connecting !== null}
             className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50"
           >
@@ -961,20 +961,24 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
     fetchProxyWallet();
   }, [effectiveAddress]);
 
-  // Fetch USDC balance via Hedera mirror node (for Hedera-native wallets)
+  // Fetch USDC balance via mirror node (for native wallets)
   useEffect(() => {
     if (!accountId || !tokenId) return;
     let cancelled = false;
     const fetchBalance = async () => {
       try {
-        const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-        const base = network === 'mainnet' ? 'https://mainnet.mirrornode.hedera.com' : 'https://testnet.mirrornode.hedera.com';
-        const res = await fetch(`${base}/api/v1/tokens/${tokenId}/balances?account.id=${accountId}&limit=1`);
+        // Fetch USDC balance via ERC-20 balanceOf on Arc
+        const paddedAddr = accountId.replace('0x', '').toLowerCase().padStart(64, '0');
+        const callData = '0x70a08231' + paddedAddr;
+        const res = await fetch('/api/rpc-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: tokenId, data: callData }, 'latest'] }),
+        });
         if (res.ok) {
           const data = await res.json();
-          const entry = data?.balances?.[0];
-          if (entry && !cancelled) {
-            const bal = Number(entry.balance) / Math.pow(10, currency.decimals);
+          if (data.result && data.result !== '0x' && !cancelled) {
+            const bal = Number(BigInt(data.result)) / Math.pow(10, currency.decimals);
             setWalletUsdcBalance(bal.toFixed(2));
           } else if (!cancelled) {
             setWalletUsdcBalance('0.00');
@@ -988,9 +992,9 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
     return () => { cancelled = true; };
   }, [accountId, tokenId, currency.decimals, step]);
 
-  // Fetch USDC balance via eth_call → balanceOf for EIP-6963 wallets (MetaMask on Hedera Testnet).
-  // MetaMask holds USDC as ERC-20 (not HTS-associated), so mirror node token queries return empty.
-  // We call balanceOf(address) directly via the wallet's own Hedera RPC.
+  // Fetch USDC balance via eth_call → balanceOf for EIP-6963 wallets (MetaMask on Arc).
+  // MetaMask holds USDC as ERC-20, so mirror node token queries return empty.
+  // We call balanceOf(address) directly via the wallet's own RPC.
   useEffect(() => {
     if (!eip6963Provider) return;
     const tokenAddress = getStakingTokenAddress(); // e.g. 0x00000000000000000000000000000000007d943f
@@ -1051,7 +1055,7 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
         const paddedTo = proxyWalletAddress.slice(2).padStart(64, '0');
         const paddedAmt = rawAmount.toString(16).padStart(64, '0');
         const data = '0xa9059cbb' + paddedTo + paddedAmt;
-        // Hedera HTS token EVM address: 0x0000...{tokenNum in hex}
+        // Token EVM address: 0x0000...{tokenNum in hex}
         const tokenParts = tokenId.split('.');
         const tokenEvmAddr = '0x' + parseInt(tokenParts[tokenParts.length - 1]).toString(16).padStart(40, '0');
         await eip6963Provider.request({
@@ -1059,7 +1063,7 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
           params: [{ from: accounts[0], to: tokenEvmAddr, data }],
         });
       } else {
-        // Hedera native wallet (HashPack, Blade) — use hashgraph writeContract
+        // Native wallet — use writeContract
         const transferTxId = await writeContract({
           contractId: tokenId,
           abi: [{ type: 'function', name: 'transfer', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'nonpayable' }] as const,
@@ -1141,7 +1145,7 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
           {walletUsdcBalance === '0.00' && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-400">
               <span className="mt-0.5">⚠️</span>
-              <span>This wallet has no {currency.symbol} on Hedera testnet. Your {currency.symbol} may be in a different wallet (e.g. HashPack). Switch wallets or fund this address first.</span>
+              <span>This wallet has no {currency.symbol} on Arc. Your {currency.symbol} may be in a different wallet (e.g. MetaMask). Switch wallets or fund this address first.</span>
             </div>
           )}
 
@@ -1684,7 +1688,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
     }
   }, [user, authModalOpen]);
 
-  // Guard: if the wallet library disconnects externally (user rejects in HashPack,
+  // Guard: if the wallet library disconnects externally (user rejects in MetaMask,
   // removes extension, etc.) while signed in as a wallet user — clear the session.
   // Also handles the case where a Magic/OAuth user connected a wallet for deposits
   // and then logs out: isConnected becomes false naturally after logout calls disconnect().
@@ -1692,7 +1696,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
     // Only clear the session if isConnected is explicitly false (not undefined).
     // undefined means the wallet library hasn't resolved yet (e.g. during a
     // failed connection attempt). Clearing on undefined caused a loop where
-    // a failed Kabila/EIP-6963 connect would clear a legitimate session and
+    // a failed EIP-6963 connect would clear a legitimate session and
     // reopen the auth modal repeatedly.
     if (isConnected === false && walletUser) {
       console.log('[header] Wallet disconnected externally — clearing wallet user session');

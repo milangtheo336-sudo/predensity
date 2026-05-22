@@ -8,7 +8,7 @@ import { useEffect } from 'react';
  *
  * 1. WalletConnect IndexedDB race-condition errors
  * 2. "Suspense boundary / server could not finish" — thrown by crypto wallet
- *    extensions (Rabby, MetaMask inpage.js, HashPack) injecting into the page
+ *    extensions (Rabby, MetaMask inpage.js) injecting into the page
  *    during React hydration. React already recovers automatically; this just
  *    prevents the red dev overlay from appearing.
  */

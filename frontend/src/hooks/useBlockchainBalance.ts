@@ -1,5 +1,5 @@
 /**
- * Hook to read USDC balance from Hedera blockchain
+ * Hook to read USDC balance from Arc blockchain
  * Replaces custodial balance tracking with on-chain balance
  * Supports optimistic updates for immediate UI feedback
  * 
@@ -89,38 +89,41 @@ export function useBlockchainBalance(userAddress: string | undefined) {
       
       try {
         console.log('[useBlockchainBalance] Fetching balance for address:', userAddress);
-        const tokenId = getStakingTokenId();
-        const network = process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet';
-        const mirrorNodeUrl = network === 'mainnet' 
-          ? 'https://mainnet-public.mirrornode.hedera.com'
-          : 'https://testnet.mirrornode.hedera.com';
+        const tokenAddress = getStakingTokenId(); // Returns USDC contract address on Arc
 
         let balanceFormatted = '0';
         try {
-          // Hedera rejects unknown query params so we can't use ?t=Date.now().
-          // To aggressively bust browser/Next.js caching, we randomly fluctuate the limit parameter!
-          const randomLimit = 90 + Math.floor(Math.random() * 10);
-          const response = await fetch(`${mirrorNodeUrl}/api/v1/accounts/${userAddress}/tokens?limit=${randomLimit}`, {
+          // Call USDC balanceOf via our RPC proxy
+          const paddedAddr = userAddress.replace('0x', '').toLowerCase().padStart(64, '0');
+          const callData = '0x70a08231' + paddedAddr; // balanceOf(address)
+
+          const response = await fetch('/api/rpc-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'eth_call',
+              params: [{ to: tokenAddress, data: callData }, 'latest'],
+            }),
             cache: 'no-store',
-            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
           });
+
           if (response.ok) {
             const data = await response.json();
-            const tokenRecord = data.tokens?.find((t: any) => t.token_id === tokenId);
-            if (tokenRecord) {
-              const decimals = parseInt(tokenRecord.decimals || '6', 10);
-              // Format balance using its decimals
-              balanceFormatted = (parseInt(tokenRecord.balance, 10) / Math.pow(10, decimals)).toString();
+            if (data.result && data.result !== '0x') {
+              const rawBalance = BigInt(data.result);
+              balanceFormatted = (Number(rawBalance) / 1e6).toString();
             }
           } else {
-            console.warn('[useBlockchainBalance] Mirror node returned status:', response.status);
+            console.warn('[useBlockchainBalance] RPC proxy returned status:', response.status);
           }
         } catch (e) {
-          console.error('[useBlockchainBalance] Mirror node fetch failed:', e);
+          console.error('[useBlockchainBalance] Balance fetch failed:', e);
         }
 
         if (isMounted) {
-          console.log('[useBlockchainBalance] Balance fetched via Mirror Node:', {
+          console.log('[useBlockchainBalance] Balance fetched:', {
             address: userAddress,
             balance: balanceFormatted,
           });

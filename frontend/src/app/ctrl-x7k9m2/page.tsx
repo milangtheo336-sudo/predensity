@@ -1462,7 +1462,7 @@ function AdminPage() {
           readContract({ address: addr, abi, functionName: 'totalFeesCollected', args: [] }),
           readContract({ address: addr, abi, functionName: 'owner', args: [] }),
         ]);
-        // Hedera RPC does not support eth_getBalance via the wallet SDK, so we show fees only
+        // Show fees only (balance fetched separately via ERC-20 balanceOf)
         results[cat.id] = {
           fees: fees ? (isTokenMode() ? (Number(fees.toString()) / Math.pow(10, getStakingCurrency().decimals)).toString() : ethers.utils.formatEther(fees.toString())) : '0',
           balance: '--',

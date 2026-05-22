@@ -31,7 +31,7 @@ export default function SeoContent({ events, cryptoMarkets, clobMarkets }: {
     '@type': 'WebSite',
     name: 'Predensity',
     url: 'https://www.predensity.com',
-    description: 'Profit from bold, early, and accurate price forecasts. Predensity rewards boldness and sharpness of predictions — trade on crypto, politics, sports, and technology outcomes on Hedera.',
+    description: 'Profit from bold, early, and accurate price forecasts. Predensity rewards boldness and sharpness of predictions — trade on crypto, politics, sports, and technology outcomes on Arc.',
     potentialAction: {
       '@type': 'SearchAction',
       target: { '@type': 'EntryPoint', urlTemplate: 'https://www.predensity.com/?q={search_term_string}' },
@@ -76,7 +76,7 @@ export default function SeoContent({ events, cryptoMarkets, clobMarkets }: {
           zIndex: -9999,
         }}
       >
-        <h1>Predensity — Decentralized Prediction Market on Hedera</h1>
+        <h1>Predensity — Decentralized Prediction Market on Arc</h1>
         <p>
           Profit from bold, early, and accurate price forecasts.
           The platform rewards boldness and sharpness of predictions.

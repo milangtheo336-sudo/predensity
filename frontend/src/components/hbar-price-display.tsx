@@ -74,8 +74,8 @@ export function HbarPriceDisplay({
     <span className={`inline-flex items-center space-x-1 ${className}`}>
       {showIcon && (
         <Image
-          src="/hedera.svg"
-          alt="Hedera"
+          src="/arc-logo.svg"
+          alt="Arc"
           width={imageSizes[size].width}
           height={imageSizes[size].height}
           className="flex-shrink-0"

@@ -4,7 +4,7 @@ import { Component, ReactNode } from 'react';
 
 /**
  * Silently catches the "Suspense boundary" error thrown by crypto wallet
- * browser extensions (HashPack, Blade, MetaMask inpage.js) during hydration.
+ * browser extensions (MetaMask inpage.js, Rabby, etc.) during hydration.
  * React already recovers by switching to client rendering — this just
  * prevents the red error overlay from showing in development.
  */

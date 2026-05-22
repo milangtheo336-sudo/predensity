@@ -3,7 +3,7 @@
 /**
  * WalletUserContext
  *
- * Tracks users who signed in via an external wallet (HashPack, MetaMask, Blade, Kabila).
+ * Tracks users who signed in via an external wallet (MetaMask, WalletConnect).
  * Mirrors the shape of MagicContext so the rest of the app can treat both auth paths
  * the same way.
  *
@@ -20,10 +20,10 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode 
 export interface WalletUser {
   /** EVM address (0x…) — acts as the user's identity */
   publicAddress: string;
-  /** Hedera account ID (0.0.xxxxx) if resolved, otherwise same as publicAddress */
+  /** Legacy field — same as publicAddress on Arc */
   hederaAccountId: string;
   /** Which wallet they used */
-  walletType: 'hashpack' | 'metamask' | 'blade' | 'kabila';
+  walletType: 'metamask' | 'walletconnect' | 'hashpack' | 'blade' | 'kabila';
   /** userId stored in Convex managedWallets — uses address as the key */
   userId: string;
 }
