@@ -124,7 +124,7 @@ export function getContractId(category: Category): string {
   return CONTRACT_ADDRESSES[category];
 }
 
-// Legacy Hedera token ID references — on Arc we just use EVM addresses
+// Legacy token ID references — on Arc we just use EVM addresses
 export const STAKING_TOKEN_IDS = {
   testnet: STAKING_TOKEN_CONFIG.testnet,
   mainnet: STAKING_TOKEN_CONFIG.mainnet,
