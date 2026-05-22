@@ -798,44 +798,38 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
             {/* Outcome buttons -- Polymarket style */}
             <div className="space-y-2">
-              {/* Hide eliminated toggle */}
-              {market.eliminatedOutcomes && market.eliminatedOutcomes.length > 0 && (
-                <div className="flex items-center justify-end mb-2">
-                  <button
-                    onClick={() => setHideEliminated(!hideEliminated)}
-                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                  >
-                    {hideEliminated ? 'Show' : 'Hide'} eliminated ({market.eliminatedOutcomes.length})
-                  </button>
-                </div>
-              )}
-              
               {outcomes
                 .filter((o, i) => {
                   const isEliminated = market.eliminatedOutcomes?.includes(i);
-                  return !hideEliminated || !isEliminated;
+                  const isWinner = market.resolved && market.winningOutcome === i;
+                  const isLoser = market.resolved && market.winningOutcome !== i;
+                  // Hide if: (eliminated OR loser) AND hideEliminated is true
+                  return !hideEliminated || (!isEliminated && !isLoser);
                 })
                 .map((o, i) => {
                   const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
                   const isSelected = selectedOutcome === i;
                   const isEliminated = market.eliminatedOutcomes?.includes(i);
-                  const multiplier = o.price > 0 ? (100 / o.price).toFixed(2) : '--';
+                  const isWinner = market.resolved && market.winningOutcome === i;
+                  const isLoser = market.resolved && market.winningOutcome !== i;
                   return (
                     <button
                       key={i}
-                      onClick={() => !isEliminated && setSelectedOutcome(i)}
-                      disabled={isEliminated}
+                      onClick={() => !isEliminated && !market.resolved && setSelectedOutcome(i)}
+                      disabled={isEliminated || market.resolved}
                       className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
-                        isEliminated
+                        isEliminated || isLoser
                           ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-neutral-900/30 border-gray-200 dark:border-neutral-800'
+                          : isWinner
+                          ? 'border-green-500 bg-green-50 dark:bg-green-500/10'
                           : isSelected
                           ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
                           : 'border-gray-200 dark:border-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: isEliminated ? '#6b7280' : color }} />
-                        <span className={`text-sm font-medium ${isEliminated ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: isEliminated || isLoser ? '#6b7280' : isWinner ? '#22c55e' : color }} />
+                        <span className={`text-sm font-medium ${isEliminated || isLoser ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>
                           {o.name}
                         </span>
                         {isEliminated && (
@@ -845,8 +839,13 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                             </svg>
                           </span>
                         )}
+                        {isWinner && (
+                          <span className="ml-2 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                            <CheckIcon className="w-3 h-3 text-white" strokeWidth="3" />
+                          </span>
+                        )}
                       </div>
-                      {!isEliminated && (
+                      {!isEliminated && !isLoser && (
                         <div className="flex items-center gap-4">
                           <span className="text-lg font-bold text-gray-900 dark:text-white">{o.price}%</span>
                           <div className="flex gap-1.5">
@@ -857,15 +856,37 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                               No {100 - o.price}c
                             </span>
                           </div>
-                          <span className="text-xs text-gray-400">{multiplier}x</span>
                         </div>
                       )}
                       {isEliminated && (
                         <span className="text-sm font-semibold text-red-500">Eliminated</span>
                       )}
+                      {isWinner && (
+                        <span className="text-sm font-semibold text-green-500">Winner</span>
+                      )}
                     </button>
                   );
                 })}
+              
+              {/* Hide resolved toggle - at bottom of outcomes list */}
+              {((market.eliminatedOutcomes && market.eliminatedOutcomes.length > 0) || market.resolved) && (
+                <button
+                  onClick={() => setHideEliminated(!hideEliminated)}
+                  className="w-full p-2 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex items-center justify-center gap-1"
+                >
+                  {hideEliminated ? (
+                    <>
+                      View resolved
+                      <ChevronDown className="w-3 h-3" />
+                    </>
+                  ) : (
+                    <>
+                      Hide resolved
+                      <ChevronUp className="w-3 h-3" />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Chart / Order Book tabs */}
