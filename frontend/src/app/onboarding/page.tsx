@@ -37,6 +37,7 @@ export default function OnboardingPage() {
   const [selectedAmount, setSelectedAmount] = useState('5');
   const [selectedSide, setSelectedSide] = useState<'yes' | 'no'>('yes');
   const [gameWinnings, setGameWinnings] = useState('0');
+  const [showOutcomeDropdown, setShowOutcomeDropdown] = useState(false);
 
   const currentOutcome = OUTCOMES[selectedOutcomeIndex];
 
@@ -207,21 +208,50 @@ export default function OnboardingPage() {
 
             <div className="w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-xl">
 
-              {/* Header */}
-              <div className="px-5 pt-5 pb-3">
-                <div className="flex items-center gap-2">
-                  <Image
-                    src={currentOutcome.flag ?? MATCH.home.flag}
-                    alt=""
-                    width={28}
-                    height={20}
-                    className="rounded-sm object-cover w-7 h-5 flex-shrink-0"
-                  />
-                  <div>
-                    <p className="text-[11px] text-gray-400">{MATCH.home.name} vs {MATCH.away.name}</p>
-                    <p className="text-base font-bold text-gray-900 leading-tight">{currentOutcome.name}</p>
-                  </div>
-                </div>
+              {/* Header with outcome dropdown */}
+              <div className="px-5 pt-5 pb-3 relative">
+                <p className="text-[11px] text-gray-400 mb-1">{MATCH.home.name} vs {MATCH.away.name}</p>
+                <button
+                  onClick={() => setShowOutcomeDropdown(!showOutcomeDropdown)}
+                  className="flex items-center gap-2 text-left"
+                >
+                  {currentOutcome.flag ? (
+                    <Image src={currentOutcome.flag} alt={currentOutcome.name} width={28} height={20} className="rounded-sm object-cover w-7 h-5 flex-shrink-0" />
+                  ) : (
+                    <div className="w-7 h-5 bg-[#141414] rounded-sm flex items-center justify-center flex-shrink-0">
+                      <Image src="/predensity-logo.png" alt="Draw" width={16} height={16} className="object-contain" />
+                    </div>
+                  )}
+                  <span className="text-base font-bold text-gray-900">{currentOutcome.name}</span>
+                  <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" className={`w-3 h-3 text-gray-400 transition-transform ${showOutcomeDropdown ? 'rotate-180' : ''}`}>
+                    <path d="M2 3.5l3 3 3-3" />
+                  </svg>
+                </button>
+
+                {showOutcomeDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowOutcomeDropdown(false)} />
+                    <div className="absolute left-5 top-full mt-1 w-52 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden py-1">
+                      {OUTCOMES.map((o, i) => (
+                        <button
+                          key={i}
+                          onClick={() => { setSelectedOutcomeIndex(i); setShowOutcomeDropdown(false); }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left ${selectedOutcomeIndex === i ? 'bg-gray-50' : ''}`}
+                        >
+                          {o.flag ? (
+                            <Image src={o.flag} alt={o.name} width={28} height={20} className="rounded-sm object-cover w-7 h-5 flex-shrink-0" />
+                          ) : (
+                            <div className="w-7 h-5 bg-[#141414] rounded-sm flex items-center justify-center flex-shrink-0">
+                              <Image src="/predensity-logo.png" alt="Draw" width={16} height={16} className="object-contain" />
+                            </div>
+                          )}
+                          <span className="text-sm font-semibold text-gray-900 flex-1">{o.name}</span>
+                          <span className="text-xs text-gray-400">{o.yesPrice}%</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Buy tab */}
