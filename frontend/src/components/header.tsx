@@ -917,30 +917,41 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
       try {
         const accounts: string[] = await eip6963Provider.request({ method: 'eth_accounts' });
         if (!accounts.length || cancelled) return;
+        // Mirror node requires full lowercase 42-char 0x address
         const evmAddr = accounts[0].toLowerCase();
+        console.log('[WalletTransferView] Fetching balance for EVM address:', evmAddr);
         const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
         const base = network === 'mainnet'
           ? 'https://mainnet.mirrornode.hedera.com'
           : 'https://testnet.mirrornode.hedera.com';
 
         // Step 1: resolve EVM address to Hedera account ID
-        const accountRes = await fetch(`${base}/api/v1/accounts/${evmAddr}`);
-        if (!accountRes.ok || cancelled) return;
+        const accountUrl = `${base}/api/v1/accounts/${evmAddr}`;
+        console.log('[WalletTransferView] Account lookup URL:', accountUrl);
+        const accountRes = await fetch(accountUrl);
         const accountData = await accountRes.json();
+        console.log('[WalletTransferView] Account lookup response:', accountData);
+        if (!accountRes.ok || cancelled) return;
         const hederaAccountId: string | undefined = accountData?.account; // e.g. "0.0.12345"
-        if (!hederaAccountId || cancelled) return;
+        if (!hederaAccountId || cancelled) {
+          console.log('[WalletTransferView] No Hedera account found for EVM address — balance stays null');
+          return;
+        }
 
         // Step 2: fetch token balance with the Hedera account ID
-        const balRes = await fetch(`${base}/api/v1/tokens/${tokenId}/balances?account.id=${hederaAccountId}&limit=1`);
-        if (!balRes.ok || cancelled) return;
+        const balUrl = `${base}/api/v1/tokens/${tokenId}/balances?account.id=${hederaAccountId}&limit=1`;
+        console.log('[WalletTransferView] Balance URL:', balUrl);
+        const balRes = await fetch(balUrl);
         const balData = await balRes.json();
+        console.log('[WalletTransferView] Balance response:', balData);
+        if (!balRes.ok || cancelled) return;
         const entry = balData?.balances?.[0];
         if (entry && !cancelled) {
           const bal = Number(entry.balance) / Math.pow(10, currency.decimals);
+          console.log('[WalletTransferView] USDC balance:', bal);
           setWalletUsdcBalance(bal.toFixed(2));
-        } else if (!cancelled) {
-          setWalletUsdcBalance('0.00');
         }
+        // If no entry — leave walletUsdcBalance as null (don't show 0.00, it may just mean no token association)
       } catch (e) {
         console.error('[WalletTransferView] EIP-6963 mirror-node balance fetch error:', e);
       }
