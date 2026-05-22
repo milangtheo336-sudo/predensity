@@ -1098,8 +1098,14 @@ export function PredictionCard({
         const provider = (window as any).ethereum;
         if (!provider) throw new Error('Wallet provider not found. Make sure your wallet extension is active.');
 
-        const accounts: string[] = await provider.request({ method: 'eth_accounts' });
-        if (!accounts.length) throw new Error('No wallet accounts found. Please reconnect your wallet.');
+        // Use eth_requestAccounts (not eth_accounts) so HashPack / any wallet
+        // that hasn't yet connected via EVM mode will show its connection popup.
+        let accounts: string[] = await provider.request({ method: 'eth_accounts' });
+        if (!accounts.length) {
+          // Prompt connection — shows wallet popup once per dApp
+          accounts = await provider.request({ method: 'eth_requestAccounts' });
+        }
+        if (!accounts.length) throw new Error('No wallet accounts found. Please approve access in your wallet.');
 
         // Verify the active wallet account matches the signed-in address
         if (accounts[0].toLowerCase() !== ownerAddress.toLowerCase()) {
