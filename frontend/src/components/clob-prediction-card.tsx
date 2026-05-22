@@ -1107,6 +1107,36 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                     </button>
                   </div>
                 </div>
+              ) : outcomes.length === 3 && outcomes[1]?.name?.toLowerCase() === 'tie' ? (
+                /* Match result: Team A / Tie / Team B */
+                <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-200 dark:border-[#2a2a2a] overflow-hidden">
+                  <div className="flex gap-2 p-4">
+                    {outcomes.map((o, i) => {
+                      const colors = ['#3fdc8c', '#888888', '#ff8c42'];
+                      const color = colors[i];
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setSelectedOutcome(i);
+                            setOrderSide('buy');
+                            setOrderBookSide('yes');
+                            setShowMobileTradingModal(true);
+                          }}
+                          className={`flex-1 py-3 px-2 text-center rounded-xl transition-colors border ${
+                            selectedOutcome === i
+                              ? `border-[${color}]/30 bg-[${color}]/20 text-gray-900 dark:text-white`
+                              : `border-[${color}]/30 text-[${color}] hover:bg-[${color}]/10 bg-white dark:bg-[#141414]`
+                          }`}
+                          style={{ borderColor: `${color}40`, color: selectedOutcome === i ? undefined : color }}
+                        >
+                          <div className="text-xs font-medium truncate mb-0.5">{o.name}</div>
+                          <div className="text-base font-bold">{o.price}¢</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               ) : (
               /* Multi-outcome cards */
               <>
