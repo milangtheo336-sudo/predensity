@@ -147,7 +147,10 @@ function PnlSparkline({ data, color }: { data: number[]; color: string }) {
     return (
       <div className="w-full h-24 rounded-lg bg-neutral-900/50 flex items-center justify-center relative">
         <span className="text-xs text-neutral-600">No activity yet</span>
-        <span className="absolute bottom-2 right-3 text-[11px] text-neutral-700 font-semibold select-none tracking-wide">Predensity</span>
+        <div className="absolute top-1 right-2 flex items-center gap-1 pointer-events-none select-none opacity-20">
+          <Image src="/predensity-icon.png" alt="" width={14} height={14} className="rounded-sm" />
+          <span className="text-[11px] text-white font-semibold tracking-wide">Predensity</span>
+        </div>
       </div>
     );
   }
@@ -194,10 +197,11 @@ function PnlSparkline({ data, color }: { data: number[]; color: string }) {
           return <circle cx={lx} cy={ly} r="3.5" fill={color} />;
         })()}
       </svg>
-      {/*style watermark — bottom right, subtle */}
-      <span className="absolute bottom-1 right-2 text-[11px] text-neutral-700 font-semibold select-none pointer-events-none tracking-wide">
-        Predensity
-      </span>
+      {/* Watermark — top right, subtle with logo */}
+      <div className="absolute top-1 right-2 flex items-center gap-1 pointer-events-none select-none opacity-20">
+        <Image src="/predensity-icon.png" alt="" width={14} height={14} className="rounded-sm" />
+        <span className="text-[11px] text-white font-semibold tracking-wide">Predensity</span>
+      </div>
     </div>
   );
 }
