@@ -46,6 +46,7 @@ import { getStakingCurrency, getStakingTokenId, isTokenMode } from '@/lib/contra
 import { ThemeToggle } from '@/components/theme-toggle';
 import { QRCodeSVG } from 'qrcode.react';
 import { AuthModal } from '@/components/auth-modal';
+import { useBlockchainBalance } from '@/hooks/useBlockchainBalance';
 
 // ---------------------------------------------------------------------------
 // Balance Visibility Context -- persisted to localStorage
@@ -266,15 +267,13 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
   const [detectedAmount, setDetectedAmount] = useState('');
   const { user } = useMagic();
   const currency = getStakingCurrency();
-  const updateWallet = useConvexMutation(api.users.updateWalletBalance);
 
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
     user ? { userId: user.issuer } : 'skip'
   );
-  const depositAddress = managedWallet?.hederaAccountId || '';
-  const evmAddr = managedWallet?.evmAddress || '';
-  const storedBalance = managedWallet?.usdcBalance || '0';
+  const depositAddress = user?.publicAddress || '';
+  const evmAddr = user?.publicAddress || '';
 
   const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
   const mirrorBase = hederaNetwork === 'mainnet'
@@ -309,12 +308,7 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
           const diff = (onChainBalance - initialOnChainRef.current).toFixed(6);
           setDetectedAmount(diff);
           setDepositDetected(true);
-          // Credit the deposit amount to stored balance
-          if (user && managedWallet) {
-            const currentStored = parseFloat(managedWallet.usdcBalance || '0');
-            const newBal = (currentStored + parseFloat(diff)).toFixed(6);
-            updateWallet({ userId: user.issuer, usdcBalance: newBal });
-          }
+          // Balance will be automatically updated by useBlockchainBalance hook
         }
       } catch { /* ignore polling errors */ }
     };
@@ -716,7 +710,7 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
   const { writeContract } = useWriteContract();
   const { watch } = useWatchTransactionReceipt();
   const [amount, setAmount] = useState('');
-  const [step, setStep] = useState<'input' | 'approving' | 'transferring' | 'crediting' | 'done' | 'error'>('input');
+  const [step, setStep] = useState<'input' | 'transferring' | 'done' | 'error'>('input');
   const [errorMsg, setErrorMsg] = useState('');
   const [walletUsdcBalance, setWalletUsdcBalance] = useState<string | null>(null);
 
@@ -752,18 +746,41 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
   }, [accountId, tokenId, currency.decimals, step]);
 
   const handleTransfer = async () => {
-    if (!amount || !isConnected || !treasuryAddress) return;
+    if (!amount || !isConnected || !user?.publicAddress) return;
     const rawAmount = BigInt(Math.floor(parseFloat(amount) * Math.pow(10, currency.decimals)));
 
     try {
-      // Single transfer -- no approve needed since user is sending their own tokens.
-      // On Hedera, HTS tokens support ERC-20 transfer via the precompile.
       setStep('transferring');
+      setErrorMsg('Checking token association...');
+      
+      // Check if Magic Link wallet has USDC token associated
+      const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+      const base = network === 'mainnet' ? 'https://mainnet.mirrornode.hedera.com' : 'https://testnet.mirrornode.hedera.com';
+      
+      try {
+        const checkRes = await fetch(`${base}/api/v1/accounts/${user.publicAddress}/tokens?token.id=${tokenId}`);
+        const checkData = await checkRes.json();
+        const isAssociated = checkData.tokens?.some((t: any) => t.token_id === tokenId);
+        
+        if (!isAssociated) {
+          throw new Error('Your wallet needs to associate the USDC token first. Please contact support or try depositing a small amount first to auto-associate.');
+        }
+      } catch (checkErr: any) {
+        if (checkErr.message.includes('associate')) {
+          throw checkErr;
+        }
+        // If check fails for other reasons, continue anyway
+      }
+      
+      setErrorMsg('');
+      
+      // NON-CUSTODIAL: Transfer directly to user's Magic Link wallet address
+      // Balance will be automatically updated by useBlockchainBalance hook
       const transferTxId = await writeContract({
         contractId: tokenId,
         abi: [{ type: 'function', name: 'transfer', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'nonpayable' }] as const,
         functionName: 'transfer',
-        args: [treasuryAddress as `0x${string}`, rawAmount],
+        args: [user.publicAddress as `0x${string}`, rawAmount],
       });
 
       await new Promise<void>((resolve, reject) => {
@@ -773,28 +790,7 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
         });
       });
 
-      // Credit Convex balance via API (verify on-chain + update balance)
-      setStep('crediting');
-      
-      // Get DID token for authentication
-      const didToken = await getDIDToken();
-      
-      const res = await fetch('/api/wallet/deposit-crypto', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${didToken}`,
-        },
-        body: JSON.stringify({
-          userId: user?.issuer,
-          transactionId: transferTxId,
-          expectedAmount: parseFloat(amount),
-        }),
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || 'Failed to credit balance');
-      }
+      // No API call needed - balance updates automatically from blockchain
       setStep('done');
     } catch (err: any) {
       setErrorMsg(err.message || 'Transfer failed');
@@ -866,19 +862,14 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Confirm in your wallet</p>
         </div>
       )}
-      {step === 'crediting' && (
-        <div className="text-center py-8">
-          <Loader2 className="w-8 h-8 animate-spin text-green-500 mx-auto mb-3" />
-          <p className="text-sm text-gray-900 dark:text-white">Crediting your balance...</p>
-        </div>
-      )}
       {step === 'done' && (
         <div className="text-center py-8">
           <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
           </div>
           <p className="text-base font-semibold text-gray-900 dark:text-white mb-1">Transfer complete</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{amount} {currency.symbol} added to your balance</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{amount} {currency.symbol} sent to your wallet</p>
+          <p className="text-xs text-gray-400 mt-2">Balance will update automatically</p>
           <button onClick={onClose} className="mt-5 px-8 py-2.5 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white text-sm font-medium transition-colors">
             Done
           </button>
@@ -949,7 +940,8 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
     try {
       if (method === 'crypto') {
         if (!address) throw new Error('Enter a wallet address');
-        const res = await fetch('/api/wallet/withdraw-crypto', {
+        // NON-CUSTODIAL: User signs withdrawal transaction via Magic Link
+        const res = await fetch('/api/wallet/withdraw-non-custodial', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user?.issuer, destinationAddress: address, amountUsdc: amount }),
@@ -1225,6 +1217,14 @@ export function Header({ children }: { children?: React.ReactNode }) {
     console.log('[header] authModalOpen changed to:', authModalOpen);
   }, [authModalOpen]);
   
+  // Auto-close auth modal when user logs in
+  useEffect(() => {
+    if (user && authModalOpen) {
+      console.log('[header] User logged in, auto-closing auth modal');
+      setAuthModalOpen(false);
+    }
+  }, [user, authModalOpen]);
+  
   // Handler to open auth modal (only if not already logged in)
   const handleOpenAuthModal = useCallback(() => {
     console.log('[header] Opening auth modal, user:', user, 'already opening:', authModalOpeningRef.current, 'modal state:', authModalOpen);
@@ -1259,12 +1259,14 @@ export function Header({ children }: { children?: React.ReactNode }) {
     };
   }, []);
 
-  // Managed wallet balance from Convex
+  // Read balance from blockchain (non-custodial)
+  const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(user?.publicAddress);
+  
+  // Still query managed wallet for user info (but not balance)
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
     isSignedIn && user ? { userId: user.issuer } : 'skip'
   );
-  const platformBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
 
   // Balance visibility toggle -- persisted to localStorage, synced across components
   const [balancesHidden, setBalancesHidden] = useState(() => {
@@ -1405,50 +1407,8 @@ export function Header({ children }: { children?: React.ReactNode }) {
     }).catch(() => { /* ignore sync errors */ });
   }, [isSignedIn, user]);
 
-  // Background deposit detection -- polls mirror node every 30s while signed in
-  // Only credits NEW deposits by tracking the last known on-chain balance
-  const updateWalletBalance = useConvexMutation(api.users.updateWalletBalance);
-  const lastOnChainBalance = useRef<number | null>(null);
-  useEffect(() => {
-    if (!isSignedIn || !user || !managedWallet?.hederaAccountId) return;
-    const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-    const mirrorBase = hederaNetwork === 'mainnet'
-      ? 'https://mainnet.mirrornode.hedera.com'
-      : 'https://testnet.mirrornode.hedera.com';
-    const usdcTokenId = hederaNetwork === 'mainnet' ? '0.0.456858' : '0.0.8229951';
-    const hederaId = managedWallet.hederaAccountId;
-
-    const checkBalance = async () => {
-      try {
-        const res = await fetch(`${mirrorBase}/api/v1/accounts/${hederaId}/tokens?token.id=${usdcTokenId}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const entry = data.tokens?.find((t: any) => t.token_id === usdcTokenId);
-        if (!entry) return;
-        const onChain = parseInt(entry.balance) / 1e6;
-
-        if (lastOnChainBalance.current === null) {
-          // First poll -- just record the baseline, don't credit
-          lastOnChainBalance.current = onChain;
-          return;
-        }
-
-        // Only credit if on-chain balance INCREASED since last poll
-        // This means a new deposit arrived, not just a stale higher balance
-        if (onChain > lastOnChainBalance.current + 0.000001) {
-          const depositAmount = onChain - lastOnChainBalance.current;
-          const currentStored = parseFloat(managedWallet.usdcBalance || '0');
-          const newBalance = (currentStored + depositAmount).toFixed(6);
-          updateWalletBalance({ userId: user.issuer, usdcBalance: newBalance });
-        }
-        lastOnChainBalance.current = onChain;
-      } catch { /* ignore */ }
-    };
-
-    const interval = setInterval(checkBalance, 30000);
-    checkBalance(); // immediate first check to set baseline
-    return () => clearInterval(interval);
-  }, [isSignedIn, user?.issuer, managedWallet?.hederaAccountId]);
+  // Background deposit detection is no longer needed
+  // Balance is automatically refreshed by useBlockchainBalance hook every 10 seconds
 
   // Notifications
   const notifications = useConvexQuery(
