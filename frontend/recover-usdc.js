@@ -21,9 +21,9 @@ if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
 }
 
 // The alias account that received the USDC
-const ALIAS_ACCOUNT = '0.0.10405801';
+const ALIAS_ACCOUNT = '0.0.10395866';
 // Where to send it back
-const DESTINATION = '0.0.9968652';
+const DESTINATION = '0.0.10394209';
 // USDC token ID on mainnet
 const USDC_TOKEN = '0.0.456858';
 // Amount in smallest unit (2 USDC = 2000000)
