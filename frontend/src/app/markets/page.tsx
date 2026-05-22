@@ -272,56 +272,6 @@ export default function MarketsPage() {
         </div>
       </main>
 
-      {/* Mobile Bottom Navigation -- translucent with backdrop blur */}
-      <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-black/40 backdrop-blur-md border-t border-white/10">
-        <div className="flex items-center justify-around h-16 px-4">
-          <button className="flex flex-col items-center justify-center gap-1 py-2 px-3 text-gray-400 hover:text-white transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            <span className="text-xs font-medium">Home</span>
-          </button>
-          <button className="flex flex-col items-center justify-center gap-1 py-2 px-3 text-gray-400 hover:text-white transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <span className="text-xs font-medium">Search</span>
-          </button>
-          <button className="flex flex-col items-center justify-center gap-1 py-2 px-3 text-gray-400 hover:text-white transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg>
-            <span className="text-xs font-medium">Breaking</span>
-          </button>
-          <button 
-            onClick={() => {
-              const menu = document.getElementById('mobile-more-menu');
-              if (menu) menu.classList.toggle('hidden');
-            }}
-            className="flex flex-col items-center justify-center gap-1 py-2 px-3 text-gray-400 hover:text-white transition-colors relative"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
-            <span className="text-xs font-medium">More</span>
-          </button>
-        </div>
-
-        {/* More Menu Dropdown */}
-        <div id="mobile-more-menu" className="hidden absolute bottom-16 right-4 bg-neutral-900 border border-white/10 rounded-lg shadow-lg w-48 py-2 z-50">
-          <button 
-            onClick={() => { window.dispatchEvent(new Event('open-support-chat')); document.getElementById('mobile-more-menu')?.classList.add('hidden'); }}
-            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors w-full text-left"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Support
-          </button>
-          <button className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors w-full text-left">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            About
-          </button>
-          <button className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors w-full text-left">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8m-4-4h8"/></svg>
-            Help
-          </button>
-        </div>
-      </nav>
-
-      {/* Spacer for mobile to prevent content overlap with bottom nav */}
-      <div className="md:hidden h-16" />
-
     </div>
   );
 }
