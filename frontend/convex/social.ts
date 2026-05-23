@@ -296,8 +296,22 @@ export const getFriendsWithProfiles = query({
         .query("userProfiles")
         .withIndex("by_address", (q) => q.eq("userAddress", f.followingAddress))
         .first();
+        
+      const userId = f.followingAddress.startsWith('managed:') ? f.followingAddress.slice(8) : f.followingAddress;
+      let wallet = await ctx.db
+        .query("managedWallets")
+        .withIndex("by_user_id", (q) => q.eq("userId", userId))
+        .first();
+
+      if (!wallet) {
+        // Fallback for mixed-case DIDs stored in managedWallets
+        const allWallets = await ctx.db.query("managedWallets").collect();
+        wallet = allWallets.find(w => w.userId.toLowerCase() === userId.toLowerCase()) || null;
+      }
+
       results.push({
         address: f.followingAddress,
+        proxyWalletAddress: wallet?.proxyWalletAddress || wallet?.evmAddress || '',
         displayName: profile?.displayName || f.followingAddress.slice(0, 6) + '...',
         avatar: profile?.avatar,
         followTimestamp: f.timestamp,
