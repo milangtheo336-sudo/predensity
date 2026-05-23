@@ -69,7 +69,9 @@ export default function ChallengesPage() {
     platform: '',
     stakeFree: false,
     playerA: userProxy || '',
+    playerAName: '',
     playerB: '',
+    playerBName: '',
     startTime: '',
     expiryTime: '',
     baseCutBps: 200,
@@ -233,7 +235,9 @@ export default function ChallengesPage() {
               body: JSON.stringify({
                 userId: effectiveIssuer,
                 playerA: createForm.playerA,
+                playerAName: createForm.playerAName.trim() || undefined,
                 playerB: createForm.playerB,
+                playerBName: createForm.playerBName.trim() || undefined,
                 startTime: start,
                 expiryTime: expiry,
                 baseCutBps: createForm.baseCutBps,
@@ -573,7 +577,24 @@ export default function ChallengesPage() {
                 </select>
               </div>
 
-              <input className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white" placeholder="Game title (e.g., Free Fire)" value={createForm.gameTitle} onChange={(e) => setCreateForm({ ...createForm, gameTitle: e.target.value })} />
+              <select 
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white"
+                value={createForm.gameTitle} 
+                onChange={(e) => setCreateForm({ ...createForm, gameTitle: e.target.value })}
+              >
+                <option value="" disabled>Select a Game</option>
+                <option value="Call of Duty">Call of Duty</option>
+                <option value="Mortal Kombat">Mortal Kombat</option>
+                <option value="FIFA">FIFA / FC24</option>
+                <option value="NBA">NBA 2K</option>
+                <option value="Fortnite">Fortnite</option>
+                <option value="Free Fire">Free Fire</option>
+                <option value="Chess">Chess</option>
+                <option value="Snooker">Snooker</option>
+                <option value="eFootball">eFootball</option>
+                <option value="Madden">Madden / NFL</option>
+                <option value="Other">Other</option>
+              </select>
               <input className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white" placeholder="Tagline (e.g., Let's see the best player)" value={createForm.gameTagline} onChange={(e) => setCreateForm({ ...createForm, gameTagline: e.target.value })} />
               <div className="grid grid-cols-2 gap-2">
                 <input className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white" placeholder="Winner mode (e.g., Most Kills)" value={createForm.gameMode} onChange={(e) => setCreateForm({ ...createForm, gameMode: e.target.value })} />
@@ -590,9 +611,17 @@ export default function ChallengesPage() {
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Players</h2>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Your Address (Player A)</label>
-                <div className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white text-sm truncate">
+                <div className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white text-sm truncate mb-2">
                   {createForm.playerA || 'Loading...'}
                 </div>
+                <label className="text-xs text-gray-500 mb-1 mt-2 flex items-center gap-1">Your Team Name <span className="text-red-500">*</span></label>
+                <input 
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white" 
+                  placeholder="Your Team Name *" 
+                  required
+                  value={createForm.playerAName} 
+                  onChange={(e) => setCreateForm({ ...createForm, playerAName: e.target.value })} 
+                />
               </div>
               
               <div>
@@ -611,6 +640,14 @@ export default function ChallengesPage() {
                     )
                   )) : <option disabled>No friends yet. Follow players to invite them!</option>}
                 </select>
+                <label className="text-xs text-gray-500 mb-1 mt-3 flex items-center gap-1">Opponent Team Name <span className="text-red-500">*</span></label>
+                <input 
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white" 
+                  placeholder="Opponent Team Name *" 
+                  required
+                  value={createForm.playerBName} 
+                  onChange={(e) => setCreateForm({ ...createForm, playerBName: e.target.value })} 
+                />
               </div>
             </div>
 
