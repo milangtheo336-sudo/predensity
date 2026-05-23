@@ -228,7 +228,7 @@ const T: Record<LangCode, Translations> = {
     yes: 'Yes', no: 'No', vol: 'Vol', live: 'LIVE', remaining: 'remaining',
     daysLeft: 'days left', monthsLeft: 'months left', aboutMonthsLeft: 'about {n} months left',
     moreOutcomes: '+{n} more outcomes',
-    heroCrypto: 'Crypto', heroTagline: 'Profit from bold, early, and accurate price forecasts on BTC, ETH, ARC and more.',
+    heroCrypto: 'Crypto', heroTagline: 'Profit from bold, early, and accurate price forecasts on BTC, ETH, HBAR and more.',
     heroSports: 'Sports', heroSportsTagline: 'Predict match outcomes, scores, and championship winners before the final whistle.',
     heroPolitics: 'Politics', heroPoliticsTagline: 'Forecast elections, policy outcomes, and geopolitical events with real stakes.',
     heroTechnology: 'Technology', heroTechnologyTagline: 'Predict product launches, AI breakthroughs, and the future of tech.',
