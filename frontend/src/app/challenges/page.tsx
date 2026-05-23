@@ -8,11 +8,13 @@ import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/useToast';
+import { Toaster } from '@/components/ui/toaster';
 import { useContractWriteCompat, useReadContractCompat } from '@/hooks/useContractWrite';
 import { ChallengeMarketABI } from '@/lib/contracts/challenge-market-abi';
 import { getChallengeMarketAddress, getStakingCurrency, getStakingTokenAddress } from '@/lib/contracts/contract-config';
 import { formatAddress, formatNumber } from '@/lib/utils';
 import { useMagic } from '@/context/MagicContext';
+import { useWalletUser } from '@/context/WalletUserContext';
 import { getDIDToken } from '@/lib/magic';
 import { SPORT_TAXONOMY } from '@/lib/types/sports';
 import { parseUnits } from 'viem';
@@ -38,6 +40,9 @@ export default function ChallengesPage() {
   const { toast } = useToast();
   const { isConnected, address } = useAccount();
   const { user } = useMagic();
+  const { walletUser } = useWalletUser();
+  const effectiveIssuer = user?.issuer || walletUser?.userId;
+
   const { writeContract, watch } = useContractWriteCompat();
   const { readContract } = useReadContractCompat();
 
@@ -48,12 +53,12 @@ export default function ChallengesPage() {
   // Get user's proxy wallet and following list (friends)
   const userProxy = useQuery(
     api.social.getProxyWalletByUserId,
-    user?.issuer ? { userId: user.issuer } : 'skip'
+    effectiveIssuer ? { userId: effectiveIssuer } : 'skip'
   );
 
   const friends = useQuery(
     api.social.getFriendsWithProfiles,
-    userProxy ? { userAddress: userProxy } : 'skip'
+    effectiveIssuer ? { userAddress: `managed:${effectiveIssuer}`.toLowerCase() } : 'skip'
   );
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -160,7 +165,7 @@ export default function ChallengesPage() {
         toast({ title: 'Connect wallet', description: 'Connect a wallet to create a match.' });
         return;
       }
-      if (!user?.issuer) {
+      if (!effectiveIssuer) {
         toast({ title: 'Sign in required', description: 'Sign in to create a match.' });
         return;
       }
@@ -177,10 +182,24 @@ export default function ChallengesPage() {
         return;
       }
 
+      if (!createForm.playerA || !createForm.playerA.startsWith('0x')) {
+        toast({ title: 'Invalid Host', description: 'Your address is not ready yet.' });
+        return;
+      }
+      if (!createForm.playerB || !createForm.playerB.startsWith('0x')) {
+        toast({ title: 'Invalid Friend', description: 'The selected friend does not have a valid on-chain address.' });
+        return;
+      }
+
       const start = Math.floor(new Date(createForm.startTime).getTime() / 1000);
       const expiry = Math.floor(new Date(createForm.expiryTime).getTime() / 1000);
       if (!Number.isFinite(start) || !Number.isFinite(expiry)) {
         toast({ title: 'Invalid time', description: 'Please select valid start and expiry times.' });
+        return;
+      }
+
+      if (expiry < start + 86400) {
+        toast({ title: 'Invalid Expiry', description: 'Match expiry must be at least 24 hours after the start time.' });
         return;
       }
 
@@ -212,7 +231,7 @@ export default function ChallengesPage() {
                 Authorization: `Bearer ${didToken}`,
               },
               body: JSON.stringify({
-                userId: user.issuer,
+                userId: effectiveIssuer,
                 playerA: createForm.playerA,
                 playerB: createForm.playerB,
                 startTime: start,
@@ -260,7 +279,7 @@ export default function ChallengesPage() {
         toast({ title: 'Connect wallet', description: 'Connect a wallet to place a bet.' });
         return;
       }
-      if (!user?.issuer) {
+      if (!effectiveIssuer) {
         toast({ title: 'Sign in required', description: 'Sign in to place a bet.' });
         return;
       }
@@ -328,7 +347,7 @@ export default function ChallengesPage() {
                 Authorization: `Bearer ${didToken}`,
               },
               body: JSON.stringify({
-                userId: user.issuer,
+                userId: effectiveIssuer,
                 matchId: betMatch.matchId,
                 side: betSide,
                 amount: amountNum,
@@ -369,7 +388,7 @@ export default function ChallengesPage() {
         toast({ title: 'Connect wallet', description: 'Connect a wallet to submit a result.' });
         return;
       }
-      if (!user?.issuer) {
+      if (!effectiveIssuer) {
         toast({ title: 'Sign in required', description: 'Sign in to submit a result.' });
         return;
       }
@@ -403,7 +422,7 @@ export default function ChallengesPage() {
                 Authorization: `Bearer ${didToken}`,
               },
               body: JSON.stringify({
-                userId: user.issuer,
+                userId: effectiveIssuer,
                 matchId: resultMatch.matchId,
                 winner: resultWinner,
                 transactionHash: txHash,
@@ -440,7 +459,7 @@ export default function ChallengesPage() {
         toast({ title: 'Connect wallet', description: 'Connect a wallet to claim.' });
         return;
       }
-      if (!user?.issuer) {
+      if (!effectiveIssuer) {
         toast({ title: 'Sign in required', description: 'Sign in to claim.' });
         return;
       }
@@ -472,7 +491,7 @@ export default function ChallengesPage() {
                 Authorization: `Bearer ${didToken}`,
               },
               body: JSON.stringify({
-                userId: user.issuer,
+                userId: effectiveIssuer,
                 betId: bet.betId,
                 onChainBetId: bet.onChainBetId,
                 transactionHash: txHash,
@@ -585,9 +604,11 @@ export default function ChallengesPage() {
                 >
                   <option value="">-- Select a friend --</option>
                   {friends && friends.length > 0 ? friends.map((friend) => (
-                    <option key={friend.address} value={friend.address}>
-                      {friend.displayName}
-                    </option>
+                    friend.proxyWalletAddress && (
+                      <option key={friend.address} value={friend.proxyWalletAddress}>
+                        {friend.displayName}
+                      </option>
+                    )
                   )) : <option disabled>No friends yet. Follow players to invite them!</option>}
                 </select>
               </div>
@@ -704,6 +725,7 @@ export default function ChallengesPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <Toaster />
     </div>
   );
 }
