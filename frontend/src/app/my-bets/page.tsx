@@ -737,6 +737,44 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     isPublicView && managedUserAddress ? { userAddress: managedUserAddress } : 'skip'
   );
 
+  // --- Follow Logic ---
+  const followUser = useConvexMutation(api.social.followUser);
+  const unfollowUser = useConvexMutation(api.social.unfollowUser);
+
+  // Current logged in user address
+  const currentUserAddress = (isSignedIn && effectiveIssuer) ? `managed:${effectiveIssuer}`.toLowerCase() : null;
+  // Target user address being viewed
+  const targetUserAddress = managedUserAddress;
+
+  const followers = useConvexQuery(
+    api.social.getFollowers,
+    targetUserAddress ? { userAddress: targetUserAddress } : 'skip'
+  );
+
+  const followingList = useConvexQuery(
+    api.social.getFollowing,
+    targetUserAddress ? { userAddress: targetUserAddress } : 'skip'
+  );
+
+  const isFollowing = currentUserAddress && followers?.some((f: any) => f.followerAddress === currentUserAddress);
+
+  const handleFollowToggle = async () => {
+    if (!currentUserAddress || !targetUserAddress) return;
+    try {
+      if (isFollowing) {
+        await unfollowUser({ followerAddress: currentUserAddress, followingAddress: targetUserAddress });
+        toast({ title: 'Unfollowed', description: 'You have unfollowed this user.' });
+      } else {
+        await followUser({ followerAddress: currentUserAddress, followingAddress: targetUserAddress });
+        toast({ title: 'Following', description: 'You are now following this user.' });
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Error', description: 'Failed to update follow status', variant: 'destructive' });
+    }
+  };
+  // --------------------
+
   const managedBetsRaw = useConvexQuery(
     api.sync.getBetsByUser,
     managedUserAddress ? { userAddress: managedUserAddress } : 'skip'
@@ -1333,6 +1371,16 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
                       ? (publicProfile?.createdAt ? `${t.joined} ${new Date(publicProfile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : 'Trader')
                       : `${t.joined} ${joinDate}`}
                   </div>
+                  {followers !== undefined && followingList !== undefined && (
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <div className="text-xs text-gray-500 dark:text-neutral-400">
+                        <span className="font-bold text-gray-900 dark:text-white">{followers.length}</span> {followers.length === 1 ? 'follower' : 'followers'}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-neutral-400">
+                        <span className="font-bold text-gray-900 dark:text-white">{followingList.length}</span> following
+                      </div>
+                    </div>
+                  )}
                   {publicProfile?.bio && (
                     <div className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5 max-w-[200px] truncate">
                       {publicProfile.bio}
@@ -1342,9 +1390,22 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
               </div>
 
               {/* Action icons -- top right */}
-              <div className="flex items-center gap-0.5 relative">
-                <button
-                  onClick={handleShareProfile}
+              <div className="flex items-center gap-3 relative">
+                {isPublicView && isSignedIn && currentUserAddress && currentUserAddress !== targetUserAddress && (
+                  <button
+                    onClick={handleFollowToggle}
+                    className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
+                      isFollowing
+                        ? 'bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-white border border-gray-200 dark:border-neutral-700'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                  >
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </button>
+                )}
+                <div className="flex items-center gap-0.5">
+                  <button
+                    onClick={handleShareProfile}
                   className="p-2 rounded-lg text-gray-400 dark:text-neutral-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
                   title={copied ? 'Copied!' : 'Copy link'}
                 >
@@ -1364,6 +1425,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
                 >
                   <Share2 className="w-4 h-4" />
                 </button>
+                </div>
               </div>
             </div>
 
