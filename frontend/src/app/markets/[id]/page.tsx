@@ -7,10 +7,10 @@ import { Header } from '@/components/header';
 import { PredictionCard } from '@/components/prediction-card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Clock, Users, Trophy, DollarSign } from 'lucide-react';
-import { MatchComments } from '@/components/match-comments';
 import BoringAvatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
 import { useLanguage } from '@/context/LanguageContext';
+import { ChallengePredictionCard } from '@/components/challenge-prediction-card';
 import { MarketPageSkeleton } from '@/components/page-skeleton';
 
 function formatTime(timestamp: number): string {
@@ -83,129 +83,15 @@ export default function MarketDetailPage() {
 
     return (
       <div className="min-h-screen bg-white dark:bg-black">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
-              <Button variant="ghost" onClick={goBack} size="sm">
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                {challengeMatch.gameTitle || 'Esports Challenge'}
-              </h1>
-            </div>
-
-            {/* Match Details Card */}
-            <div className="bg-gray-50 dark:bg-neutral-900 rounded-lg border border-gray-200 dark:border-neutral-800 p-6 mb-6 space-y-4">
-              
-              {/* Game Info */}
-              <div className="grid grid-cols-2 gap-4">
-                {challengeMatch.gameTagline && (
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Description</p>
-                    <p className="text-gray-900 dark:text-white font-medium">{challengeMatch.gameTagline}</p>
-                  </div>
-                )}
-                {challengeMatch.gameMode && (
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Mode</p>
-                    <p className="text-gray-900 dark:text-white font-medium">{challengeMatch.gameMode}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Timeline */}
-              <div className="border-t border-gray-200 dark:border-neutral-800 pt-4">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Timeline
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <p className="text-gray-700 dark:text-gray-300">
-                    <span className="font-medium">Starts:</span> {formatTime(challengeMatch.startTime)}
-                  </p>
-                  <p className="text-gray-700 dark:text-gray-300">
-                    <span className="font-medium">Closes:</span> {formatTime(challengeMatch.expiryTime)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Players */}
-              <div className="border-t border-gray-200 dark:border-neutral-800 pt-4">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  Players
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <BoringAvatar
-                      name={challengeMatch.playerA}
-                      variant="beam"
-                      size={32}
-                      palette={getAvatarPalette(challengeMatch.playerA)}
-                    />
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Player A</p>
-                      <p className="text-gray-900 dark:text-white font-medium">{truncateAddr(challengeMatch.playerA)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <BoringAvatar
-                      name={challengeMatch.playerB}
-                      variant="beam"
-                      size={32}
-                      palette={getAvatarPalette(challengeMatch.playerB)}
-                    />
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Player B</p>
-                      <p className="text-gray-900 dark:text-white font-medium">{truncateAddr(challengeMatch.playerB)}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Fee Structure */}
-              <div className="border-t border-gray-200 dark:border-neutral-800 pt-4">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                  <DollarSign className="w-4 h-4" />
-                  Fee Structure
-                </h3>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-500 dark:text-gray-400">Base Cut</p>
-                    <p className="text-gray-900 dark:text-white font-medium">{challengeMatch.baseCutBps / 100}%</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 dark:text-gray-400">Winner Bonus</p>
-                    <p className="text-gray-900 dark:text-white font-medium">{challengeMatch.winnerBonusBps / 100}%</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 dark:text-gray-400">Copy Fee</p>
-                    <p className="text-gray-900 dark:text-white font-medium">{challengeMatch.copyFeeBps / 100}%</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Badge */}
-              <div className="border-t border-gray-200 dark:border-neutral-800 pt-4">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium" 
-                      style={{
-                        backgroundColor: challengeMatch.status === 'active' ? '#10b98120' : '#ef444420',
-                        color: challengeMatch.status === 'active' ? '#059669' : '#dc2626',
-                      }}>
-                  <Trophy className="w-3 h-3" />
-                  {challengeMatch.status?.charAt(0).toUpperCase() + challengeMatch.status?.slice(1)}
-                </span>
-              </div>
-            </div>
-
-            {/* Comments Section */}
-            <div className="bg-gray-50 dark:bg-neutral-900 rounded-lg border border-gray-200 dark:border-neutral-800 p-6">
-              <MatchComments matchId={marketId} />
+        <Header>
+          <ChallengePredictionCard challengeMatch={challengeMatch} />
+          
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+            <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-10">
+              {/* Optional extra space or widgets could go here in the future, for now ChallengePredictionCard handles everything */}
             </div>
           </div>
-        </main>
+        </Header>
       </div>
     );
   }
