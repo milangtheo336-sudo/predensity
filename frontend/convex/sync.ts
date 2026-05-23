@@ -10,7 +10,7 @@ import { requireServerToken } from "./_lib/auth";
 const CONTRACT_START_TIMESTAMPS: Record<string, number> = {
   crypto: Number(process.env.CRYPTO_START_TIMESTAMP) || 1773940168,
   politics: Number(process.env.POLITICS_START_TIMESTAMP) || 1773586860,
-  esports: Number(process.env.SPORTS_START_TIMESTAMP) || 1773586872,
+  sports: Number(process.env.SPORTS_START_TIMESTAMP) || 1773586872,
   technology: Number(process.env.TECH_START_TIMESTAMP) || 1773586888,
 };
 
@@ -267,7 +267,7 @@ const TECH_CONTRACT_ADDRESS = process.env.TECH_CONTRACT_ADDRESS || "0x76bFfEff52
 const CONTRACTS: { address: string; category: string; type: "crypto" | "base" }[] = [
   { address: CRYPTO_CONTRACT_ADDRESS, category: "crypto", type: "crypto" },
   { address: POLITICS_CONTRACT_ADDRESS, category: "politics", type: "base" },
-  { address: SPORTS_CONTRACT_ADDRESS, category: "esports", type: "base" },
+  { address: SPORTS_CONTRACT_ADDRESS, category: "sports", type: "base" },
   { address: TECH_CONTRACT_ADDRESS, category: "technology", type: "base" },
 ];
 
