@@ -34,29 +34,29 @@ export const getUserStats = query({
   handler: async (ctx, args) => {
     const stats = await ctx.db
       .query("userStats")
-      .withIndex("by_user_id", (q) => q.eq("userId", args.userAddress))
+      .withIndex("by_address", (q) => q.eq("userAddress", args.userAddress))
       .first();
 
     if (!stats) {
       return {
         userAddress: args.userAddress,
-        pointsThisWeek: 0,
-        pointsThisMonth: 0,
-        pointsAllTime: 0,
-        totalMatchesCreated: 0,
-        totalMatchesWon: 0,
-        followers: 0,
+        totalBets: 0,
+        totalWon: 0,
+        totalStaked: 0,
+        totalPayout: 0,
+        winRate: 0,
+        netProfit: 0,
       };
     }
 
     return {
-      userAddress: stats.userId,
-      pointsThisWeek: stats.pointsThisWeek,
-      pointsThisMonth: stats.pointsThisMonth,
-      pointsAllTime: stats.pointsAllTime,
-      totalMatchesCreated: stats.totalMatchesCreated,
-      totalMatchesWon: stats.totalMatchesWon,
-      followers: stats.followers,
+      userAddress: stats.userAddress,
+      totalBets: stats.totalBets,
+      totalWon: stats.totalWon,
+      totalStaked: stats.totalStaked,
+      totalPayout: stats.totalPayout,
+      winRate: stats.winRate,
+      netProfit: stats.totalPayout - stats.totalStaked,
     };
   },
 });
@@ -112,7 +112,7 @@ export const createManagedWallet = mutation({
       }
     }
 
-    const walletId = await ctx.db.insert("managedWallets", {
+    return await ctx.db.insert("managedWallets", {
       userId: args.userId,
       email: args.email,
       phoneNumber: args.phoneNumber,
@@ -127,31 +127,6 @@ export const createManagedWallet = mutation({
       lastActivity: args.lastActivity,
       lastBalanceSync: args.lastBalanceSync,
     });
-
-    // Initialize user stats for leaderboard
-    const existingStats = await ctx.db
-      .query("userStats")
-      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
-      .first();
-
-    if (!existingStats) {
-      await ctx.db.insert("userStats", {
-        userId: args.userId,
-        pointsThisWeek: 0,
-        pointsThisMonth: 0,
-        pointsAllTime: 0,
-        totalMatchesCreated: 0,
-        totalMatchesPlayed: 0,
-        totalMatchesWon: 0,
-        currentWinStreak: 0,
-        followers: 0,
-        totalComments: 0,
-        lastPointsUpdate: args.createdAt,
-        createdAt: args.createdAt,
-      });
-    }
-
-    return walletId;
   },
 });
 
