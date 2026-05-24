@@ -59,87 +59,15 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_tx_hash", ["transactionHash"]),
 
-  // =========================================================================
-  // 1v1 Challenges (Parimutuel Pools)
-  // =========================================================================
-  challengeMatches: defineTable({
-    matchId: v.string(),
-    onChainMatchId: v.optional(v.number()),
-    host: v.string(),
-    playerA: v.string(),
-    playerAName: v.optional(v.string()),
-    playerB: v.string(),
-    playerBName: v.optional(v.string()),
-    startTime: v.number(),
-    expiryTime: v.number(),
-    baseCutBps: v.number(),
-    winnerBonusBps: v.number(),
-    copyFeeBps: v.number(),
-    gameTitle: v.optional(v.string()),
-    gameTagline: v.optional(v.string()),
-    gameMode: v.optional(v.string()),
-    platform: v.optional(v.string()),
-    league: v.optional(v.string()),
-    stakeFree: v.optional(v.boolean()),
-    status: v.string(), // open | resolved | disputed | expired
-    winner: v.optional(v.string()), // playerA | playerB
-    poolA: v.number(),
-    poolB: v.number(),
-    totalPool: v.number(),
-    transactionHash: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_match_id", ["matchId"])
-    .index("by_status", ["status"])
-    .index("by_host", ["host"])
-    .index("by_player_a", ["playerA"])
-    .index("by_player_b", ["playerB"])
-    .index("by_onchain_id", ["onChainMatchId"])
-    .index("by_created_at", ["createdAt"]),
-
-  challengeBets: defineTable({
-    betId: v.string(),
-    matchId: v.string(),
-    onChainBetId: v.optional(v.number()),
-    bettor: v.string(),
-    side: v.string(), // playerA | playerB
-    amount: v.number(),
-    copiedFrom: v.optional(v.string()),
-    transactionHash: v.optional(v.string()),
-    status: v.string(), // pending | confirmed | failed
-    claimed: v.boolean(),
-    payout: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_bet_id", ["betId"])
-    .index("by_match", ["matchId"])
-    .index("by_bettor", ["bettor"])
-    .index("by_status", ["status"])
-    .index("by_tx_hash", ["transactionHash"]),
-
-  challengeSubmissions: defineTable({
-    matchId: v.string(),
-    submitter: v.string(),
-    winner: v.string(), // playerA | playerB
-    transactionHash: v.optional(v.string()),
-    timestamp: v.number(),
-  })
-    .index("by_match", ["matchId"])
-    .index("by_submitter", ["submitter"]),
-
-  challengeInvites: defineTable({
-    matchId: v.string(),
-    inviterAddress: v.string(),
-    inviteeAddress: v.string(),
-    status: v.string(), // pending | accepted | declined
-    createdAt: v.number(),
-    respondedAt: v.optional(v.number()),
-  })
-    .index("by_match", ["matchId"])
-    .index("by_inviter", ["inviterAddress"])
-    .index("by_invitee", ["inviteeAddress"])
-    .index("by_status", ["status"]),
+  userStats: defineTable({
+    userAddress: v.string(),
+    totalBets: v.number(),
+    totalWon: v.number(),
+    totalStaked: v.number(),
+    totalPayout: v.number(),
+    winRate: v.number(),
+    lastUpdated: v.number(),
+  }).index("by_address", ["userAddress"]),
 
   userProfiles: defineTable({
     userAddress: v.string(),
@@ -214,7 +142,6 @@ export default defineSchema({
     message: v.string(),
     marketId: v.optional(v.string()),
     betId: v.optional(v.string()),
-    matchId: v.optional(v.string()),
     read: v.boolean(),
     timestamp: v.number(),
   })
@@ -242,21 +169,14 @@ export default defineSchema({
     sportType: v.optional(v.string()),
     company: v.optional(v.string()),
     decimals: v.optional(v.number()),
-
-    // Sidebar taxonomy (sport = top-level, league = sub-category).
-    // See frontend/src/lib/types/sports.ts for allowed values.
-    sport: v.optional(v.string()),
-    league: v.optional(v.string()),
-
+    
     createdAt: v.number(),
   })
     .index("by_category", ["category"])
     .index("by_timestamp", ["eventTimestamp"])
     .index("by_resolved", ["resolved"])
     .index("by_category_timestamp", ["category", "eventTimestamp"])
-    .index("by_event_id", ["eventId"])
-    .index("by_sport", ["sport"])
-    .index("by_sport_league", ["sport", "league"]),
+    .index("by_event_id", ["eventId"]),
 
   cryptoMarkets: defineTable({
     marketId: v.string(),
@@ -307,50 +227,26 @@ export default defineSchema({
     .index("by_event_id", ["eventId"])
     .index("by_event_time", ["eventId", "timestamp"]),
 
-  // Non-custodial wallets - Magic Link + SimpleProxyWallet
-  // Each user controls their own wallet via Magic Link MPC
-  // NO private keys stored on backend
+  // Managed wallets for M-Pesa / phone-based users and Clerk-authenticated users
+  // Backend creates and controls these wallets on behalf of users
   managedWallets: defineTable({
-    userId: v.string(), // Magic Link user ID (issuer/DID)
-    email: v.string(),
-    phoneNumber: v.optional(v.string()), // For M-Pesa users
-    magicEOAAddress: v.optional(v.string()), // User's Magic Link EOA (MPC wallet)
-    proxyWalletAddress: v.optional(v.string()), // User's SimpleProxyWallet contract
-    evmAddress: v.string(), // Proxy wallet address or legacy address
-    accountId: v.optional(v.string()), // Legacy field — optional for Arc-era rows
-    usdcBalance: v.string(), // Cached balance (synced from chain)
-    nativeBalance: v.optional(v.string()), // Optional — Arc rows may omit this
+    userId: v.optional(v.string()), // Clerk user ID
+    email: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    hederaAccountId: v.string(),
+    evmAddress: v.string(),
+    encryptedPrivateKey: v.string(),
+    usdcBalance: v.string(),
+    hbarBalance: v.string(),
     isActive: v.boolean(),
     createdAt: v.number(),
     lastActivity: v.number(),
-    lastBalanceSync: v.optional(v.number()), // Optional for backward compatibility
-    // Legacy Hedera fields — optional, kept so old rows pass schema validation
-    hbarBalance: v.optional(v.string()),
-    hederaAccountId: v.optional(v.string()),
-    // Legacy custodial field
-    encryptedPrivateKey: v.optional(v.string()),
   })
     .index("by_user_id", ["userId"])
     .index("by_email", ["email"])
     .index("by_phone", ["phoneNumber"])
-    .index("by_magic_eoa", ["magicEOAAddress"])
-    .index("by_proxy_wallet", ["proxyWalletAddress"])
-    .index("by_account_id", ["accountId"])
+    .index("by_hedera_id", ["hederaAccountId"])
     .index("by_evm_address", ["evmAddress"]),
-
-  // Idempotency log for M-Pesa -> USDC bridging. One row per Safaricom
-  // MpesaReceiptNumber (for deposits) or ConversationID (for B2C refunds).
-  // Presence of a row means the bridge/refund already ran; never run twice.
-  mpesaBridges: defineTable({
-    // Unique key. For STK deposits: MpesaReceiptNumber. For B2C refunds: ConversationID.
-    idempotencyKey: v.string(),
-    kind: v.string(), // "deposit_bridge" | "b2c_refund"
-    proxyWalletAddress: v.optional(v.string()),
-    phoneNumber: v.optional(v.string()),
-    amountUSDC: v.string(),
-    transactionId: v.optional(v.string()),
-    createdAt: v.number(),
-  }).index("by_key", ["idempotencyKey"]),
 
   // M-Pesa transactions (deposits via STK Push, withdrawals via B2C)
   mpesaTransactions: defineTable({
@@ -376,125 +272,4 @@ export default defineSchema({
     .index("by_conversation", ["conversationId"])
     .index("by_status", ["status"])
     .index("by_phone_status", ["phoneNumber", "status"]),
-
-  // =========================================================================
-  // WAITLIST
-  // =========================================================================
-  waitlist: defineTable({
-    email: v.string(),
-    referralCode: v.optional(v.string()),
-    source: v.optional(v.string()),
-    joinedAt: v.number(),
-  })
-    .index("by_email", ["email"])
-    .index("by_joined", ["joinedAt"]),
-
-  // Nonce tracking for non-custodial orders (prevents replay attacks)
-  orderNonces: defineTable({
-    userId: v.string(),
-    nonce: v.number(),
-    usedAt: v.number(),
-  })
-    .index("by_user_nonce", ["userId", "nonce"])
-    .index("by_user", ["userId"]),
-
-  // Session keys for non-custodial betting (sign once, bet multiple times)
-  sessionKeys: defineTable({
-    userId: v.string(),             // Magic Link user ID
-    delegate: v.string(),           // Operator address that can execute bets
-    maxAmount: v.number(),          // Max USDC per transaction
-    dailyLimit: v.number(),         // Max USDC per day
-    expiry: v.number(),             // Timestamp when session expires
-    signature: v.string(),          // User's signature authorizing this session
-    revoked: v.boolean(),           // Can be revoked by user anytime
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_delegate", ["userId", "delegate"]),
-
-  // Email audit trail
-  emails: defineTable({
-    to: v.string(),
-    from: v.string(),
-    subject: v.string(),
-    template: v.string(),
-    data: v.object({
-      matchId: v.optional(v.string()),
-      gameTitle: v.optional(v.string()),
-      gameMode: v.optional(v.string()),
-      gameTagline: v.optional(v.string()),
-      startTime: v.optional(v.number()),
-      expiryTime: v.optional(v.number()),
-      playerBName: v.optional(v.string()),
-      inviterName: v.optional(v.string()),
-      accepterName: v.optional(v.string()),
-      winner: v.optional(v.string()),
-    }),
-    timestamp: v.number(),
-    sent: v.boolean(),
-  })
-    .index("by_to", ["to"])
-    .index("by_timestamp", ["timestamp"]),
-
-  // Direct messages between players
-  directMessages: defineTable({
-    senderId: v.string(),
-    recipientId: v.string(),
-    matchId: v.string(),
-    content: v.string(),
-    timestamp: v.number(),
-    read: v.boolean(),
-  })
-    .index("by_match", ["matchId"])
-    .index("by_sender", ["senderId"])
-    .index("by_recipient", ["recipientId"])
-    .index("by_conversation", ["senderId", "recipientId", "matchId"]),
-
-  // User leaderboard stats
-  userStats: defineTable({
-    userId: v.string(),
-    pointsThisWeek: v.number(),
-    pointsThisMonth: v.number(),
-    pointsAllTime: v.number(),
-    totalMatchesCreated: v.number(),
-    totalMatchesPlayed: v.number(),
-    totalMatchesWon: v.number(),
-    currentWinStreak: v.number(),
-    followers: v.number(),
-    totalComments: v.number(),
-    lastPointsUpdate: v.number(),
-    createdAt: v.number(),
-  })
-    .index("by_user_id", ["userId"])
-    .index("by_points_week", ["pointsThisWeek"])
-    .index("by_points_month", ["pointsThisMonth"])
-    .index("by_points_all_time", ["pointsAllTime"]),
-
-  // Leaderboard history for analytics
-  leaderboardHistory: defineTable({
-    userId: v.string(),
-    pointsEarned: v.number(),
-    pointsType: v.string(), // match_won, match_created, follower, comment, streak
-    matchId: v.optional(v.string()),
-    timestamp: v.number(),
-    period: v.string(), // week_starting_YYYYMMDD or month_YYYYMM
-  })
-    .index("by_user", ["userId"])
-    .index("by_type", ["pointsType"])
-    .index("by_timestamp", ["timestamp"])
-    .index("by_period", ["period"]),
-
-  // User followers
-  userFollowers: defineTable({
-    followerId: v.string(),
-    followeeId: v.string(),
-    status: v.string(), // pending, accepted
-    createdAt: v.number(),
-    respondedAt: v.optional(v.number()),
-  })
-    .index("by_followee", ["followeeId"])
-    .index("by_follower", ["followerId"])
-    .index("by_status", ["status"])
-    .index("by_relationship", ["followerId", "followeeId"]),
 });
