@@ -1,43 +1,36 @@
-﻿/**
- * Backend-relayed token approval and bet placement
- * 
+/**
+ * Backend-relayed token approval and bet placement on Arc
+ *
  * Flow:
- * 1. User signs a message proving intent (via Magic Link)
+ * 1. User signs a message proving intent (via wallet)
  * 2. Backend verifies signature
- * 3. Backend submits approval transaction (if needed)
- * 4. Backend submits bet transaction
- * 5. User's funds are used, but backend pays gas
- * 
- * Security: Backend cannot steal funds because it doesn't have user's private key.
- * Only transactions explicitly approved by user signature are executed.
+ * 3. Backend submits bet transaction (operator pays gas)
+ * 4. User's USDC is used for the bet stake
+ *
+ * Security: Backend cannot steal funds — only transactions explicitly
+ * approved by user signature are executed.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ethers } from 'ethers';
-import {
-  AccountId,
-  ContractExecuteTransaction,
-  ContractFunctionParameters,
-  PrivateKey,
-  Client,
-  Hbar,
-  AccountAllowanceApproveTransaction,
-  TokenId,
-} from '@hashgraph/sdk';
+import { verifyMessage, parseUnits, encodeFunctionData } from 'viem';
+import { publicClient, getOperatorWalletClient } from '@/lib/arc-server';
+import { CONTRACT_ADDRESSES, getStakingTokenAddress } from '@/lib/contracts/contract-config';
 
-// Hedera client setup
-const operatorId = AccountId.fromString(process.env.HEDERA_OPERATOR_ID!);
-const operatorKey = PrivateKey.fromStringECDSA(process.env.HEDERA_OPERATOR_KEY!);
-
-const client = process.env.NEXT_PUBLIC_HEDERA_NETWORK === 'mainnet'
-  ? Client.forMainnet()
-  : Client.forTestnet();
-
-client.setOperator(operatorId, operatorKey);
-
-// Contract addresses
-const CRYPTO_CONTRACT_ID = '0.0.8290662';
-const USDC_TOKEN_ID = '0.0.8229951';
+// Prediction market contract ABI (subset for placeBetWithToken)
+const MARKET_ABI = [
+  {
+    name: 'placeBetWithToken',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'targetTimestamp', type: 'uint256' },
+      { name: 'priceMin', type: 'uint256' },
+      { name: 'priceMax', type: 'uint256' },
+      { name: 'tokenAmount', type: 'uint256' },
+    ],
+    outputs: [{ name: 'betId', type: 'uint256' }],
+  },
+] as const;
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,11 +38,9 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json(
-        { error: 'Request body is not valid JSON' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Request body is not valid JSON' }, { status: 400 });
     }
+
     const {
       userAddress,
       userSignature,
@@ -77,37 +68,30 @@ export async function POST(request: NextRequest) {
     console.log('[approve-and-place] Request:', { userAddress, category, stakeUsdc });
 
     // 1. Verify user signature
-    const recoveredAddress = ethers.utils.verifyMessage(message, userSignature);
-    if (recoveredAddress.toLowerCase() !== userAddress.toLowerCase()) {
-      return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 401 }
-      );
+    const valid = await verifyMessage({
+      address: userAddress as `0x${string}`,
+      message,
+      signature: userSignature as `0x${string}`,
+    });
+
+    if (!valid) {
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
     console.log('[approve-and-place] Signature verified');
 
-    // 2. Parse message to extract bet details and verify they match.
-    //    Wrap JSON.parse â€” an attacker could craft `message` that lacks the
-    //    "Bet Details: " marker or contains invalid JSON, which would throw
-    //    and surface through the generic 500 path. Fail cleanly with 400.
+    // 2. Parse and verify message data
     const marker = 'Bet Details: ';
-    const markerIdx = typeof message === 'string' ? message.indexOf(marker) : -1;
+    const markerIdx = message.indexOf(marker);
     if (markerIdx < 0) {
-      return NextResponse.json(
-        { error: 'Signed message missing Bet Details payload' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Signed message missing Bet Details payload' }, { status: 400 });
     }
 
     let messageData: any;
     try {
       messageData = JSON.parse(message.slice(markerIdx + marker.length));
     } catch {
-      return NextResponse.json(
-        { error: 'Signed message payload is not valid JSON' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Signed message payload is not valid JSON' }, { status: 400 });
     }
 
     if (
@@ -115,130 +99,81 @@ export async function POST(request: NextRequest) {
       messageData.category !== category ||
       messageData.targetTimestamp !== targetTimestamp
     ) {
-      return NextResponse.json(
-        { error: 'Message data does not match request' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Message data does not match request' }, { status: 400 });
     }
 
-    // 2a. Replay protection: the signed message MUST include a `signedAt`
-    //     (unix ms) and `userAddress`. Reject signatures older than 5 min
-    //     or dated more than 60 s in the future (clock skew grace), and
-    //     require the signed address matches the on-request address so
-    //     a captured signature can't be replayed against another wallet.
+    // 2a. Replay protection
     const signedAt = Number(messageData.signedAt);
     const signedFor = messageData.userAddress;
     if (!Number.isFinite(signedAt)) {
-      return NextResponse.json(
-        { error: 'Signed message missing signedAt timestamp' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Signed message missing signedAt timestamp' }, { status: 400 });
     }
     const now = Date.now();
     const MAX_AGE_MS = 5 * 60 * 1000;
     const MAX_SKEW_MS = 60 * 1000;
     if (signedAt > now + MAX_SKEW_MS || now - signedAt > MAX_AGE_MS) {
-      return NextResponse.json(
-        { error: 'Signature expired â€” please sign again' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Signature expired — please sign again' }, { status: 401 });
     }
-    if (
-      typeof signedFor !== 'string' ||
-      signedFor.toLowerCase() !== String(userAddress).toLowerCase()
-    ) {
-      return NextResponse.json(
-        { error: 'Signed userAddress does not match request' },
-        { status: 401 }
-      );
+    if (typeof signedFor !== 'string' || signedFor.toLowerCase() !== userAddress.toLowerCase()) {
+      return NextResponse.json({ error: 'Signed userAddress does not match request' }, { status: 401 });
     }
 
     console.log('[approve-and-place] Message data verified');
 
-    // 3. Get user's Hedera Account ID from mirror node
-    const mirrorResponse = await fetch(
-      `https://testnet.mirrornode.hedera.com/api/v1/accounts/${userAddress}`
-    );
-    
-    if (!mirrorResponse.ok) {
-      return NextResponse.json(
-        { error: 'Could not find Hedera account for this address' },
-        { status: 404 }
-      );
+    // 3. Get contract address for this category
+    const contractAddress = CONTRACT_ADDRESSES[category] as `0x${string}`;
+    if (!contractAddress) {
+      return NextResponse.json({ error: `Category "${category}" contract not deployed` }, { status: 400 });
     }
 
-    const mirrorData = await mirrorResponse.json();
-    const userAccountId = AccountId.fromString(mirrorData.account);
-    
-    console.log('[approve-and-place] User account:', userAccountId.toString());
+    // 4. Check USDC allowance on-chain
+    const usdcAddress = getStakingTokenAddress();
+    const tokenAmount = BigInt(Math.floor(parseFloat(stakeUsdc) * 1_000_000)); // 6 decimals
 
-    // 4. Check if approval is needed
-    const allowanceResponse = await fetch(
-      `https://testnet.mirrornode.hedera.com/api/v1/accounts/${userAccountId.toString()}/allowances/tokens`
-    );
+    const allowance = await publicClient.readContract({
+      address: usdcAddress,
+      abi: [{ name: 'allowance', type: 'function', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }],
+      functionName: 'allowance',
+      args: [userAddress as `0x${string}`, contractAddress],
+    });
 
-    let needsApproval = true;
-    if (allowanceResponse.ok) {
-      const allowanceData = await allowanceResponse.json();
-      const existingAllowance = allowanceData.allowances?.find(
-        (a: any) => a.token_id === USDC_TOKEN_ID && a.spender === CRYPTO_CONTRACT_ID
-      );
-      
-      if (existingAllowance && parseFloat(existingAllowance.amount) >= parseFloat(stakeUsdc) * 1000000) {
-        needsApproval = false;
-        console.log('[approve-and-place] Sufficient allowance exists');
-      }
+    if ((allowance as bigint) < tokenAmount) {
+      return NextResponse.json({
+        error: 'Insufficient USDC allowance. Please approve the contract to spend your USDC first.',
+        needsApproval: true,
+        requiredAllowance: tokenAmount.toString(),
+        currentAllowance: (allowance as bigint).toString(),
+      }, { status: 400 });
     }
 
-    // 5. Approve token spending if needed (backend pays gas, user's tokens are approved)
-    if (needsApproval) {
-      console.log('[approve-and-place] Approving USDC spending...');
-      
-      // Note: This requires the user to have signed an allowance approval
-      // We'll use AccountAllowanceApproveTransaction which requires user signature
-      // For now, we'll skip this and assume approval exists or use a different method
-      
-      // TODO: Implement proper approval flow
-      console.log('[approve-and-place] Approval flow needs implementation');
-    }
-
-    // 6. Place bet (backend submits transaction, user's USDC is used)
+    // 5. Place bet (operator submits, user's USDC is pulled)
     console.log('[approve-and-place] Placing bet...');
-    
-    const tokenAmount = Math.floor(parseFloat(stakeUsdc) * 1000000); // 6 decimals
-    const priceMinBN = ethers.utils.parseUnits(priceMin, 8); // 8 decimals for crypto
-    const priceMaxBN = ethers.utils.parseUnits(priceMax, 8);
 
-    const contractExecTx = new ContractExecuteTransaction()
-      .setContractId(CRYPTO_CONTRACT_ID)
-      .setGas(1500000)
-      .setFunction(
-        'placeBetWithToken',
-        new ContractFunctionParameters()
-          .addUint256(targetTimestamp)
-          .addUint256(priceMinBN.toNumber())
-          .addUint256(priceMaxBN.toNumber())
-          .addUint256(tokenAmount)
-      )
-      .setMaxTransactionFee(new Hbar(2));
+    const priceMinBN = parseUnits(priceMin, 8); // 8 decimals for crypto prices
+    const priceMaxBN = parseUnits(priceMax, 8);
 
-    const txResponse = await contractExecTx.execute(client);
-    const receipt = await txResponse.getReceipt(client);
+    const walletClient = getOperatorWalletClient();
+    const txHash = await walletClient.writeContract({
+      address: contractAddress,
+      abi: MARKET_ABI,
+      functionName: 'placeBetWithToken',
+      args: [BigInt(targetTimestamp), priceMinBN, priceMaxBN, tokenAmount],
+      gas: 1_500_000n,
+    });
 
-    console.log('[approve-and-place] Bet placed:', receipt.status.toString());
+    console.log('[approve-and-place] Bet tx submitted:', txHash);
 
-    // 7. Get transaction hash
-    const txHash = `0x${Buffer.from(txResponse.transactionHash).toString('hex')}`;
-
-    // 8. Record bet in database
-    // TODO: Add database recording logic here
+    // Wait for receipt
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    if (receipt.status !== 'success') {
+      throw new Error('Bet transaction reverted');
+    }
 
     return NextResponse.json({
       success: true,
       txHash,
       message: 'Bet placed successfully',
     });
-
   } catch (error: any) {
     console.error('[approve-and-place] Error:', error);
     return NextResponse.json(
@@ -247,4 +182,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
