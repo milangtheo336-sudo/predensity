@@ -1,32 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable2Step.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title CryptoPredictionMarket
  * @dev Prediction market for cryptocurrency price ranges with multi-asset support
- * @notice Users predict price ranges for crypto assets (BTC, ETH, etc.)
- *
+ * @notice Users predict price ranges for crypto assets (HBAR, BTC, ETH, etc.)
+ * 
  * Example predictions:
- * - "BTC will be between $60000-$62000 on March 15"
+ * - "HBAR will be between $0.29-$0.31 on March 15"
  * - "BTC will be between $65,000-$68,000 on April 1"
  * - "ETH will be between $3,200-$3,500 on March 20"
- *
- * Resolution: owner sets prices via setPrice* functions. A RESOLUTION_DELAY
- * timelock applies between price set and bet finalization, giving the owner
- * a window to correct bad oracle pushes before they become binding.
- *
- * Security primitives:
- *  - Ownable2Step: ownership transfer requires explicit acceptance
- *  - Pausable: owner can halt all bet placement / resolution / claims
- *  - ReentrancyGuard: applied to every external function that moves funds
+ * 
+ * Resolution: Centralized owner sets prices (scalable, fast, gas-efficient)
  */
-contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
+contract CryptoPredictionMarket is Ownable {
     using SafeERC20 for IERC20;
     // ==============================================================
     // |                    Constants                               |
@@ -34,20 +25,15 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     uint256 public immutable startTimestamp;
     uint256 public constant SECONDS_PER_DAY = 24 * 60 * 60;
     uint256 public constant FEE_BPS = 100;        // 1% entry fee in basis points
+    uint256 public constant EXIT_FEE_BPS = 80;   // 0.8% exit fee in basis points
     uint256 public constant BPS_DENOM = 10000;   // denominator for basis points (100% = 10000)
+    uint256 public constant MIN_STAKE = 0.01 ether;
+    uint256 public constant MAX_STAKE = 100 ether;
     uint256 public constant MAX_DAYS_AHEAD = 30;
     uint256 public constant MIN_DAYS_AHEAD = 1;     // Minimum days ahead for bet placement
     uint256 public constant BATCH_SIZE = 50;
-    // Time between a price being set and that price becoming usable for resolution.
-    // Gives the owner a window to overwrite a bad oracle push with a correct one.
-    uint256 public constant RESOLUTION_DELAY = 1 hours;
-    // Per-call cap on `arePricesSetForBucket` iterations to keep the view bounded.
-    uint256 public constant MAX_BUCKET_SCAN = 200;
-
-    // Stake bounds: set per-deployment so they match the staking token's decimals.
-    // For USDC (6 decimals): 10_000 (= 0.01 USDC) / 100_000_000 (= 100 USDC).
-    uint256 public immutable minStake;
-    uint256 public immutable maxStake;
+    uint256 public constant MAX_EXIT_RATIO_BPS = 3000; // max 30% of bucket pool can exit early
+    uint256 public constant MIN_K = 10 ether;          // minimum liquidity parameter (10 HBAR)
     // ==============================================================
     // |                    State Variables                         |
     // ==============================================================
@@ -56,13 +42,13 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     uint256 public nextBetId;
     uint256 public knownTokenBalance;  // Track actual token balance to prevent fake deposits
     
-    // Asset identifier (e.g., "BTC", "ETH")
+    // Asset identifier (e.g., "HBAR", "BTC", "ETH")
     string public assetSymbol;
     
     // Price decimals (e.g., 8 for BTC, 18 for ETH)
     uint8 public priceDecimals;
 
-    // Staking token (ERC-20, e.g. USDC on Arc)
+    // Staking token: address(0) = native HBAR mode, otherwise ERC-20 (e.g., USDC)
     IERC20 public stakingToken;
     
     // Mapping of betId to asset symbol (for multi-asset support)
@@ -83,6 +69,9 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         bool claimed;
         uint256 actualPrice;
         bool won;
+        // DPM fields
+        uint256 entryBandWeight;  // total weight in this bet's band when they entered
+        bool exited;              // whether the bettor sold shares early
     }
 
     struct BetSimulation {
@@ -104,20 +93,20 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 totalWinningWeight;
         uint256 nextProcessIndex;
         bool aggregationComplete;
+        // DPM fields
+        uint256 totalExited;  // total HBAR paid out via early exits
     }
+
+    // DPM band cost tracking: bucket => bandIndex => total weight in that band
+    // Band index is derived from price range midpoint quantized to bands
+    mapping(uint256 => mapping(uint256 => uint256)) public bandWeights;
 
     // ==============================================================
     // |                    Mappings                               |
     // ==============================================================
     mapping(uint256 => Bet) public bets;
     mapping(uint256 => BucketInfo) public buckets;
-    // (asset symbol => targetTimestamp => price). Per-asset keyed so BTC/ETH
-    // resolutions cannot collide on the same bucket day.
-    mapping(string => mapping(uint256 => uint256)) public pricesAtTimestamp;
-    // (asset symbol => targetTimestamp => block.timestamp at which the price was last set).
-    // Resolution requires `block.timestamp >= priceSetAt + RESOLUTION_DELAY`.
-    // Each setPrice* call resets the clock, allowing the owner to correct bad pushes.
-    mapping(string => mapping(uint256 => uint256)) public priceSetAt;
+    mapping(uint256 => uint256) public pricesAtTimestamp; // targetTimestamp => price
 
     // ==============================================================
     // |                    Events                                  |
@@ -146,14 +135,9 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     );
     
     event FeeCollected(uint256 amount);
-    event FeesWithdrawn(address indexed to, uint256 amount);
     event BucketPriceSet(uint256 indexed bucket, uint256 price);
     event BatchProcessed(uint256 indexed bucket, uint256 processedCount, uint256 winningWeight);
     event AggregationCompleted(uint256 indexed bucket, uint256 totalWinningWeight);
-    /// Emitted when a bucket aggregates with zero winning weight; the bucket's
-    /// stake is swept into the protocol fee pool instead of being reserved for
-    /// (non-existent) winners.
-    event NoWinnersSwept(uint256 indexed bucket, uint256 amountSwept);
     
     event AssetPriceResolved(
         string indexed asset,
@@ -161,12 +145,19 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 price
     );
 
+    event SharesSold(
+        uint256 indexed betId,
+        address indexed bettor,
+        uint256 exitPayout,
+        uint256 exitFee
+    );
+
     // ==============================================================
     // |                    Modifiers                               |
     // ==============================================================
     modifier validBetAmount(uint256 amount) {
-        require(amount >= minStake, "Bet too small");
-        require(amount <= maxStake, "Bet too large");
+        require(amount >= MIN_STAKE, "Bet too small");
+        require(amount <= MAX_STAKE, "Bet too large");
         _;
     }
 
@@ -183,30 +174,16 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     // ==============================================================
     
     /**
-     * @param _assetSymbol The primary asset symbol (e.g., "BTC", "ETH")
+     * @param _assetSymbol The primary asset symbol (e.g., "HBAR")
      * @param _priceDecimals Number of decimals for price representation
-     * @param _stakingToken ERC-20 token for stakes (USDC on Arc)
-     * @param _minStake Minimum stake in the staking token's smallest unit
-     * @param _maxStake Maximum stake in the staking token's smallest unit
+     * @param _stakingToken ERC-20 token for stakes (address(0) = native HBAR mode)
      */
-    constructor(
-        string memory _assetSymbol,
-        uint8 _priceDecimals,
-        address _stakingToken,
-        uint256 _minStake,
-        uint256 _maxStake
-    ) {
-        require(bytes(_assetSymbol).length > 0, "Asset symbol required");
-        require(_minStake > 0, "minStake must be > 0");
-        require(_maxStake > _minStake, "maxStake must exceed minStake");
-
+    constructor(string memory _assetSymbol, uint8 _priceDecimals, address _stakingToken) {
         assetSymbol = _assetSymbol;
         priceDecimals = _priceDecimals;
         stakingToken = IERC20(_stakingToken);
         startTimestamp = block.timestamp;
-        minStake = _minStake;
-        maxStake = _maxStake;
-        // Ownable's constructor already sets msg.sender as owner; no transfer needed.
+        transferOwnership(msg.sender);
     }
 
     /**
@@ -231,16 +208,24 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 targetTimestamp,
         uint256 priceMin,
         uint256 priceMax
-    )
-        public
-        payable
-        whenNotPaused
-        nonReentrant
-        validTimeRange(targetTimestamp)
-        validBetAmount(msg.value)
-        returns (uint256)
-    {
-        revert("Use placeBetWithToken instead");
+    ) public payable validTimeRange(targetTimestamp) returns (uint256) {
+        require(priceMin < priceMax, "Invalid price range");
+        require(priceMin > 0 && priceMax > 0, "Prices must be positive");
+        require(targetTimestamp > block.timestamp, "Cannot bet on past timestamps");
+
+        // Calculate fee and net stake
+        uint256 fee = (msg.value * FEE_BPS) / BPS_DENOM;
+        uint256 stakeNet = msg.value - fee;
+        
+        totalFeesCollected += fee;
+        emit FeeCollected(fee);
+
+        // Compute bet quality and weight
+        uint256 qualityBps = (getSharpnessMultiplier(priceMin, priceMax) * getTimeMultiplier(targetTimestamp)) / BPS_DENOM;
+        uint256 weight = (stakeNet * qualityBps) / BPS_DENOM;
+
+        // Create bet for primary asset
+        return _createBet(msg.sender, targetTimestamp, priceMin, priceMax, stakeNet, qualityBps, weight, assetSymbol);
     }
 
     /**
@@ -256,17 +241,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 targetTimestamp,
         uint256 priceMin,
         uint256 priceMax
-    )
-        external
-        payable
-        whenNotPaused
-        nonReentrant
-        validTimeRange(targetTimestamp)
-        validBetAmount(msg.value)
-        returns (uint256)
-    {
-        require(address(stakingToken) == address(0), "Native mode disabled");
-        require(bytes(asset).length > 0, "Asset required");
+    ) external payable validTimeRange(targetTimestamp) returns (uint256) {
         require(priceMin < priceMax, "Invalid price range");
         require(priceMin > 0 && priceMax > 0, "Prices must be positive");
         require(targetTimestamp > block.timestamp, "Cannot bet on past timestamps");
@@ -287,23 +262,14 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 priceMin,
         uint256 priceMax,
         uint256 amount
-    )
-        external
-        whenNotPaused
-        nonReentrant
-        validTimeRange(targetTimestamp)
-        validBetAmount(amount)
-        returns (uint256)
-    {
+    ) external validTimeRange(targetTimestamp) returns (uint256) {
         require(address(stakingToken) != address(0), "Token mode not enabled");
+        require(amount > 0, "Amount must be > 0");
         require(priceMin < priceMax, "Invalid price range");
         require(priceMin > 0 && priceMax > 0, "Prices must be positive");
         require(targetTimestamp > block.timestamp, "Cannot bet on past timestamps");
 
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
-        // Keep knownTokenBalance in sync after every token receipt so that
-        // placeBetWithPreTransferredToken cannot misattribute these tokens.
-        knownTokenBalance = stakingToken.balanceOf(address(this));
         return _placeBetInternal(msg.sender, targetTimestamp, priceMin, priceMax, amount, assetSymbol);
     }
 
@@ -322,29 +288,20 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 priceMin,
         uint256 priceMax,
         uint256 amount
-    )
-        external
-        whenNotPaused
-        nonReentrant
-        validTimeRange(targetTimestamp)
-        validBetAmount(amount)
-        returns (uint256)
-    {
+    ) external validTimeRange(targetTimestamp) returns (uint256) {
         require(address(stakingToken) != address(0), "Token mode not enabled");
-        require(bytes(asset).length > 0, "Asset required");
+        require(amount > 0, "Amount must be > 0");
         require(priceMin < priceMax, "Invalid price range");
         require(priceMin > 0 && priceMax > 0, "Prices must be positive");
         require(targetTimestamp > block.timestamp, "Cannot bet on past timestamps");
 
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
-        // Keep knownTokenBalance in sync (see placeBetWithToken for rationale).
-        knownTokenBalance = stakingToken.balanceOf(address(this));
         return _placeBetInternal(msg.sender, targetTimestamp, priceMin, priceMax, amount, asset);
     }
 
     /**
      * @notice Place a bet with tokens that have already been transferred to this contract.
-     * Used by proxy wallets that transfer tokens before calling this function.
+     * Used by proxy wallets that transfer tokens via HTS before calling this function.
      */
     function placeBetWithPreTransferredToken(
         address bettor,
@@ -352,15 +309,9 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 priceMin,
         uint256 priceMax,
         uint256 amount
-    )
-        external
-        whenNotPaused
-        nonReentrant
-        validTimeRange(targetTimestamp)
-        validBetAmount(amount)
-        returns (uint256)
-    {
+    ) external validTimeRange(targetTimestamp) returns (uint256) {
         require(address(stakingToken) != address(0), "Token mode not enabled");
+        require(amount > 0, "Amount must be > 0");
         require(priceMin < priceMax, "Invalid price range");
         require(priceMin > 0 && priceMax > 0, "Prices must be positive");
         require(targetTimestamp > block.timestamp, "Cannot bet on past timestamps");
@@ -409,7 +360,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
      * @return processedCount Number of bets processed in this batch
      * @return winningWeight Total winning weight added in this batch
      */
-    function processBatch(uint256 bucket) external whenNotPaused returns (uint256 processedCount, uint256 winningWeight) {
+    function processBatch(uint256 bucket) external returns (uint256 processedCount, uint256 winningWeight) {
         BucketInfo storage bucketInfo = buckets[bucket];
         require(!bucketInfo.aggregationComplete, "Aggregation already complete");
         
@@ -421,38 +372,42 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         }
         
         if (startIndex >= bucketInfo.betIds.length) {
-            _finalizeBucketAggregation(bucket, bucketInfo);
+            bucketInfo.aggregationComplete = true;
+            totalObligations += bucketInfo.totalStaked - bucketInfo.totalExited;
+            emit AggregationCompleted(bucket, bucketInfo.totalWinningWeight);
             return (0, 0);
         }
-
+        
         uint256 batchWinningWeight = 0;
         uint256 processed = 0;
-
+        
         for (uint256 i = startIndex; i < endIndex; i++) {
             uint256 betId = bucketInfo.betIds[i];
             Bet storage bet = bets[betId];
-
-            if (!bet.finalized) {
-                uint256 price = _priceForBet(betId);
-                require(price > 0, "Price not set for asset+timestamp");
-
+            
+            if (!bet.finalized && !bet.exited) {
+                uint256 price = pricesAtTimestamp[bet.targetTimestamp];
+                require(price > 0, "Price not set for timestamp");
+                
                 bet.finalized = true;
                 bet.actualPrice = price;
                 bet.won = (price >= bet.priceMin && price <= bet.priceMax);
-
+                
                 if (bet.won) {
                     batchWinningWeight += bet.weight;
                 }
-
+                
                 processed++;
             }
         }
-
+        
         bucketInfo.totalWinningWeight += batchWinningWeight;
         bucketInfo.nextProcessIndex = endIndex;
-
+        
         if (endIndex >= bucketInfo.betIds.length) {
-            _finalizeBucketAggregation(bucket, bucketInfo);
+            bucketInfo.aggregationComplete = true;
+            totalObligations += bucketInfo.totalStaked - bucketInfo.totalExited;
+            emit AggregationCompleted(bucket, bucketInfo.totalWinningWeight);
         }
         
         emit BatchProcessed(bucket, processed, batchWinningWeight);
@@ -463,11 +418,12 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
      * @notice Claim winnings for a finalized bet (only after aggregation complete)
      * @param betId The ID of the bet to claim
      */
-    function claimBet(uint256 betId) external whenNotPaused nonReentrant {
+    function claimBet(uint256 betId) external {
         Bet storage bet = bets[betId];
         require(bet.bettor == msg.sender, "Not bet owner");
         require(bet.finalized, "Bet not finalized");
         require(!bet.claimed, "Already claimed");
+        require(!bet.exited, "Already exited via DPM");
 
         uint256 bucket = bucketIndex(bet.targetTimestamp);
         BucketInfo storage bucketInfo = buckets[bucket];
@@ -476,12 +432,11 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         bet.claimed = true;
 
         if (bet.won) {
-            // Classic parimutuel payout: winners split the bucket's total stake
-            // pro-rata by their quality-adjusted weight.
-            uint256 payout = bucketInfo.totalWinningWeight > 0
-                ? (bet.weight * bucketInfo.totalStaked) / bucketInfo.totalWinningWeight
-                : 0;
-
+            // DPM-adjusted payout: use remaining pool after early exits
+            uint256 remainingPool = bucketInfo.totalStaked - bucketInfo.totalExited;
+            uint256 payout = bucketInfo.totalWinningWeight > 0 ? 
+                (bet.weight * remainingPool) / bucketInfo.totalWinningWeight : 0;
+            
             // Reduce obligations as payout is fulfilled
             if (payout <= totalObligations) {
                 totalObligations -= payout;
@@ -490,7 +445,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
             }
 
             _transferOut(msg.sender, payout);
-
+            
             emit BetClaimed(betId, msg.sender, payout);
         } else {
             emit BetClaimed(betId, msg.sender, 0);
@@ -502,9 +457,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     // ==============================================================
 
     /**
-     * @notice Set prices for the primary asset across multiple timestamps (owner only).
-     *         Uses the contract's `assetSymbol` (e.g. "BTC"). For non-primary assets,
-     *         use {setAssetPrices}.
+     * @notice Set prices for multiple timestamps at once (owner only - centralized but scalable)
      * @param timestamps Array of target timestamps
      * @param prices Array of corresponding prices
      */
@@ -512,45 +465,26 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         require(timestamps.length == prices.length, "Lengths must match");
         for (uint256 i = 0; i < timestamps.length; i++) {
             require(prices[i] > 0, "Price must be positive");
-            pricesAtTimestamp[assetSymbol][timestamps[i]] = prices[i];
-            priceSetAt[assetSymbol][timestamps[i]] = block.timestamp;
+            pricesAtTimestamp[timestamps[i]] = prices[i];
             emit BucketPriceSet(timestamps[i], prices[i]);
             emit AssetPriceResolved(assetSymbol, timestamps[i], prices[i]);
         }
     }
 
     /**
-     * @notice Set the price for the primary asset at a single timestamp (owner only).
-     *         For non-primary assets, use {setAssetPrice}.
+     * @notice Set price for a single timestamp (owner only - centralized but scalable)
      * @param timestamp The target timestamp
      * @param price The actual price
      */
     function setPriceForTimestamp(uint256 timestamp, uint256 price) external onlyOwner {
         require(price > 0, "Price must be positive");
-        pricesAtTimestamp[assetSymbol][timestamp] = price;
-        priceSetAt[assetSymbol][timestamp] = block.timestamp;
+        pricesAtTimestamp[timestamp] = price;
         emit BucketPriceSet(timestamp, price);
         emit AssetPriceResolved(assetSymbol, timestamp, price);
     }
 
     /**
-     * @notice Set the price for a specific asset at a single timestamp (owner only).
-     * @param asset Asset symbol (e.g. "BTC")
-     * @param timestamp The target timestamp
-     * @param price The actual price
-     */
-    function setAssetPrice(string calldata asset, uint256 timestamp, uint256 price) external onlyOwner {
-        require(price > 0, "Price must be positive");
-        require(bytes(asset).length > 0, "Asset required");
-        pricesAtTimestamp[asset][timestamp] = price;
-        priceSetAt[asset][timestamp] = block.timestamp;
-        emit BucketPriceSet(timestamp, price);
-        emit AssetPriceResolved(asset, timestamp, price);
-    }
-
-    /**
-     * @notice Set prices for multiple assets and timestamps (owner only - multi-asset batch).
-     *         Each (asset[i], timestamp[i]) tuple gets its own price slot.
+     * @notice Set prices for multiple assets and timestamps (owner only - multi-asset batch)
      * @param assets Array of asset symbols
      * @param timestamps Array of target timestamps
      * @param prices Array of corresponding prices
@@ -564,12 +498,10 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
             assets.length == timestamps.length && timestamps.length == prices.length,
             "Lengths must match"
         );
-
+        
         for (uint256 i = 0; i < timestamps.length; i++) {
             require(prices[i] > 0, "Price must be positive");
-            require(bytes(assets[i]).length > 0, "Asset required");
-            pricesAtTimestamp[assets[i]][timestamps[i]] = prices[i];
-            priceSetAt[assets[i]][timestamps[i]] = block.timestamp;
+            pricesAtTimestamp[timestamps[i]] = prices[i];
             emit BucketPriceSet(timestamps[i], prices[i]);
             emit AssetPriceResolved(assets[i], timestamps[i], prices[i]);
         }
@@ -580,96 +512,68 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     // ==============================================================
 
     /**
-     * @notice Withdraw collected fees to the owner. Bounded by `totalFeesCollected`
-     *         and cannot drain funds owed to winners (`totalObligations`).
-     *         Emits {FeesWithdrawn}. Reentrancy-guarded.
+     * @notice Withdraw collected fees (only owner)
      */
-    function withdrawFees() external onlyOwner nonReentrant {
+    function withdrawFees() external onlyOwner {
         uint256 bal = _contractBalance();
         uint256 available = bal > totalObligations ? bal - totalObligations : 0;
         uint256 amount = totalFeesCollected < available ? totalFeesCollected : available;
         require(amount > 0, "No withdrawable fees");
-
-        // Effects before interaction
         totalFeesCollected -= amount;
-
-        address recipient = owner();
-        _transferOut(recipient, amount);
-        emit FeesWithdrawn(recipient, amount);
+        _transferOut(owner(), amount);
     }
 
     /**
-     * @notice Pause all bet placement, resolution, and claims.
-     *         Only callable by the owner. Use in case of emergency
-     *         (oracle compromise, exploit discovery, etc.).
+     * @notice Emergency withdraw surplus only -- cannot touch funds owed to winners
      */
-    function pause() external onlyOwner {
-        _pause();
+    function emergencyWithdraw() external onlyOwner {
+        uint256 bal = _contractBalance();
+        uint256 surplus = bal > totalObligations ? bal - totalObligations : 0;
+        require(surplus > 0, "No surplus to withdraw");
+        totalFeesCollected = 0;
+        _transferOut(owner(), surplus);
     }
 
     /**
-     * @notice Unpause the contract.
+     * @notice Associate with a Hedera token (required before receiving HTS tokens like USDC).
+     * On Hedera, contracts must explicitly associate with tokens.
+     * 
+     * Hedera Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
      */
-    function unpause() external onlyOwner {
-        _unpause();
+    function associateToken(address token) external onlyOwner {
+        (bool success, ) = address(0x0000000000000000000000000000000000000167).call(
+            abi.encodeWithSelector(0x49146bde, address(this), token)
+        );
+        require(success, "Token association failed");
     }
-
 
     // ==============================================================
     // |                    Helper Functions                        |
     // ==============================================================
 
+    /**
+     * @notice Transfer funds out -- native HBAR or ERC-20 depending on mode
+     */
     function _transferOut(address to, uint256 amount) internal {
         if (amount == 0) return;
-        stakingToken.safeTransfer(to, amount);
-        knownTokenBalance = stakingToken.balanceOf(address(this));
-    }
-
-    /**
-     * @notice Resolve the price for a bet using its asset + targetTimestamp.
-     *         Falls back to the contract's primary `assetSymbol` if the bet was
-     *         placed before per-bet asset tracking. Extracted as a helper to
-     *         keep `processBatch`'s stack frame within EVM limits.
-     */
-    /**
-     * @notice Mark a bucket as fully aggregated and route its net stake to the
-     *         correct destination.
-     *           - If the bucket has at least one winning bet, the entire net
-     *             stake is reserved for winners via `totalObligations`. Each
-     *             winner's `claimBet` then decrements that reservation.
-     *           - If the bucket aggregated with zero winning weight (everyone
-     *             guessed wrong), the stake is swept into the protocol fee pool
-     *             so it doesn't stay locked forever. `totalObligations` is not
-     *             touched in this branch.
-     */
-    function _finalizeBucketAggregation(uint256 bucket, BucketInfo storage bucketInfo) internal {
-        bucketInfo.aggregationComplete = true;
-        if (bucketInfo.totalWinningWeight == 0) {
-            // No winners -- house keeps the pool.
-            uint256 swept = bucketInfo.totalStaked;
-            if (swept > 0) {
-                totalFeesCollected += swept;
-                emit NoWinnersSwept(bucket, swept);
-            }
+        if (address(stakingToken) != address(0)) {
+            stakingToken.safeTransfer(to, amount);
+            // Keep knownTokenBalance in sync
+            knownTokenBalance = stakingToken.balanceOf(address(this));
         } else {
-            totalObligations += bucketInfo.totalStaked;
+            (bool success, ) = payable(to).call{value: amount}("");
+            require(success, "Transfer failed");
         }
-        emit AggregationCompleted(bucket, bucketInfo.totalWinningWeight);
     }
 
-    function _priceForBet(uint256 betId) internal view returns (uint256) {
-        Bet storage bet = bets[betId];
-        string memory asset = bytes(betAssets[betId]).length > 0 ? betAssets[betId] : assetSymbol;
-        uint256 setAt = priceSetAt[asset][bet.targetTimestamp];
-        // 0 means never set; require both: a price exists AND the resolution
-        // delay has elapsed since the most recent set so the owner has had a
-        // window to overwrite a bad oracle push.
-        if (setAt == 0 || block.timestamp < setAt + RESOLUTION_DELAY) return 0;
-        return pricesAtTimestamp[asset][bet.targetTimestamp];
-    }
-
+    /**
+     * @notice Get contract balance -- native HBAR or ERC-20 depending on mode
+     */
     function _contractBalance() internal view returns (uint256) {
-        return stakingToken.balanceOf(address(this));
+        if (address(stakingToken) != address(0)) {
+            return stakingToken.balanceOf(address(this));
+        }
+        return address(this).balance;
     }
 
     /**
@@ -687,6 +591,13 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     ) private returns (uint256) {
         uint256 betId = nextBetId++;
         uint256 bucket = bucketIndex(targetTimestamp);
+
+        // Record entry band weight BEFORE adding this bet's weight
+        {
+            uint256 band = bandIndex(priceMin, priceMax);
+            bets[betId].entryBandWeight = bandWeights[bucket][band];
+            bandWeights[bucket][band] += weight;
+        }
 
         bets[betId].bettor = bettor;
         bets[betId].targetTimestamp = targetTimestamp;
@@ -714,6 +625,127 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     function bucketIndex(uint256 targetTs) public view returns (uint256) {
         require(targetTs >= startTimestamp, "Must be >= start");
         return (targetTs - startTimestamp) / SECONDS_PER_DAY;
+    }
+
+    /**
+     * @notice Quantize a price range into a band index for DPM tracking.
+     *         Uses the midpoint of [priceMin, priceMax] divided into 2% bands
+     *         relative to the midpoint magnitude. This groups similar predictions
+     *         so the cost function applies per-band.
+     * @param priceMin Lower bound of the prediction range
+     * @param priceMax Upper bound of the prediction range
+     * @return The band index (deterministic for a given midpoint)
+     */
+    function bandIndex(uint256 priceMin, uint256 priceMax) public pure returns (uint256) {
+        uint256 midpoint = (priceMin + priceMax) / 2;
+        // Band width = 2% of midpoint (200 BPS). Minimum band width of 1 to avoid division by zero.
+        uint256 bandWidth = (midpoint * 200) / BPS_DENOM;
+        if (bandWidth == 0) bandWidth = 1;
+        return midpoint / bandWidth;
+    }
+
+    /**
+     * @notice Adaptive liquidity parameter for the DPM cost function.
+     *         k scales with 20% of the bucket's total staked amount,
+     *         with a floor of MIN_K (10 HBAR) to prevent degenerate pricing
+     *         on small or empty pools.
+     * @param bucket The bucket index
+     * @return k The liquidity parameter in tinybars
+     */
+    function getK(uint256 bucket) public view returns (uint256) {
+        uint256 poolSize = buckets[bucket].totalStaked;
+        // k = 20% of pool size
+        uint256 k = (poolSize * 2000) / BPS_DENOM;
+        return k > MIN_K ? k : MIN_K;
+    }
+
+    /**
+     * @notice Compute the exit value for a bet using the linear surplus approximation.
+     *         This is a safe underapproximation of the true log cost function difference
+     *         C(q_b) - C(q_b - w), ensuring the pool always stays solvent.
+     *
+     *         Formula: exitValue = (surplus * yourShare) / BPS_DENOM
+     *         where surplus = currentBandWeight - entryBandWeight (weight added after you)
+     *         and yourShare = (yourWeight / entryBandWeight) in BPS
+     *
+     *         Capped at the bet's original stake to prevent unbounded exits.
+     *
+     * @param betId The bet to compute exit value for
+     * @return rawExit The exit value before fees (0 if no surplus)
+     */
+    function getExitValue(uint256 betId) public view returns (uint256 rawExit) {
+        Bet storage bet = bets[betId];
+        if (bet.finalized || bet.exited || bet.entryBandWeight == 0) return 0;
+
+        uint256 bucket = bucketIndex(bet.targetTimestamp);
+        uint256 band = bandIndex(bet.priceMin, bet.priceMax);
+        uint256 currentBandWeight = bandWeights[bucket][band];
+
+        // Surplus = weight added to this band after this bet entered
+        if (currentBandWeight <= bet.entryBandWeight) return 0;
+        uint256 surplus = currentBandWeight - bet.entryBandWeight;
+
+        // Your proportional share of the surplus
+        uint256 yourShare = (bet.weight * BPS_DENOM) / bet.entryBandWeight;
+        rawExit = (surplus * yourShare) / BPS_DENOM;
+
+        // Cap at original stake (max 1x profit on early exit)
+        if (rawExit > bet.stake) rawExit = bet.stake;
+    }
+
+    /**
+     * @notice Sell shares back to the pool before market resolution (DPM early exit).
+     *         The bettor receives the exit value minus the 0.8% exit fee.
+     *         Subject to the 30% pool cap to maintain solvency for final resolution.
+     *
+     *         Requirements:
+     *         - Caller must be the bet owner
+     *         - Bet must not be finalized or already exited
+     *         - Exit value must be positive (surplus must exist in the band)
+     *         - Bucket exit cap must not be exceeded
+     *
+     * @param betId The ID of the bet to exit
+     */
+    function sellShares(uint256 betId) external {
+        Bet storage bet = bets[betId];
+        require(bet.bettor == msg.sender, "Not bet owner");
+        require(!bet.finalized, "Already resolved");
+        require(!bet.exited, "Already exited");
+
+        uint256 rawExit = getExitValue(betId);
+        require(rawExit > 0, "No exit value available");
+
+        // Apply 0.8% exit fee
+        uint256 exitFee = (rawExit * EXIT_FEE_BPS) / BPS_DENOM;
+        uint256 netExit = rawExit - exitFee;
+
+        uint256 bucket = bucketIndex(bet.targetTimestamp);
+        BucketInfo storage bucketInfo = buckets[bucket];
+
+        // Solvency guard: max 30% of bucket pool can exit early
+        require(
+            bucketInfo.totalExited + netExit <= (bucketInfo.totalStaked * MAX_EXIT_RATIO_BPS) / BPS_DENOM,
+            "Exit pool exhausted"
+        );
+
+        // Mark bet as exited
+        bet.exited = true;
+
+        // Update bucket accounting
+        bucketInfo.totalExited += netExit;
+        bucketInfo.totalWeight -= bet.weight;
+
+        // Update band weight
+        uint256 band = bandIndex(bet.priceMin, bet.priceMax);
+        bandWeights[bucket][band] -= bet.weight;
+
+        // Exit fee goes to protocol
+        totalFeesCollected += exitFee;
+
+        // Transfer exit payout
+        _transferOut(msg.sender, netExit);
+
+        emit SharesSold(betId, msg.sender, netExit, exitFee);
     }
 
     /**
@@ -843,7 +875,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
             });
         }
         
-        if (stakeAmount < minStake || stakeAmount > maxStake) {
+        if (stakeAmount < MIN_STAKE || stakeAmount > MAX_STAKE) {
             return BetSimulation({
                 fee: 0, stakeNet: 0, sharpnessBps: 0, timeBps: 0, qualityBps: 0, weight: 0, bucket: 0,
                 isValid: false, errorMessage: "Invalid stake amount"
@@ -879,13 +911,11 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Get bucket aggregate stats. The price field is intentionally omitted
-     *         here -- prices are now keyed by (asset, timestamp), not by bucket.
-     *         Use {getPriceAtTimestamp} with the specific asset and target timestamp.
+     * @notice Get bucket statistics
      */
-    function getBucketStats(uint256 bucket) external view returns (uint256 totalStaked, uint256 totalWeight) {
+    function getBucketStats(uint256 bucket) external view returns (uint256 totalStaked, uint256 totalWeight, uint256 price) {
         BucketInfo storage bucketInfo = buckets[bucket];
-        return (bucketInfo.totalStaked, bucketInfo.totalWeight);
+        return (bucketInfo.totalStaked, bucketInfo.totalWeight, pricesAtTimestamp[bucket]);
     }
 
     /**
@@ -904,6 +934,41 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
             bucketInfo.nextProcessIndex,
             bucketInfo.aggregationComplete
         );
+    }
+
+    /**
+     * @notice Get DPM exit info for a specific bet.
+     *         Returns the current exit value, fee, net payout, and whether exit is possible.
+     * @param betId The bet to query
+     * @return rawExitValue Exit value before fee
+     * @return exitFee The 0.8% fee that would be deducted
+     * @return netExitPayout What the bettor would actually receive
+     * @return canExit Whether the bet is eligible for early exit
+     * @return exitPoolRemaining How much of the 30% exit cap is still available in this bucket
+     */
+    function getDPMInfo(uint256 betId) external view returns (
+        uint256 rawExitValue,
+        uint256 exitFee,
+        uint256 netExitPayout,
+        bool canExit,
+        uint256 exitPoolRemaining
+    ) {
+        Bet storage bet = bets[betId];
+        uint256 bucket = bucketIndex(bet.targetTimestamp);
+        BucketInfo storage bucketInfo = buckets[bucket];
+
+        rawExitValue = getExitValue(betId);
+        exitFee = (rawExitValue * EXIT_FEE_BPS) / BPS_DENOM;
+        netExitPayout = rawExitValue - exitFee;
+
+        uint256 exitCap = (bucketInfo.totalStaked * MAX_EXIT_RATIO_BPS) / BPS_DENOM;
+        uint256 alreadyExited = bucketInfo.totalExited;
+        exitPoolRemaining = exitCap > alreadyExited ? exitCap - alreadyExited : 0;
+
+        canExit = !bet.finalized 
+            && !bet.exited 
+            && rawExitValue > 0 
+            && netExitPayout <= exitPoolRemaining;
     }
 
     /**
@@ -930,20 +995,14 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Check if every (asset, timestamp) pair for the bets in a bucket has a price set
-     */
-    /**
-     * @notice Check whether every (asset, timestamp) pair in a bucket has a usable
-     *         price (set + past the resolution delay).
-     *         Iterations are capped at MAX_BUCKET_SCAN to keep the call gas-bounded.
-     *         For huge buckets, use {arePricesSetForBucketRange} to paginate.
+     * @notice Check if all timestamps in a bucket have prices set
      */
     function arePricesSetForBucket(uint256 bucket) external view returns (bool) {
         BucketInfo storage bucketInfo = buckets[bucket];
-        uint256 len = bucketInfo.betIds.length;
-        require(len <= MAX_BUCKET_SCAN, "Bucket too large; use range");
-        for (uint256 i = 0; i < len; i++) {
-            if (_priceForBet(bucketInfo.betIds[i]) == 0) {
+        for (uint256 i = 0; i < bucketInfo.betIds.length; i++) {
+            uint256 betId = bucketInfo.betIds[i];
+            Bet storage bet = bets[betId];
+            if (pricesAtTimestamp[bet.targetTimestamp] == 0) {
                 return false;
             }
         }
@@ -951,38 +1010,10 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Paginated variant of {arePricesSetForBucket}. Checks bets[start..start+limit).
-     *         Use this for buckets exceeding MAX_BUCKET_SCAN bets.
-     * @param bucket Bucket index
-     * @param start  First bet index in the bucket to check
-     * @param limit  Maximum number of bets to check (capped at MAX_BUCKET_SCAN)
-     * @return allSet True if every checked bet has a usable price
-     * @return checked Number of bets actually inspected
+     * @notice Get price for a specific timestamp
      */
-    function arePricesSetForBucketRange(
-        uint256 bucket,
-        uint256 start,
-        uint256 limit
-    ) external view returns (bool allSet, uint256 checked) {
-        BucketInfo storage bucketInfo = buckets[bucket];
-        uint256 len = bucketInfo.betIds.length;
-        if (start >= len) return (true, 0);
-        uint256 cap = limit > MAX_BUCKET_SCAN ? MAX_BUCKET_SCAN : limit;
-        uint256 end = start + cap;
-        if (end > len) end = len;
-        for (uint256 i = start; i < end; i++) {
-            if (_priceForBet(bucketInfo.betIds[i]) == 0) {
-                return (false, i - start + 1);
-            }
-        }
-        return (true, end - start);
-    }
-
-    /**
-     * @notice Get the resolved price for a specific (asset, timestamp) pair
-     */
-    function getPriceAtTimestamp(string calldata asset, uint256 timestamp) external view returns (uint256) {
-        return pricesAtTimestamp[asset][timestamp];
+    function getPriceAtTimestamp(uint256 timestamp) external view returns (uint256) {
+        return pricesAtTimestamp[timestamp];
     }
 
     /**
