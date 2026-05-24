@@ -9,6 +9,7 @@ import {
 import { ethers } from 'ethers';
 import { CONTRACT_IDS } from '@/lib/contracts/contract-config';
 import { Category } from '@/lib/types/categories';
+import { requireAdmin, rateLimit } from '@/lib/api-auth';
 
 const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || process.env.NEXT_PUBLIC_OPERATOR_ID || '';
 const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || process.env.OPERATOR_PRIVATE_KEY || '';
@@ -35,6 +36,14 @@ const ABI = new ethers.utils.Interface([
 // This allows completing aggregation without a connected wallet.
 export async function POST(request: NextRequest) {
   try {
+    // Admin auth check
+    const adminResult = await requireAdmin();
+    if (adminResult instanceof NextResponse) return adminResult;
+
+    // Rate limit: 10 requests per minute
+    const rateLimitResponse = rateLimit(request, { maxRequests: 10, windowMs: 60_000 });
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
     const { category, bucket } = body;
 
