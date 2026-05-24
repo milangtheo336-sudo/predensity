@@ -1163,8 +1163,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                             }}
                             className={`flex-1 py-3 text-center text-base font-bold rounded-xl transition-colors ${
                               selectedOutcome === i && orderSide === 'buy'
-                                ? 'bg-[#3fdc8c] text-[#141414]'
-                                : 'bg-[#141414] border border-[#3fdc8c] text-[#3fdc8c] hover:bg-[#3fdc8c]/10'
+                                ? 'bg-[#3fdc8c]/20 border border-[#3fdc8c]/30 text-white'
+                                : 'bg-[#141414] border border-[#3fdc8c]/30 text-[#3fdc8c] hover:bg-[#3fdc8c]/10'
                             }`}
                           >
                             Yes {o.price}¢
@@ -1178,8 +1178,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                             }}
                             className={`flex-1 py-3 text-center text-base font-bold rounded-xl transition-colors ${
                               selectedOutcome === i && orderSide === 'sell'
-                                ? 'bg-[#e8520a] text-white'
-                                : 'bg-[#141414] border border-[#e8520a] text-[#e8520a] hover:bg-[#e8520a]/10'
+                                ? 'bg-[#ff8c42]/15 border border-[#ff8c42]/30 text-white'
+                                : 'bg-[#141414] border border-[#ff8c42]/30 text-[#ff8c42] hover:bg-[#ff8c42]/10'
                             }`}
                           >
                             No {(100 - o.price).toFixed(1)}¢
@@ -1456,8 +1456,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                   }}
                   className={`py-3 rounded-xl text-sm font-bold transition-colors ${
                     orderSide === 'buy'
-                      ? 'bg-[#3fdc8c] text-[#141414]'
-                      : 'bg-[#141414] border border-[#3fdc8c] text-[#3fdc8c] hover:bg-[#3fdc8c]/10'
+                      ? 'bg-[#3fdc8c]/20 border border-[#3fdc8c]/30 text-white'
+                      : 'bg-[#141414] border border-[#3fdc8c]/30 text-[#3fdc8c] hover:bg-[#3fdc8c]/10'
                   }`}
                 >
                   YES {selectedOutcomeData?.price}¢
@@ -1469,8 +1469,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                   }}
                   className={`py-3 rounded-xl text-sm font-bold transition-colors ${
                     orderSide === 'sell'
-                      ? 'bg-[#e8520a] text-white'
-                      : 'bg-[#141414] border border-[#e8520a] text-[#e8520a] hover:bg-[#e8520a]/10'
+                      ? 'bg-[#ff8c42]/15 border border-[#ff8c42]/30 text-white'
+                      : 'bg-[#141414] border border-[#ff8c42]/30 text-[#ff8c42] hover:bg-[#ff8c42]/10'
                   }`}
                 >
                   NO {selectedOutcomeData ? (100 - selectedOutcomeData.price).toFixed(1) : 84}¢
