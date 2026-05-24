@@ -164,13 +164,12 @@ function PnlSparkline({ data, color }: { data: number[]; color: string }) {
     return (
       <div className="w-full h-24 rounded-lg bg-gray-100 dark:bg-neutral-900/50 flex items-center justify-center relative">
         <span className="text-xs text-gray-400 dark:text-neutral-600">No activity yet</span>
-        <div className="absolute top-1 right-2 flex items-center gap-1 pointer-events-none select-none opacity-20">
-          <Image src="/predensity-icon.png" alt="" width={14} height={14} className="rounded-sm" />
-          <span className="text-[11px] text-gray-900 dark:text-white font-semibold tracking-wide">Predensity</span>
+        <div className="absolute top-2 right-3 flex items-center gap-2 pointer-events-none select-none opacity-15">
+          <Image src="/predensity-logo.png" alt="" width={50} height={30} className="rounded-sm" />
+          <span className="text-xl text-gray-900 dark:text-white font-semibold tracking-wide">Predensity</span>
         </div>
       </div>
-    );
-  }
+    );  }
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 1;
@@ -214,10 +213,10 @@ function PnlSparkline({ data, color }: { data: number[]; color: string }) {
           return <circle cx={lx} cy={ly} r="3.5" fill={color} />;
         })()}
       </svg>
-      {/* Watermark — top right, subtle with logo */}
-      <div className="absolute top-1 right-2 flex items-center gap-1 pointer-events-none select-none opacity-20">
-        <Image src="/predensity-icon.png" alt="" width={14} height={14} className="rounded-sm" />
-        <span className="text-[11px] text-gray-900 dark:text-white font-semibold tracking-wide">Predensity</span>
+      {/* Watermark -- top right, subtle with logo */}
+      <div className="absolute top-2 right-3 flex items-center gap-2 pointer-events-none select-none opacity-15">
+        <Image src="/predensity-logo.png" alt="" width={50} height={30} className="rounded-sm" />
+        <span className="text-2xl text-gray-900 dark:text-white font-semibold tracking-wide">Predensity</span>
       </div>
     </div>
   );
