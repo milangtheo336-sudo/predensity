@@ -69,3 +69,6 @@ frontend/**/*.test.ts
 frontend/**/*.test.tsx
 frontend/**/*.spec.ts
 frontend/**/*.spec.tsx
+
+# Kiro/Claude worktrees
+.claude/
