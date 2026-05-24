@@ -163,12 +163,14 @@ export default function AuthCallback() {
         
         router.push(isNewUser ? '/onboarding' : returnUrl);
       } catch (err) {
-        if (err instanceof Error && err.message.includes('MISSING_PKCE_METADATA')) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[auth/callback] Error:', msg, err);
+        if (msg.includes('MISSING_PKCE_METADATA')) {
           setStatus('Session expired. Please try signing in again.');
           setTimeout(() => { router.push('/'); }, 3000);
         } else {
-          setStatus('Authentication failed. Redirecting...');
-          setTimeout(() => { router.push('/'); }, 2000);
+          setStatus(`Auth error: ${msg}`);
+          setTimeout(() => { router.push('/'); }, 4000);
         }
       }
     };
