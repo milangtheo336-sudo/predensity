@@ -1515,7 +1515,7 @@ function GuestHamburgerMenu({
         right: window.innerWidth - rect.right,
         zIndex: 9999,
       }}
-      className="relative w-56 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden"
+      className="relative w-56 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden text-gray-900 dark:text-white"
     >
       {/* Language flyout row */}
       <LanguageFlyout />
@@ -2514,12 +2514,12 @@ function ProfileDropdownPortal({
         right: window.innerWidth - rect.right,
         zIndex: 9999,
       }}
-      className="relative w-64 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-0 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden"
+      className="relative w-64 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-0 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden text-gray-900 dark:text-white"
     >
       {/* Top section: address + settings */}
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
+          <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200 dark:border-white/10 flex-shrink-0 bg-gray-100 dark:bg-[#0a0a0c]">
             <Avatar size={32} name={user?.issuer || walletUser?.publicAddress || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || walletUser?.publicAddress || 'default')} square={false} />
           </div>
           {displayAddress ? (
