@@ -30,65 +30,103 @@ let magicInstance: any = null;
 let blurRemoverInitialized = false;
 
 /**
- * Initialize aggressive backdrop remover for Magic Link modal.
- * Magic Link creates a backdrop div that blurs/darkens the background.
- * This function forcefully removes those effects.
+ * Initialize MutationObserver to remove blur effects from Magic Link modal.
+ * This runs once and watches for Magic Link modal elements being added to the DOM.
  */
 function initializeBlurRemover() {
   if (blurRemoverInitialized || typeof window === 'undefined') return;
   blurRemoverInitialized = true;
 
-  // Make backdrop black without blur
-  const fixBackdrop = () => {
-    // Get ALL elements in the document
-    const allElements = document.querySelectorAll('*') as NodeListOf<HTMLElement>;
+  // Function to aggressively remove blur and backdrop from an element
+  const removeBlur = (element: HTMLElement) => {
+    if (!element || !element.style) return;
     
-    allElements.forEach((element) => {
-      if (!element.style) return;
+    // Remove all blur and filter effects
+    element.style.backdropFilter = 'none';
+    element.style.webkitBackdropFilter = 'none';
+    element.style.filter = 'none';
+    element.style.webkitFilter = 'none';
+    
+    // If this is a backdrop/overlay element, make it transparent or remove it
+    const computedStyle = window.getComputedStyle(element);
+    const isBackdrop = 
+      computedStyle.position === 'fixed' &&
+      (computedStyle.backdropFilter !== 'none' || 
+       computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' ||
+       element.style.backdropFilter ||
+       element.style.backgroundColor);
+    
+    if (isBackdrop && !element.querySelector('iframe')) {
+      // This is likely a backdrop element without the actual modal
+      // Make it completely transparent
+      element.style.backgroundColor = 'transparent';
+      element.style.background = 'transparent';
+    }
+  };
+
+  // Aggressively scan and remove blur from all elements
+  const removeBlurFromAll = () => {
+    // Target all divs that could be Magic Link elements
+    const allDivs = document.querySelectorAll('body > div');
+    allDivs.forEach((div) => {
+      const element = div as HTMLElement;
+      const style = window.getComputedStyle(element);
       
-      // Force remove backdrop filter from everything
-      const backdropFilter = element.style.backdropFilter || element.style.webkitBackdropFilter;
-      if (backdropFilter && backdropFilter !== 'none') {
-        element.style.setProperty('backdrop-filter', 'none', 'important');
-        element.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
-      }
-      
-      // Check if this is a fixed position element
-      const computed = window.getComputedStyle(element);
-      if (computed.position === 'fixed') {
-        element.style.setProperty('backdrop-filter', 'none', 'important');
-        element.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
-        element.style.setProperty('filter', 'none', 'important');
+      // Check if this is a fixed/absolute positioned element (likely modal/backdrop)
+      if (style.position === 'fixed' || style.position === 'absolute') {
+        removeBlur(element);
         
-        // If it has a background, make it black with good opacity
-        const bgColor = computed.backgroundColor;
-        if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
-          element.style.setProperty('background-color', 'rgba(0, 0, 0, 0.6)', 'important');
-          element.style.setProperty('background', 'rgba(0, 0, 0, 0.6)', 'important');
-        }
+        // Also check all children
+        const children = element.querySelectorAll('*');
+        children.forEach((child) => removeBlur(child as HTMLElement));
       }
+    });
+    
+    // Also target any iframes
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach((iframe) => {
+      const parent = iframe.parentElement;
+      if (parent) removeBlur(parent);
     });
   };
 
-  // Run immediately
-  fixBackdrop();
-  
-  // Run continuously at high frequency
-  const interval = setInterval(fixBackdrop, 20);
-  
-  // Also watch for DOM changes
-  const observer = new MutationObserver(fixBackdrop);
+  // Watch for any DOM changes
+  const observer = new MutationObserver((mutations) => {
+    let shouldCheck = false;
+    
+    mutations.forEach((mutation) => {
+      // Check if nodes were added
+      if (mutation.addedNodes.length > 0) {
+        shouldCheck = true;
+      }
+      
+      // Check if style attribute changed
+      if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+        const element = mutation.target as HTMLElement;
+        if (element.style) {
+          removeBlur(element);
+        }
+      }
+    });
+    
+    if (shouldCheck) {
+      removeBlurFromAll();
+    }
+  });
+
+  // Start observing
   observer.observe(document.body, {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['style'],
+    attributeFilter: ['style', 'class'],
   });
+
+  // Run immediately
+  removeBlurFromAll();
   
-  // Clean up after 10 seconds (modal should be loaded by then)
-  setTimeout(() => {
-    clearInterval(interval);
-  }, 10000);
+  // Also run on a fast interval to catch any changes
+  setInterval(removeBlurFromAll, 50);
 }
 
 /**
@@ -114,8 +152,8 @@ export function getMagic(): any {
       
       const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
       
-      // Always use dark theme for Magic Link modal
-      const theme = 'dark';
+      // Detect system theme
+      const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       
       // Initialize Magic with OAuth2 and Hedera extensions + theme
       magicInstance = new Magic(publishableKey, {
@@ -126,11 +164,7 @@ export function getMagic(): any {
           })
         ],
         locale: 'en_US',
-        theme: theme,
-        // Disable backdrop blur
-        network: {
-          rpcUrl: 'https://testnet.hashio.io/api',
-        },
+        theme: isDarkMode ? 'dark' : 'light',
       });
       
       if (!magicInstance.oauth2) {
