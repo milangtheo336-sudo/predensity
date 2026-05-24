@@ -937,17 +937,21 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
     const fetchEip6963Balance = async () => {
       try {
         const accounts: string[] = await eip6963Provider.request({ method: 'eth_accounts' });
+        console.log('[WalletTransferView] eth_accounts:', accounts);
         if (!accounts.length || cancelled) return;
         const userAddr = accounts[0];
         // balanceOf(address) selector = 0x70a08231, argument padded to 32 bytes
         const data = '0x70a08231' + userAddr.slice(2).toLowerCase().padStart(64, '0');
+        console.log('[WalletTransferView] eth_call tokenAddress:', tokenAddress, 'userAddr:', userAddr);
         const result: string = await eip6963Provider.request({
           method: 'eth_call',
           params: [{ to: tokenAddress, data }, 'latest'],
         });
+        console.log('[WalletTransferView] eth_call raw result:', result);
         if (cancelled) return;
         if (result && result !== '0x' && result !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
           const bal = Number(BigInt(result)) / Math.pow(10, currency.decimals);
+          console.log('[WalletTransferView] parsed balance:', bal);
           setWalletUsdcBalance(bal.toFixed(2));
         } else {
           setWalletUsdcBalance('0.00');
