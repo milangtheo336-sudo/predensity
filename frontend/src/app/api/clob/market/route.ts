@@ -7,7 +7,7 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
 
 export async function POST(request: NextRequest) {
   try {
-    const adminResult = await requireAdmin();
+    const adminResult = await requireAdmin(request);
     if (adminResult instanceof NextResponse) return adminResult;
 
     const rateLimitResponse = rateLimit(request, { maxRequests: 10, windowMs: 60_000 });
