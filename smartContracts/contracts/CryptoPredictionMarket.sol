@@ -25,15 +25,12 @@ contract CryptoPredictionMarket is Ownable {
     uint256 public immutable startTimestamp;
     uint256 public constant SECONDS_PER_DAY = 24 * 60 * 60;
     uint256 public constant FEE_BPS = 100;        // 1% entry fee in basis points
-    uint256 public constant EXIT_FEE_BPS = 80;   // 0.8% exit fee in basis points
     uint256 public constant BPS_DENOM = 10000;   // denominator for basis points (100% = 10000)
     uint256 public constant MIN_STAKE = 0.01 ether;
     uint256 public constant MAX_STAKE = 100 ether;
     uint256 public constant MAX_DAYS_AHEAD = 30;
     uint256 public constant MIN_DAYS_AHEAD = 1;     // Minimum days ahead for bet placement
     uint256 public constant BATCH_SIZE = 50;
-    uint256 public constant MAX_EXIT_RATIO_BPS = 3000; // max 30% of bucket pool can exit early
-    uint256 public constant MIN_K = 10 ether;          // minimum liquidity parameter (10 HBAR)
     // ==============================================================
     // |                    State Variables                         |
     // ==============================================================
