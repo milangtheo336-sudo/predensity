@@ -23,7 +23,7 @@ export interface WalletUser {
   /** Legacy field — same as publicAddress on Arc */
   accountId: string;
   /** Which wallet they used */
-  walletType: 'metamask' | 'walletconnect' | 'hashpack' | 'blade' | 'kabila';
+  walletType: 'metamask' | 'walletconnect' | 'rabby' | 'trust';
   /** userId stored in Convex managedWallets — uses address as the key */
   userId: string;
 }
