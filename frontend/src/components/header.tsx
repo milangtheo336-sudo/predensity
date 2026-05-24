@@ -775,9 +775,16 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
 
       // Credit Convex balance via API (verify on-chain + update balance)
       setStep('crediting');
+      
+      // Get DID token for authentication
+      const didToken = await getDIDToken();
+      
       const res = await fetch('/api/wallet/deposit-crypto', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${didToken}`,
+        },
         body: JSON.stringify({
           userId: user?.issuer,
           transactionId: transferTxId,
