@@ -248,20 +248,31 @@ export const getUnfinalizedBetsByMarket = query({
 // RECONCILIATION (Hedera Mirror Node -> Convex sync)
 // ============================================
 
-// Contract addresses and their categories for mirror node polling
+// Contract addresses and their categories for mirror node polling.
+// Reads from Convex env vars (set in dashboard for prod), defaults to testnet.
+const CRYPTO_CONTRACT_ADDRESS = process.env.CRYPTO_CONTRACT_ADDRESS || "0x00000000000000000000000000000000007e8166";
+const POLITICS_CONTRACT_ADDRESS = process.env.POLITICS_CONTRACT_ADDRESS || "0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8";
+const SPORTS_CONTRACT_ADDRESS = process.env.SPORTS_CONTRACT_ADDRESS || "0x8f62C698a26888424b5170a11610Fa5Fd7DF540b";
+const TECH_CONTRACT_ADDRESS = process.env.TECH_CONTRACT_ADDRESS || "0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8";
+
+const CRYPTO_CONTRACT_ID = process.env.CRYPTO_CONTRACT_ID || "0.0.8290662";
+const POLITICS_CONTRACT_ID = process.env.POLITICS_CONTRACT_ID || "0.0.8232724";
+const SPORTS_CONTRACT_ID = process.env.SPORTS_CONTRACT_ID || "0.0.8232726";
+const TECH_CONTRACT_ID = process.env.TECH_CONTRACT_ID || "0.0.8232727";
+
 const CONTRACTS: { address: string; category: string; type: "crypto" | "base" }[] = [
-  { address: "0x00000000000000000000000000000000007e8166", category: "crypto", type: "crypto" },
-  { address: "0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8", category: "politics", type: "base" },
-  { address: "0x8f62C698a26888424b5170a11610Fa5Fd7DF540b", category: "sports", type: "base" },
-  { address: "0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8", category: "technology", type: "base" },
+  { address: CRYPTO_CONTRACT_ADDRESS, category: "crypto", type: "crypto" },
+  { address: POLITICS_CONTRACT_ADDRESS, category: "politics", type: "base" },
+  { address: SPORTS_CONTRACT_ADDRESS, category: "sports", type: "base" },
+  { address: TECH_CONTRACT_ADDRESS, category: "technology", type: "base" },
 ];
 
 // Hedera contract IDs (0.0.X format) for mirror node API
 const CONTRACT_IDS: Record<string, string> = {
-  "0x00000000000000000000000000000000007e8166": "0.0.8290662",
-  "0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8": "0.0.8232724",
-  "0x8f62C698a26888424b5170a11610Fa5Fd7DF540b": "0.0.8232726",
-  "0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8": "0.0.8232727",
+  [CRYPTO_CONTRACT_ADDRESS]: CRYPTO_CONTRACT_ID,
+  [POLITICS_CONTRACT_ADDRESS]: POLITICS_CONTRACT_ID,
+  [SPORTS_CONTRACT_ADDRESS]: SPORTS_CONTRACT_ID,
+  [TECH_CONTRACT_ADDRESS]: TECH_CONTRACT_ID,
 };
 
 // BetPlaced topic hashes
