@@ -8,7 +8,7 @@ A Next.js-based prediction market platform with non-custodial wallet integration
 - Multi-category prediction markets (Crypto, Politics, Sports, Technology)
 - CLOB (Central Limit Order Book) trading system
 - Real-time market data with Convex
-- Hedera blockchain integration
+- Arc blockchain integration (EVM-compatible L1)
 - M-Pesa payment integration (Kenya)
 - Dark/Light theme support
 - Mobile-responsive design
