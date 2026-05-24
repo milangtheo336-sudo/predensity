@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
   const rl = rateLimit(request, { maxRequests: 120, windowMs: 60_000 });
   if (rl) return rl;
 
-  const symbol = (request.nextUrl.searchParams.get('symbol') || 'HBAR').toUpperCase();
+  const symbol = (request.nextUrl.searchParams.get('symbol') || 'BTC').toUpperCase();
   const coinId = COINGECKO_IDS[symbol];
 
   if (!coinId) {
