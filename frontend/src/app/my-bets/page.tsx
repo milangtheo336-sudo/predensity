@@ -738,22 +738,32 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
       : 'skip'
   );
 
+  // Also query by the managed EOA address (the cryptographically secure identity used by proxy wallets)
+  const userEoa = user?.publicAddress || evmAddress;
+  const managedEoaAddress = isPublicView ? null : (userEoa ? `managed:${userEoa}`.toLowerCase() : null);
+  const managedEoaBetsRaw = useConvexQuery(
+    api.sync.getBetsByUser,
+    managedEoaAddress ? { userAddress: managedEoaAddress } : 'skip'
+  );
+
   const loading =
     (managedUserAddress && managedBetsRaw === undefined) ||
     (walletAddress && walletBetsRaw === undefined) ||
-    (managedEvmAddress && managedEvmAddress !== walletAddress && managedEvmBetsRaw === undefined);
+    (managedEvmAddress && managedEvmAddress !== walletAddress && managedEvmBetsRaw === undefined) ||
+    (managedEoaAddress && managedEoaBetsRaw === undefined);
 
   const allBets: Bet[] = useMemo(() => {
     const managed = (managedBetsRaw || []).filter((b: any) => b.status !== 'failed').map(mapConvexBet);
     const wallet = (walletBetsRaw || []).filter((b: any) => b.status !== 'failed').map(mapConvexBet);
     const evmManaged = (managedEvmBetsRaw || []).filter((b: any) => b.status !== 'failed').map(mapConvexBet);
+    const eoaManaged = (managedEoaBetsRaw || []).filter((b: any) => b.status !== 'failed').map(mapConvexBet);
     const seen = new Set<string>();
     const combined: Bet[] = [];
-    for (const bet of [...managed, ...wallet, ...evmManaged]) {
+    for (const bet of [...managed, ...wallet, ...evmManaged, ...eoaManaged]) {
       if (!seen.has(bet.id)) { seen.add(bet.id); combined.push(bet); }
     }
     return combined.sort((a, b) => b.timestamp - a.timestamp);
-  }, [managedBetsRaw, walletBetsRaw, managedEvmBetsRaw]);
+  }, [managedBetsRaw, walletBetsRaw, managedEvmBetsRaw, managedEoaBetsRaw]);
 
   // Auto-repair: reassign operator-address bets to the managed user.
   // This runs once when the page loads and the user has a managed wallet
@@ -918,6 +928,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
             userAddress: walletAddress || '',
             phoneNumber: managedWallet?.phoneNumber || undefined,
             managedEvmAddress: managedEvmAddress || undefined,
+            managedEoaAddress: managedEoaAddress || undefined,
           }
         : 'skip')
   );
@@ -1115,7 +1126,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
       const res = await fetch('/api/bet/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.issuer, betId, category }),
+        body: JSON.stringify({ userId: user.issuer, userAddress: user.publicAddress, betId, category }),
       });
       const data = await res.json();
       if (!res.ok) {
