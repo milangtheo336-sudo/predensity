@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireServerToken } from "./_lib/auth";
 
 export const getUserBetHistory = query({
   args: {
@@ -64,7 +65,10 @@ export const getUserStats = query({
 // MANAGED WALLETS (M-Pesa / phone-based users)
 // ============================================
 
-// Store a newly created non-custodial wallet
+// Store a newly created non-custodial wallet. Server-gated: only the
+// Next.js server (which has already verified the user's Magic DID) may call
+// this. Without the token, an attacker could pre-register wallets for any
+// email/phone and intercept future M-Pesa deposits.
 export const createManagedWallet = mutation({
   args: {
     userId: v.string(),
@@ -80,8 +84,10 @@ export const createManagedWallet = mutation({
     createdAt: v.number(),
     lastActivity: v.number(),
     lastBalanceSync: v.number(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     // Check for duplicates
     if (args.userId) {
       const existingByUser = await ctx.db
@@ -199,15 +205,18 @@ export const getManagedWalletByAddress = query({
 });
 
 // DEPRECATED: Only used for M-Pesa fiat on-ramp (custodial by nature)
-// For crypto deposits/withdrawals, balance is read from blockchain
+// For crypto deposits/withdrawals, balance is read from blockchain.
+// Server-gated: prevents arbitrary balance mutation by browser callers.
 export const updateWalletBalance = mutation({
   args: {
     phoneNumber: v.optional(v.string()),
     userId: v.optional(v.string()),
     usdcBalance: v.optional(v.string()),
     hbarBalance: v.optional(v.string()),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     let wallet = null;
 
     if (args.userId) {
@@ -234,13 +243,18 @@ export const updateWalletBalance = mutation({
   },
 });
 
-// Link a phone number to an existing wallet (for M-Pesa deposits)
+// Link a phone number to an existing wallet (for M-Pesa deposits).
+// Server-gated: unauthenticated phone-to-wallet linking is an account-
+// takeover vector (attacker links their wallet to victim's phone, then
+// receives the victim's future M-Pesa deposits).
 export const linkPhoneToWallet = mutation({
   args: {
     userId: v.string(),
     phoneNumber: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const wallet = await ctx.db
       .query("managedWallets")
       .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
@@ -265,10 +279,16 @@ export const linkPhoneToWallet = mutation({
   },
 });
 
-// Internal: get wallet with private key (only for server-side API routes)
+// Internal: get wallet with private key (only for server-side API routes).
+// Server-gated: this returns the full managedWallets row including legacy
+// `encryptedPrivateKey`. Never call from the browser.
 export const getWalletWithKey = query({
-  args: { phoneNumber: v.string() },
+  args: {
+    phoneNumber: v.string(),
+    _serverToken: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     return await ctx.db
       .query("managedWallets")
       .withIndex("by_phone", (q) => q.eq("phoneNumber", args.phoneNumber))
@@ -281,15 +301,17 @@ export const getWalletWithKey = query({
 // M-PESA TRANSACTIONS
 // ============================================
 
-// Create a pending M-Pesa deposit (STK Push initiated)
+// Create a pending M-Pesa deposit (STK Push initiated). Server-gated.
 export const createMpesaDeposit = mutation({
   args: {
     phoneNumber: v.string(),
     amountKES: v.number(),
     merchantRequestId: v.string(),
     checkoutRequestId: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     return await ctx.db.insert("mpesaTransactions", {
       phoneNumber: args.phoneNumber,
       type: "deposit",
@@ -302,7 +324,7 @@ export const createMpesaDeposit = mutation({
   },
 });
 
-// Create a pending M-Pesa withdrawal (B2C initiated)
+// Create a pending M-Pesa withdrawal (B2C initiated). Server-gated.
 export const createMpesaWithdrawal = mutation({
   args: {
     phoneNumber: v.string(),
@@ -310,8 +332,10 @@ export const createMpesaWithdrawal = mutation({
     amountUSDC: v.string(),
     conversationId: v.string(),
     originatorConversationId: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     return await ctx.db.insert("mpesaTransactions", {
       phoneNumber: args.phoneNumber,
       type: "withdraw",
@@ -325,7 +349,7 @@ export const createMpesaWithdrawal = mutation({
   },
 });
 
-// Update deposit status after Safaricom callback
+// Update deposit status after Safaricom callback. Server-gated.
 export const completeMpesaDeposit = mutation({
   args: {
     checkoutRequestId: v.string(),
@@ -333,8 +357,10 @@ export const completeMpesaDeposit = mutation({
     resultDesc: v.string(),
     mpesaReceiptNumber: v.optional(v.string()),
     amountUSDC: v.optional(v.string()),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const tx = await ctx.db
       .query("mpesaTransactions")
       .withIndex("by_checkout_request", (q) => q.eq("checkoutRequestId", args.checkoutRequestId))
@@ -357,14 +383,16 @@ export const completeMpesaDeposit = mutation({
   },
 });
 
-// Update withdrawal status after B2C callback
+// Update withdrawal status after B2C callback. Server-gated.
 export const completeMpesaWithdrawal = mutation({
   args: {
     conversationId: v.string(),
     resultCode: v.number(),
     resultDesc: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const tx = await ctx.db
       .query("mpesaTransactions")
       .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
@@ -572,5 +600,57 @@ export const getUserActivity = query({
     activities.sort((a, b) => b.timestamp - a.timestamp);
 
     return activities.slice(0, limit);
+  },
+});
+
+// ============================================
+// M-PESA BRIDGE IDEMPOTENCY
+// ============================================
+// These are intentionally public mutations/queries but they are "safe" in the
+// sense that they only record idempotency keys and don't move money. The real
+// authorisation for the bridge happens via HMAC on the Next.js route.
+
+// Check whether a bridge/refund has already been recorded for a given key.
+export const getMpesaBridgeByKey = query({
+  args: { idempotencyKey: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("mpesaBridges")
+      .withIndex("by_key", (q) => q.eq("idempotencyKey", args.idempotencyKey))
+      .first();
+  },
+});
+
+// Record a completed bridge/refund. Returns null if a row already exists
+// (race-safe idempotency: second caller gets null and should not re-run).
+// Server-gated: without this gate, an attacker could pre-register a receipt
+// to DoS a legitimate bridge call.
+export const recordMpesaBridge = mutation({
+  args: {
+    idempotencyKey: v.string(),
+    kind: v.string(),
+    proxyWalletAddress: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    amountUSDC: v.string(),
+    transactionId: v.optional(v.string()),
+    _serverToken: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
+    const existing = await ctx.db
+      .query("mpesaBridges")
+      .withIndex("by_key", (q) => q.eq("idempotencyKey", args.idempotencyKey))
+      .first();
+    if (existing) return null;
+
+    return await ctx.db.insert("mpesaBridges", {
+      idempotencyKey: args.idempotencyKey,
+      kind: args.kind,
+      proxyWalletAddress: args.proxyWalletAddress,
+      phoneNumber: args.phoneNumber,
+      amountUSDC: args.amountUSDC,
+      transactionId: args.transactionId,
+      createdAt: Date.now(),
+    });
   },
 });
