@@ -13,6 +13,7 @@ import { MarketFilters } from '@/components/market-filters';
 import { GenericMarketCard } from '@/components/generic-market-card';
 import { MarketsSidebar, SidebarSelection } from '@/components/markets-sidebar';
 import { FINANCE_TAXONOMY } from '@/lib/types/finance';
+import { SPORT_TAXONOMY } from '@/lib/types/sports';
 import {
   Category,
   MarketStatus,
@@ -28,6 +29,7 @@ interface Props {
 function buildMarkets(
   convexEvents: any[] | undefined,
   cryptoMarkets: any[] | undefined,
+  challengeMatches: any[] | undefined,
   activeCategory: Category | 'all',
   status: MarketStatus,
 ): MarketCard[] {
@@ -66,6 +68,34 @@ function buildMarkets(
         })
     : [];
 
+  // Add challenge matches as sports category markets
+  if (challengeMatches) {
+    const challengeCards: MarketCard[] = challengeMatches
+      .filter((match) => {
+        if (activeCategory !== 'all' && activeCategory !== Category.SPORTS) return false;
+        if (status === MarketStatus.OPEN && match.status !== 'open') return false;
+        if (status === MarketStatus.CLOSED && match.status === 'open') return false;
+        return true;
+      })
+      .map((match) => ({
+        id: match._id,
+        category: Category.SPORTS,
+        question: match.gameTitle || `${match.playerA} vs ${match.playerB}`,
+        description: match.gameTagline || `${match.gameMode || ''} on ${match.platform || ''}`,
+        icon: 'S',
+        targetTimestamp: match.startTime,
+        totalVolume: String(match.totalPool || 0),
+        totalBets: 0,
+        priceMin: '',
+        priceMax: '',
+        status: match.status === 'open' ? 'open' : 'closed',
+        imageUrl: '',
+        sport: 'esports',
+        league: match.league,
+      }));
+    markets.push(...challengeCards);
+  }
+
   if (cryptoMarkets && (activeCategory === 'all' || activeCategory === Category.CRYPTO) && status === MarketStatus.OPEN) {
     const cryptoCards: MarketCard[] = cryptoMarkets.map((cm) => ({
       id: cm.marketId,
@@ -101,14 +131,16 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets }: P
   // Live queries — undefined means still loading, null means loaded but empty
   const liveEvents = useQuery(api.events.getEvents, {});
   const liveCrypto = useQuery(api.events.getCryptoMarkets, {});
+  const liveChallenges = useQuery(api.challenges.getChallengeMatches, { status: 'all', limit: 200 });
 
   // Show skeletons while Convex hasn't responded yet
-  const isLoading = liveEvents === undefined || liveCrypto === undefined;
+  const isLoading = liveEvents === undefined || liveCrypto === undefined || liveChallenges === undefined;
 
   const convexEvents = liveEvents ?? initialEvents;
   const cryptoMarkets = liveCrypto ?? initialCryptoMarkets;
+  const challengeMatches = liveChallenges ?? [];
 
-  const markets = buildMarkets(convexEvents, cryptoMarkets, activeCategory, status);
+  const markets = buildMarkets(convexEvents, cryptoMarkets, challengeMatches, activeCategory, status);
 
   const handleMarketClick = (market: MarketCard) => router.push(`/markets/${market.id}`);
 
@@ -129,6 +161,8 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets }: P
   const filteredMarkets = markets
     .filter((market) => {
       if (searchQuery && !market.question.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      // On sports tab, hide all non-sports categories
+      if (activeCategory === Category.SPORTS && market.category !== Category.SPORTS) return false;
       if (hiddenCategories.has(market.category)) return false;
       if (sidebarSelection?.sport && market.sport !== sidebarSelection.sport) return false;
       if (sidebarSelection?.league && market.league !== sidebarSelection.league) return false;
@@ -144,9 +178,12 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets }: P
       }
     });
 
-  const showSidebar = activeCategory === Category.SPORTS || activeCategory === Category.FINANCE;
+  const showSidebar = activeCategory === Category.FINANCE;
   const sidebarTaxonomy = activeCategory === Category.FINANCE ? FINANCE_TAXONOMY : undefined;
   const sidebarLabel = activeCategory === Category.FINANCE ? 'All Finances' : 'All Sports';
+  
+  // For Esports: show categories in filters instead of sidebar
+  const esportsTaxonomy = activeCategory === Category.SPORTS ? SPORT_TAXONOMY.filter(s => s.id === 'esports')[0]?.leagues || [] : [];
 
   return (
     <div className="min-h-screen bg-white dark:bg-black flex flex-col">
@@ -234,6 +271,10 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets }: P
               onClearFilters={clearFilters}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
+              showEsportsCategories={activeCategory === Category.SPORTS}
+              esportsCategories={esportsTaxonomy}
+              sidebarSelection={sidebarSelection}
+              onSidebarSelectionChange={setSidebarSelection}
             />
           </div>
 
