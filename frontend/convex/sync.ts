@@ -5,11 +5,12 @@ import { internal } from "./_generated/api";
 // Immutable startTimestamp for each deployed contract.
 // Must match CONTRACT_START_TIMESTAMPS in contract-config.ts.
 // On-chain bucket = Math.floor((targetTs - startTimestamp) / 86400)
+// Reads from Convex env vars (set in dashboard for prod), defaults to testnet
 const CONTRACT_START_TIMESTAMPS: Record<string, number> = {
-  crypto: 1773940168,
-  politics: 1773586860,
-  sports: 1773586872,
-  technology: 1773586888,
+  crypto: Number(process.env.CRYPTO_START_TIMESTAMP) || 1773940168,
+  politics: Number(process.env.POLITICS_START_TIMESTAMP) || 1773586860,
+  sports: Number(process.env.SPORTS_START_TIMESTAMP) || 1773586872,
+  technology: Number(process.env.TECH_START_TIMESTAMP) || 1773586888,
 };
 
 function getOnChainBucket(targetTimestamp: number, category: string): number {
