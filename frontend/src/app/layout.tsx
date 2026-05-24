@@ -22,14 +22,14 @@ const appFont = Inter({
 export const metadata: Metadata = {
   title: 'Predensity - Decentralized Prediction Market',
   description:
-    'Predensity is a decentralized prediction market on Hedera. Profit from bold, early, and accurate price forecasts. Trade on crypto, politics, sports, and technology outcomes. The platform rewards boldness and sharpness of predictions.',
+    'Predensity is a decentralized prediction market . Profit from bold, early, and accurate price forecasts. Trade on crypto, politics, sports, and technology outcomes. The platform rewards boldness and sharpness of predictions.',
   manifest: '/manifest.json',
   themeColor: '#7c3aed',
-  keywords: ['prediction market', 'crypto predictions', 'decentralized', 'Hedera', 'HBAR', 'USDC', 'sports betting', 'politics market', 'web3'],
+  keywords: ['prediction market', 'crypto predictions', 'decentralized','sports betting', 'politics market', 'web3'],
   openGraph: {
     title: 'Predensity - Decentralized Prediction Market',
     description:
-      'Profit from bold, early, and accurate price forecasts. The platform rewards boldness and sharpness of predictions. Powered by Hedera.',
+      'Profit from bold, early, and accurate price forecasts. The platform rewards boldness and sharpness of predictions. ',
     type: 'website',
     siteName: 'Predensity',
     url: 'https://predensity.com',
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Predensity - Decentralized Prediction Market',
     description:
-      'Profit from bold, early, and accurate price forecasts. The platform rewards boldness and sharpness of predictions. Powered by Hedera.',
+      'Profit from bold, early, and accurate price forecasts. The platform rewards boldness and sharpness of predictions.',
   },
   robots: {
     index: true,
