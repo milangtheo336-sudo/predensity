@@ -33,7 +33,6 @@ import Avatar from 'boring-avatars';
 import { WalletSelector } from '@/components/wallet-selector';
 import {
   useWallet,
-  useBalance,
   useAccountId,
   useEvmAddress,
   useWriteContract,
@@ -1188,7 +1187,6 @@ function GuestHamburgerMenu({
 
 export function Header({ children }: { children?: React.ReactNode }) {
   const { isConnected, disconnect } = useWallet();
-  const { data: balanceData, isLoading: balanceLoading } = useBalance({ autoFetch: isConnected });
   const { data: accountId } = useAccountId();
   const { user, isSignedIn } = useUser();
   const { signOut } = useClerk();
@@ -1419,14 +1417,6 @@ export function Header({ children }: { children?: React.ReactNode }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [notifOpen]);
 
-  // HBAR balance from connected wallet
-  const hbarBalance = React.useMemo(() => {
-    if (!balanceData) return 0;
-    if (typeof balanceData === 'object' && 'hbars' in balanceData) return parseFloat(balanceData.hbars.toString());
-    if (typeof balanceData === 'object' && 'value' in balanceData) return parseFloat(balanceData.value.toString());
-    return parseFloat(balanceData.toString());
-  }, [balanceData]);
-
   const openDeposit = useCallback(() => {
     setDepositInitialView('crypto');
     setDepositOpen(true);
@@ -1436,11 +1426,6 @@ export function Header({ children }: { children?: React.ReactNode }) {
     setDepositInitialView('withdraw');
     setDepositOpen(true);
   }, []);
-
-  const formatHbar = (b: number) => {
-    if (!b) return '0 HBAR';
-    return b >= 1000 ? `${(b / 1000).toFixed(2)}k HBAR` : `${b.toFixed(2)} HBAR`;
-  };
 
   return (
     <BalanceVisibilityContext.Provider value={{ balancesHidden, toggleBalancesHidden }}>
