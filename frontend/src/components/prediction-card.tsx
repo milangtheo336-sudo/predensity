@@ -12,6 +12,7 @@ import { PredictionCardSkeleton } from '@/components/prediction-card-skeleton';
 import { useHbarPrice } from '@/hooks/useHbarPrice';
 import { useBetSimulation } from '@/hooks/useBetSimulation';
 import { useNonCustodialBetting } from '@/hooks/useNonCustodialBetting';
+import { useBlockchainBalance } from '@/hooks/useBlockchainBalance';
 import { HbarPriceDisplay } from '@/components/hbar-price-display';
 import { Category } from '@/lib/types/categories';
 import { getContractId, getContractAddress, getStakingCurrency } from '@/lib/contracts/contract-config';
@@ -613,11 +614,15 @@ export function PredictionCard({
   //  all users use platform balance
   const { user } = useMagic();
   const isSignedIn = !!user;
+  
+  // Read balance from blockchain (non-custodial)
+  const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(user?.publicAddress);
+  
+  // Still query managed wallet for user info (but not balance)
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
     isSignedIn && user ? { userId: user.issuer } : 'skip'
   );
-  const platformBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
   const { balancesHidden } = useBalanceVisibility();
 
   const [selectedRange, setSelectedRange] = useState({ min: 0.01, max: 0.2843 });
@@ -702,13 +707,13 @@ export function PredictionCard({
 
   // Validation
   const hasValidAmount = depositAmount && parseFloat(depositAmount) > 0 && parseFloat(depositAmount) <= platformBalance;
-  const canPlaceBet = hasValidAmount && isSignedIn && !!managedWallet && !isPlacingBet && !isPlacing && !isApproving && hasValidLeadPeriod;
+  const canPlaceBet = hasValidAmount && isSignedIn && !isPlacingBet && !isPlacing && !isApproving && hasValidLeadPeriod;
 
   const getButtonText = () => {
     if (isApproving) return 'Approving USDC...';
     if (isPlacingBet || isPlacing) return 'Signing Transaction...';
     if (!isSignedIn) return 'Sign In to Bet';
-    if (!managedWallet) return 'Deposit to Start';
+    if (platformBalance === 0) return 'Deposit to Start';
     if (!hasValidLeadPeriod) return `Min 24h lead required (${leadPeriodHours < 1 ? Math.round(leadPeriodHours * 60) + 'min' : leadPeriodHours.toFixed(1) + 'h'})`;
     if (!hasValidAmount) return 'Enter Amount';
     return 'Place Bet';
@@ -864,7 +869,6 @@ export function PredictionCard({
   const handlePlaceBet = async () => {
     if (!depositAmount || parseFloat(depositAmount) <= 0) { setBetError('Enter a valid amount'); return; }
     if (!user) { setBetError('Sign in to place a bet'); return; }
-    if (!managedWallet) { setBetError('Deposit funds first'); return; }
     if (parseFloat(depositAmount) > platformBalance) { setBetError('Insufficient balance. Deposit more funds.'); return; }
     
     // Verify Magic Link session before proceeding
