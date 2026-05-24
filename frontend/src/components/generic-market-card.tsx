@@ -24,6 +24,114 @@ interface GenericMarketCardProps {
   onClick?: () => void;
 }
 
+function CommunitySentiment({
+  marketId,
+  betCount,
+  convexBets,
+}: {
+  marketId: string;
+  betCount: number;
+  convexBets: any[] | undefined;
+}) {
+  const [hoveredDir, setHoveredDir] = useState<'bullish' | 'bearish' | null>(null);
+  const sentimentData = useConvexQuery(api.sentiment.getSentiment, { marketId });
+  const recordSentiment = useConvexMutation(api.sentiment.recordSentiment);
+
+  // Derive bullish/bearish direction from bets using midpoint vs median
+  const { bullishBets, bearishBets } = useMemo(() => {
+    const active = (convexBets || []).filter((b: any) => b.status !== 'failed');
+    if (active.length === 0) return { bullishBets: 0, bearishBets: 0 };
+    const midpoints = active.map((b: any) => (parseFloat(b.priceMin) + parseFloat(b.priceMax)) / 2);
+    const sorted = [...midpoints].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    const bull = midpoints.filter((m) => m >= median).length;
+    const bear = midpoints.filter((m) => m < median).length;
+    return { bullishBets: bull, bearishBets: bear };
+  }, [convexBets]);
+
+  const bullishClicks = sentimentData?.bullishVotes ?? 0;
+  const bearishClicks = sentimentData?.bearishVotes ?? 0;
+  const totalBull = bullishBets + bullishClicks;
+  const totalBear = bearishBets + bearishClicks;
+  const totalVotes = betCount + (sentimentData?.totalVotes ?? 0);
+  const totalForPct = totalBull + totalBear;
+  const bullPct = totalForPct > 0 ? Math.round((totalBull / totalForPct) * 100) : 50;
+  const bearPct = 100 - bullPct;
+
+  const handleVote = (e: React.MouseEvent, direction: 'bullish' | 'bearish') => {
+    e.stopPropagation();
+    recordSentiment({ marketId, direction });
+  };
+
+  const formatVotes = (n: number) =>
+    n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`;
+
+  return (
+    <div className="flex flex-col gap-2 px-1" onClick={(e) => e.stopPropagation()}>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
+          Community sentiment
+        </span>
+        <span className="text-[11px] text-gray-400 dark:text-neutral-500">
+          {formatVotes(totalVotes)} votes
+        </span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="relative h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-neutral-800 flex">
+        <div
+          className="h-full bg-green-500 transition-all duration-500 ease-out rounded-l-full"
+          style={{
+            width: `${bullPct}%`,
+            transform: hoveredDir === 'bullish' ? 'scaleY(1.4)' : 'scaleY(1)',
+            transformOrigin: 'center',
+            transition: 'width 0.5s ease-out, transform 0.15s ease',
+          }}
+        />
+        <div
+          className="h-full bg-red-500 transition-all duration-500 ease-out rounded-r-full flex-1"
+          style={{
+            transform: hoveredDir === 'bearish' ? 'scaleY(1.4)' : 'scaleY(1)',
+            transformOrigin: 'center',
+            transition: 'flex 0.5s ease-out, transform 0.15s ease',
+          }}
+        />
+      </div>
+
+      {/* Pct labels */}
+      <div className="flex items-center justify-between text-[11px] font-medium">
+        <span className="text-green-500 flex items-center gap-1">
+          <TrendingUp className="w-3 h-3" /> {bullPct}%
+        </span>
+        <span className="text-red-500 flex items-center gap-1">
+          {bearPct}% <TrendingDown className="w-3 h-3" />
+        </span>
+      </div>
+
+      {/* Buttons */}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onMouseEnter={() => setHoveredDir('bullish')}
+          onMouseLeave={() => setHoveredDir(null)}
+          onClick={(e) => handleVote(e, 'bullish')}
+          className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-green-500/60 text-green-500 text-xs font-semibold hover:bg-green-500/10 active:scale-95 transition-all duration-150"
+        >
+          <TrendingUp className="w-3.5 h-3.5" /> Bullish
+        </button>
+        <button
+          onMouseEnter={() => setHoveredDir('bearish')}
+          onMouseLeave={() => setHoveredDir(null)}
+          onClick={(e) => handleVote(e, 'bearish')}
+          className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-red-500/60 text-red-500 text-xs font-semibold hover:bg-red-500/10 active:scale-95 transition-all duration-150"
+        >
+          <TrendingDown className="w-3.5 h-3.5" /> Bearish
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
   const categoryConfig = CATEGORIES[market.category];
   const timeRemaining = formatDistanceToNow(new Date(market.targetTimestamp * 1000), { addSuffix: false });
