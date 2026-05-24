@@ -412,6 +412,7 @@ export const getUserActivity = query({
     userAddress: v.string(),
     phoneNumber: v.optional(v.string()),
     managedEvmAddress: v.optional(v.string()),
+    managedEoaAddress: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -445,10 +446,19 @@ export const getUserActivity = query({
           .take(limit)
       : [];
 
+    const eoaAddr = args.managedEoaAddress?.toLowerCase();
+    const eoaBets = eoaAddr
+      ? await ctx.db
+          .query("bets")
+          .withIndex("by_user", (q) => q.eq("userAddress", eoaAddr))
+          .order("desc")
+          .take(limit)
+      : [];
+
     // Deduplicate bets
     const seenBetIds = new Set<string>();
     const allBets = [];
-    for (const b of [...managedBets, ...walletBets, ...evmBets]) {
+    for (const b of [...managedBets, ...walletBets, ...evmBets, ...eoaBets]) {
       if (!seenBetIds.has(b.betId)) {
         seenBetIds.add(b.betId);
         allBets.push(b);
