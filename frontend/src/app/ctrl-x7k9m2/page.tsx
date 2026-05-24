@@ -17,7 +17,6 @@ import { Calendar, RefreshCw } from 'lucide-react';
 
 import type { Bet } from '@/lib/types';
 import { Category, CATEGORIES } from '@/lib/types/categories';
-import { SPORT_TAXONOMY, getSport } from '@/lib/types/sports';
 import { getContractId, getContractAddress, isCategoryDeployed, getStakingCurrency, isTokenMode, getOnChainBucket } from '@/lib/contracts/contract-config';
 
 import { formatDateUTC, formatTinybarsToHbar, getLocalTimezoneAbbr } from '@/lib/utils';
@@ -381,51 +380,6 @@ function EventsList({ category }: EventsListProps) {
   );
 }
 
-interface SportLeagueSelectorProps {
-  sport?: string;
-  league?: string;
-  onChange: (next: { sport?: string; league?: string }) => void;
-}
-
-function SportLeagueSelector({ sport, league, onChange }: SportLeagueSelectorProps) {
-  const leagues = sport ? getSport(sport)?.leagues ?? [] : [];
-  return (
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-          Sport
-        </label>
-        <select
-          value={sport ?? ''}
-          onChange={(e) => onChange({ sport: e.target.value || undefined, league: undefined })}
-          className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
-        >
-          <option value="">— None —</option>
-          {SPORT_TAXONOMY.map((s) => (
-            <option key={s.id} value={s.id}>{s.label}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-          League
-        </label>
-        <select
-          value={league ?? ''}
-          disabled={!sport || leagues.length === 0}
-          onChange={(e) => onChange({ sport, league: e.target.value || undefined })}
-          className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple disabled:opacity-50"
-        >
-          <option value="">— None —</option>
-          {leagues.map((l) => (
-            <option key={l.id} value={l.id}>{l.label}</option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-}
-
 function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: EventCreationFormProps) {
   const [formData, setFormData] = useState<any>({
     eventName: '',
@@ -505,16 +459,6 @@ function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: Event
           />
         </div>
       </div>
-
-      {/* Sidebar taxonomy: sport (top-level) + optional league (sub-category) */}
-      <SportLeagueSelector
-        sport={formData.sport}
-        league={formData.league}
-        onChange={(next) => {
-          updateField('sport', next.sport);
-          updateField('league', next.league);
-        }}
-      />
 
       {/* Category-Specific Fields */}
       {category === Category.POLITICS && <PoliticsEventFields formData={formData} updateField={updateField} />}
@@ -1079,8 +1023,6 @@ function AdminPage() {
     marketImageUrl: '',
     description: '',
     resolutionTimestamp: '',
-    sport: undefined as string | undefined,
-    league: undefined as string | undefined,
   });
   const [cryptoMarketForm, setCryptoMarketForm] = useState({
     tokenSymbol: '',
@@ -1539,8 +1481,6 @@ function AdminPage() {
                 sportType: eventData.sportType,
                 company: eventData.company,
                 decimals: eventData.decimals ? parseInt(eventData.decimals) : undefined,
-                sport: eventData.sport,
-                league: eventData.league,
               });
               console.log('Event metadata stored in Convex successfully. Convex ID:', convexEventId);
               
@@ -1680,8 +1620,6 @@ function AdminPage() {
           imageUrl: clobMarketForm.marketImageUrl,
           description: clobMarketForm.description,
           resolutionTimestamp: Math.floor(new Date(clobMarketForm.resolutionTimestamp).getTime() / 1000),
-          sport: clobMarketForm.sport,
-          league: clobMarketForm.league,
         }),
       });
       const data = await res.json();
@@ -1693,11 +1631,9 @@ function AdminPage() {
         category: selectedCategory.toLowerCase(),
         marketType: 'binary',
         outcomes: [{ name: 'Yes', imageUrl: '' }, { name: 'No', imageUrl: '' }], 
-        marketImageUrl: '',
-        description: '',
-        resolutionTimestamp: '',
-        sport: undefined,
-        league: undefined,
+        marketImageUrl: '', 
+        description: '', 
+        resolutionTimestamp: '' 
       });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Failed to create CLOB market', description: err instanceof Error ? err.message : 'Unknown error' });
@@ -3264,11 +3200,6 @@ function AdminPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Resolution Date *</label>
                 <input type="datetime-local" value={clobMarketForm.resolutionTimestamp} onChange={(e) => setClobMarketForm({ ...clobMarketForm, resolutionTimestamp: e.target.value })} className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm" />
               </div>
-              <SportLeagueSelector
-                sport={clobMarketForm.sport}
-                league={clobMarketForm.league}
-                onChange={(next) => setClobMarketForm({ ...clobMarketForm, sport: next.sport, league: next.league })}
-              />
               <div className="flex gap-3 pt-4">
                 <Button variant="outline" onClick={() => setShowClobMarketModal(false)} className="flex-1">Cancel</Button>
                 <Button variant="predensity" onClick={handleCreateClobMarket} disabled={isCreatingClobMarket} className="flex-1">
