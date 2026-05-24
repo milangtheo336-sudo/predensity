@@ -46,15 +46,20 @@ async function main() {
   const contractJson = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
   const bytecode = contractJson.bytecode;
 
+  // USDC has 6 decimals on Hedera; min=0.01 USDC, max=100 USDC.
+  // Override via env: MIN_STAKE / MAX_STAKE (raw integer base units).
+  const minStake = process.env.MIN_STAKE || '10000';
+  const maxStake = process.env.MAX_STAKE || '100000000';
+
   console.log('[deploy-crypto] Deploying CryptoPredictionMarket...');
   console.log('[deploy-crypto] Bytecode size:', bytecode.length / 2, 'bytes');
-  console.log('[deploy-crypto] Constructor params: assetSymbol=HBAR, priceDecimals=8, stakingToken=' + USDC_ADDRESS);
+  console.log('[deploy-crypto] Constructor params: assetSymbol=HBAR, priceDecimals=8, stakingToken=' + USDC_ADDRESS + ', minStake=' + minStake + ', maxStake=' + maxStake);
 
   // Encode constructor parameters
   const { ethers } = require('ethers');
   const constructorParams = ethers.utils.defaultAbiCoder.encode(
-    ['string', 'uint8', 'address'],
-    ['HBAR', 8, USDC_ADDRESS]
+    ['string', 'uint8', 'address', 'uint256', 'uint256'],
+    ['HBAR', 8, USDC_ADDRESS, minStake, maxStake]
   );
 
   const contractCreate = new ContractCreateFlow()
