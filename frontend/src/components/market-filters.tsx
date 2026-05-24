@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { MarketStatus, SortOption, MarketCard } from '@/lib/types/categories';
+import { MarketStatus, SortOption, MarketCard, Category } from '@/lib/types/categories';
 import { cn } from '@/lib/utils';
 import { TrendingUp, Flame, Sparkles, Clock } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
@@ -110,7 +110,6 @@ export function MarketFilters({
   const handleSortToggle = () => {
     if (!isSortOpen) updateSortPos();
     setIsSortOpen(!isSortOpen);
-    setIsStatusOpen(false);
   };
 
   return (
