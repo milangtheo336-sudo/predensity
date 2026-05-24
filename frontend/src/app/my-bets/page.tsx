@@ -1,10 +1,7 @@
 'use client';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
-  useWallet,
   useEvmAddress,
-  useWriteContract,
-  useWatchTransactionReceipt,
 } from '@buidlerlabs/hashgraph-react-wallets';
 import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
 import { useUser } from '@clerk/nextjs';
@@ -12,9 +9,7 @@ import { api } from '../../../convex/_generated/api';
 
 import { Bet } from '@/lib/types';
 import Image from 'next/image';
-import CryptoPredictionMarketABI from '../../../abi/CryptoPredictionMarket.json';
-import { CONTRACT_ADDRESSES, CONTRACT_IDS, getStakingCurrency, isTokenMode } from '@/lib/contracts/contract-config';
-import { Category } from '@/lib/types/categories';
+import { CONTRACT_ADDRESSES, getStakingCurrency, isTokenMode } from '@/lib/contracts/contract-config';
 import { formatDateUTC, formatTinybarsToHbar, getLocalTimezoneAbbr } from '@/lib/utils';
 
 import { useToast } from '@/components/ui/useToast';
@@ -608,9 +603,6 @@ function SortDropdown({
 export default function PortfolioPage() {
   const { user, isSignedIn } = useUser();
   const { data: evmAddress } = useEvmAddress();
-  const { isConnected } = useWallet();
-  const { writeContract } = useWriteContract();
-  const { watch } = useWatchTransactionReceipt();
 
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositInitialView, setDepositInitialView] = useState<'crypto' | 'withdraw'>('crypto');
@@ -679,8 +671,10 @@ export default function PortfolioPage() {
   // but no bets are showing (bets are stored under the operator EVM address).
   const reassignOperatorBets = useConvexMutation(api.sync.reassignOperatorBets);
   const fixBetAssets = useConvexMutation(api.sync.fixBetAssets);
+  const fixBetBuckets = useConvexMutation(api.sync.fixBetBuckets);
   const [repairAttempted, setRepairAttempted] = useState(false);
   const [assetFixAttempted, setAssetFixAttempted] = useState(false);
+  const [bucketFixAttempted, setBucketFixAttempted] = useState(false);
 
   useEffect(() => {
     if (repairAttempted) return;
@@ -730,6 +724,24 @@ export default function PortfolioPage() {
       fixBetAssets({ userAddress: addr }).catch(() => {});
     }
   }, [loading, allBets, isSignedIn, user, assetFixAttempted, managedUserAddress, walletAddress]);
+
+  // Auto-fix: set bucket on bets that have undefined/0 bucket values.
+  // Runs once per page load when bets are loaded.
+  useEffect(() => {
+    if (bucketFixAttempted) return;
+    if (loading) return;
+    if (!isSignedIn || !user) return;
+    if (allBets.length === 0) return;
+
+    const needsFix = allBets.some(b => !b.bucket || b.bucket === 0);
+    if (!needsFix) return;
+
+    setBucketFixAttempted(true);
+    const addr = managedUserAddress || walletAddress;
+    if (addr) {
+      fixBetBuckets({ userAddress: addr }).catch(() => {});
+    }
+  }, [loading, allBets, isSignedIn, user, bucketFixAttempted, managedUserAddress, walletAddress]);
 
   const betCategories = useMemo(() => {
     const cats = new Set<string>();
@@ -992,59 +1004,29 @@ export default function PortfolioPage() {
     });
   }, [positionSub, activeBets, historyBets, searchQuery, sortField, sortDir, eventLookup, categoryFilter]);
 
-  const getContractIdForBet = (bet: Bet): string => {
-    if (bet.market?.id) {
-      const addr = bet.market.id.toLowerCase();
-      for (const [cat, evmAddr] of Object.entries(CONTRACT_ADDRESSES)) {
-        if (evmAddr.toLowerCase() === addr) return CONTRACT_IDS[cat as Category];
-      }
-    }
-    return CONTRACT_IDS[Category.CRYPTO];
-  };
-
   const redeemBet = async (betId: string) => {
     try {
       setRedeemingBetId(betId);
-      const bet = allBets.find(b => b.id === betId);
-      const isManagedBet = betId.startsWith('managed-');
-
-      if (isManagedBet && user) {
-        const category = bet ? getBetCategory(bet).toLowerCase() : 'crypto';
-        const res = await fetch('/api/bet/claim', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id, betId, category }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          toast({ variant: 'destructive', title: 'Redeem failed', description: data.error || 'Could not claim this bet. Try again.' });
-        } else {
-          const payoutDisplay = data.payoutAmount ? `${parseFloat(data.payoutAmount).toFixed(4)} ${currency.symbol}` : '';
-          toast({ variant: 'success', title: 'Bet redeemed', description: payoutDisplay ? `${payoutDisplay} credited to your wallet.` : 'Payout credited to your wallet.' });
-        }
+      if (!user) {
+        toast({ variant: 'destructive', title: 'Redeem failed', description: 'Please sign in first.' });
         setRedeemingBetId(null);
-      } else {
-        const contractId = bet ? getContractIdForBet(bet) : CONTRACT_IDS[Category.CRYPTO];
-        const numericBetId = betId.includes('-') ? betId.split('-')[1] : betId;
-        const txId = await writeContract({
-          contractId,
-          abi: CryptoPredictionMarketABI.abi,
-          functionName: 'claimBet',
-          args: [numericBetId],
-        });
-        watch(txId as string, {
-          onSuccess: transaction => {
-            toast({ variant: 'success', title: 'Bet redeemed', description: 'Claim transaction confirmed.' });
-            setRedeemingBetId(null);
-            return transaction;
-          },
-          onError: (receipt, error) => {
-            toast({ variant: 'destructive', title: 'Redeem failed', description: typeof error === 'string' ? error : 'Transaction failed' });
-            setRedeemingBetId(null);
-            return receipt;
-          },
-        });
+        return;
       }
+      const bet = allBets.find(b => b.id === betId);
+      const category = bet ? getBetCategory(bet).toLowerCase() : 'crypto';
+      const res = await fetch('/api/bet/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, betId, category }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ variant: 'destructive', title: 'Redeem failed', description: data.error || 'Could not claim this bet. Try again.' });
+      } else {
+        const payoutDisplay = data.payoutAmount ? `${parseFloat(data.payoutAmount).toFixed(4)} ${currency.symbol}` : '';
+        toast({ variant: 'success', title: 'Bet redeemed', description: payoutDisplay ? `${payoutDisplay} credited to your wallet.` : 'Payout credited to your wallet.' });
+      }
+      setRedeemingBetId(null);
     } catch {
       toast({ variant: 'destructive', title: 'Redeem failed', description: 'An unexpected error occurred.' });
       setRedeemingBetId(null);
