@@ -43,7 +43,7 @@ export function useClobOrderSigning(user: any, market: any) {
       const domain = {
         name: 'Predensity CLOB',
         version: '1',
-        chainId: 296, // Hedera testnet
+        chainId: 5042002, // Arc
       };
 
       const types = {
