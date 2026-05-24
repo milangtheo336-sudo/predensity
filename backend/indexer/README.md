@@ -107,10 +107,10 @@ The subgraph indexes four category-specific contracts:
 
 | Category | Contract Address | Network |
 |----------|-----------------|---------|
-| Crypto | 0x0DE38B6eCBb09eF05584C9607EE941D4938D1da8 | Hedera Testnet |
-| Politics | 0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8 | Hedera Testnet |
-| Sports | 0x8f62C698a26888424b5170a11610Fa5Fd7DF540b | Hedera Testnet |
-| Technology | 0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8 | Hedera Testnet |
+| Crypto | 0x0DE38B6eCBb09eF05584C9607EE941D4938D1da8 | Arc |
+| Politics | 0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8 | Arc |
+| Sports | 0x8f62C698a26888424b5170a11610Fa5Fd7DF540b | Arc |
+| Technology | 0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8 | Arc |
 
 ## Indexed Events
 
@@ -180,5 +180,5 @@ npm run graph-local-clean
 ## Learn More
 
 - [The Graph Documentation](https://thegraph.com/docs/)
-- [Hedera Subgraph Tutorial](https://docs.hedera.com/hedera/tutorials/smart-contracts/deploy-a-subgraph-using-the-graph-and-json-rpc)
+- [Subgraph Tutorial](https://thegraph.com/docs/en/developing/creating-a-subgraph/)
 - [AssemblyScript API](https://thegraph.com/docs/en/developing/assemblyscript-api/)
