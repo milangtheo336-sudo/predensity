@@ -535,6 +535,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         for (uint256 i = 0; i < timestamps.length; i++) {
             require(prices[i] > 0, "Price must be positive");
             pricesAtTimestamp[assetSymbol][timestamps[i]] = prices[i];
+            priceSetAt[assetSymbol][timestamps[i]] = block.timestamp;
             emit BucketPriceSet(timestamps[i], prices[i]);
             emit AssetPriceResolved(assetSymbol, timestamps[i], prices[i]);
         }
@@ -549,6 +550,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     function setPriceForTimestamp(uint256 timestamp, uint256 price) external onlyOwner {
         require(price > 0, "Price must be positive");
         pricesAtTimestamp[assetSymbol][timestamp] = price;
+        priceSetAt[assetSymbol][timestamp] = block.timestamp;
         emit BucketPriceSet(timestamp, price);
         emit AssetPriceResolved(assetSymbol, timestamp, price);
     }
