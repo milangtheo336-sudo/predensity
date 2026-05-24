@@ -221,12 +221,32 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       if (!createRes.ok) throw new Error(createData.error || 'Failed to create user');
       const { userId, isNewUser } = createData;
 
-      const proxyRes = await fetch('/api/proxy-wallet/create', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userAddress: normalizedAddress }),
-      });
-      const proxyData = await proxyRes.json();
-      if (!proxyRes.ok) throw new Error(proxyData.error || 'Failed to create proxy wallet');
+      // Check first — avoid deploying a new contract if one already exists
+      const proxyCheckRes = await fetch(`/api/proxy-wallet/create?userAddress=${normalizedAddress}`);
+      const proxyCheckData = await proxyCheckRes.json();
+
+      let proxyWalletAddress: string | null = proxyCheckData.exists ? proxyCheckData.proxyWalletAddress : null;
+
+      if (!proxyCheckData.exists) {
+        // No proxy wallet yet — deploy one now
+        const proxyRes = await fetch('/api/proxy-wallet/create', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userAddress: normalizedAddress }),
+        });
+        const proxyData = await proxyRes.json();
+        if (!proxyRes.ok) throw new Error(proxyData.error || 'Failed to create proxy wallet');
+        proxyWalletAddress = proxyData.proxyWalletAddress ?? null;
+      }
+
+      // Cache the proxy wallet address immediately so deposit modal finds it without an extra RPC call
+      if (proxyWalletAddress) {
+        try {
+          localStorage.setItem(
+            `predensity_proxy_wallet_${normalizedAddress}`,
+            JSON.stringify({ proxyWallet: proxyWalletAddress, timestamp: Date.now() })
+          );
+        } catch { /* ignore storage errors */ }
+      }
 
       setWalletUser({ publicAddress: normalizedAddress, hederaAccountId: normalizedAddress, walletType, userId });
       if (isNewUser) sessionStorage.setItem('predensity-new-user', 'true');
