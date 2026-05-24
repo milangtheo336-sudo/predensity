@@ -1,5 +1,6 @@
 ﻿
 export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
 import { Magic } from '@magic-sdk/admin';
 import {
   Client,
@@ -117,4 +118,5 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
+
 
