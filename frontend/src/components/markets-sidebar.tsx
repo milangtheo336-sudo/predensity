@@ -89,8 +89,11 @@ export function MarketsSidebar({ markets, selection, onSelect }: MarketsSidebarP
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900'
                 }`}
               >
-                <span className="flex items-center gap-2">
-                  <span>{sport.label}</span>
+                <span className="flex items-center gap-2 min-w-0">
+                  {sport.iconUrl && (
+                    <img src={sport.iconUrl} alt="" className="w-5 h-5 object-contain shrink-0 rounded-sm" />
+                  )}
+                  <span className="truncate">{sport.label}</span>
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="text-gray-500 dark:text-gray-400 text-xs">
@@ -123,7 +126,12 @@ export function MarketsSidebar({ markets, selection, onSelect }: MarketsSidebarP
                             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900'
                         }`}
                       >
-                        <span className="truncate">{league.label}</span>
+                        <span className="flex items-center gap-2 min-w-0">
+                          {league.iconUrl && (
+                            <img src={league.iconUrl} alt="" className="w-4 h-4 object-contain shrink-0 rounded-sm" />
+                          )}
+                          <span className="truncate">{league.label}</span>
+                        </span>
                         <span className="text-gray-500 dark:text-gray-500 text-xs ml-2">
                           {lCount}
                         </span>
