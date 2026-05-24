@@ -130,7 +130,7 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
           <img
             src={market.imageUrl}
             alt={market.question}
-            className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
@@ -140,7 +140,7 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
           />
         ) : null}
         <div 
-          className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 text-sm font-bold text-gray-700 dark:text-white"
+          className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 text-sm font-bold text-gray-700 dark:text-white"
           style={{ display: market.imageUrl ? 'none' : 'flex' }}
         >
           {categoryConfig.icon}
