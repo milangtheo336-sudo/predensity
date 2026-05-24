@@ -14,11 +14,11 @@ const CATEGORIES = [
   { id: 'finance', name: 'Finance', icon: '📈' },
   { id: 'tech', name: 'Tech & Science', icon: '🔬' },
   { id: 'elections', name: 'Elections', icon: '🗳' },
-  { id: 'companies', name: 'Companies', icon: '🏢' },
   { id: 'entertainment', name: 'Entertainment', icon: '🎬' },
   { id: 'culture', name: 'Culture', icon: '🎭' },
   { id: 'climate', name: 'Climate', icon: '🌍' },
   { id: 'commodities', name: 'Commodities', icon: '�' },
+  { id: 'companies', name: 'Companies', icon: '🏢' },
 ];
 
 const MATCH = {
@@ -51,7 +51,7 @@ export default function OnboardingPage() {
     if (step !== 'categories') return;
     const interval = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % CATEGORIES.length);
-    }, 1800);
+    }, 1400);
     return () => clearInterval(interval);
   }, [step]);
 
@@ -83,13 +83,24 @@ export default function OnboardingPage() {
       </button>
 
       <div className="absolute top-8 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-        {(['categories', 'trade', 'modal', 'gameplay', 'result'] as const).map((s) => (
-          <div
-            key={s}
-            className="h-0.5 w-8 rounded-full transition-colors duration-300"
-            style={{ backgroundColor: s === step ? '#fff' : '#ffffff25' }}
-          />
-        ))}
+        {(['categories', 'trade', 'modal', 'gameplay'] as const).map((s, i) => {
+          const stepOrder = ['categories', 'trade', 'modal', 'gameplay', 'result'];
+          const currentIdx = stepOrder.indexOf(step);
+          const isPast = i < currentIdx;
+          const isActive = i === currentIdx;
+          return (
+            <div key={s} className="h-0.5 w-10 rounded-full overflow-hidden bg-white/20">
+              {(isPast || isActive) && (
+                <motion.div
+                  className="h-full bg-white rounded-full"
+                  initial={{ width: isPast ? '100%' : '0%' }}
+                  animate={{ width: '100%' }}
+                  transition={isActive ? { duration: step === 'categories' ? CATEGORIES.length * 1.4 : 2, ease: 'linear' } : { duration: 0 }}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <AnimatePresence mode="wait">
@@ -107,14 +118,14 @@ export default function OnboardingPage() {
             <div
               className="relative h-64 w-full max-w-xs flex items-center justify-center overflow-hidden mt-8"
               style={{
-                maskImage: 'linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)',
-                WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)',
+                maskImage: 'linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)',
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)',
               }}
             >
               <motion.div
-                className="absolute flex flex-col items-center gap-6"
-                animate={{ y: `calc(50% - ${activeIndex * 3.5}rem - 1.75rem)` }}
-                transition={{ type: 'spring', damping: 20, stiffness: 120 }}
+                className="absolute flex flex-col items-center gap-6 w-full"
+                animate={{ y: `calc(50% - ${activeIndex * 5}rem - 1.75rem)` }}
+                transition={{ type: 'spring', damping: 28, stiffness: 180, mass: 0.8 }}
               >
                 {CATEGORIES.map((cat, idx) => {
                   const isActive = idx === activeIndex;
@@ -122,8 +133,12 @@ export default function OnboardingPage() {
                   return (
                     <motion.div
                       key={cat.id}
-                      animate={{ opacity: isActive ? 1 : isAdjacent ? 0.3 : 0.1, scale: isActive ? 1.15 : 0.9 }}
-                      className="flex items-center gap-3 h-14"
+                      animate={{
+                        opacity: isActive ? 1 : isAdjacent ? 0.35 : 0.08,
+                        scale: isActive ? 1.12 : isAdjacent ? 0.92 : 0.85,
+                      }}
+                      transition={{ duration: 0.3 }}
+                      className="flex items-center justify-center gap-3 h-14 w-full"
                     >
                       {isActive && <span className="text-2xl">{cat.icon}</span>}
                       <span className={`text-2xl font-bold ${isActive ? 'text-white' : 'text-white/20'}`}>
