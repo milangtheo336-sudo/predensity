@@ -63,10 +63,10 @@ MM_CANCEL_REPLACE_INTERVAL_MS=2000
           <div className="max-w-2xl mx-auto text-center">
             <h1 className="text-3xl font-bold mb-4">Bot Setup</h1>
             <p className="text-muted-foreground mb-8">
-              Please sign in to get your bot configuration
+              Please sign in to get your bot configuration. Click the Sign up button in the header.
             </p>
-            <Button asChild>
-              <a href="/auth">Sign In</a>
+            <Button onClick={() => window.location.href = '/'}>
+              Go to Home
             </Button>
           </div>
         </div>
