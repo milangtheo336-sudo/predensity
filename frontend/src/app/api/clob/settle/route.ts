@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 import { requireAdmin, rateLimit } from '@/lib/api-auth';
-import { signTransaction } from '@/lib/turnkey';
 import {
   Client,
   ContractExecuteTransaction,
@@ -17,8 +16,8 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
 const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || process.env.NEXT_PUBLIC_OPERATOR_ID || '';
 const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || process.env.OPERATOR_PRIVATE_KEY || '';
 const HEDERA_NETWORK = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+const MAX_RETRIES = 3;
 
-// ExchangeSettlement contract ABI
 const EXCHANGE_ABI = new ethers.utils.Interface([
   'function settleOperatorTrade(bytes32 tradeId, address outcomeToken, address buyer, address seller, uint256 price, uint256 quantity) external',
 ]);
@@ -32,15 +31,82 @@ function getHederaClient(): Client {
   return client;
 }
 
+/** Exponential backoff: 2s, 4s, 8s */
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function settleTradeWithRetry(
+  trade: any,
+  exchangeContractId: string,
+  client: Client,
+  operatorKey: PrivateKey,
+): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  const market = await convex.query(api.clob.getClobMarket, { marketId: trade.marketId });
+
+  if (!market?.outcomeTokenAddresses?.[trade.outcomeIndex]) {
+    // No on-chain token -- mark settled off-chain
+    return { success: true, txHash: 'off-chain-only' };
+  }
+
+  const outcomeToken = market.outcomeTokenAddresses[trade.outcomeIndex];
+  const tradeIdBytes = ethers.utils.id(trade.tradeId);
+  const callData = EXCHANGE_ABI.encodeFunctionData('settleOperatorTrade', [
+    tradeIdBytes,
+    outcomeToken,
+    OPERATOR_ID,
+    OPERATOR_ID,
+    trade.price,
+    trade.quantity,
+  ]);
+
+  const currentRetries = trade.settlementRetries ?? 0;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        await sleep(Math.pow(2, attempt) * 1000); // 2s, 4s, 8s
+        await convex.mutation(api.clob.incrementTradeRetry, { tradeId: trade.tradeId });
+      }
+
+      const tx = new ContractExecuteTransaction()
+        .setContractId(ContractId.fromString(exchangeContractId))
+        .setGas(500000)
+        .setFunctionParameters(Buffer.from(callData.slice(2), 'hex'))
+        .freezeWith(client);
+
+      const signedTx = await tx.sign(operatorKey);
+      const response = await signedTx.execute(client);
+      const receipt = await response.getReceipt(client);
+
+      if (receipt.status.toString() === 'SUCCESS') {
+        return { success: true, txHash: response.transactionId.toString() };
+      }
+      // Non-success receipt -- retry
+    } catch {
+      if (attempt === MAX_RETRIES) {
+        // Exhausted retries
+        await convex.mutation(api.clob.markTradeSettlementFailed, {
+          tradeId: trade.tradeId,
+          retries: currentRetries + attempt + 1,
+        });
+        return { success: false, error: `Failed after ${MAX_RETRIES + 1} attempts` };
+      }
+    }
+  }
+
+  await convex.mutation(api.clob.markTradeSettlementFailed, {
+    tradeId: trade.tradeId,
+    retries: currentRetries + MAX_RETRIES + 1,
+  });
+  return { success: false, error: 'Max retries exceeded' };
+}
+
 /**
  * POST /api/clob/settle
  * Settles unsettled CLOB trades on-chain via the ExchangeSettlement contract.
- * Admin-only endpoint called by the operator bot.
- * 
- * For Turnkey wallets: uses Turnkey's signRawPayload for EIP-712 signed trades.
- * For operator model: uses the operator key directly (settleOperatorTrade).
- * 
- * This endpoint processes trades in batches for gas efficiency.
+ * Admin-only. Includes exponential backoff retry (3 attempts) per trade.
+ * Trades that fail all retries are marked settlement_failed in Convex.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -53,16 +119,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { maxTrades = 20 } = body;
 
-    // Use configured exchange contract ID (falls back to env var or hardcoded testnet)
     const exchangeContractId = getClobExchangeContractId();
     if (!exchangeContractId) {
       return NextResponse.json({ error: 'Exchange contract not configured' }, { status: 500 });
     }
 
-    // Fetch unsettled trades from Convex
-    const unsettledTrades = await convex.query(api.clob.getUnsettledTrades, {
-      limit: maxTrades,
-    });
+    const unsettledTrades = await convex.query(api.clob.getUnsettledTrades, { limit: maxTrades });
 
     if (!unsettledTrades || unsettledTrades.length === 0) {
       return NextResponse.json({ success: true, settled: 0, message: 'No trades to settle' });
@@ -73,74 +135,24 @@ export async function POST(request: NextRequest) {
     const operatorKey = PrivateKey.fromStringECDSA(keyHex);
 
     let settled = 0;
+    let failed = 0;
     const errors: string[] = [];
 
     for (const trade of unsettledTrades) {
-      try {
-        // Get the market to find the outcome token address
-        const market = await convex.query(api.clob.getClobMarket, {
-          marketId: trade.marketId,
+      // Skip trades already marked as permanently failed
+      if (trade.settlementStatus === 'settlement_failed') continue;
+
+      const result = await settleTradeWithRetry(trade, exchangeContractId, client, operatorKey);
+
+      if (result.success && result.txHash) {
+        await convex.mutation(api.clob.markTradeSettled, {
+          tradeId: trade.tradeId,
+          txHash: result.txHash,
         });
-
-        if (!market || !market.outcomeTokenAddresses || !market.outcomeTokenAddresses[trade.outcomeIndex]) {
-          // No on-chain token configured -- mark as settled (off-chain only)
-          await convex.mutation(api.clob.markTradeSettled, {
-            tradeId: trade.tradeId,
-            txHash: 'off-chain-only',
-          });
-          settled++;
-          continue;
-        }
-
-        const outcomeToken = market.outcomeTokenAddresses[trade.outcomeIndex];
-        const tradeIdBytes = ethers.utils.id(trade.tradeId); // keccak256 hash as bytes32
-
-        // Encode the settleOperatorTrade call
-        const callData = EXCHANGE_ABI.encodeFunctionData('settleOperatorTrade', [
-          tradeIdBytes,
-          outcomeToken,
-          OPERATOR_ID, // buyer (operator holds all tokens for managed users)
-          OPERATOR_ID, // seller (operator holds all tokens for managed users)
-          trade.price,
-          trade.quantity,
-        ]);
-
-        // Check if buyer/seller have Turnkey wallets (for future non-custodial mode)
-        const buyerWallet = await convex.query(api.users.getManagedWalletByUserId, {
-          userId: trade.buyerUserId,
-        });
-        const sellerWallet = await convex.query(api.users.getManagedWalletByUserId, {
-          userId: trade.sellerUserId,
-        });
-
-        const isTurnkeyBuyer = (buyerWallet as any)?.encryptedPrivateKey?.startsWith('turnkey:') ?? false;
-        const isTurnkeySeller = (sellerWallet as any)?.encryptedPrivateKey?.startsWith('turnkey:') ?? false;
-
-        // For now, use operator mode for all trades (both custodial and Turnkey users)
-        // In Phase 2, Turnkey users will use Mode 2 (signed trades) on ExchangeSettlement
-        const tx = new ContractExecuteTransaction()
-          .setContractId(ContractId.fromString(exchangeContractId))
-          .setGas(500000)
-          .setFunctionParameters(Buffer.from(callData.slice(2), 'hex'))
-          .freezeWith(client);
-
-        const signedTx = await tx.sign(operatorKey);
-        const response = await signedTx.execute(client);
-        const receipt = await response.getReceipt(client);
-
-        if (receipt.status.toString() === 'SUCCESS') {
-          const txId = response.transactionId.toString();
-          await convex.mutation(api.clob.markTradeSettled, {
-            tradeId: trade.tradeId,
-            txHash: txId,
-          });
-          settled++;
-        } else {
-          errors.push(`Trade ${trade.tradeId}: ${receipt.status}`);
-        }
-      } catch (tradeErr) {
-        const msg = tradeErr instanceof Error ? tradeErr.message : 'Unknown error';
-        errors.push(`Trade ${trade.tradeId}: ${msg}`);
+        settled++;
+      } else {
+        failed++;
+        if (result.error) errors.push(`Trade ${trade.tradeId}: ${result.error}`);
       }
     }
 
@@ -149,6 +161,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       settled,
+      failed,
       total: unsettledTrades.length,
       errors: errors.length > 0 ? errors : undefined,
     });
