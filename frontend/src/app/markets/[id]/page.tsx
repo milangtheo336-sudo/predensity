@@ -65,7 +65,7 @@ export default function MarketDetailPage() {
     );
   }
 
-  // Non-crypto (politics, sports, tech, international): use CLOB card
+  // Non-crypto (politics, sports, tech, finance): use CLOB card
   // The ClobPredictionCard handles its own data fetching
   return (
     <div className="min-h-screen bg-white dark:bg-black">
