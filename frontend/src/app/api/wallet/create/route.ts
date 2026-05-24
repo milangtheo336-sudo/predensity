@@ -1,166 +1,148 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  Client,
-  AccountCreateTransaction,
-  Hbar,
-  PrivateKey,
-  TransferTransaction,
-} from '@hashgraph/sdk';
-import crypto from 'crypto';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
-import { requireAuthMatchingUser, rateLimit } from '@/lib/api-auth';
+import { rateLimit } from '@/lib/api-auth';
+import {
+  Client,
+  ContractExecuteTransaction,
+  ContractId,
+  PrivateKey,
+} from '@hashgraph/sdk';
+import { ethers } from 'ethers';
 
-// Encryption key for private keys -- in production use a KMS (AWS KMS, Google Cloud KMS, etc.)
-const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY || 'predensity-dev-key-change-in-prod!!';
-const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
-
-// Treasury / operator account (funds new wallets with gas HBAR)
-const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || process.env.NEXT_PUBLIC_OPERATOR_ID || '';
-const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || process.env.OPERATOR_PRIVATE_KEY || '';
-const HEDERA_NETWORK = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-
-// Initial HBAR funding for gas (1 HBAR covers thousands of transactions)
-const INITIAL_HBAR_FUNDING = 0.1;
-
-// Convex client for storing wallet data
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
 
-function encrypt(text: string): string {
-  // Derive a 32-byte key from the passphrase
-  const key = crypto.scryptSync(ENCRYPTION_KEY, 'predensity-salt', 32);
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, key, iv);
-
-  let encrypted = cipher.update(text, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  const authTag = cipher.getAuthTag().toString('hex');
-
-  // Format: iv:authTag:encryptedData
-  return `${iv.toString('hex')}:${authTag}:${encrypted}`;
-}
+const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || '';
+const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || '';
+const HEDERA_NETWORK = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+const PROXY_WALLET_FACTORY_ID = process.env.PROXY_WALLET_FACTORY_CONTRACT_ID || '';
 
 function getHederaClient(): Client {
   const client = HEDERA_NETWORK === 'mainnet' ? Client.forMainnet() : Client.forTestnet();
-
   if (OPERATOR_ID && OPERATOR_KEY) {
-    // The operator key is ECDSA (used with Hardhat/EVM tooling)
-    // Strip 0x prefix if present and parse as ECDSA
     const keyHex = OPERATOR_KEY.startsWith('0x') ? OPERATOR_KEY.slice(2) : OPERATOR_KEY;
-    const operatorPrivateKey = PrivateKey.fromStringECDSA(keyHex);
-    client.setOperator(OPERATOR_ID, operatorPrivateKey);
+    client.setOperator(OPERATOR_ID, PrivateKey.fromStringECDSA(keyHex));
   }
-
   return client;
 }
 
+/**
+ * POST /api/wallet/create
+ * 
+ * Creates a non-custodial wallet for a user.
+ * 
+ * Flow:
+ * 1. User authenticates with Magic Link (gets EOA address)
+ * 2. Backend deploys SimpleProxyWallet owned by user's EOA
+ * 3. Store wallet info in Convex (NO private keys)
+ * 
+ * User controls funds via Magic Link. Backend cannot access funds.
+ */
 export async function POST(request: NextRequest) {
   try {
-    // Rate limit: 3 wallet creations per minute per IP
     const rateLimitResponse = rateLimit(request, { maxRequests: 3, windowMs: 60_000 });
     if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
-    const { phoneNumber, userId, email } = body;
+    const { userId, email, phoneNumber, magicEOAAddress } = body;
 
-    // Need at least one identifier
-    if (!phoneNumber && !userId) {
-      return NextResponse.json({ error: 'phoneNumber or userId is required' }, { status: 400 });
+    if (!userId || !email || !magicEOAAddress) {
+      return NextResponse.json({ 
+        error: 'userId, email, and magicEOAAddress are required' 
+      }, { status: 400 });
     }
 
-    // Authenticate and verify the caller owns this userId (prevents IDOR)
-    if (userId) {
-      const authResult = await requireAuthMatchingUser(userId);
-      if (authResult instanceof NextResponse) return authResult;
+    if (!PROXY_WALLET_FACTORY_ID) {
+      return NextResponse.json({ 
+        error: 'Proxy wallet factory not configured' 
+      }, { status: 500 });
     }
 
-    // Validate phone number format if provided
-    if (phoneNumber) {
-      const phoneRegex = /^\+\d{10,15}$/;
-      if (!phoneRegex.test(phoneNumber)) {
-        return NextResponse.json(
-          { error: 'Invalid phone number format. Use international format (e.g., +254712345678)' },
-          { status: 400 }
-        );
-      }
-    }
-
-    if (!OPERATOR_ID || !OPERATOR_KEY) {
+    // Check for existing wallet
+    const existing = await convex.query(api.users.getManagedWalletByUserId, { userId });
+    if (existing) {
       return NextResponse.json(
-        { error: 'Server configuration error: operator credentials not set' },
-        { status: 500 }
+        { error: 'Wallet already exists', wallet: existing },
+        { status: 409 }
       );
     }
 
-    // Check for existing wallet by userId or phone
-    if (userId) {
-      const existingByUser = await convex.query(api.users.getManagedWalletByUserId, { userId });
-      if (existingByUser) {
-        return NextResponse.json(
-          { error: 'Wallet already exists for this user', wallet: existingByUser },
-          { status: 409 }
-        );
-      }
-    }
-
-    if (phoneNumber) {
-      const existingByPhone = await convex.query(api.users.getManagedWallet, { phoneNumber });
-      if (existingByPhone) {
-        return NextResponse.json(
-          { error: 'Wallet already exists for this phone number', wallet: existingByPhone },
-          { status: 409 }
-        );
-      }
-    }
-
-    // Create a new Hedera account with ECDSA key (needed for EVM/smart contract interaction)
+    // Deploy proxy wallet via factory
     const client = getHederaClient();
-    const newAccountKey = PrivateKey.generateECDSA();
-    const newAccountPublicKey = newAccountKey.publicKey;
+    const keyHex = OPERATOR_KEY.startsWith('0x') ? OPERATOR_KEY.slice(2) : OPERATOR_KEY;
+    const operatorKey = PrivateKey.fromStringECDSA(keyHex);
 
-    // Create the account with initial HBAR funding for gas
-    const createTx = new AccountCreateTransaction()
-      .setKey(newAccountPublicKey)
-      .setInitialBalance(new Hbar(INITIAL_HBAR_FUNDING))
-      .setMaxAutomaticTokenAssociations(10);
+    // Call factory.createWallet(magicEOAAddress)
+    const factoryInterface = new ethers.utils.Interface([
+      'function createWallet(address owner) external returns (address)',
+    ]);
+    const callData = factoryInterface.encodeFunctionData('createWallet', [magicEOAAddress]);
 
-    const createResponse = await createTx.execute(client);
-    const createReceipt = await createResponse.getReceipt(client);
-    const newAccountId = createReceipt.accountId;
+    const tx = new ContractExecuteTransaction()
+      .setContractId(ContractId.fromString(PROXY_WALLET_FACTORY_ID))
+      .setGas(500000)
+      .setFunctionParameters(Buffer.from(callData.slice(2), 'hex'))
+      .freezeWith(client);
 
-    if (!newAccountId) {
-      return NextResponse.json({ error: 'Failed to create Hedera account' }, { status: 500 });
+    const signedTx = await tx.sign(operatorKey);
+    const response = await signedTx.execute(client);
+    const receipt = await response.getReceipt(client);
+
+    if (receipt.status.toString() !== 'SUCCESS') {
+      throw new Error('Proxy wallet deployment failed');
     }
 
-    const evmAddress = newAccountPublicKey.toEvmAddress();
-    const encryptedKey = encrypt(newAccountKey.toStringRaw());
+    // Get proxy wallet address from factory
+    const getWalletInterface = new ethers.utils.Interface([
+      'function ownerToWallet(address) external view returns (address)',
+    ]);
+    const queryData = getWalletInterface.encodeFunctionData('ownerToWallet', [magicEOAAddress]);
 
-    // Store in Convex with all available identifiers
+    const queryTx = new ContractExecuteTransaction()
+      .setContractId(ContractId.fromString(PROXY_WALLET_FACTORY_ID))
+      .setGas(100000)
+      .setFunctionParameters(Buffer.from(queryData.slice(2), 'hex'))
+      .freezeWith(client);
+
+    const queryResponse = await queryTx.execute(client);
+    const queryRecord = await queryResponse.getRecord(client);
+    const proxyWalletAddress = ethers.utils.defaultAbiCoder.decode(
+      ['address'],
+      '0x' + Buffer.from(queryRecord.contractFunctionResult!.bytes).toString('hex')
+    )[0];
+
+    client.close();
+
+    // Store in Convex (NO private keys)
     await convex.mutation(api.users.createManagedWallet, {
       userId,
       email,
       phoneNumber,
-      hederaAccountId: newAccountId.toString(),
-      evmAddress: `0x${evmAddress}`,
-      encryptedPrivateKey: encryptedKey,
+      magicEOAAddress,
+      proxyWalletAddress,
+      evmAddress: proxyWalletAddress,
+      hederaAccountId: '', // Will be set when first transaction happens
+      usdcBalance: '0',
+      hbarBalance: '0',
+      isActive: true,
+      createdAt: Date.now(),
+      lastActivity: Date.now(),
+      lastBalanceSync: Date.now(),
     });
-
-    client.close();
 
     return NextResponse.json({
       success: true,
       wallet: {
         userId,
         email,
-        phoneNumber,
-        hederaAccountId: newAccountId.toString(),
-        evmAddress: `0x${evmAddress}`,
-        initialFunding: `${INITIAL_HBAR_FUNDING} HBAR`,
+        magicEOAAddress,
+        proxyWalletAddress,
       },
     });
   } catch (error) {
     console.error('[wallet/create] Error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }, { status: 500 });
   }
 }
