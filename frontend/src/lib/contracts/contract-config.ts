@@ -28,8 +28,9 @@ export const STAKING_TOKEN_IDS = {
 };
 
 // Current staking mode: 'none' for HBAR, 'testnet'/'mainnet' for USDC
-// Change this to switch between HBAR and USDC staking
-export const STAKING_MODE: 'none' | 'testnet' | 'mainnet' = 'testnet';
+// Reads from env var on Vercel (mainnet), defaults to testnet for local dev
+export const STAKING_MODE: 'none' | 'testnet' | 'mainnet' =
+  (process.env.NEXT_PUBLIC_STAKING_MODE as 'none' | 'testnet' | 'mainnet') || 'testnet';
 
 // Get the active staking token address (EVM format, for function arguments)
 export function getStakingTokenAddress(): string {
@@ -54,23 +55,23 @@ export function getStakingCurrency(): { symbol: string; decimals: number; name: 
   return { symbol: 'HBAR', decimals: 8, name: 'HBAR' };
 }
 
-// Deployed contract addresses on Hedera Testnet (EVM format) -- USDC Token Mode
-// Crypto redeployed 2026-03-19 with MIN_DAYS_AHEAD=0 for testing (restore to previous address for production)
+// Deployed contract addresses (EVM format) -- USDC Token Mode
+// Reads from env vars on Vercel (mainnet), defaults to testnet for local dev
 export const CONTRACT_ADDRESSES = {
-  [Category.CRYPTO]: '0x00000000000000000000000000000000007e8166',
-  [Category.POLITICS]: '0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8',
-  [Category.SPORTS]: '0x8f62C698a26888424b5170a11610Fa5Fd7DF540b',
-  [Category.TECHNOLOGY]: '0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8',
+  [Category.CRYPTO]: process.env.NEXT_PUBLIC_CRYPTO_CONTRACT_ADDRESS || '0x00000000000000000000000000000000007e8166',
+  [Category.POLITICS]: process.env.NEXT_PUBLIC_POLITICS_CONTRACT_ADDRESS || '0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8',
+  [Category.SPORTS]: process.env.NEXT_PUBLIC_SPORTS_CONTRACT_ADDRESS || '0x8f62C698a26888424b5170a11610Fa5Fd7DF540b',
+  [Category.TECHNOLOGY]: process.env.NEXT_PUBLIC_TECH_CONTRACT_ADDRESS || '0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8',
   [Category.INTERNATIONAL]: '', // Not yet deployed
 };
 
 // Hedera Contract IDs (0.0.X format) for each category -- USDC Token Mode
-// Crypto redeployed 2026-03-19 with MIN_DAYS_AHEAD=0 for testing (restore to previous ID for production)
+// Reads from env vars on Vercel (mainnet), defaults to testnet for local dev
 export const CONTRACT_IDS = {
-  [Category.CRYPTO]: '0.0.8290662',
-  [Category.POLITICS]: '0.0.8232724',
-  [Category.SPORTS]: '0.0.8232726',
-  [Category.TECHNOLOGY]: '0.0.8232727',
+  [Category.CRYPTO]: process.env.NEXT_PUBLIC_CRYPTO_CONTRACT_ID || '0.0.8290662',
+  [Category.POLITICS]: process.env.NEXT_PUBLIC_POLITICS_CONTRACT_ID || '0.0.8232724',
+  [Category.SPORTS]: process.env.NEXT_PUBLIC_SPORTS_CONTRACT_ID || '0.0.8232726',
+  [Category.TECHNOLOGY]: process.env.NEXT_PUBLIC_TECH_CONTRACT_ID || '0.0.8232727',
   [Category.INTERNATIONAL]: '', // Not yet deployed
 };
 
@@ -91,11 +92,12 @@ export function isCategoryDeployed(category: Category): boolean {
 
 // Immutable startTimestamp for each deployed contract (set at deployment, never changes).
 // On-chain bucket index = Math.floor((targetTimestamp - startTimestamp) / 86400)
+// Reads from env vars on Vercel (mainnet), defaults to testnet for local dev
 export const CONTRACT_START_TIMESTAMPS: Record<string, number> = {
-  [Category.CRYPTO]: 1773940168,      // 2026-03-19T17:09:28Z
-  [Category.POLITICS]: 1773586860,    // 2026-03-15T14:01:00Z
-  [Category.SPORTS]: 1773586872,      // 2026-03-15T14:01:12Z
-  [Category.TECHNOLOGY]: 1773586888,  // 2026-03-15T14:01:28Z
+  [Category.CRYPTO]: Number(process.env.NEXT_PUBLIC_CRYPTO_START_TIMESTAMP) || 1773940168,
+  [Category.POLITICS]: Number(process.env.NEXT_PUBLIC_POLITICS_START_TIMESTAMP) || 1773586860,
+  [Category.SPORTS]: Number(process.env.NEXT_PUBLIC_SPORTS_START_TIMESTAMP) || 1773586872,
+  [Category.TECHNOLOGY]: Number(process.env.NEXT_PUBLIC_TECH_START_TIMESTAMP) || 1773586888,
   [Category.INTERNATIONAL]: 0,
 };
 
@@ -121,8 +123,9 @@ export const NETWORK_CONFIG = {
   },
 };
 
-// Current network (change to 'mainnet' for production)
-export const CURRENT_NETWORK = 'testnet';
+// Current network -- reads from env var, defaults to testnet for local dev
+export const CURRENT_NETWORK: 'testnet' | 'mainnet' =
+  (process.env.NEXT_PUBLIC_HEDERA_NETWORK as 'testnet' | 'mainnet') || 'testnet';
 
 export function getCurrentNetworkConfig() {
   return NETWORK_CONFIG[CURRENT_NETWORK];
