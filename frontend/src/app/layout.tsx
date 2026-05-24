@@ -44,6 +44,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
+        {/* Critical inline CSS — guarantees dark background on very first byte, before any stylesheet loads */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+          html,body{background:#000;color:#fff;min-height:100vh}
+        ` }} />
       </head>
       <body className={`${appFont.variable} font-sans`} style={{ backgroundColor: '#000' }}>
         <WalletErrorSuppressor />
