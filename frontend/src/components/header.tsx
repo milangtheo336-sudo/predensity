@@ -1892,7 +1892,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
     updateProfile({
       userAddress: addr,
       displayName: user.email?.split('@')[0] || undefined,
-      avatar: undefined,
+      avatar: (user as any).picture || undefined,
       bio: undefined,
     }).catch(() => { /* ignore sync errors */ });
   }, [isSignedIn, user]);
