@@ -746,34 +746,60 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
   }, [accountId, tokenId, currency.decimals, step]);
 
   const handleTransfer = async () => {
-    if (!amount || !isConnected || !user?.publicAddress) return;
+    if (!amount || !isConnected) return;
+    
+    // Debug logging
+    console.log('[WalletTransfer] user:', user);
+    console.log('[WalletTransfer] user.publicAddress:', user?.publicAddress);
+    
+    if (!user?.publicAddress) {
+      setStep('error');
+      setErrorMsg('Please refresh the page and login again with Magic Link');
+      return;
+    }
+    
     const rawAmount = BigInt(Math.floor(parseFloat(amount) * Math.pow(10, currency.decimals)));
 
     try {
       setStep('transferring');
       setErrorMsg('Checking token association...');
       
-      // Check if Magic Link wallet has USDC token associated
+      // Step 1: Check if Magic Link wallet has USDC token associated
       const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
       const base = network === 'mainnet' ? 'https://mainnet.mirrornode.hedera.com' : 'https://testnet.mirrornode.hedera.com';
       
+      let isAssociated = false;
       try {
         const checkRes = await fetch(`${base}/api/v1/accounts/${user.publicAddress}/tokens?token.id=${tokenId}`);
-        const checkData = await checkRes.json();
-        const isAssociated = checkData.tokens?.some((t: any) => t.token_id === tokenId);
-        
-        if (!isAssociated) {
-          throw new Error('Your wallet needs to associate the USDC token first. Please contact support or try depositing a small amount first to auto-associate.');
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          isAssociated = checkData.tokens?.some((t: any) => t.token_id === tokenId);
         }
-      } catch (checkErr: any) {
-        if (checkErr.message.includes('associate')) {
-          throw checkErr;
-        }
-        // If check fails for other reasons, continue anyway
+      } catch (checkErr) {
+        console.error('[deposit] Token association check failed:', checkErr);
+        // Continue anyway - let the transfer fail if needed
       }
       
-      setErrorMsg('');
+      // Step 2: If not associated, associate the token first (user signs via Magic Link)
+      if (!isAssociated) {
+        setErrorMsg('First deposit: Please sign to enable USDC on your wallet...');
+        
+        try {
+          // Import the association function
+          const { associateTokenViaMagic } = await import('@/lib/magic');
+          await associateTokenViaMagic(tokenId);
+          
+          // Wait a moment for the association to propagate
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        } catch (associateErr: any) {
+          console.error('[deposit] Token association error:', associateErr);
+          throw new Error(`Unable to enable USDC on your wallet. ${associateErr.message}`);
+        }
+      }
       
+      setErrorMsg('Processing transfer...');
+      
+      // Step 3: Transfer USDC to user's Magic Link wallet
       // NON-CUSTODIAL: Transfer directly to user's Magic Link wallet address
       // Balance will be automatically updated by useBlockchainBalance hook
       const transferTxId = await writeContract({
@@ -793,7 +819,9 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
       // No API call needed - balance updates automatically from blockchain
       setStep('done');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Transfer failed');
+      // Provide helpful error message
+      let errorMessage = err.message || 'Transfer failed';
+      setErrorMsg(errorMessage);
       setStep('error');
     }
   };
