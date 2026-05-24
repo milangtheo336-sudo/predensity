@@ -66,9 +66,6 @@ contract CryptoPredictionMarket is Ownable {
         bool claimed;
         uint256 actualPrice;
         bool won;
-        // DPM fields
-        uint256 entryBandWeight;  // total weight in this bet's band when they entered
-        bool exited;              // whether the bettor sold shares early
     }
 
     struct BetSimulation {
