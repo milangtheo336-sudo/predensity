@@ -227,6 +227,90 @@ export const cancelOrder = mutation({
   },
 });
 
+/**
+ * Batch cancel multiple orders (for market maker bot efficiency).
+ */
+export const batchCancelOrders = mutation({
+  args: {
+    userId: v.string(),
+    orderIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let cancelled = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const orderId of args.orderIds) {
+      try {
+        const order = await ctx.db
+          .query("clobOrders")
+          .filter((q) => q.eq(q.field("orderId"), orderId))
+          .first();
+
+        if (!order) {
+          failed++;
+          errors.push(`${orderId}: not found`);
+          continue;
+        }
+
+        if (order.userId !== args.userId) {
+          failed++;
+          errors.push(`${orderId}: not your order`);
+          continue;
+        }
+
+        if (order.status === "filled" || order.status === "cancelled") {
+          failed++;
+          errors.push(`${orderId}: already ${order.status}`);
+          continue;
+        }
+
+        const remainingQty = order.quantity - order.filledQuantity;
+
+        // Return reserved funds/shares
+        if (order.side === "buy") {
+          const usdcToReturn = (order.price * remainingQty) / 100;
+          const wallet = await ctx.db
+            .query("managedWallets")
+            .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+            .first();
+          if (wallet) {
+            const balance = parseFloat(wallet.usdcBalance || "0");
+            await ctx.db.patch(wallet._id, {
+              usdcBalance: (balance + usdcToReturn).toFixed(6),
+            });
+          }
+        } else {
+          const position = await ctx.db
+            .query("clobPositions")
+            .withIndex("by_user_market_outcome", (q) =>
+              q.eq("userId", args.userId).eq("marketId", order.marketId).eq("outcomeIndex", order.outcomeIndex)
+            )
+            .first();
+          if (position) {
+            await ctx.db.patch(position._id, {
+              shares: position.shares + remainingQty,
+              updatedAt: Date.now(),
+            });
+          }
+        }
+
+        await ctx.db.patch(order._id, {
+          status: "cancelled",
+          updatedAt: Date.now(),
+        });
+
+        cancelled++;
+      } catch (err) {
+        failed++;
+        errors.push(`${orderId}: ${err instanceof Error ? err.message : 'unknown error'}`);
+      }
+    }
+
+    return { cancelled, failed, errors };
+  },
+});
+
 // =========================================================================
 // MATCHING ENGINE (Price-Time Priority)
 // =========================================================================
@@ -291,6 +375,15 @@ async function matchOrders(ctx: any, marketId: string, outcomeIndex: number) {
     // Execute the trade
     const usdcAmount = (fillPrice * fillQty) / 100;
     const tradeId = `trade-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    
+    // Determine maker (earlier order) and taker (later order)
+    const isBuyMaker = buy.createdAt < sell.createdAt;
+    const makerUserId = isBuyMaker ? buy.userId : sell.userId;
+    const takerUserId = isBuyMaker ? sell.userId : buy.userId;
+    
+    // Calculate maker rebate (0.2% of trade value)
+    const MAKER_REBATE_BPS = 20; // 0.2%
+    const makerRebate = (usdcAmount * MAKER_REBATE_BPS) / 10000;
 
     // Record the trade
     await ctx.db.insert("clobTrades", {
@@ -301,6 +394,9 @@ async function matchOrders(ctx: any, marketId: string, outcomeIndex: number) {
       sellOrderId: sell.orderId,
       buyerUserId: buy.userId,
       sellerUserId: sell.userId,
+      makerUserId,
+      takerUserId,
+      makerRebate,
       price: fillPrice,
       quantity: fillQty,
       usdcAmount,
@@ -309,6 +405,18 @@ async function matchOrders(ctx: any, marketId: string, outcomeIndex: number) {
       settlementRetries: 0,
       createdAt: Date.now(),
     });
+    
+    // Credit maker rebate immediately
+    const makerWallet = await ctx.db
+      .query("managedWallets")
+      .withIndex("by_user_id", (q: any) => q.eq("userId", makerUserId))
+      .first();
+    if (makerWallet) {
+      const balance = parseFloat(makerWallet.usdcBalance || "0");
+      await ctx.db.patch(makerWallet._id, {
+        usdcBalance: (balance + makerRebate).toFixed(6),
+      });
+    }
 
     // Update buyer: give shares
     const buyerPosition = await ctx.db
@@ -936,5 +1044,55 @@ export const unResolveMarket = mutation({
     });
 
     return { success: true };
+  },
+});
+
+/**
+ * Get maker rebate earnings for a user
+ */
+export const getMakerEarnings = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const trades = await ctx.db
+      .query("clobTrades")
+      .withIndex("by_maker", (q) => q.eq("makerUserId", args.userId))
+      .collect();
+    
+    const totalRebates = trades.reduce((sum, t) => sum + (t.makerRebate || 0), 0);
+    const tradeCount = trades.length;
+    
+    return {
+      totalRebates,
+      tradeCount,
+      averageRebate: tradeCount > 0 ? totalRebates / tradeCount : 0,
+    };
+  },
+});
+
+// =========================================================================
+// NONCE MANAGEMENT (for non-custodial orders - prevents replay attacks)
+// =========================================================================
+
+export const checkNonce = query({
+  args: { userId: v.string(), nonce: v.number() },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("orderNonces")
+      .withIndex("by_user_nonce", (q) =>
+        q.eq("userId", args.userId).eq("nonce", args.nonce)
+      )
+      .first();
+    return existing !== null;
+  },
+});
+
+export const markNonceUsed = mutation({
+  args: { userId: v.string(), nonce: v.number() },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("orderNonces", {
+      userId: args.userId,
+      nonce: args.nonce,
+      usedAt: Date.now(),
+    });
   },
 });
