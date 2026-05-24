@@ -5,7 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 import { SupportChat } from '@/components/support-chat';
 import { WalletErrorSuppressor } from '@/components/wallet-error-suppressor';
-import ContextProvider from '../../context';
+import { WalletProviderClient } from '@/components/wallet-provider-client';
 import { ConvexClientProvider } from '@/components/convex-client-provider';
 import { MagicProvider } from '@/context/MagicContext';
 import { WalletUserProvider } from '@/context/WalletUserContext';
@@ -56,7 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <WalletUserProvider>
             <ConvexClientProvider>
               <LanguageProvider>
-                <ContextProvider>
+                <WalletProviderClient>
                   <ThemeProvider
                     attribute="class"
                     defaultTheme="dark"
@@ -68,7 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <SupportChat />
                     <Analytics />
                   </ThemeProvider>
-                </ContextProvider>
+                </WalletProviderClient>
               </LanguageProvider>
             </ConvexClientProvider>
           </WalletUserProvider>
