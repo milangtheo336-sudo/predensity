@@ -30,7 +30,7 @@ PREDENSITY KNOWLEDGE BASE:
 
 **Platform Overview:**
 - Predensity is a prediction market platform where users stake on the outcomes of real-world events.
-- Built on the **Hedera** blockchain for fast, low-cost, and transparent transactions.
+- Built on the **Arc** blockchain (an EVM-compatible Layer 1) for fast, low-cost, and transparent transactions.
 - All bets are settled using **USDC**, a stable digital dollar.
 - Categories include **Crypto**, **Politics**, **Sports**, and **Technology**.
 
@@ -55,7 +55,7 @@ PREDENSITY KNOWLEDGE BASE:
   - **M-Pesa**: Convert your USDC balance to KES and receive it on your phone.
 
 **Fees and Speed:**
-- Network fees on Hedera are extremely low -- usually less than a cent per transaction.
+- Network fees on Arc are extremely low -- usually less than a cent per transaction.
 - Deposits and bets are processed almost instantly.
 
 **Account and Settings:**
