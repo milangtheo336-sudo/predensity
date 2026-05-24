@@ -201,19 +201,19 @@ export const getLeaderboard = query({
     if (args.period === "week") {
       results = await ctx.db
         .query("userStats")
-        .withIndex("by_points_week", (q) => q.gte("pointsThisWeek", 0))
+        .withIndex("by_points_week", (q) => q.gt("pointsThisWeek", 0))
         .order("desc")
         .take(250);
     } else if (args.period === "month") {
       results = await ctx.db
         .query("userStats")
-        .withIndex("by_points_month", (q) => q.gte("pointsThisMonth", 0))
+        .withIndex("by_points_month", (q) => q.gt("pointsThisMonth", 0))
         .order("desc")
         .take(250);
     } else {
       results = await ctx.db
         .query("userStats")
-        .withIndex("by_points_all_time", (q) => q.gte("pointsAllTime", 0))
+        .withIndex("by_points_all_time", (q) => q.gt("pointsAllTime", 0))
         .order("desc")
         .take(250);
     }
@@ -376,38 +376,25 @@ export const getUserFollowing = query({
       .collect();
   },
 });
+    sortBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const leaderboard = await ctx.db.query("userStats").collect();
 
-// Repair: Initialize user stats for all users missing them
-export const initializeAllMissingUserStats = mutation({
-  handler: async (ctx) => {
-    const allWallets = await ctx.db.query("managedWallets").collect();
-    let initialized = 0;
-
-    for (const wallet of allWallets) {
-      const existing = await ctx.db
-        .query("userStats")
-        .withIndex("by_user_id", (q) => q.eq("userId", wallet.userId))
-        .first();
-
-      if (!existing) {
-        await ctx.db.insert("userStats", {
-          userId: wallet.userId,
-          pointsThisWeek: 0,
-          pointsThisMonth: 0,
-          pointsAllTime: 0,
-          totalMatchesCreated: 0,
-          totalMatchesPlayed: 0,
-          totalMatchesWon: 0,
-          currentWinStreak: 0,
-          followers: 0,
-          totalComments: 0,
-          lastPointsUpdate: wallet.createdAt,
-          createdAt: wallet.createdAt,
+    switch (args.sortBy) {
+      case "volume":
+        leaderboard.sort((a, b) => b.totalStaked - a.totalStaked);
+        break;
+      case "profit":
+        leaderboard.sort((a, b) => {
+          const aProfit = a.totalPayout - a.totalStaked;
+          const bProfit = b.totalPayout - b.totalStaked;
+          return bProfit - aProfit;
         });
-        initialized++;
-      }
+        break;
     }
 
-    return { initialized, total: allWallets.length };
+    const rank = leaderboard.findIndex((u) => u.userAddress === args.userAddress);
+    return rank >= 0 ? rank + 1 : null;
   },
 });
