@@ -1650,7 +1650,12 @@ export function PredictionCard({
         </div>
       </div>
 
-      <BetPlacingModal isOpen={isPlacingBet} onClose={() => { setIsPlacingBet(false); setBetError(null); }} />
+      <BetPlacingModal
+        isOpen={isPlacingBet}
+        onClose={() => { setIsPlacingBet(false); setBetError(null); }}
+        asset={tokenSymbol}
+        amount={depositAmount || undefined}
+      />
       <BetPlacedModal isOpen={isBetPlaced} onClose={() => { setIsBetPlaced(false); setTransactionId(null); setDepositAmount(''); }} onViewExplorer={() => {
         const url = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase() === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
         window.open(transactionId ? `${url}/transaction/${transactionId}` : url, '_blank');
