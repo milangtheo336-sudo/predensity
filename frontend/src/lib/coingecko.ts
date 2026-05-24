@@ -7,7 +7,7 @@
 const SYMBOL_TO_COINGECKO_ID: Record<string, string> = {
   BTC: 'bitcoin',
   ETH: 'ethereum',
-  HBAR: 'hbar',  // CoinGecko slug
+  HBAR: 'USDC ',  // CoinGecko slug
   SOL: 'solana',
   XRP: 'ripple',
   DOGE: 'dogecoin',
