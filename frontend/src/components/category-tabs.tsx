@@ -11,10 +11,11 @@ interface CategoryTabsProps {
 
 export function CategoryTabs({ activeCategory, onCategoryChange }: CategoryTabsProps) {
   const { t } = useLanguage();
-  // Only show categories that have active markets
+  // Show crypto and esports categories only
   const tabs = [
     { id: 'all' as const, name: t.top },
     { id: Category.CRYPTO, name: t.crypto },
+    { id: Category.SPORTS, name: 'Esports' },
   ];
 
   return (
