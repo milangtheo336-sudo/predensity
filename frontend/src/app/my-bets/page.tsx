@@ -577,9 +577,9 @@ function SortDropdown({
 
   const options: { value: SortField; label: string }[] = [
     { value: 'pnl', label: t.profitLoss },
-    { value: 'avg', label: 'Average Price' },
-    { value: 'market', label: 'Alphabetically' },
-    { value: 'date', label: 'Date' },
+    { value: 'avg', label: t.averagePrice },
+    { value: 'market', label: t.alphabetically },
+    { value: 'date', label: t.date },
   ];
 
   const current = options.find(o => o.value === value)?.label ?? 'Sort';
