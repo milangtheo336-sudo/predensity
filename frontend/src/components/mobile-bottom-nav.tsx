@@ -179,6 +179,19 @@ export function MobileBottomNav() {
                 <span className="text-lg font-medium">{t.privacyPolicy}</span>
               </Link>
 
+              <Link
+                href="/cookies"
+                onClick={() => setMoreOpen(false)}
+                className="flex items-center gap-4 py-4 text-black dark:text-white w-full text-left"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span className="text-lg font-medium">Cookie Policy</span>
+              </Link>
+
               <div className="h-px bg-black/10 dark:bg-white/10 my-1" />
 
               {/* Blog */}
