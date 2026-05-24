@@ -11,6 +11,7 @@ import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 import { CONTRACT_IDS, getStakingCurrency, getOnChainBucket } from '@/lib/contracts/contract-config';
 import { Category } from '@/lib/types/categories';
+import { requireAdmin, rateLimit } from '@/lib/api-auth';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
 
@@ -50,6 +51,13 @@ async function readOnChainBet(client: Client, contractIdStr: string, betId: numb
 // Claims on-chain and credits each winner's managed wallet balance.
 export async function POST(request: NextRequest) {
   try {
+    // Admin auth check
+    const adminResult = await requireAdmin();
+    if (adminResult instanceof NextResponse) return adminResult;
+
+    const rateLimitResponse = rateLimit(request, { maxRequests: 10, windowMs: 60_000 });
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
     const { marketId, bucket, category } = body;
 
