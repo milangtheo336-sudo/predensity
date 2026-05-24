@@ -2,5 +2,8 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /ctrl-x7k9m2/
+Disallow: /my-bets
+Disallow: /settings
+Disallow: /onboarding
 
 Sitemap: https://www.predensity.com/sitemap.xml
