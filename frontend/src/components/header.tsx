@@ -247,8 +247,8 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
     api.users.getManagedWalletByUserId,
     user ? { userId: user.id } : 'skip'
   );
-  const depositAddress = managedWallet?.evmAddress || '';
-  const hederaId = managedWallet?.hederaAccountId || '';
+  const depositAddress = managedWallet?.hederaAccountId || '';
+  const evmAddr = managedWallet?.evmAddress || '';
   const storedBalance = managedWallet?.usdcBalance || '0';
 
   const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
@@ -259,12 +259,12 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
 
   // Poll mirror node for balance changes while modal is open
   useEffect(() => {
-    if (!hederaId || depositDetected) return;
+    if (!depositAddress || depositDetected) return;
     const initialBalance = parseFloat(storedBalance);
 
     const poll = async () => {
       try {
-        const res = await fetch(`${mirrorBase}/api/v1/accounts/${hederaId}/tokens?token.id=${usdcTokenId}`);
+        const res = await fetch(`${mirrorBase}/api/v1/accounts/${depositAddress}/tokens?token.id=${usdcTokenId}`);
         if (!res.ok) return;
         const data = await res.json();
         const tokenEntry = data.tokens?.find((t: any) => t.token_id === usdcTokenId);
@@ -289,7 +289,7 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
     const interval = setInterval(poll, 5000);
     poll(); // immediate first check
     return () => clearInterval(interval);
-  }, [hederaId, storedBalance, depositDetected]);
+  }, [depositAddress, storedBalance, depositDetected]);
 
   const handleCopy = async () => {
     if (depositAddress) {
@@ -311,8 +311,13 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
           <span className="text-sm text-white font-medium">Hedera</span>
           <div className="relative group">
             <HelpCircle className="w-3.5 h-3.5 text-gray-500 cursor-help" />
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-52 p-2 rounded-lg bg-neutral-800 border border-white/10 text-[11px] text-gray-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 p-2.5 rounded-lg bg-neutral-800 border border-white/10 text-[11px] text-gray-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
               Send {currency.symbol} on the Hedera network to this address. Your balance updates automatically.
+              {evmAddr && (
+                <div className="mt-1.5 pt-1.5 border-t border-white/10 text-[10px] text-gray-500 break-all">
+                  EVM: {evmAddr}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -366,11 +371,6 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
                 {depositAddress || 'Not available'}
               </span>
             </div>
-            {hederaId && (
-              <div className="text-[10px] text-gray-500 mt-1 text-center">
-                Hedera ID: {hederaId}
-              </div>
-            )}
             <button
               onClick={handleCopy}
               disabled={!depositAddress}
@@ -401,7 +401,15 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
 function CashMenuView() {
   return (
     <div className="space-y-4">
-      <span className="text-xs text-gray-500 font-medium">Available methods</span>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-500 font-medium">Available methods</span>
+        <div className="relative group">
+          <HelpCircle className="w-3.5 h-3.5 text-gray-500 cursor-help" />
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 rounded-lg bg-neutral-800 border border-white/10 text-[11px] text-gray-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+            More fiat on-ramp methods will be available soon.
+          </div>
+        </div>
+      </div>
 
       {/* M-Pesa */}
       <div className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 opacity-60 cursor-default">
@@ -414,10 +422,6 @@ function CashMenuView() {
           Coming Soon
         </span>
       </div>
-
-      <p className="text-[11px] text-gray-500 text-center leading-relaxed pt-2">
-        More fiat on-ramp methods will be available soon.
-      </p>
     </div>
   );
 }
