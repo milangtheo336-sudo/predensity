@@ -985,11 +985,12 @@ function AdminPage() {
   const [clobMarketForm, setClobMarketForm] = useState({
     question: '',
     category: 'politics',
+    marketType: 'binary' as 'binary' | 'multi',
     outcomes: [
       { name: 'Yes', imageUrl: '' },
       { name: 'No', imageUrl: '' }
     ],
-    marketImageUrl: '', // Main market thumbnail
+    marketImageUrl: '',
     description: '',
     resolutionTimestamp: '',
   });
@@ -1534,6 +1535,7 @@ function AdminPage() {
       setClobMarketForm({ 
         question: '', 
         category: 'politics', 
+        marketType: 'binary',
         outcomes: [{ name: 'Yes', imageUrl: '' }, { name: 'No', imageUrl: '' }], 
         marketImageUrl: '', 
         description: '', 
