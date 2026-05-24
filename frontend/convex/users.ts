@@ -196,7 +196,8 @@ export const getManagedWalletByAddress = query({
   },
 });
 
-// Update wallet balances (called by backend after deposits/withdrawals)
+// DEPRECATED: Only used for M-Pesa fiat on-ramp (custodial by nature)
+// For crypto deposits/withdrawals, balance is read from blockchain
 export const updateWalletBalance = mutation({
   args: {
     phoneNumber: v.optional(v.string()),
