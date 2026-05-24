@@ -1,28 +1,29 @@
-﻿
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 import { requireAuthMatchingUser, rateLimit, validateNumericRange } from '@/lib/api-auth';
+import { getServerConvex } from '@/lib/convex-server';
+import { publicClient } from '@/lib/arc-server';
+import { isAddress } from 'viem';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
 /**
  * POST /api/wallet/withdraw-non-custodial
- * 
- * NON-CUSTODIAL crypto withdrawal.
- * 
+ *
+ * NON-CUSTODIAL crypto withdrawal on Arc.
+ *
  * Flow:
- * 1. User signs withdrawal transaction with Magic Link in frontend
- * 2. Frontend submits transaction to Hedera
- * 3. Backend verifies transaction via Mirror Node
- * 4. Backend updates balance in Convex
- * 
+ * 1. User signs withdrawal transaction in frontend
+ * 2. Frontend submits transaction to Arc
+ * 3. Backend verifies transaction via Arc RPC
+ * 4. Backend confirms withdrawal
+ *
  * NO OPERATOR KEY USED - User's wallet sends directly
  */
 export async function POST(request: NextRequest) {
   try {
-    // Rate limit: 5 withdrawals per minute per IP
     const rateLimitResponse = rateLimit(request, { maxRequests: 5, windowMs: 60_000 });
     if (rateLimitResponse) return rateLimitResponse;
 
@@ -36,7 +37,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Authenticate and verify the caller owns this userId
     const authResult = await requireAuthMatchingUser(request, userId);
     if (authResult instanceof NextResponse) return authResult;
 
@@ -45,56 +45,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 });
     }
 
-    // Cap maximum withdrawal
     const amtError = validateNumericRange(amount, 'Withdrawal amount', 0.01, 50_000);
     if (amtError) {
       return NextResponse.json({ error: amtError }, { status: 400 });
     }
 
-    // Validate EVM address format
-    if (!/^0x[0-9a-fA-F]{40}$/.test(destinationAddress)) {
+    if (!isAddress(destinationAddress)) {
       return NextResponse.json({ error: 'Invalid EVM address format' }, { status: 400 });
     }
 
-    // Get user wallet info (for verification only, balance is read from blockchain)
     const wallet = await convex.query(api.users.getManagedWalletByUserId, { userId });
     if (!wallet) {
       return NextResponse.json({ error: 'No wallet found' }, { status: 404 });
     }
 
-    // Verify transaction on Hedera Mirror Node
-    const HEDERA_NETWORK = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-    const MIRROR_BASE = HEDERA_NETWORK === 'mainnet'
-      ? 'https://mainnet.mirrornode.hedera.com'
-      : 'https://testnet.mirrornode.hedera.com';
-
-    const normalizedTxId = transactionHash.replace('@', '-').replace(/\.(?=\d+$)/, '-');
-    
+    // Verify transaction on Arc via RPC
     let verified = false;
-    let actualAmount = '0';
 
     try {
-      const txUrl = `${MIRROR_BASE}/api/v1/transactions/${normalizedTxId}`;
-      const txRes = await fetch(txUrl);
+      const normalizedHash = transactionHash.startsWith('0x') ? transactionHash : `0x${transactionHash}`;
+      const receipt = await publicClient.getTransactionReceipt({ hash: normalizedHash as `0x${string}` });
 
-      if (txRes.ok) {
-        const txData = await txRes.json();
-        const transactions = txData.transactions || [txData];
-
-        for (const tx of transactions) {
-          // Check for successful status
-          if (tx.result !== 'SUCCESS') continue;
-
-          // Check token transfers
-          const tokenTransfers = tx.token_transfers || [];
-          for (const transfer of tokenTransfers) {
-            // Verify transfer is FROM user's wallet TO destination
-            if (
-              transfer.account === destinationAddress.toLowerCase() &&
-              transfer.amount > 0
-            ) {
-              // USDC has 6 decimals on Hedera
-              actualAmount = (transfer.amount / 1_000_000).toFixed(6);
+      if (receipt.status === 'success') {
+        // Check that it was a transfer (USDC Transfer event in logs)
+        for (const log of receipt.logs) {
+          // Transfer event topic: keccak256("Transfer(address,address,uint256)")
+          const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+          if (log.topics[0] === TRANSFER_TOPIC) {
+            // topics[2] is the `to` address (padded to 32 bytes)
+            const toAddress = '0x' + (log.topics[2] || '').slice(26);
+            if (toAddress.toLowerCase() === destinationAddress.toLowerCase()) {
               verified = true;
               break;
             }
@@ -102,7 +82,7 @@ export async function POST(request: NextRequest) {
         }
       }
     } catch (err) {
-      console.warn('[withdraw-non-custodial] Mirror node verification failed:', err);
+      console.warn('[withdraw-non-custodial] Transaction verification failed:', err);
     }
 
     if (!verified) {
@@ -115,13 +95,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Balance is read from blockchain, no need to update Convex
-    // The useBlockchainBalance hook will automatically reflect the new balance
-
     return NextResponse.json({
       success: true,
       transactionHash,
-      amount: actualAmount,
+      amount: amount.toFixed(6),
       destination: destinationAddress,
     });
   } catch (error) {
@@ -130,5 +107,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
-
