@@ -17,32 +17,32 @@ export function MobileBottomNav() {
 
   return (
     <>
-      {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-white dark:bg-black border-t border-gray-200 dark:border-white/10 z-40">
-        <div className="flex items-center justify-around h-16 px-4">
-          <Link href="/markets" className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-            <Image src="/home.svg" alt="Home" width={20} height={20} className="dark:brightness-0 dark:invert" />
+      {/* Mobile Bottom Navigation — floating island */}
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 md:hidden z-40 w-[calc(100%-32px)] max-w-sm">
+        <div className="flex items-center justify-around h-16 px-4 bg-[#1a1a1a] dark:bg-[#1a1a1a] rounded-[28px] shadow-2xl border border-white/[0.08]">
+          <Link href="/markets" className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-white transition-colors">
+            <Image src="/home.svg" alt="Home" width={20} height={20} className="brightness-0 invert opacity-60" />
             <span className="text-[10px] font-medium">{t.home}</span>
           </Link>
-          <button className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-            <Image src="/search.svg" alt="Search" width={20} height={20} className="dark:brightness-0 dark:invert" />
+          <button className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-white transition-colors">
+            <Image src="/search.svg" alt="Search" width={20} height={20} className="brightness-0 invert opacity-60" />
             <span className="text-[10px] font-medium">{t.search}</span>
           </button>
-          <button className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-            <Image src="/breaking.svg" alt="Breaking" width={20} height={20} className="dark:brightness-0 dark:invert" />
+          <button className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-white transition-colors">
+            <Image src="/breaking.svg" alt="Breaking" width={20} height={20} className="brightness-0 invert opacity-60" />
             <span className="text-[10px] font-medium">{t.breaking}</span>
           </button>
 
           {/* Logged in: Portfolio icon linking to /my-bets */}
           {isSignedIn ? (
-            <Link href="/my-bets" className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-              <Image src="/portfolio icon.svg" alt="Portfolio" width={20} height={20} className="dark:brightness-0 dark:invert" />
+            <Link href="/my-bets" className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-white transition-colors">
+              <Image src="/portfolio icon.svg" alt="Portfolio" width={20} height={20} className="brightness-0 invert opacity-60" />
               <span className="text-[10px] font-medium">{t.portfolio}</span>
             </Link>
           ) : (
             <button
               onClick={() => setMoreOpen(true)}
-              className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors relative"
+              className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-white transition-colors relative"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="4" y1="6" x2="20" y2="6"/>
@@ -132,8 +132,8 @@ export function MobileBottomNav() {
         )}
       </AnimatePresence>
 
-      {/* Spacer for mobile to prevent content overlap with bottom nav */}
-      <div className="md:hidden h-16" />
+      {/* Spacer for mobile to prevent content overlap with floating island nav */}
+      <div className="md:hidden h-24" />
     </>
   );
 }
