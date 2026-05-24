@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useMagic } from '@/context/MagicContext';
 
 const CATEGORIES = [
   { id: 'crypto', name: 'Crypto', icon: '₿' },
@@ -16,16 +15,8 @@ const CATEGORIES = [
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, isLoading } = useMagic();
   const [activeIndex, setActiveIndex] = useState(0);
   const [step, setStep] = useState<'categories' | 'trade'>('categories');
-
-  // Redirect if not logged in
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/');
-    }
-  }, [user, isLoading, router]);
 
   // Auto-scroll categories
   useEffect(() => {
@@ -35,8 +26,6 @@ export default function OnboardingPage() {
     }, 1800);
     return () => clearInterval(interval);
   }, [step]);
-
-  if (isLoading || !user) return null;
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white overflow-hidden relative flex flex-col">
