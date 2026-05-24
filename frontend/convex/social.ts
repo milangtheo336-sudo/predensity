@@ -249,3 +249,74 @@ export const likeComment = mutation({
     }
   },
 });
+
+// Get user's proxy wallet by userId (issuer)
+export const getProxyWalletByUserId = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const wallet = await ctx.db
+      .query("managedWallets")
+      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+      .first();
+    return wallet?.proxyWalletAddress || null;
+  },
+});
+
+// Get profiles for a list of addresses (used in comments, etc)
+export const getProfilesByAddresses = query({
+  args: { addresses: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const results = [];
+    for (const addr of args.addresses) {
+      const profile = await ctx.db
+        .query("userProfiles")
+        .withIndex("by_address", (q) => q.eq("userAddress", addr.toLowerCase()))
+        .first();
+      if (profile) {
+        results.push(profile);
+      }
+    }
+    return results;
+  },
+});
+
+// Get friends (following) of a user
+export const getFriendsWithProfiles = query({
+  args: { userAddress: v.string() },
+  handler: async (ctx, args) => {
+    const following = await ctx.db
+      .query("follows")
+      .withIndex("by_follower", (q) => q.eq("followerAddress", args.userAddress.toLowerCase()))
+      .collect();
+
+    // Fetch profiles for each friend
+    const results = [];
+    for (const f of following) {
+      const profile = await ctx.db
+        .query("userProfiles")
+        .withIndex("by_address", (q) => q.eq("userAddress", f.followingAddress))
+        .first();
+      results.push({
+        address: f.followingAddress,
+        displayName: profile?.displayName || f.followingAddress.slice(0, 6) + '...',
+        avatar: profile?.avatar,
+        followTimestamp: f.timestamp,
+      });
+    }
+    return results;
+  },
+});
+
+// Get email for a wallet address (for sending emails)
+export const getEmailByWalletAddress = query({
+  args: { walletAddress: v.string() },
+  handler: async (ctx, args) => {
+    // Find managedWallet by proxyWalletAddress
+    const wallet = await ctx.db
+      .query("managedWallets")
+      .withIndex("by_proxy_wallet", (q) => q.eq("proxyWalletAddress", args.walletAddress.toLowerCase()))
+      .first();
+    
+    return wallet?.email || null;
+  },
+});
