@@ -1,8 +1,7 @@
-const USDC_ADDRESS = '0x0000000000000000000000000000000000068cDa';
-const MAGIC_LINK_ADDRESS = '0x1ad2095155d84e1D016E6C1cEb701d6a5F953E88';
-const PROXY_WALLET_ADDRESS = '0x3b74a0e9dfc2ee9982d2ee75bfb36bb1b7806b65';
-const OLD_MAGIC_LINK_ADDRESS = '0xf9732d94f1c9092EC261797E5f778ce6cCE4dC36';
-const HASHPACK_ADDRESS = '0x0000000000000000000000000000000006d5f59'; // Add your HashPack address if you know it
+const USDC_ADDRESS = '0x00000000000000000000000000000000007d943F'; // Correct USDC testnet
+const MAGIC_LINK_ADDRESS = '0xEa027e87107f3031311fD2cB1775b1934EFFECAb'; // New account
+const PROXY_WALLET_ADDRESS = '0x3dbec8efbe6231abdd126d004675b0e418b130bd'; // New proxy wallet
+const PREDICTION_MARKET_ADDRESS = '0x0DE38B6eCBb09eF05584C9607EE941D4938D1da8'; // Crypto market
 
 async function checkBalance(address, label) {
   try {
@@ -52,13 +51,14 @@ async function main() {
   console.log('Checking USDC balances on Hedera Testnet...\n');
   console.log('='.repeat(60));
   
-  await checkBalance(OLD_MAGIC_LINK_ADDRESS, 'OLD Magic Link Wallet (Previous Account)');
-  await checkBalance(MAGIC_LINK_ADDRESS, 'NEW Magic Link Wallet (Current Account)');
-  await checkBalance(PROXY_WALLET_ADDRESS, 'NEW Proxy Wallet (Current Account)');
+  await checkBalance(MAGIC_LINK_ADDRESS, 'Magic Link Wallet (Identity Key)');
+  await checkBalance(PROXY_WALLET_ADDRESS, 'Proxy Wallet (Vault - NEW)');
+  await checkBalance(PREDICTION_MARKET_ADDRESS, 'Prediction Market Contract');
   
   console.log('\n' + '='.repeat(60));
   console.log('\nNote: For betting, USDC must be in the Proxy Wallet.');
-  console.log('If your 12 USDC is in the OLD account, you need to transfer it.');
+  console.log('Proxy wallet contract ID: 0.0.8553552');
+  console.log('Check transaction: https://hashscan.io/testnet/transaction/0.0.5792828@1775647686.064174550');
 }
 
 main().catch(console.error);
