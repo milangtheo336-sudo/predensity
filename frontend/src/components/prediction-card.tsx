@@ -87,16 +87,16 @@ function CryptoMarketInfoSection({
   const [activeTab, setActiveTab] = useState<'rules' | 'context'>('rules');
   const [expanded, setExpanded] = useState(false);
 
-  const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-  const hashscanBase = hederaNetwork === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
-  const resolverUrl = `${hashscanBase}/contract/${contractIdString}`;
+  const network = (process.env.NEXT_PUBLIC_NETWORK || 'testnet').toLowerCase();
+  const explorerBase = network === 'mainnet' ? 'https://explorer.arc.io' : 'https://testnet-explorer.arc.io';
+  const resolverUrl = `${explorerBase}/address/${contractAddress}`;
   const truncatedAddress = contractAddress.slice(0, 6) + '...' + contractAddress.slice(-4);
 
   const rulesText = `This market allows you to predict the future price of ${tokenName} (${tokenSymbol}) in USD. You select a resolution date/time, a price range (min-max), and a stake amount. If the actual price at resolution falls within your predicted range, you win proportionally based on bet weight. Bets are weighted by sharpness (narrower range = higher weight) and lead time (earlier bets = higher weight). The protocol fee is deducted at bet placement. Payouts are distributed proportionally among winning bets.`;
 
   const contextText = description
     ? description
-    : `Predict the future price of ${tokenName} (${tokenSymbol}) in USD. This market uses live price feeds and resolves on-chain via the Predensity smart contract on the Hedera network. All bets are placed through the Predensity treasury and settled on-chain. Transactions are fully verifiable on HashScan.`;
+    : `Predict the future price of ${tokenName} (${tokenSymbol}) in USD. This market uses live price feeds and resolves on-chain via the Predensity smart contract on the Arc network. All bets are placed through the Predensity treasury and settled on-chain.`;
 
   const displayText = activeTab === 'rules' ? rulesText : contextText;
   const isLong = displayText.length > 200;
@@ -137,7 +137,7 @@ function CryptoMarketInfoSection({
         </p>
         {expanded && activeTab === 'rules' && (
           <div className="flex items-center gap-3 mt-3 text-xs text-gray-500">
-            <span>Resolved on-chain via Hedera</span>
+            <span>Resolved on-chain via Arc</span>
           </div>
         )}
         {expanded && (
@@ -188,8 +188,8 @@ function CryptoActivitySection({
   currentUser?: { id: string; name: string; imageUrl?: string };
 }) {
   const [activeTab, setActiveTab] = useState<'ideas' | 'positions' | 'activity'>('ideas');
-  const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-  const hashscanBase = hederaNetwork === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
+  const network = (process.env.NEXT_PUBLIC_NETWORK || 'testnet').toLowerCase();
+  const explorerBase = network === 'mainnet' ? 'https://explorer.arc.io' : 'https://testnet-explorer.arc.io';
 
   const { user } = useMagic();
   const { walletUser } = useWalletUser();
@@ -582,8 +582,8 @@ function CryptoActivitySection({
                   const stakeFormatted = (parseFloat(bet.stake) / 1e6).toFixed(2);
                   const hasTxHash = bet.transactionHash && bet.transactionHash.length > 0;
                   const txUrl = hasTxHash
-                    ? `${hashscanBase}/transaction/${bet.transactionHash}`
-                    : `${hashscanBase}/contract/${contractIdString}`;
+                    ? `${explorerBase}/transaction/${bet.transactionHash}`
+                    : `${explorerBase}/contract/${contractIdString}`;
                   const prof = profiles[bet.userAddress];
                   const isBetCurrentUser = currentUser && bet.userAddress === `managed:${currentUser.id}`.toLowerCase();
                   const betImageUrl = isBetCurrentUser ? currentUser.imageUrl : undefined;
@@ -674,9 +674,9 @@ function CryptoActivitySection({
 // --- Main Component ---
 export function PredictionCard({
   className,
-  tokenSymbol = "HBAR",
-  tokenName = "HBAR",
-  tokenLogo = "/hedera.svg",
+  tokenSymbol = "BTC",
+  tokenName = "BTC",
+  tokenLogo = "/btc.svg",
   priceDecimals = 8,
   contractId,
 }: PredictionCardProps) {
@@ -1090,7 +1090,7 @@ export function PredictionCard({
       const message = `Bet ${depositAmount} USDC on ${tokenSymbol} for ${new Date(startUnix * 1000).toLocaleString()}`;
 
       // -----------------------------------------------------------------------
-      // PATH A: Wallet-auth user (HashPack, MetaMask, Blade)
+      // PATH A: Wallet-auth user (MetaMask, WalletConnect)
       // Sign with window.ethereum (all supported wallets inject a standard
       // EIP-1193 provider — personal_sign produces an ethers-verifiable sig)
       // -----------------------------------------------------------------------
@@ -1117,7 +1117,7 @@ export function PredictionCard({
 
         // 1. Find the right provider by walletType first (targeted, no multi-popup)
         //    then fall back to any EIP-6963 wallet that already has the address.
-        //    Always call eth_requestAccounts (not just eth_accounts) so HashPack
+        //    Always call eth_requestAccounts (not just eth_accounts) so the wallet
         //    refreshes its signing authorization — code 4100 "Unauthorized" is
         //    returned if signing is attempted after only a silent eth_accounts check.
         const walletNameHint = (walletUser.walletType ?? '').toLowerCase();
@@ -1130,7 +1130,7 @@ export function PredictionCard({
 
         if (targeted) {
           try {
-            // eth_requestAccounts refreshes signing session (required by HashPack)
+            // eth_requestAccounts refreshes signing session
             const addrs: string[] = await targeted.provider.request({ method: 'eth_requestAccounts' });
             if (addrs.some((a: string) => a.toLowerCase() === ownerAddress.toLowerCase())) {
               signingProvider = targeted.provider;
@@ -1191,7 +1191,7 @@ export function PredictionCard({
         }
 
         setBetError('Signing bet...');
-        // Hex-encode the message — MetaMask accepts plain UTF-8 but HashPack's
+        // Hex-encode the message — MetaMask accepts plain UTF-8 but some wallets'
         // EIP-1193 personal_sign implementation requires hex. Both produce the
         // same Ethereum signed message hash, so ethers.utils.verifyMessage on
         // the backend still recovers the correct address from the plain string.
@@ -1661,8 +1661,8 @@ export function PredictionCard({
         success={betPlacingSuccess}
       />
       <BetPlacedModal isOpen={isBetPlaced} onClose={() => { setIsBetPlaced(false); setTransactionId(null); setDepositAmount(''); }} onViewExplorer={() => {
-        const url = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase() === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
-        window.open(transactionId ? `${url}/transaction/${transactionId}` : url, '_blank');
+        const url = (process.env.NEXT_PUBLIC_NETWORK || 'testnet').toLowerCase() === 'mainnet' ? 'https://explorer.arc.io' : 'https://testnet-explorer.arc.io';
+        window.open(transactionId ? `${url}/tx/${transactionId}` : url, '_blank');
       }} />
     </div>
   );
