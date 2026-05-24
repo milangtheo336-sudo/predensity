@@ -64,22 +64,29 @@ export const getUserStats = query({
 // MANAGED WALLETS (M-Pesa / phone-based users)
 // ============================================
 
-// Store a newly created managed wallet
+// Store a newly created non-custodial wallet
 export const createManagedWallet = mutation({
   args: {
-    userId: v.optional(v.string()),
-    email: v.optional(v.string()),
+    userId: v.string(),
+    email: v.string(),
     phoneNumber: v.optional(v.string()),
-    hederaAccountId: v.string(),
+    magicEOAAddress: v.string(),
+    proxyWalletAddress: v.string(),
     evmAddress: v.string(),
-    encryptedPrivateKey: v.string(),
+    hederaAccountId: v.string(),
+    usdcBalance: v.string(),
+    hbarBalance: v.string(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    lastActivity: v.number(),
+    lastBalanceSync: v.number(),
   },
   handler: async (ctx, args) => {
-    // Check for duplicates by userId or phoneNumber -- return existing instead of throwing
+    // Check for duplicates
     if (args.userId) {
       const existingByUser = await ctx.db
         .query("managedWallets")
-        .withIndex("by_user_id", (q) => q.eq("userId", args.userId!))
+        .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
         .first();
       if (existingByUser) {
         return existingByUser._id;
@@ -100,14 +107,16 @@ export const createManagedWallet = mutation({
       userId: args.userId,
       email: args.email,
       phoneNumber: args.phoneNumber,
-      hederaAccountId: args.hederaAccountId,
+      magicEOAAddress: args.magicEOAAddress,
+      proxyWalletAddress: args.proxyWalletAddress,
       evmAddress: args.evmAddress,
-      encryptedPrivateKey: args.encryptedPrivateKey,
-      usdcBalance: "0",
-      hbarBalance: "0",
-      isActive: true,
-      createdAt: Date.now(),
-      lastActivity: Date.now(),
+      hederaAccountId: args.hederaAccountId,
+      usdcBalance: args.usdcBalance,
+      hbarBalance: args.hbarBalance,
+      isActive: args.isActive,
+      createdAt: args.createdAt,
+      lastActivity: args.lastActivity,
+      lastBalanceSync: args.lastBalanceSync,
     });
   },
 });
