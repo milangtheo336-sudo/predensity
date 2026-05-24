@@ -1,22 +1,25 @@
 'use client';
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { useAccount } from 'wagmi';
-import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
-import { useMagic } from '@/context/MagicContext';
-import { useWalletUser } from '@/context/WalletUserContext';
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  useWallet,
+  useEvmAddress,
+  useWriteContract,
+  useWatchTransactionReceipt,
+} from '@buidlerlabs/hashgraph-react-wallets';
+import { useQuery as useConvexQuery } from 'convex/react';
+import { useUser } from '@clerk/nextjs';
 import { api } from '../../../convex/_generated/api';
 
 import { Bet } from '@/lib/types';
 import Image from 'next/image';
-import Avatar from 'boring-avatars';
-import { CONTRACT_ADDRESSES, getStakingCurrency, isTokenMode } from '@/lib/contracts/contract-config';
-import { formatDateUTC, formatTinybarsToHbar, getLocalTimezoneAbbr, getAvatarPalette } from '@/lib/utils';
+import CryptoPredictionMarketABI from '../../../abi/CryptoPredictionMarket.json';
+import { CONTRACT_ADDRESSES, CONTRACT_IDS, getStakingCurrency, isTokenMode } from '@/lib/contracts/contract-config';
+import { Category } from '@/lib/types/categories';
+import { formatDateUTC, formatTinybarsToHbar, getLocalTimezoneAbbr } from '@/lib/utils';
 
-import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/components/ui/useToast';
 import { Toaster } from '@/components/ui/toaster';
-import { Header, DepositModal, useBalanceVisibility } from '@/components/header';
-import { useBlockchainBalance } from '@/hooks/useBlockchainBalance';
+import { Header, DepositModal } from '@/components/header';
 import {
   Loader2,
   ArrowUpRight,
@@ -33,18 +36,11 @@ import {
   Calendar,
   Download,
   Eye,
-  EyeOff,
   ExternalLink,
   TrendingUp,
   TrendingDown,
   ArrowRight,
   Check,
-  Link2,
-  Gift,
-  Upload,
-  SortAsc,
-  Twitter,
-  Activity as ActivityIcon,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -63,7 +59,7 @@ function formatAmount(value: number | string, decimals: number = 2): string {
 function formatUsd(value: number): string {
   if (Math.abs(value) < 0.01) return '$0.00';
   const sign = value >= 0 ? '' : '-';
-  return sign + '$' + Math.abs(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return sign + '$' + Math.abs(value).toFixed(2);
 }
 
 function getBetCategory(bet: Bet): string {
@@ -87,22 +83,6 @@ function formatBetRange(value: number | string, category: string): string {
 }
 
 function mapConvexBet(cb: any): Bet {
-  // Infer the correct crypto asset from the price range if asset is missing/wrong.
-  // All crypto prices are stored with 8 decimals. We use the midpoint price
-  // to determine which token this bet is for.
-  let inferredAsset = cb.asset;
-  if (cb.category === 'crypto') {
-    const midPrice = (Number(cb.priceMin) + Number(cb.priceMax)) / 2 / 1e8;
-    if (!inferredAsset || inferredAsset === 'HBAR' || inferredAsset === 'UNKNOWN') {
-      // Infer from price magnitude
-      if (midPrice > 20000) inferredAsset = 'BTC';
-      else if (midPrice > 1000) inferredAsset = 'ETH';
-      else if (midPrice > 100) inferredAsset = 'SOL';
-      else if (midPrice > 1) inferredAsset = 'XRP';
-      else inferredAsset = 'HBAR';
-    }
-  }
-
   return {
     id: cb.betId,
     user: { id: cb.userAddress, bets: [], totalBets: 0, totalStaked: 0, totalPayout: 0 },
@@ -121,7 +101,7 @@ function mapConvexBet(cb: any): Bet {
     bucket: cb.bucket || 0,
     bucketRef: undefined,
     market: { id: cb.marketId, category: cb.category },
-    asset: inferredAsset,
+    asset: cb.asset,
   };
 }
 
@@ -134,17 +114,7 @@ function getMarketLabel(bet: Bet): string {
   return cat;
 }
 
-function getCryptoQuestion(bet: Bet): string {
-  const asset = bet.asset || 'HBAR';
-  const min = Number(bet.priceMin) / 1e8;
-  const max = Number(bet.priceMax) / 1e8;
-  // Format prices based on magnitude -- large prices (BTC) get 2 decimals, small (HBAR) get 4
-  const decimals = min >= 1 ? 2 : 4;
-  const fmtMin = '$' + min.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-  const fmtMax = '$' + max.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-  return `Predict ${asset} Price: ${fmtMin} - ${fmtMax}`;
-}
-
+// Map contract EVM address to category string
 function categoryFromMarketId(marketId: string): string {
   const addr = marketId.toLowerCase();
   for (const [cat, evmAddr] of Object.entries(CONTRACT_ADDRESSES)) {
@@ -153,161 +123,124 @@ function categoryFromMarketId(marketId: string): string {
   return 'crypto';
 }
 
-type SortField = 'pnl' | 'avg' | 'market' | 'date';
+type SortField = 'market' | 'avg' | 'current' | 'value';
 type SortDir = 'asc' | 'desc';
 type MainTab = 'positions' | 'activity';
 type PositionSub = 'active' | 'closed';
 type PnlRange = '1D' | '1W' | '1M' | 'ALL';
 
 // ---------------------------------------------------------------------------
-//
+// P&L Sparkline with Predensity watermark
 // ---------------------------------------------------------------------------
 function PnlSparkline({ data, color }: { data: number[]; color: string }) {
   if (data.length < 2) {
     return (
-      <div className="w-full h-24 rounded-lg bg-gray-100 dark:bg-neutral-900/50 flex items-center justify-center relative">
-        <span className="text-xs text-gray-400 dark:text-neutral-600">No activity yet</span>
-        <div className="absolute top-2 right-3 flex items-center gap-2 pointer-events-none select-none opacity-15">
-          <Image src="/predensity-logo.png" alt="" width={50} height={30} className="rounded-sm hidden dark:block" />
-          <Image src="/white the loading predensity logo.png" alt="" width={50} height={30} className="rounded-sm dark:hidden" />
-          <span className="text-xl text-gray-900 dark:text-white font-semibold tracking-wide">Predensity</span>
-        </div>
+      <div className="w-full h-20 rounded-lg bg-neutral-900/50 flex items-center justify-center relative">
+        <span className="text-xs text-neutral-600">No activity yet</span>
+        <span className="absolute bottom-1 right-2 text-[10px] text-neutral-800 font-medium select-none">Predensity</span>
       </div>
-    );  }
+    );
+  }
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 1;
   const w = 400;
-  const h = 96;
+  const h = 80;
   const allSame = min === max;
-
-  const pts = data.map((v, i) => {
+  const points = data.map((v, i) => {
     const x = (i / (data.length - 1)) * w;
-    const y = allSame ? h / 2 : h - ((v - min) / range) * (h - 10) - 5;
-    return [x, y] as [number, number];
-  });
-
-  const polyline = pts.map(([x, y]) => `${x},${y}`).join(' ');
-  const area = `0,${h} ${polyline} ${w},${h}`;
-
-  const gradId = `pnl-grad-${color.replace('#', '')}`;
+    const y = allSame ? h / 2 : h - ((v - min) / range) * (h - 8) - 4;
+    return `${x},${y}`;
+  }).join(' ');
 
   return (
     <div className="relative w-full">
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: 96 }} preserveAspectRatio="none">
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-20" preserveAspectRatio="none">
         <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-            <stop offset="80%" stopColor={color} stopOpacity="0.03" />
+          <linearGradient id="pnl-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.15" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
-        <polygon points={area} fill={`url(#${gradId})`} />
-        <polyline
-          points={polyline}
-          fill="none"
-          stroke={color}
-          strokeWidth="1.8"
-          vectorEffect="non-scaling-stroke"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+        <polygon points={`0,${h} ${points} ${w},${h}`} fill="url(#pnl-grad)" />
+        <polyline points={points} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" />
         {/* End dot */}
-        {(() => {
-          const [lx, ly] = pts[pts.length - 1];
-          return <circle cx={lx} cy={ly} r="3.5" fill={color} />;
+        {data.length > 0 && (() => {
+          const lastX = w;
+          const lastVal = data[data.length - 1];
+          const lastY = allSame ? h / 2 : h - ((lastVal - min) / range) * (h - 8) - 4;
+          return <circle cx={lastX} cy={lastY} r="3" fill={color} />;
         })()}
       </svg>
-      {/* Watermark -- top right, subtle with logo */}
-      <div className="absolute top-2 right-3 flex items-center gap-2 pointer-events-none select-none opacity-15">
-        <Image src="/predensity-logo.png" alt="" width={50} height={30} className="rounded-sm hidden dark:block" />
-        <Image src="/white the loading predensity logo.png" alt="" width={50} height={30} className="rounded-sm dark:hidden" />
-        <span className="text-2xl text-gray-900 dark:text-white font-semibold tracking-wide">Predensity</span>
-      </div>
+      <span className="absolute bottom-0.5 right-1 text-[10px] text-neutral-700 font-medium select-none pointer-events-none">
+        Predensity
+      </span>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Activity Row
+// Activity Item Component
 // ---------------------------------------------------------------------------
-function ActivityRow({ item, explorerBase, getCryptoImage }: { item: any; explorerBase: string; getCryptoImage: (asset: string) => string | null }) {
+function ActivityRow({ item, hashscanBase }: { item: any; hashscanBase: string }) {
   const isDeposit = item.type === 'deposit';
   const isWithdrawal = item.type === 'withdrawal';
   const isBetWon = item.type === 'bet_won';
   const isBetLost = item.type === 'bet_lost';
   const isBetPlaced = item.type === 'bet_placed';
 
-  // Infer correct asset from price data if available
-  const inferredAsset = (() => {
-    if (item.asset && item.asset !== 'HBAR' && item.asset !== 'UNKNOWN') return item.asset;
-    if (item.category === 'crypto' && item.priceMin && item.priceMax) {
-      const mid = (Number(item.priceMin) + Number(item.priceMax)) / 2 / 1e8;
-      if (mid > 20000) return 'BTC';
-      if (mid > 1000) return 'ETH';
-      if (mid > 100) return 'SOL';
-      if (mid > 1) return 'XRP';
-    }
-    return item.asset || null;
-  })();
-
-  const assetImageUrl = inferredAsset ? getCryptoImage(inferredAsset) : null;
-
-  // For non-crypto bets, use the event image from the backend
-  const displayImageUrl = assetImageUrl || item.eventImageUrl || null;
-
-  // Asset image for bet activities, fallback icons for deposits/withdrawals
-  const icon = (isDeposit || isWithdrawal) ? (
-    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isDeposit ? 'bg-green-500/10' : 'bg-orange-500/10'}`}>
-      {isDeposit
-        ? <ArrowDownRight className="w-4 h-4 text-green-500" />
-        : <ArrowUpRight className="w-4 h-4 text-orange-400" />}
+  const icon = isDeposit ? (
+    <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+      <ArrowDownRight className="w-4 h-4 text-green-500" />
     </div>
-  ) : displayImageUrl ? (
-    <img src={displayImageUrl} alt={inferredAsset || item.eventName || ''} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+  ) : isWithdrawal ? (
+    <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+      <ArrowUpRight className="w-4 h-4 text-orange-400" />
+    </div>
+  ) : isBetWon ? (
+    <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+      <CheckCircle className="w-4 h-4 text-green-500" />
+    </div>
+  ) : isBetLost ? (
+    <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
+      <XCircle className="w-4 h-4 text-red-400" />
+    </div>
   ) : (
-    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-      item.category === 'politics' ? 'bg-blue-500/10 text-blue-400'
-      : item.category === 'esports' ? 'bg-green-500/10 text-green-400'
-      : item.category === 'technology' ? 'bg-purple-500/10 text-purple-400'
-      : 'bg-orange-500/10 text-orange-400'
-    }`}>
-      {(inferredAsset || item.category || 'B').charAt(0).toUpperCase()}
+    <div className="w-8 h-8 rounded-full bg-vibrant-purple/10 flex items-center justify-center flex-shrink-0">
+      <Clock className="w-4 h-4 text-vibrant-purple" />
     </div>
   );
 
   const label = isDeposit ? 'Deposit' : isWithdrawal ? 'Withdrawal' : isBetWon ? 'Bet Won' : isBetLost ? 'Bet Lost' : 'Bet Placed';
   const sublabel = item.category
-    ? `${item.category.charAt(0).toUpperCase() + item.category.slice(1)}${item.eventName ? ' - ' + item.eventName : (inferredAsset ? ' - ' + inferredAsset : '')}`
+    ? `${item.category.charAt(0).toUpperCase() + item.category.slice(1)}${item.asset ? ' - ' + item.asset : ''}`
     : item.details || '';
 
-  const currency = getStakingCurrency();
   const amountNum = Number(item.amount);
+  const currency = getStakingCurrency();
   const displayAmount = isTokenMode()
     ? (amountNum / Math.pow(10, currency.decimals)).toFixed(2)
     : formatTinybarsToHbar(amountNum, 2);
 
-  const amountColor = (isDeposit || isBetWon) ? 'text-green-500' : (isWithdrawal || isBetLost) ? 'text-red-400' : 'text-gray-900 dark:text-white';
+  const amountColor = (isDeposit || isBetWon) ? 'text-green-500' : (isWithdrawal || isBetLost) ? 'text-red-400' : 'text-white';
   const amountPrefix = (isDeposit || isBetWon) ? '+' : (isWithdrawal || isBetLost) ? '-' : '';
 
   const date = new Date(item.timestamp);
   const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-  // Build HashScan link from txHash
-  const explorerUrl = item.txHash ? `${explorerBase}/tx/${item.txHash}` : null;
-
-  const rowContent = (
-    <div className={`flex items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-gray-100 dark:border-neutral-800/50 transition-colors ${explorerUrl ? 'hover:bg-gray-50 dark:hover:bg-neutral-900/20 cursor-pointer' : ''}`}>
+  return (
+    <div className="flex items-center gap-3 px-4 py-3.5 border-b border-neutral-800/50 hover:bg-neutral-900/30 transition-colors">
       {icon}
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-gray-900 dark:text-white">{label}</div>
-        <div className="text-xs text-gray-500 dark:text-neutral-500 truncate">{sublabel}</div>
+        <div className="text-sm font-medium text-white">{label}</div>
+        <div className="text-xs text-neutral-500 truncate">{sublabel}</div>
       </div>
       <div className="text-right flex-shrink-0">
         <div className={`text-sm font-semibold ${amountColor}`}>
           {amountPrefix}{displayAmount} {currency.symbol}
         </div>
-        <div className="text-[11px] text-gray-400 dark:text-neutral-600">{dateStr} {timeStr}</div>
+        <div className="text-[11px] text-neutral-600">{dateStr} {timeStr}</div>
       </div>
       <div className="flex-shrink-0 ml-1">
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
@@ -320,42 +253,30 @@ function ActivityRow({ item, explorerBase, getCryptoImage }: { item: any; explor
           {item.status}
         </span>
       </div>
-      {explorerUrl && (
-        <div className="flex-shrink-0">
-          <ExternalLink className="w-3.5 h-3.5 text-gray-400 dark:text-neutral-600" />
-        </div>
-      )}
+      {/* HashScan link for on-chain transactions */}
+      <div className="flex-shrink-0">
+        {item.txHash ? (
+          <a
+            href={`${hashscanBase}/transaction/${item.txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1 rounded text-neutral-600 hover:text-vibrant-purple transition-colors"
+            title="View on HashScan"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        ) : (
+          <div className="w-5" />
+        )}
+      </div>
     </div>
   );
-
-  if (explorerUrl) {
-    return (
-      <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="block">
-        {rowContent}
-      </a>
-    );
-  }
-
-  return rowContent;
 }
 
 // ---------------------------------------------------------------------------
-//
+// Active Position Card -- live tracker for an unfinalized crypto bet
 // ---------------------------------------------------------------------------
-function ActivePositionCard({
-  bet,
-  livePrice,
-  imageUrl,
-  mobile,
-  balancesHidden,
-}: {
-  bet: Bet;
-  livePrice: number | null;
-  imageUrl?: string | null;
-  mobile?: boolean;
-  balancesHidden?: boolean;
-}) {
-  const { t } = useLanguage();
+function ActivePositionCard({ bet, livePrice, imageUrl }: { bet: Bet; livePrice: number | null; imageUrl?: string | null }) {
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -364,12 +285,12 @@ function ActivePositionCard({
   }, []);
 
   const currency = getStakingCurrency();
-  const stakeNum = Number(formatAmount(bet.stake, 6));
+  const stake = Number(formatAmount(bet.stake, 6));
   const asset = bet.asset || 'HBAR';
-  const HIDDEN = '****';
 
   const minPrice = Number(bet.priceMin) / 1e8;
   const maxPrice = Number(bet.priceMax) / 1e8;
+
   const inRange = livePrice !== null && livePrice >= minPrice && livePrice <= maxPrice;
 
   const resolutionMs = bet.targetTimestamp * 1000;
@@ -394,322 +315,135 @@ function ActivePositionCard({
   const progressPct = totalWait > 0 ? Math.min(100, Math.max(0, (elapsed / totalWait) * 100)) : 100;
 
   const priceRange = maxPrice - minPrice;
-  const pricePct =
-    livePrice !== null && priceRange > 0
-      ? Math.min(100, Math.max(0, ((livePrice - minPrice) / priceRange) * 100))
-      : 50;
+  const pricePct = livePrice !== null && priceRange > 0
+    ? Math.min(100, Math.max(0, ((livePrice - minPrice) / priceRange) * 100))
+    : 50;
 
   const resolutionLocal = new Date(resolutionMs).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
   });
 
-  const question = getCryptoQuestion(bet);
+  const avg = '$' + formatTinybarsToHbar((Number(bet.priceMin) + Number(bet.priceMax)) / 2, 2);
 
-  const statusBadge = (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
-      isPast
-        ? 'bg-yellow-500/10 text-yellow-400'
-        : inRange
-        ? 'bg-green-500/10 text-green-500'
-        : 'bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400'
-    }`}>
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isPast ? 'bg-yellow-400' : inRange ? 'bg-green-500' : 'bg-neutral-500'}`} />
-      {isPast ? 'Pending' : inRange ? 'In Range' : t.active}
-    </span>
-  );
-
-  const expandedDetail = expanded ? (
-    <div
-      className="mt-3 bg-gray-50 dark:bg-neutral-900/60 rounded-lg p-3 space-y-2.5"
-      onClick={e => e.stopPropagation()}
-    >
-      <div>
-        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-500 mb-1">
-          <span>{'$' + minPrice.toLocaleString(undefined, { minimumFractionDigits: minPrice >= 1 ? 2 : 4, maximumFractionDigits: minPrice >= 1 ? 2 : 4 })}</span>
-          <span className={`font-bold ${inRange ? 'text-green-500' : 'text-red-400'}`}>
-            {livePrice !== null
-              ? '$' + livePrice.toLocaleString(undefined, { minimumFractionDigits: livePrice >= 1 ? 2 : 4, maximumFractionDigits: livePrice >= 1 ? 2 : 4 })
-              : '--'}
-          </span>
-          <span>{'$' + maxPrice.toLocaleString(undefined, { minimumFractionDigits: maxPrice >= 1 ? 2 : 4, maximumFractionDigits: maxPrice >= 1 ? 2 : 4 })}</span>
-        </div>
-        <div className="relative h-1.5 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-          <div className="absolute inset-0 bg-green-500/15 rounded-full" />
-          {livePrice !== null && (
-            <div
-              className={`absolute top-0 h-full w-1 rounded-full ${inRange ? 'bg-green-500' : 'bg-red-400'}`}
-              style={{ left: `${pricePct}%`, transform: 'translateX(-50%)' }}
-            />
-          )}
-        </div>
-      </div>
-      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-500">
-        <span>Resolves: {resolutionLocal} ({getLocalTimezoneAbbr()})</span>
-        <span className={`font-mono font-medium ${isPast ? 'text-yellow-400' : 'text-gray-900 dark:text-white'}`}>{timeLeft}</span>
-      </div>
-      <div className="relative h-1 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-1000 ${isPast ? 'bg-yellow-400' : 'bg-vibrant-purple'}`}
-          style={{ width: `${progressPct}%` }}
-        />
-      </div>
-    </div>
-  ) : null;
-
-  // Mobile card layout
-  if (mobile) {
-    return (
-      <div
-        className="border-b border-gray-100 dark:border-neutral-800/60 px-4 py-3.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors"
-        onClick={() => setExpanded(e => !e)}
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg flex-shrink-0 overflow-hidden">
-            {imageUrl ? (
-              <img src={imageUrl} alt={asset} className="w-9 h-9 rounded-lg object-cover" />
-            ) : (
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold bg-orange-500/10 text-orange-400">
-                {asset.charAt(0)}
-              </div>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-gray-900 dark:text-white leading-tight truncate">{question}</div>
-            <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
-              {stakeNum.toFixed(2)} {currency.symbol} {t.staked}
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            {statusBadge}
-            <span className="text-sm font-medium text-gray-900 dark:text-white">{balancesHidden ? HIDDEN : formatUsd(stakeNum)}</span>
-          </div>
-        </div>
-        {expandedDetail}
-      </div>
-    );
-  }
-
-  // Desktop table row
   return (
-    <tr
-      className="border-b border-gray-100 dark:border-neutral-800/60 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors cursor-pointer"
+    <div
+      className="border-b border-gray-100 dark:border-neutral-800/50 hover:bg-gray-50 dark:hover:bg-neutral-900/30 transition-colors cursor-pointer"
       onClick={() => setExpanded(e => !e)}
     >
-      {/* STATUS */}
-      <td className="px-5 py-3.5 w-32">
-        {statusBadge}
-      </td>
-
-      {/* MARKET */}
-      <td className="px-4 py-3.5">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg flex-shrink-0 overflow-hidden">
-            {imageUrl ? (
-              <img src={imageUrl} alt={asset} className="w-9 h-9 rounded-lg object-cover" />
-            ) : (
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold bg-orange-500/10 text-orange-400">
-                {asset.charAt(0)}
+      {/* Compact row -- same layout as other position rows */}
+      <div className="grid grid-cols-12 gap-2 px-4 py-3.5 items-center text-sm">
+        <div className="col-span-5">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden">
+              {imageUrl ? (
+                <img src={imageUrl} alt={asset} className="w-8 h-8 rounded-lg object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold bg-orange-500/10 text-orange-400">
+                  {asset.charAt(0)}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="font-medium text-gray-900 dark:text-white truncate text-[13px] leading-tight">{asset}/USD</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-orange-500/10 text-orange-400">{asset}</span>
+                <span className="text-[10px] text-gray-400 dark:text-neutral-600">{stake.toFixed(2)} shares</span>
               </div>
-            )}
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-900 dark:text-white leading-tight line-clamp-1">{question}</div>
-            <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
-              {stakeNum.toFixed(2)} {currency.symbol} {t.staked}
             </div>
           </div>
         </div>
-        {expandedDetail}
-      </td>
-
-      {/* TOTAL TRADED */}
-      <td className="px-4 py-3.5 text-right">
-        <span className="text-sm text-gray-900 dark:text-white font-medium">{balancesHidden ? HIDDEN : formatUsd(stakeNum)}</span>
-      </td>
-
-      {/* AMOUNT */}
-      <td className="px-4 py-3.5 text-right">
-        <div className="flex flex-col items-end">
-          <span className="text-sm text-gray-900 dark:text-white font-medium">{balancesHidden ? HIDDEN : formatUsd(stakeNum)}</span>
-          <span className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">Active</span>
+        <div className="col-span-2 text-right font-mono text-sm text-gray-700 dark:text-neutral-300">{avg}</div>
+        <div className="col-span-2 text-right font-mono text-sm">
+          <span className={inRange ? 'text-green-500' : livePrice !== null ? 'text-red-400' : 'text-gray-700 dark:text-neutral-300'}>
+            {livePrice !== null ? `$${livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--'}
+          </span>
         </div>
-      </td>
+        <div className="col-span-2 text-right">
+          <div className="font-semibold text-sm text-gray-900 dark:text-white">{formatUsd(stake)}</div>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+            isPast ? 'bg-yellow-500/10 text-yellow-500'
+              : inRange ? 'bg-green-500/10 text-green-500'
+              : 'bg-red-500/10 text-red-400'
+          }`}>
+            {isPast ? 'Pending' : inRange ? 'In range' : 'Out'}
+          </span>
+        </div>
+        <div className="col-span-1 flex justify-end">
+          {expanded
+            ? <ChevronUp className="w-4 h-4 text-gray-400 dark:text-neutral-500" />
+            : <ChevronDown className="w-4 h-4 text-gray-400 dark:text-neutral-500" />
+          }
+        </div>
+      </div>
 
-      {/* EXPAND */}
-      <td className="px-4 py-3.5 w-10">
-        {expanded ? (
-          <ChevronUp className="w-4 h-4 text-gray-400 dark:text-neutral-500" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-gray-300 dark:text-neutral-700" />
-        )}
-      </td>
-    </tr>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Sort Dropdown
-// ---------------------------------------------------------------------------
-function SortDropdown({
-  value,
-  onChange,
-}: {
-  value: SortField;
-  onChange: (v: SortField) => void;
-}) {
-  const { t } = useLanguage();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const options: { value: SortField; label: string }[] = [
-    { value: 'pnl', label: t.profitLoss },
-    { value: 'avg', label: t.averagePrice },
-    { value: 'market', label: t.alphabetically },
-    { value: 'date', label: t.date },
-  ];
-
-  const current = options.find(o => o.value === value)?.label ?? 'Sort';
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-xs font-medium text-gray-600 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-neutral-600 transition-colors"
-      >
-        <SortAsc className="w-3.5 h-3.5 text-gray-400 dark:text-neutral-500" />
-        {current}
-        <ChevronDown className={`w-3 h-3 text-gray-400 dark:text-neutral-500 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div className="absolute right-0 mt-1.5 w-44 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-neutral-800 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
-          {options.map(opt => (
-            <button
-              key={opt.value}
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-600 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors"
-            >
-              {opt.label}
-              {value === opt.value && (
-                <span className="w-1.5 h-1.5 rounded-full bg-vibrant-purple flex-shrink-0" />
-              )}
-            </button>
-          ))}
+      {/* Expanded detail panel */}
+      {expanded && (
+        <div className="px-4 pb-4 pt-0" onClick={e => e.stopPropagation()}>
+          <div className="bg-gray-50 dark:bg-neutral-900/50 rounded-lg p-3 space-y-3">
+            <div>
+              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-500 mb-1">
+                <span>${minPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className={`text-sm font-bold ${inRange ? 'text-green-500' : 'text-red-400'}`}>
+                  {livePrice !== null ? `$${livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--'}
+                </span>
+                <span>${maxPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className="relative h-2 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                <div className="absolute inset-0 bg-green-500/20 rounded-full" />
+                {livePrice !== null && (
+                  <div
+                    className={`absolute top-0 h-full w-1 rounded-full ${inRange ? 'bg-green-500' : 'bg-red-400'}`}
+                    style={{ left: `${pricePct}%`, transform: 'translateX(-50%)' }}
+                  />
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500 dark:text-neutral-500">
+                Stake: <span className="text-gray-900 dark:text-white font-medium">{stake.toFixed(2)} {currency.symbol}</span>
+              </span>
+              <span className={`font-mono font-medium ${isPast ? 'text-yellow-500' : 'text-gray-900 dark:text-white'}`}>
+                {timeLeft}
+              </span>
+            </div>
+            <div className="relative h-1.5 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-1000 ${isPast ? 'bg-yellow-500' : 'bg-vibrant-purple'}`}
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+            <div className="text-[10px] text-gray-400 dark:text-neutral-600 text-right">
+              Resolves: {resolutionLocal} ({getLocalTimezoneAbbr()})
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
+
 // ---------------------------------------------------------------------------
 // Main Portfolio Page
 // ---------------------------------------------------------------------------
-function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string }) {
-  const isPublicView = !!publicViewUserId;
-  const { t } = useLanguage();
-  const { user } = useMagic();
-  const { walletUser } = useWalletUser();
-  const isSignedIn = !!user || !!walletUser;
-  const effectivePublicAddress = user?.publicAddress ?? walletUser?.publicAddress ?? null;
-  const effectiveIssuer = user?.issuer ?? walletUser?.userId ?? null;
-  const { address: evmAddress } = useAccount();
-  
-  // Get proxy wallet address
-  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
-  
-  useEffect(() => {
-    if (!effectivePublicAddress) return;
+export default function PortfolioPage() {
+  const { user, isSignedIn } = useUser();
+  const { data: evmAddress } = useEvmAddress();
+  const { isConnected } = useWallet();
+  const { writeContract } = useWriteContract();
+  const { watch } = useWatchTransactionReceipt();
 
-    let pollingInterval: NodeJS.Timeout;
-
-    const fetchProxyWallet = async () => {
-      // Check cache first
-      try {
-        const cached = localStorage.getItem(`predensity_proxy_wallet_${effectivePublicAddress}`);
-        if (cached) {
-          const data = JSON.parse(cached);
-          if (Date.now() - data.timestamp < 86400000) { // 24 hour cache
-            setProxyWalletAddress(data.proxyWallet);
-            return;
-          }
-        }
-      } catch (e) {
-        console.error('[my-bets] Cache read error:', e);
-      }
-
-      try {
-        const response = await fetch(`/api/proxy-wallet/create?userAddress=${effectivePublicAddress}`);
-        const data = await response.json();
-        if (data.exists && data.proxyWalletAddress) {
-          setProxyWalletAddress(data.proxyWalletAddress);
-          // Cache it
-          localStorage.setItem(
-            `predensity_proxy_wallet_${effectivePublicAddress}`,
-            JSON.stringify({
-              proxyWallet: data.proxyWalletAddress,
-              timestamp: Date.now(),
-            })
-          );
-        }
-      } catch (err) {
-        console.error('[my-bets] Failed to fetch proxy wallet:', err);
-      }
-    };
-
-    if (!proxyWalletAddress) {
-      fetchProxyWallet();
-      pollingInterval = setInterval(fetchProxyWallet, 5000);
-    }
-
-    return () => {
-      if (pollingInterval) clearInterval(pollingInterval);
-    };
-  }, [effectivePublicAddress, proxyWalletAddress]);
-  const { balancesHidden, toggleBalancesHidden } = useBalanceVisibility();
-  // Local state synced with localStorage for when context is not available
-  const [localHidden, setLocalHidden] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('predensity-hide-balances') === 'true';
-    }
-    return false;
-  });
-  useEffect(() => {
-    const onToggle = () => {
-      setLocalHidden(localStorage.getItem('predensity-hide-balances') === 'true');
-    };
-    window.addEventListener('predensity-balance-toggle', onToggle);
-    return () => window.removeEventListener('predensity-balance-toggle', onToggle);
-  }, []);
-  const isHidden = localHidden;
-  const handleToggleHidden = useCallback(() => {
-    const next = !localHidden;
-    localStorage.setItem('predensity-hide-balances', String(next));
-    setLocalHidden(next);
-    window.dispatchEvent(new Event('predensity-balance-toggle'));
-  }, [localHidden]);
-  const HIDDEN_VALUE = '****';
-
+  // Local deposit modal state -- independent of header context
   const [depositOpen, setDepositOpen] = useState(false);
-  const [depositInitialView, setDepositInitialView] = useState<'crypto' | 'withdraw'>('crypto');
-  const openDeposit = () => { setDepositInitialView('crypto'); setDepositOpen(true); };
+  const [depositInitialView, setDepositInitialView] = useState<'menu' | 'withdraw'>('menu');
+  const openDeposit = () => { setDepositInitialView('menu'); setDepositOpen(true); };
   const openWithdraw = () => { setDepositInitialView('withdraw'); setDepositOpen(true); };
 
   const [mainTab, setMainTab] = useState<MainTab>('positions');
   const [positionSub, setPositionSub] = useState<PositionSub>('active');
-  const [pnlRange, setPnlRange] = useState<PnlRange>('ALL');
+  const [pnlRange, setPnlRange] = useState<PnlRange>('1M');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortField, setSortField] = useState<SortField>('pnl');
+  const [sortField, setSortField] = useState<SortField>('value');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [redeemingBetId, setRedeemingBetId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -718,62 +452,17 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
-  const network = (process.env.NEXT_PUBLIC_NETWORK || 'testnet').toLowerCase();
-  const EXPLORER_BASE = process.env.NEXT_PUBLIC_EXPLORER_URL || (network === 'mainnet' ? 'https://arcscan.app' : 'https://testnet.arcscan.app');
+  const HASHSCAN_BASE = 'https://hashscan.io/testnet';
 
+  // Managed wallet balance
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    isPublicView ? 'skip' : (isSignedIn && effectiveIssuer ? { userId: effectiveIssuer } : 'skip')
+    isSignedIn && user ? { userId: user.id } : 'skip'
   );
 
-  const effectiveUserId = isPublicView ? publicViewUserId : (isSignedIn ? effectiveIssuer : null);
-  const managedUserAddress = effectiveUserId ? `managed:${effectiveUserId}`.toLowerCase() : null;
-  const walletAddress = isPublicView ? null : (evmAddress?.toLowerCase() || null);
-  const managedEvmAddress = isPublicView ? null : (managedWallet?.evmAddress?.toLowerCase() || null);
-
-  // Public profile data (for viewing other users)
-  const publicProfile = useConvexQuery(
-    api.social.getUserProfile,
-    isPublicView && managedUserAddress ? { userAddress: managedUserAddress } : 'skip'
-  );
-
-  // --- Follow Logic ---
-  const followUser = useConvexMutation(api.social.followUser);
-  const unfollowUser = useConvexMutation(api.social.unfollowUser);
-
-  // Current logged in user address
-  const currentUserAddress = (isSignedIn && effectiveIssuer) ? `managed:${effectiveIssuer}`.toLowerCase() : null;
-  // Target user address being viewed
-  const targetUserAddress = managedUserAddress;
-
-  const followers = useConvexQuery(
-    api.social.getFollowers,
-    targetUserAddress ? { userAddress: targetUserAddress } : 'skip'
-  );
-
-  const followingList = useConvexQuery(
-    api.social.getFollowing,
-    targetUserAddress ? { userAddress: targetUserAddress } : 'skip'
-  );
-
-  const isFollowing = currentUserAddress && followers?.some((f: any) => f.followerAddress === currentUserAddress);
-
-  const handleFollowToggle = async () => {
-    if (!currentUserAddress || !targetUserAddress) return;
-    try {
-      if (isFollowing) {
-        await unfollowUser({ followerAddress: currentUserAddress, followingAddress: targetUserAddress });
-        toast({ title: 'Unfollowed', description: 'You have unfollowed this user.' });
-      } else {
-        await followUser({ followerAddress: currentUserAddress, followingAddress: targetUserAddress });
-        toast({ title: 'Following', description: 'You are now following this user.' });
-      }
-    } catch (e) {
-      console.error(e);
-      toast({ title: 'Error', description: 'Failed to update follow status', variant: 'destructive' });
-    }
-  };
-  // --------------------
+  // Bets: managed user + wallet address
+  const managedUserAddress = isSignedIn && user ? `managed:${user.id}`.toLowerCase() : null;
+  const walletAddress = evmAddress?.toLowerCase() || null;
 
   const managedBetsRaw = useConvexQuery(
     api.sync.getBetsByUser,
@@ -783,135 +472,21 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     api.sync.getBetsByUser,
     walletAddress ? { userAddress: walletAddress } : 'skip'
   );
-  // Also query by the managed wallet's EVM address to catch bets synced from mirror node
-  const managedEvmBetsRaw = useConvexQuery(
-    api.sync.getBetsByUser,
-    managedEvmAddress && managedEvmAddress !== walletAddress
-      ? { userAddress: managedEvmAddress }
-      : 'skip'
-  );
 
-  // Also query by the managed EOA address (the cryptographically secure identity used by proxy wallets)
-  const userEoa = effectivePublicAddress || evmAddress;
-  const managedEoaAddress = isPublicView ? null : (userEoa ? `managed:${userEoa}`.toLowerCase() : null);
-  const managedEoaBetsRaw = useConvexQuery(
-    api.sync.getBetsByUser,
-    managedEoaAddress ? { userAddress: managedEoaAddress } : 'skip'
-  );
-
-  const loading =
-    (managedUserAddress && managedBetsRaw === undefined) ||
-    (walletAddress && walletBetsRaw === undefined) ||
-    (managedEvmAddress && managedEvmAddress !== walletAddress && managedEvmBetsRaw === undefined) ||
-    (managedEoaAddress && managedEoaBetsRaw === undefined);
+  const loading = (managedUserAddress && managedBetsRaw === undefined) || (walletAddress && walletBetsRaw === undefined);
 
   const allBets: Bet[] = useMemo(() => {
     const managed = (managedBetsRaw || []).filter((b: any) => b.status !== 'failed').map(mapConvexBet);
     const wallet = (walletBetsRaw || []).filter((b: any) => b.status !== 'failed').map(mapConvexBet);
-    const evmManaged = (managedEvmBetsRaw || []).filter((b: any) => b.status !== 'failed').map(mapConvexBet);
-    const eoaManaged = (managedEoaBetsRaw || []).filter((b: any) => b.status !== 'failed').map(mapConvexBet);
     const seen = new Set<string>();
     const combined: Bet[] = [];
-    for (const bet of [...managed, ...wallet, ...evmManaged, ...eoaManaged]) {
+    for (const bet of [...managed, ...wallet]) {
       if (!seen.has(bet.id)) { seen.add(bet.id); combined.push(bet); }
     }
     return combined.sort((a, b) => b.timestamp - a.timestamp);
-  }, [managedBetsRaw, walletBetsRaw, managedEvmBetsRaw, managedEoaBetsRaw]);
+  }, [managedBetsRaw, walletBetsRaw]);
 
-  // Auto-repair: reassign operator-address bets to the managed user.
-  // This runs once when the page loads and the user has a managed wallet
-  // but no bets are showing (bets are stored under the operator EVM address).
-  // reassignOperatorBets is now gated by a server-token check in Convex, so
-  // we call it through a user-authenticated admin API route that enforces
-  // `requireAuthMatchingUser(userId)` server-side.
-  const reassignOperatorBets = async (input: { operatorAddress: string; userId: string }) => {
-    const { getDIDToken } = await import('@/lib/magic');
-    const didToken = await getDIDToken();
-    const res = await fetch('/api/admin/sync/reassign-operator-bets', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${didToken}`,
-      },
-      body: JSON.stringify(input),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'reassign-operator-bets failed');
-    return data;
-  };
-  const fixBetAssets = useConvexMutation(api.sync.fixBetAssets);
-  const fixBetBuckets = useConvexMutation(api.sync.fixBetBuckets);
-  const [repairAttempted, setRepairAttempted] = useState(false);
-  const [assetFixAttempted, setAssetFixAttempted] = useState(false);
-  const [bucketFixAttempted, setBucketFixAttempted] = useState(false);
-
-  useEffect(() => {
-    if (repairAttempted) return;
-    if (loading) return;
-    if (!isSignedIn || !effectiveIssuer) return;
-    // Only repair if user has no bets but has a managed wallet
-    if (allBets.length > 0) return;
-    if (!managedWallet) return;
-
-    const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_EVM_ADDRESS;
-    if (!treasuryAddress) return;
-
-    setRepairAttempted(true);
-    reassignOperatorBets({
-      operatorAddress: treasuryAddress,
-      userId: effectiveIssuer,
-    }).catch(() => {
-      // Silently ignore repair errors
-    });
-  }, [loading, allBets.length, isSignedIn, effectiveIssuer, managedWallet, repairAttempted]);
-
-  // Auto-fix: correct asset field on crypto bets that have wrong values
-  // (e.g. "HBAR" or "UNKNOWN" when the price range indicates BTC).
-  // Runs once per page load when bets are loaded.
-  useEffect(() => {
-    if (assetFixAttempted) return;
-    if (loading) return;
-    if (!isSignedIn) return;
-    if (allBets.length === 0) return;
-
-    // Check if any crypto bet has a suspicious asset (HBAR with high prices)
-    const needsFix = allBets.some(b => {
-      if (getBetCategory(b).toUpperCase() !== 'CRYPTO') return false;
-      const mid = (Number(b.priceMin) + Number(b.priceMax)) / 2 / 1e8;
-      const currentAsset = b.asset || 'HBAR';
-      // If asset is HBAR but price suggests otherwise, needs fix
-      if (currentAsset === 'HBAR' && mid > 1) return true;
-      if (currentAsset === 'UNKNOWN') return true;
-      return false;
-    });
-
-    if (!needsFix) return;
-
-    setAssetFixAttempted(true);
-    const addr = managedUserAddress || walletAddress;
-    if (addr) {
-      fixBetAssets({ userAddress: addr }).catch(() => {});
-    }
-  }, [loading, allBets, isSignedIn, assetFixAttempted, managedUserAddress, walletAddress]);
-
-  // Auto-fix: set bucket on bets that have undefined/0 bucket values.
-  // Runs once per page load when bets are loaded.
-  useEffect(() => {
-    if (bucketFixAttempted) return;
-    if (loading) return;
-    if (!isSignedIn) return;
-    if (allBets.length === 0) return;
-
-    const needsFix = allBets.some(b => !b.bucket || b.bucket === 0);
-    if (!needsFix) return;
-
-    setBucketFixAttempted(true);
-    const addr = managedUserAddress || walletAddress;
-    if (addr) {
-      fixBetBuckets({ userAddress: addr }).catch(() => {});
-    }
-  }, [loading, allBets, isSignedIn, bucketFixAttempted, managedUserAddress, walletAddress]);
-
+  // Fetch events for bet rows (to get event names, images)
   const betCategories = useMemo(() => {
     const cats = new Set<string>();
     allBets.forEach(b => {
@@ -926,6 +501,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     betCategories.length > 0 ? { categories: betCategories } : 'skip'
   );
 
+  // Build event lookup: key = `${category}-${targetTimestamp}`
   const eventLookup = useMemo(() => {
     const map = new Map<string, any>();
     if (!eventsForBets) return map;
@@ -936,10 +512,13 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     return map;
   }, [eventsForBets]);
 
+  // Fetch forecasts for event IDs (for CURRENT column)
   const eventIdsForForecasts = useMemo(() => {
     const ids = new Set<string>();
     if (!eventsForBets) return [];
-    for (const ev of eventsForBets) ids.add(ev.eventId);
+    for (const ev of eventsForBets) {
+      ids.add(ev.eventId);
+    }
     return Array.from(ids);
   }, [eventsForBets]);
 
@@ -951,24 +530,30 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   const forecastLookup = useMemo(() => {
     const map = new Map<string, any>();
     if (!forecastsRaw) return map;
-    for (const f of forecastsRaw) map.set(f.eventId, f);
+    for (const f of forecastsRaw) {
+      map.set(f.eventId, f);
+    }
     return map;
   }, [forecastsRaw]);
 
+  // Fetch crypto markets (for images + names on crypto bets)
   const cryptoMarketsRaw = useConvexQuery(api.events.getCryptoMarkets, {});
 
   const cryptoMarketLookup = useMemo(() => {
     const map = new Map<string, any>();
     if (!cryptoMarketsRaw) return map;
-    for (const m of cryptoMarketsRaw) map.set(m.tokenSymbol.toUpperCase(), m);
+    for (const m of cryptoMarketsRaw) {
+      map.set(m.tokenSymbol.toUpperCase(), m);
+    }
     return map;
   }, [cryptoMarketsRaw]);
 
+  // Fallback crypto logos when Convex cryptoMarkets table has no entry
   const CRYPTO_LOGO_FALLBACK: Record<string, string> = {
     BTC: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
     ETH: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
     SOL: 'https://assets.coingecko.com/coins/images/4128/small/solana.png',
-    HBAR: 'https://assets.coingecko.com/coins/images/3688/small/USDC .png',
+    HBAR: '/hedera.svg',
     XRP: 'https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png',
     DOGE: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png',
     ADA: 'https://assets.coingecko.com/coins/images/975/small/cardano.png',
@@ -983,34 +568,26 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     return CRYPTO_LOGO_FALLBACK[asset.toUpperCase()] || null;
   };
 
+  // Activity feed
   const activityData = useConvexQuery(
     api.users.getUserActivity,
-    isPublicView
+    isSignedIn && user
       ? {
-          userId: publicViewUserId || '',
-          userAddress: '',
-          phoneNumber: undefined,
-          managedEvmAddress: undefined,
+          userId: user.id,
+          userAddress: walletAddress || '',
+          phoneNumber: managedWallet?.phoneNumber || undefined,
         }
-      : (isSignedIn && effectiveIssuer
-        ? {
-            userId: effectiveIssuer,
-            userAddress: walletAddress || '',
-            phoneNumber: managedWallet?.phoneNumber || undefined,
-            managedEvmAddress: managedEvmAddress || undefined,
-            managedEoaAddress: managedEoaAddress || undefined,
-          }
-        : 'skip')
+      : 'skip'
   );
 
+  // Derived data
   const currency = getStakingCurrency();
-  
-  // Read balance from blockchain (non-custodial) - use proxy wallet address
-  const { balance: cashBalance, isLoading: balanceLoading } = useBlockchainBalance(proxyWalletAddress || undefined);
+  const cashBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
 
   const activeBets = allBets.filter(b => !b.finalized);
   const historyBets = allBets.filter(b => b.finalized);
 
+  // Unique crypto assets from active bets for live price fetching
   const activeCryptoAssets = useMemo(() => {
     const set = new Set<string>();
     activeBets.forEach(b => {
@@ -1019,13 +596,14 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     return Array.from(set);
   }, [activeBets]);
 
+  // Fetch live prices for active crypto positions every 30s
   useEffect(() => {
     if (activeCryptoAssets.length === 0) return;
     let cancelled = false;
     const fetchPrices = async () => {
       for (const asset of activeCryptoAssets) {
         try {
-          const res = await fetch(`/api/USDC -price?symbol=${asset}`);
+          const res = await fetch(`/api/hbar-price?symbol=${asset}`);
           if (res.ok) {
             const data = await res.json();
             if (typeof data.price === 'number' && !cancelled) {
@@ -1040,44 +618,46 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     return () => { cancelled = true; clearInterval(interval); };
   }, [activeCryptoAssets.join(',')]);
 
+  // Available categories for filter pills
   const availableCategories = useMemo(() => {
     const cats = new Set<string>();
     allBets.forEach(b => cats.add(getBetCategory(b).toUpperCase()));
     return Array.from(cats).sort();
   }, [allBets]);
 
-  const activePositionValue = activeBets.reduce((sum, b) => sum + Number(formatAmount(b.stake, 6)), 0);
-  const totalStaked = allBets.reduce((sum, b) => sum + Number(formatAmount(b.stake, 6)), 0);
-  const portfolioValue = cashBalance + totalStaked;
+  const activePositionValue = activeBets.reduce((sum, b) => {
+    return sum + Number(formatAmount(b.stake, 6));
+  }, 0);
+  const portfolioValue = cashBalance + activePositionValue;
+
+  // Stats
+  const biggestWin = useMemo(() => {
+    let max = 0;
+    for (const b of historyBets) {
+      if (b.won) {
+        const payout = Number(formatAmount(b.payout || b.expectedPayout, 6));
+        const stake = Number(formatAmount(b.stake, 6));
+        const profit = payout - stake;
+        if (profit > max) max = profit;
+      }
+    }
+    return max;
+  }, [historyBets]);
+
   const totalPredictions = allBets.length;
 
+  // P&L
+  const totalStaked = allBets.reduce((sum, b) => sum + Number(formatAmount(b.stake, 6)), 0);
   const totalPayout = historyBets.reduce((sum, b) => {
     if (b.won) return sum + Number(formatAmount(b.payout || b.expectedPayout, 6));
     return sum;
   }, 0);
   const totalPnl = totalPayout - totalStaked + activePositionValue;
 
-  // Biggest win
-  const biggestWin = useMemo(() => {
-    let best = 0;
-    for (const b of historyBets) {
-      if (b.won) {
-        const stake = Number(formatAmount(b.stake, 6));
-        const payout = Number(formatAmount(b.payout || b.expectedPayout, 6));
-        const profit = payout - stake;
-        if (profit > best) best = profit;
-      }
-    }
-    return best;
-  }, [historyBets]);
-
+  // P&L sparkline data
   const pnlData = useMemo(() => {
     const now = Date.now();
-    const rangeMs =
-      pnlRange === '1D' ? 86400000
-      : pnlRange === '1W' ? 604800000
-      : pnlRange === '1M' ? 2592000000
-      : Infinity;
+    const rangeMs = pnlRange === '1D' ? 86400000 : pnlRange === '1W' ? 604800000 : pnlRange === '1M' ? 2592000000 : Infinity;
     const cutoff = rangeMs === Infinity ? 0 : now - rangeMs;
 
     const relevantBets = allBets
@@ -1099,13 +679,10 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     return points;
   }, [allBets, pnlRange]);
 
-  const pnlColor = totalPnl >= 0 ? '#22c55e' : '#ef4444';
-  const pnlRangeLabel =
-    pnlRange === '1D' ? 'Past Day'
-    : pnlRange === '1W' ? 'Past Week'
-    : pnlRange === '1M' ? 'Past Month'
-    : t.total;
+  const pnlColor = totalPnl >= 0 ? '#2dc96f' : '#ef4444';
+  const pnlRangeLabel = pnlRange === '1D' ? 'Past Day' : pnlRange === '1W' ? 'Past Week' : pnlRange === '1M' ? 'Past Month' : 'All Time';
 
+  // Get event info for a bet
   const getEventForBet = (bet: Bet) => {
     const cat = getBetCategory(bet).toLowerCase();
     if (cat === 'crypto') return null;
@@ -1113,15 +690,18 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     return eventLookup.get(key) || null;
   };
 
+  // Get forecast for a bet's event
   const getForecastForBet = (bet: Bet) => {
     const event = getEventForBet(bet);
     if (!event) return null;
     return forecastLookup.get(event.eventId) || null;
   };
 
+  // Market display name (uses event name if available)
   const getMarketDisplayName = (bet: Bet): string => {
     const event = getEventForBet(bet);
     if (event) return event.eventName;
+    // For crypto, use the crypto market's tokenName if available
     const cat = getBetCategory(bet).toLowerCase();
     if (cat === 'crypto' && bet.asset) {
       const cm = cryptoMarketLookup.get(bet.asset.toUpperCase());
@@ -1130,27 +710,62 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     return getMarketLabel(bet);
   };
 
+  // Market image
   const getMarketImage = (bet: Bet): string | null => {
     const event = getEventForBet(bet);
     if (event?.imageUrl) return event.imageUrl;
+    // For crypto bets, look up the crypto market image by asset/tokenSymbol
     const cat = getBetCategory(bet).toLowerCase();
-    if (cat === 'crypto' && bet.asset) return getCryptoImage(bet.asset);
+    if (cat === 'crypto' && bet.asset) {
+      return getCryptoImage(bet.asset);
+    }
     return null;
   };
 
-  const getPositionValue = (bet: Bet): { value: number; pnlAbs: number; pnlPct: number } => {
+  // AVG price (midpoint of range)
+  const getAvgPrice = (bet: Bet): string => {
+    const cat = getBetCategory(bet).toUpperCase();
+    const mid = (Number(bet.priceMin) + Number(bet.priceMax)) / 2;
+    if (cat === 'POLITICS') {
+      if (mid <= 10000) return (mid / 100).toFixed(1) + '%';
+      return mid.toLocaleString();
+    }
+    if (cat === 'SPORTS' || cat === 'TECHNOLOGY') return mid.toFixed(0);
+    // Crypto: convert from tinybars
+    return '$' + formatTinybarsToHbar(mid, 2);
+  };
+
+  // CURRENT price from forecast
+  const getCurrentPrice = (bet: Bet): string => {
+    const forecast = getForecastForBet(bet);
+    const cat = getBetCategory(bet).toUpperCase();
+    if (forecast) {
+      if (cat === 'POLITICS') return forecast.pointEstimate.toFixed(1) + '%';
+      return forecast.pointEstimate.toFixed(0);
+    }
+    // For crypto, we don't have real-time price in forecasts -- show "--"
+    return '--';
+  };
+
+  // Position value + P&L percentage
+  const getPositionValue = (bet: Bet): { value: number; pnlPct: number } => {
     const stake = Number(formatAmount(bet.stake, 6));
     if (bet.finalized && bet.won) {
       const payout = Number(formatAmount(bet.payout || bet.expectedPayout, 6));
-      return { value: payout, pnlAbs: payout - stake, pnlPct: stake > 0 ? ((payout - stake) / stake) * 100 : 0 };
+      return { value: payout, pnlPct: stake > 0 ? ((payout - stake) / stake) * 100 : 0 };
     }
-    if (bet.finalized && !bet.won) return { value: 0, pnlAbs: -stake, pnlPct: -100 };
-    return { value: stake, pnlAbs: 0, pnlPct: 0 };
+    if (bet.finalized && !bet.won) {
+      return { value: 0, pnlPct: -100 };
+    }
+    // Active: value = stake (simplified; real would use current market price)
+    return { value: stake, pnlPct: 0 };
   };
 
+  // Sorting and filtering
   const displayBets = useMemo(() => {
     const source = positionSub === 'active' ? activeBets : historyBets;
     let filtered = source;
+    // Category filter
     if (categoryFilter !== 'all') {
       filtered = filtered.filter(b => getBetCategory(b).toUpperCase() === categoryFilter);
     }
@@ -1168,117 +783,130 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
           ? getMarketDisplayName(a).localeCompare(getMarketDisplayName(b))
           : getMarketDisplayName(b).localeCompare(getMarketDisplayName(a));
       }
-      if (sortField === 'date') {
-        return sortDir === 'asc' ? a.timestamp - b.timestamp : b.timestamp - a.timestamp;
-      }
+      let aVal = 0, bVal = 0;
       if (sortField === 'avg') {
-        const aVal = (Number(a.priceMin) + Number(a.priceMax)) / 2;
-        const bVal = (Number(b.priceMin) + Number(b.priceMax)) / 2;
-        return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+        aVal = (Number(a.priceMin) + Number(a.priceMax)) / 2;
+        bVal = (Number(b.priceMin) + Number(b.priceMax)) / 2;
       }
-      // pnl (default)
-      const aVal = getPositionValue(a).pnlAbs;
-      const bVal = getPositionValue(b).pnlAbs;
+      if (sortField === 'value') {
+        aVal = getPositionValue(a).value;
+        bVal = getPositionValue(b).value;
+      }
+      if (sortField === 'current') {
+        aVal = a.timestamp;
+        bVal = b.timestamp;
+      }
       return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
     });
   }, [positionSub, activeBets, historyBets, searchQuery, sortField, sortDir, eventLookup, categoryFilter]);
 
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('desc'); }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ChevronDown className="w-3 h-3 opacity-30" />;
+    return sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
+  };
+
+  // Redeem
+  const getContractIdForBet = (bet: Bet): string => {
+    if (bet.market?.id) {
+      const addr = bet.market.id.toLowerCase();
+      for (const [cat, evmAddr] of Object.entries(CONTRACT_ADDRESSES)) {
+        if (evmAddr.toLowerCase() === addr) return CONTRACT_IDS[cat as Category];
+      }
+    }
+    return CONTRACT_IDS[Category.CRYPTO];
+  };
+
   const redeemBet = async (betId: string) => {
     try {
       setRedeemingBetId(betId);
-      if (!isSignedIn || !effectiveIssuer) {
-        toast({ variant: 'destructive', title: 'Redeem failed', description: 'Please sign in first.' });
-        setRedeemingBetId(null);
-        return;
-      }
       const bet = allBets.find(b => b.id === betId);
-      const category = bet ? getBetCategory(bet).toLowerCase() : 'crypto';
-      const res = await fetch('/api/bet/claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: effectiveIssuer, userAddress: effectivePublicAddress, betId, category }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast({ variant: 'destructive', title: 'Redeem failed', description: data.error || 'Could not claim this bet. Try again.' });
+      const isManagedBet = betId.startsWith('managed-');
+
+      if (isManagedBet && user) {
+        // Managed wallet bets: claim via server-side API
+        const category = bet ? getBetCategory(bet).toLowerCase() : 'crypto';
+        const res = await fetch('/api/bet/claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, betId, category }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          console.error('[redeem] API error:', data.error);
+          toast({
+            variant: 'destructive',
+            title: 'Redeem failed',
+            description: data.error || 'Could not claim this bet. Try again.',
+          });
+        } else {
+          const payoutDisplay = data.payoutAmount
+            ? `${parseFloat(data.payoutAmount).toFixed(4)} ${currency.symbol}`
+            : '';
+          toast({
+            variant: 'success',
+            title: 'Bet redeemed',
+            description: payoutDisplay
+              ? `${payoutDisplay} credited to your wallet.`
+              : 'Payout credited to your wallet.',
+          });
+        }
+        setRedeemingBetId(null);
       } else {
-        const payoutDisplay = data.payoutAmount ? `${parseFloat(data.payoutAmount).toFixed(4)} ${currency.symbol}` : '';
-        toast({ variant: 'success', title: 'Bet redeemed', description: payoutDisplay ? `${payoutDisplay} credited to your wallet.` : 'Payout credited to your wallet.' });
+        // External wallet bets: claim via browser wallet
+        const contractId = bet ? getContractIdForBet(bet) : CONTRACT_IDS[Category.CRYPTO];
+        const numericBetId = betId.includes('-') ? betId.split('-')[1] : betId;
+        const txId = await writeContract({
+          contractId,
+          abi: CryptoPredictionMarketABI.abi,
+          functionName: 'claimBet',
+          args: [numericBetId],
+        });
+        watch(txId as string, {
+          onSuccess: (transaction) => {
+            toast({ variant: 'success', title: 'Bet redeemed', description: 'Claim transaction confirmed.' });
+            setRedeemingBetId(null);
+            return transaction;
+          },
+          onError: (receipt, error) => {
+            toast({ variant: 'destructive', title: 'Redeem failed', description: typeof error === 'string' ? error : 'Transaction failed' });
+            setRedeemingBetId(null);
+            return receipt;
+          },
+        });
       }
-      setRedeemingBetId(null);
-    } catch {
+    } catch (err) {
+      console.error('[redeem] Unexpected error:', err);
       toast({ variant: 'destructive', title: 'Redeem failed', description: 'An unexpected error occurred.' });
       setRedeemingBetId(null);
     }
   };
 
+  // Share profile -- copies URL to clipboard
   const handleShareProfile = async () => {
     const url = `${window.location.origin}/my-bets`;
     try {
       await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
+      // Fallback for older browsers
       const input = document.createElement('input');
       input.value = url;
       document.body.appendChild(input);
       input.select();
       document.execCommand('copy');
       document.body.removeChild(input);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleShareToX = () => {
-    const displayName = user?.email?.split('@')[0] || 'Trader';
-    const pnlSign = totalPnl >= 0 ? '+' : '';
-    const pnlStr = `${pnlSign}${formatUsd(totalPnl)}`;
-    const winStr = biggestWin > 0 ? `Biggest win: ${formatUsd(biggestWin)}` : '';
-    const ogParams = new URLSearchParams({
-      name: displayName,
-      pnl: pnlStr,
-      predictions: String(totalPredictions),
-      win: formatUsd(biggestWin),
-      seed: user?.issuer || 'default',
-    });
-    const profileUrl = `${window.location.origin}/profile/${user?.issuer || ''}?${ogParams.toString()}`;
-    const lines = [
-      `@${displayName.toLowerCase()} on Predensity`,
-      `P&L: ${pnlStr}`,
-      `${totalPredictions} predictions`,
-      winStr,
-      '',
-      profileUrl,
-    ].filter(Boolean);
-    const text = lines.join('\n');
-    const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`;
-    window.open(xUrl, '_blank', 'noopener,noreferrer');
-  };
-
-  const handleShareToWhatsApp = () => {
-    const displayName = user?.email?.split('@')[0] || 'Trader';
-    const pnlSign = totalPnl >= 0 ? '+' : '';
-    const pnlStr = `${pnlSign}${formatUsd(totalPnl)}`;
-    const winStr = biggestWin > 0 ? `Biggest win: ${formatUsd(biggestWin)}` : '';
-    const ogParams = new URLSearchParams({
-      name: displayName,
-      pnl: pnlStr,
-      predictions: String(totalPredictions),
-      win: formatUsd(biggestWin),
-      seed: user?.issuer || 'default',
-    });
-    const profileUrl = `${window.location.origin}/profile/${user?.issuer || ''}?${ogParams.toString()}`;
-    const lines = [
-      `*@${displayName.toLowerCase()} on Predensity*`,
-      `P&L: ${pnlStr}`,
-      `${totalPredictions} predictions`,
-      winStr,
-      '',
-      profileUrl,
-    ].filter(Boolean);
-    const text = lines.join('\n');
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
-  };
-
+  // Export positions as CSV download
   const handleExportCsv = () => {
     setExportingCsv(true);
     try {
@@ -1305,6 +933,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     }
   };
 
+  // Share a position on WhatsApp
   const handleSharePosition = (bet: Bet) => {
     const name = getMarketDisplayName(bet);
     const cat = getBetCategory(bet);
@@ -1312,220 +941,131 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     const status = bet.finalized ? (bet.won ? 'Won' : 'Lost') : 'Active';
     const { value, pnlPct } = getPositionValue(bet);
     const text = `Check out my prediction on Predensity!\n\nMarket: ${name}\nCategory: ${cat}\nStake: ${stake} ${currency.symbol}\nStatus: ${status}\nValue: ${formatUsd(value)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%)\n\nTrade at: ${window.location.origin}/markets`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
-  const joinDate = managedWallet?.createdAt
-    ? new Date(managedWallet.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+  // Join date
+  const joinDate = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
     : '';
 
-  if (!isSignedIn && !isPublicView) {
+  // Not signed in
+  if (!isSignedIn) {
     return (
-      <div className="min-h-screen bg-white dark:bg-black">
+      <div className="min-h-screen bg-gray-50 dark:bg-black">
         <Header />
-        <div className="max-w-4xl mx-auto px-4 py-24 text-center">
-          <Wallet className="w-10 h-10 text-gray-400 dark:text-neutral-600 mx-auto mb-4" />
+        <div className="max-w-4xl mx-auto px-4 py-20 text-center">
+          <Wallet className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Sign in to view your portfolio</h1>
-          <p className="text-sm text-gray-500 dark:text-neutral-500">Create an account or sign in to start trading on prediction markets.</p>
+          <p className="text-sm text-gray-500 dark:text-neutral-400">Create an account or sign in to start trading on prediction markets.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-black">
       <Header />
-      {!isPublicView && <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} />}
-
+      <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
         {/* ============ TOP CARDS ============ */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
 
-          {/* -- Profile Card -- */}
-          <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6">
-            {/* Header row: avatar + name + share icons */}
+          {/* -- User Profile Card (Polymarket style) -- */}
+          <div className="bg-white dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6">
+            {/* Top row: avatar + name + actions */}
             <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-                  {publicProfile?.avatar ? (
-                    <img src={publicProfile.avatar} alt="" className="w-14 h-14 rounded-full object-cover" />
-                  ) : (
-                    <Avatar
-                      size={56}
-                      name={effectiveUserId || 'default'}
-                      variant="marble"
-                      colors={getAvatarPalette(effectiveUserId || 'default')}
-                      square={false}
-                    />
-                  )}
-                </div>
+                {user?.imageUrl ? (
+                  <img src={user.imageUrl} alt="" className="w-12 h-12 rounded-full object-cover ring-2 ring-neutral-800" />
+                ) : (
+                  <div className="w-12 h-12 bg-gradient-to-br from-vibrant-purple to-pink-500 rounded-full flex items-center justify-center text-white text-lg font-bold ring-2 ring-neutral-800">
+                    {(user?.firstName || user?.primaryEmailAddress?.emailAddress || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div>
-                  <div className="text-base font-bold text-gray-900 dark:text-white">
-                    {isPublicView
-                      ? (publicProfile?.displayName || `User ${(publicViewUserId || '').slice(0, 8)}`)
-                      : (user?.email?.split('@')[0] || 'Trader')}
+                  <div className="text-base font-semibold text-gray-900 dark:text-white">
+                    {user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Trader'}
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-neutral-500 flex items-center gap-1 mt-0.5">
-                    {isPublicView
-                      ? (publicProfile?.createdAt ? `${t.joined} ${new Date(publicProfile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : 'Trader')
-                      : `${t.joined} ${joinDate}`}
+                  <div className="text-xs text-gray-500 dark:text-neutral-500 flex items-center gap-1.5">
+                    <Calendar className="w-3 h-3" />
+                    Joined {joinDate}
                   </div>
-                  {followers !== undefined && followingList !== undefined && (
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <div className="text-xs text-gray-500 dark:text-neutral-400">
-                        <span className="font-bold text-gray-900 dark:text-white">{followers.length}</span> {followers.length === 1 ? 'follower' : 'followers'}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-neutral-400">
-                        <span className="font-bold text-gray-900 dark:text-white">{followingList.length}</span> following
-                      </div>
-                    </div>
-                  )}
-                  {publicProfile?.bio && (
-                    <div className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5 max-w-[200px] truncate">
-                      {publicProfile.bio}
-                    </div>
-                  )}
                 </div>
               </div>
-
-              {/* Action icons -- top right */}
-              <div className="flex items-center gap-3 relative">
-                {isPublicView && isSignedIn && currentUserAddress && currentUserAddress !== targetUserAddress && (
-                  <button
-                    onClick={handleFollowToggle}
-                    className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
-                      isFollowing
-                        ? 'bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-white border border-gray-200 dark:border-neutral-700'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    }`}
-                  >
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </button>
-                )}
-                <div className="flex items-center gap-0.5">
-                  <button
-                    onClick={handleShareProfile}
-                  className="p-2 rounded-lg text-gray-400 dark:text-neutral-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
-                  title={copied ? 'Copied!' : 'Copy link'}
+              {/* Action icons */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleShareProfile}
+                  className="p-1.5 rounded-lg text-gray-400 dark:text-neutral-600 hover:text-gray-600 dark:hover:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors"
+                  title={copied ? 'Link copied' : 'Share profile'}
                 >
-                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Link2 className="w-4 h-4" />}
+                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
                 </button>
                 <button
-                  onClick={handleShareToX}
-                  className="p-2 rounded-lg text-gray-400 dark:text-neutral-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
-                  title="Share to X"
+                  onClick={handleExportCsv}
+                  disabled={exportingCsv || allBets.length === 0}
+                  className="p-1.5 rounded-lg text-gray-400 dark:text-neutral-600 hover:text-gray-600 dark:hover:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors disabled:opacity-30"
+                  title="Export CSV"
                 >
-                  <Twitter className="w-4 h-4" />
+                  <Download className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={handleShareToWhatsApp}
-                  className="p-2 rounded-lg text-gray-400 dark:text-neutral-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
-                  title="Share to WhatsApp"
-                >
-                  <Share2 className="w-4 h-4" />
-                </button>
-                </div>
               </div>
             </div>
 
-            {/* Private view: Portfolio / Available to trade / Positions Value */}
-            {!isPublicView && (
-            <>
-              <div className="flex items-start justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 dark:text-neutral-400 font-medium">{t.portfolio}</span>
-                  <button
-                    onClick={handleToggleHidden}
-                    className="p-0.5 rounded text-gray-400 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-white transition-colors"
-                    title={isHidden ? 'Show balances' : 'Hide balances'}
-                    aria-label={isHidden ? 'Show balances' : 'Hide balances'}
-                  >
-                    <Image src={isHidden ? "/eye-hide-svgrepo-com.svg" : "/eye-show-svgrepo-com.svg"} alt="" width={30} height={20} className="dark:brightness-0 dark:invert" />
-                  </button>
-                </div>
-                <div className="text-right">
-                  <div className="text-[15px] text-gray-500 dark:text-neutral-500">{t.availableToTrade}</div>
-                  <div className="text-lg font-bold text-gray-900 dark:text-white">
-                    {isHidden ? HIDDEN_VALUE : formatUsd(cashBalance)}
-                  </div>
-                </div>
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              <div className="bg-gray-50 dark:bg-neutral-900/50 rounded-xl p-3 text-center">
+                <div className="text-[11px] text-gray-500 dark:text-neutral-500 uppercase tracking-wider mb-0.5">Positions Value</div>
+                <div className="text-lg font-bold text-gray-900 dark:text-white">{formatUsd(activePositionValue)}</div>
               </div>
-              <div className="flex items-end justify-between mb-1">
-                <div className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {isHidden ? HIDDEN_VALUE : formatUsd(activePositionValue + totalPnl)}
-                </div>
-                <div className="text-right">
-                  <div className="text-[11px] text-gray-500 dark:text-neutral-500">{t.positionsValue}</div>
-                  <div className="text-lg font-bold text-gray-900 dark:text-white">
-                    {isHidden ? HIDDEN_VALUE : formatUsd(activePositionValue)}
-                  </div>
-                </div>
+              <div className="bg-gray-50 dark:bg-neutral-900/50 rounded-xl p-3 text-center">
+                <div className="text-[11px] text-gray-500 dark:text-neutral-500 uppercase tracking-wider mb-0.5">Biggest Win</div>
+                <div className="text-lg font-bold text-green-500">{formatUsd(biggestWin)}</div>
               </div>
-              <div className="text-sm text-gray-500 dark:text-neutral-500 mb-5">
-                {isHidden ? HIDDEN_VALUE : (
-                  <>
-                    <span className={totalPnl >= 0 ? 'text-green-500' : 'text-red-400'}>
-                      {totalPnl >= 0 ? '+' : ''}{formatUsd(totalPnl)}
-                    </span>
-                    {' '}
-                    <span className={totalPnl >= 0 ? 'text-green-500' : 'text-red-400'}>
-                      ({portfolioValue > 0 ? ((totalPnl / portfolioValue) * 100).toFixed(1) : '0.0'}%)
-                    </span>
-                    {' '}
-                    <span className="text-gray-400 dark:text-neutral-600">{pnlRangeLabel.toLowerCase()}</span>
-                  </>
-                )}
+              <div className="bg-gray-50 dark:bg-neutral-900/50 rounded-xl p-3 text-center">
+                <div className="text-[11px] text-gray-500 dark:text-neutral-500 uppercase tracking-wider mb-0.5">Predictions</div>
+                <div className="text-lg font-bold text-gray-900 dark:text-white">{totalPredictions}</div>
               </div>
-              <div className="flex gap-2.5">
-                <button onClick={openDeposit} className="flex-1 py-2.5 rounded-xl bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2">
-                  <Image src="/deposit icon.svg" alt="" width={15} height={15} className="brightness-0 invert" />
-                  {t.deposit}
-                </button>
-                <button onClick={openWithdraw} className="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-neutral-700 text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2">
-                  <Image src="/withdraw icon.svg" alt="" width={15} height={15} className="dark:brightness-0 dark:invert" />
-                  {t.withdraw}
-                </button>
-              </div>
-            </>
-            )}
+            </div>
 
-            {/* Public view: Positions Value, Biggest Win, Predictions */}
-            {isPublicView && (
-              <div className="grid grid-cols-3 gap-3">
-                <div className="text-center">
-                  <div className="text-xl font-bold text-gray-900 dark:text-white">{formatUsd(activePositionValue)}</div>
-                  <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">{t.positionsValue}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-gray-900 dark:text-white">{biggestWin > 0 ? formatUsd(biggestWin) : '$0.00'}</div>
-                  <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">{t.biggestWin}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-gray-900 dark:text-white">{totalPredictions}</div>
-                  <div className="text-[11px] text-gray-500 dark:text-neutral-500 mt-1">{t.predictions}</div>
-                </div>
-              </div>
-            )}
+            {/* Deposit / Withdraw buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={openDeposit}
+                className="flex-1 py-2.5 px-6 rounded-xl bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2"
+              >
+                <Image src="/deposit icon.svg" alt="" width={16} height={16} className="brightness-0 invert" />
+                Deposit
+              </button>
+              <button
+                onClick={openWithdraw}
+                className="flex-1 py-2.5 px-6 rounded-xl border border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-900 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+              >
+                <Image src="/withdraw icon.svg" alt="" width={16} height={16} className="brightness-0 invert" />
+                Withdraw
+              </button>
+            </div>
           </div>
 
           {/* -- P&L Card -- */}
-          <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6">
-            {/* Header: label + range buttons */}
-            <div className="flex items-center justify-between mb-3">
+          <div className="bg-white dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${totalPnl >= 0 ? 'bg-green-500' : 'bg-red-400'}`} />
-                <span className="text-base text-gray-500 dark:text-neutral-400 font-semibold">{t.profitLoss}</span>
+                <div className={`w-2 h-2 rounded-full ${totalPnl >= 0 ? 'bg-green-500' : 'bg-red-400'}`} />
+                <span className="text-sm text-gray-500 dark:text-neutral-400 font-medium">Profit / Loss</span>
               </div>
-              <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-neutral-900 rounded-lg p-0.5">
+              <div className="flex items-center gap-1 bg-gray-100 dark:bg-neutral-900 rounded-lg p-0.5">
                 {(['1D', '1W', '1M', 'ALL'] as PnlRange[]).map(r => (
                   <button
                     key={r}
                     onClick={() => setPnlRange(r)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                       pnlRange === r
-                        ? 'bg-vibrant-purple text-white'
-                        : 'text-gray-500 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300'
+                        ? 'bg-vibrant-purple text-white shadow-sm'
+                        : 'text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300'
                     }`}
                   >
                     {r}
@@ -1533,91 +1073,92 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
                 ))}
               </div>
             </div>
-
-            {/* Main big P&L number */}
-            <div className="text-4xl font-bold mb-1 text-gray-900 dark:text-white">
-              {isHidden ? HIDDEN_VALUE : <>{totalPnl >= 0 ? '' : '-'}{formatUsd(Math.abs(totalPnl))}</>}
+            <div className={`text-4xl font-bold mb-0.5 ${totalPnl >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+              {totalPnl >= 0 ? '+' : ''}{formatUsd(totalPnl)}
             </div>
             <div className="text-xs text-gray-500 dark:text-neutral-500 mb-4">{pnlRangeLabel}</div>
-
-            {/* Sparkline */}
             <PnlSparkline data={pnlData} color={pnlColor} />
+            <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-neutral-600">
+              <span>Available to trade: <span className="text-gray-900 dark:text-white font-medium">{formatUsd(cashBalance)}</span></span>
+              <span>Total staked: <span className="text-gray-900 dark:text-white font-medium">{formatUsd(totalStaked)}</span></span>
+            </div>
           </div>
         </div>
 
-        {/* ============ MAIN TABS ============ */}
-        <div className="flex items-center gap-6 mb-4" style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '16px', lineHeight: 1.5 }}>
+        {/* ============ MAIN TABS: Positions / Activity ============ */}
+        <div className="flex items-center gap-6 border-b border-gray-200 dark:border-neutral-800 mb-0">
           <button
             onClick={() => setMainTab('positions')}
-            className={`text-base font-semibold transition-colors ${
+            className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${
               mainTab === 'positions'
-                ? 'text-gray-900 dark:text-white'
-                : 'text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300'
+                ? 'border-vibrant-purple text-gray-900 dark:text-white'
+                : 'border-transparent text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300'
             }`}
           >
-            {t.positions}
+            Positions
           </button>
           <button
             onClick={() => setMainTab('activity')}
-            className={`flex items-center gap-2 text-base font-semibold transition-colors ${
+            className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${
               mainTab === 'activity'
-                ? 'text-gray-900 dark:text-white'
-                : 'text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300'
+                ? 'border-vibrant-purple text-gray-900 dark:text-white'
+                : 'border-transparent text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300'
             }`}
           >
-            <ActivityIcon className="w-4 h-4" />
-            {t.activity}
+            Activity
           </button>
         </div>
 
         {/* ============ POSITIONS TAB ============ */}
         {mainTab === 'positions' && (
-          <div className="mt-4">
-            {/* Filter bar */}
-            <div className="flex flex-col gap-3 mb-4">
-              {/* Row 1: Active/Closed toggle + Search + Sort */}
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                {/* Toggle */}
-                <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-lg p-1 flex-shrink-0">
+          <>
+            {/* Sub-tabs + category filter + search + sort */}
+            <div className="flex flex-col gap-3 py-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-neutral-900 rounded-lg p-0.5">
                   <button
                     onClick={() => setPositionSub('active')}
-                    className={`px-3 sm:px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                       positionSub === 'active'
-                        ? 'bg-white dark:bg-neutral-700 text-gray-900 dark:text-white shadow-sm'
+                        ? 'bg-white dark:bg-neutral-800 text-gray-900 dark:text-white shadow-sm'
                         : 'text-gray-500 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300'
                     }`}
                   >
-                    {t.active}
+                    Active ({activeBets.length})
                   </button>
                   <button
                     onClick={() => setPositionSub('closed')}
-                    className={`px-3 sm:px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                       positionSub === 'closed'
-                        ? 'bg-white dark:bg-neutral-700 text-gray-900 dark:text-white shadow-sm'
+                        ? 'bg-white dark:bg-neutral-800 text-gray-900 dark:text-white shadow-sm'
                         : 'text-gray-500 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300'
                     }`}
                   >
-                    {t.closedPositions}
+                    Closed ({historyBets.length})
                   </button>
                 </div>
 
-                {/* Search */}
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-neutral-600" />
-                  <input
-                    type="text"
-                    placeholder={t.searchPositions}
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 rounded-lg bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-600 focus:outline-none focus:border-gray-400 dark:focus:border-neutral-600 transition-colors"
-                  />
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:w-56">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-neutral-500" />
+                    <input
+                      type="text"
+                      placeholder="Search positions"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+                    />
+                  </div>
+                  <button
+                    onClick={() => toggleSort('value')}
+                    className="flex items-center gap-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-xs font-medium text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                  >
+                    Value <SortIcon field="value" />
+                  </button>
                 </div>
-
-                {/* Sort dropdown */}
-                <SortDropdown value={sortField} onChange={setSortField} />
               </div>
 
-              {/* Row 2: Category pills */}
+              {/* Category filter pills */}
               {availableCategories.length > 1 && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <button
@@ -1625,7 +1166,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       categoryFilter === 'all'
                         ? 'bg-vibrant-purple text-white'
-                        : 'bg-gray-100 dark:bg-neutral-900 text-gray-500 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300 border border-gray-200 dark:border-neutral-800'
+                        : 'bg-gray-100 dark:bg-neutral-900 text-gray-500 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300'
                     }`}
                   >
                     All
@@ -1637,13 +1178,10 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
                       className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                         categoryFilter === cat
                           ? 'bg-vibrant-purple text-white'
-                          : cat === 'CRYPTO'
-                          ? 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border border-orange-500/20'
-                          : cat === 'POLITICS'
-                          ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20'
-                          : cat === 'SPORTS'
-                          ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20'
-                          : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/20'
+                          : cat === 'CRYPTO' ? 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'
+                          : cat === 'POLITICS' ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
+                          : cat === 'SPORTS' ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                          : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'
                       }`}
                     >
                       {cat.charAt(0) + cat.slice(1).toLowerCase()}
@@ -1656,398 +1194,193 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
             {/* Loading */}
             {loading && (
               <div className="flex justify-center py-16">
-                <Loader2 className="h-6 w-6 animate-spin text-vibrant-purple" />
+                <Loader2 className="h-7 w-7 animate-spin text-vibrant-purple" />
               </div>
             )}
 
-            {/* Table */}
+            {/* Positions Content */}
             {!loading && (
-              <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden">
-
-                {/* --- Mobile card list (sm and below) --- */}
-                <div className="sm:hidden">
-                  {positionSub === 'active' && (() => {
-                    const cryptoBets = displayBets.filter(b => getBetCategory(b).toUpperCase() === 'CRYPTO');
-                    const otherBets = displayBets.filter(b => getBetCategory(b).toUpperCase() !== 'CRYPTO');
-                    const hasBets = cryptoBets.length > 0 || otherBets.length > 0;
-
-                    if (!hasBets) {
-                      return (
-                        <div className="py-16 text-center text-sm text-gray-400 dark:text-neutral-600">
-                          No active positions.
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <>
-                        {cryptoBets.map(bet => (
-                          <ActivePositionCard
-                            key={bet.id}
-                            bet={bet}
-                            livePrice={livePrices[bet.asset || 'HBAR'] ?? null}
-                            imageUrl={getCryptoImage(bet.asset || 'HBAR')}
-                            mobile
-                            balancesHidden={isHidden}
-                          />
-                        ))}
-                        {otherBets.map(bet => {
-                          const cat = getBetCategory(bet);
-                          const marketName = getMarketDisplayName(bet);
-                          const marketImg = getMarketImage(bet);
-                          const stakeVal = Number(formatAmount(bet.stake, 6));
-
-                          return (
-                            <div key={bet.id} className="border-b border-gray-100 dark:border-neutral-800/60 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors">
-                              <div className="flex items-center gap-3">
-                                {marketImg ? (
-                                  <img src={marketImg} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
-                                ) : (
-                                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-                                    cat.toUpperCase() === 'POLITICS' ? 'bg-blue-500/10 text-blue-400'
-                                    : cat.toUpperCase() === 'SPORTS' ? 'bg-green-500/10 text-green-400'
-                                    : 'bg-purple-500/10 text-purple-400'
-                                  }`}>
-                                    {cat.charAt(0).toUpperCase()}
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-base font-medium text-gray-900 dark:text-white truncate">{marketName}</div>
-                                  <div className="text-base text-gray-500 dark:text-neutral-500 mt-0.5">
-                                    {stakeVal.toFixed(2)} {currency.symbol} {t.staked}
-                                  </div>
-                                </div>
-                                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-neutral-500" />
-                                    {t.active}
-                                  </span>
-                                  <span className="text-sm font-medium text-gray-900 dark:text-white">{isHidden ? HIDDEN_VALUE : formatUsd(stakeVal)}</span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </>
-                    );
-                  })()}
-
-                  {positionSub === 'closed' && (
+              <>
+                {/* Active crypto bets: live tracker cards */}
+                {positionSub === 'active' && (() => {
+                  const cryptoBets = displayBets.filter(b => getBetCategory(b).toUpperCase() === 'CRYPTO');
+                  const otherBets = displayBets.filter(b => getBetCategory(b).toUpperCase() !== 'CRYPTO');
+                  const hasBets = cryptoBets.length > 0 || otherBets.length > 0;
+                  return (
                     <>
-                      {displayBets.length === 0 ? (
-                        <div className="py-16 text-center text-sm text-gray-400 dark:text-neutral-600">
-                          No closed positions yet.
-                        </div>
-                      ) : (
-                        displayBets.map(bet => {
-                          const cat = getBetCategory(bet);
-                          const marketName = getMarketDisplayName(bet);
-                          const marketImg = getMarketImage(bet);
-                          const { value, pnlAbs, pnlPct } = getPositionValue(bet);
-                          const stakeVal = Number(formatAmount(bet.stake, 6));
-                          const isWon = bet.finalized && bet.won;
-                          const isLost = bet.finalized && !bet.won;
-                          const isUnredeemed = isWon && !bet.claimed;
-                          const marketQuestion = cat.toUpperCase() === 'CRYPTO' ? getCryptoQuestion(bet) : marketName;
-
-                          return (
-                            <div key={bet.id} className="border-b border-gray-100 dark:border-neutral-800/60 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors">
-                              <div className="flex items-center gap-3">
-                                {marketImg ? (
-                                  <img src={marketImg} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
-                                ) : (
-                                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-                                    cat.toUpperCase() === 'CRYPTO' ? 'bg-orange-500/10 text-orange-400'
-                                    : cat.toUpperCase() === 'POLITICS' ? 'bg-blue-500/10 text-blue-400'
-                                    : cat.toUpperCase() === 'SPORTS' ? 'bg-green-500/10 text-green-400'
-                                    : 'bg-purple-500/10 text-purple-400'
-                                  }`}>
-                                    {cat.charAt(0).toUpperCase()}
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{marketQuestion}</div>
-                                  <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
-                                    {stakeVal.toFixed(2)} {currency.symbol} {t.staked}
-                                  </div>
-                                </div>
-                                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                                  {isWon ? (
-                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-500">
-                                      <CheckCircle className="w-3.5 h-3.5" />
-                                      Won
-                                    </span>
-                                  ) : isLost ? (
-                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-400">
-                                      <XCircle className="w-3.5 h-3.5" />
-                                      Lost
-                                    </span>
-                                  ) : (
-                                    <span className="text-xs text-gray-400 dark:text-neutral-500">--</span>
-                                  )}
-                                  <span className="text-sm font-bold text-gray-900 dark:text-white">{isHidden ? HIDDEN_VALUE : formatUsd(value)}</span>
-                                  {pnlAbs !== 0 && !isHidden && (
-                                    <span className={`text-[11px] font-semibold ${pnlAbs > 0 ? 'text-green-500' : 'text-red-400'}`}>
-                                      {pnlAbs > 0 ? '+' : ''}{formatUsd(pnlAbs)}
-                                    </span>
-                                  )}
-                                  {isUnredeemed && (
-                                    <button
-                                      onClick={() => redeemBet(bet.id)}
-                                      disabled={redeemingBetId === bet.id}
-                                      className="mt-1 text-[11px] font-semibold text-white bg-green-600 hover:bg-green-500 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
-                                    >
-                                      {redeemingBetId === bet.id ? 'Redeeming...' : 'Redeem'}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
+                      {!hasBets && (
+                        <div className="py-16 text-center text-sm text-gray-400 dark:text-neutral-500">No active positions.</div>
                       )}
-                    </>
-                  )}
-                </div>
-
-                {/* --- Desktop table (sm and above) --- */}
-                <table className="w-full hidden sm:table">
-                  <thead>
-                    <tr className="border-b border-gray-200 dark:border-neutral-800">
-                      <th className="px-5 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-neutral-500 uppercase tracking-wider w-28">
-                        {t.result}
-                      </th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-neutral-500 uppercase tracking-wider">
-                        {t.market}
-                        <ChevronDown className="inline w-3 h-3 ml-0.5 text-gray-400 dark:text-neutral-600" />
-                      </th>
-                      <th className="px-4 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-neutral-500 uppercase tracking-wider">
-                        {t.totalTraded}
-                      </th>
-                      <th className="px-4 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-neutral-500 uppercase tracking-wider">
-                        {t.amount}
-                      </th>
-                      <th className="px-4 py-3 w-10" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* Active tab */}
-                    {positionSub === 'active' && (() => {
-                      const cryptoBets = displayBets.filter(b => getBetCategory(b).toUpperCase() === 'CRYPTO');
-                      const otherBets = displayBets.filter(b => getBetCategory(b).toUpperCase() !== 'CRYPTO');
-                      const hasBets = cryptoBets.length > 0 || otherBets.length > 0;
-
-                      if (!hasBets) {
-                        return (
-                          <tr>
-                            <td colSpan={5} className="py-16 text-center text-sm text-gray-400 dark:text-neutral-600">
-                              {t.noActivePositions}
-                            </td>
-                          </tr>
-                        );
-                      }
-
-                      return (
-                        <>
+                      {hasBets && (
+                        <div className="bg-white dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+                          {/* Table header */}
+                          <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[11px] font-medium text-gray-500 dark:text-neutral-500 uppercase tracking-wider border-b border-gray-200 dark:border-neutral-800">
+                            <div className="col-span-5 flex items-center gap-1 cursor-pointer select-none" onClick={() => toggleSort('market')}>Market <SortIcon field="market" /></div>
+                            <div className="col-span-2 text-right flex items-center justify-end gap-1 cursor-pointer select-none" onClick={() => toggleSort('avg')}>Avg <SortIcon field="avg" /></div>
+                            <div className="col-span-2 text-right flex items-center justify-end gap-1 cursor-pointer select-none" onClick={() => toggleSort('current')}>Current <SortIcon field="current" /></div>
+                            <div className="col-span-2 text-right flex items-center justify-end gap-1 cursor-pointer select-none" onClick={() => toggleSort('value')}>Value <SortIcon field="value" /></div>
+                            <div className="col-span-1" />
+                          </div>
+                          {/* Crypto bets: accordion rows */}
                           {cryptoBets.map(bet => (
                             <ActivePositionCard
                               key={bet.id}
                               bet={bet}
                               livePrice={livePrices[bet.asset || 'HBAR'] ?? null}
                               imageUrl={getCryptoImage(bet.asset || 'HBAR')}
-                              balancesHidden={isHidden}
                             />
                           ))}
+                          {/* Non-crypto bets: standard rows */}
                           {otherBets.map(bet => {
                             const cat = getBetCategory(bet);
                             const marketName = getMarketDisplayName(bet);
                             const marketImg = getMarketImage(bet);
+                            const avg = getAvgPrice(bet);
+                            const current = getCurrentPrice(bet);
+                            const { value, pnlPct } = getPositionValue(bet);
                             const stakeVal = Number(formatAmount(bet.stake, 6));
-
                             return (
-                              <tr key={bet.id} className="border-b border-gray-100 dark:border-neutral-800/60 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors">
-                                <td className="px-5 py-3.5">
-                                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-neutral-500" />
-                                    {t.active}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3.5">
+                              <div key={bet.id} className="grid grid-cols-12 gap-2 px-4 py-3.5 border-b border-gray-100 dark:border-neutral-800/50 hover:bg-gray-50 dark:hover:bg-neutral-900/30 transition-colors items-center text-sm">
+                                <div className="col-span-5">
                                   <div className="flex items-center gap-3">
                                     {marketImg ? (
-                                      <img src={marketImg} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                                      <img src={marketImg} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
                                     ) : (
-                                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-                                        cat.toUpperCase() === 'POLITICS' ? 'bg-blue-500/10 text-blue-400'
-                                        : cat.toUpperCase() === 'SPORTS' ? 'bg-green-500/10 text-green-400'
-                                        : 'bg-purple-500/10 text-purple-400'
-                                      }`}>
-                                        {cat.charAt(0).toUpperCase()}
-                                      </div>
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${
+                                        cat.toUpperCase() === 'POLITICS' ? 'bg-blue-500/10 text-blue-400' :
+                                        cat.toUpperCase() === 'SPORTS' ? 'bg-green-500/10 text-green-400' :
+                                        'bg-purple-500/10 text-purple-400'
+                                      }`}>{cat.charAt(0).toUpperCase()}</div>
                                     )}
-                                    <div>
-                                      <div className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">{marketName}</div>
-                                      <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
-                                        {stakeVal.toFixed(2)} {currency.symbol} {t.staked}
-                                      </div>
+                                    <div className="min-w-0">
+                                      <div className="font-medium text-gray-900 dark:text-white truncate text-[13px] leading-tight">{marketName}</div>
+                                      <span className="text-[10px] text-gray-400 dark:text-neutral-600">{stakeVal.toFixed(2)} shares</span>
                                     </div>
                                   </div>
-                                </td>
-                                <td className="px-4 py-3.5 text-right">
-                                  <span className="text-sm text-gray-900 dark:text-white font-medium">{isHidden ? HIDDEN_VALUE : formatUsd(stakeVal)}</span>
-                                </td>
-                                <td className="px-4 py-3.5 text-right">
-                                  <span className="text-sm text-gray-900 dark:text-white font-medium">{isHidden ? HIDDEN_VALUE : formatUsd(stakeVal)}</span>
-                                </td>
-                                <td className="px-4 py-3.5">
-                                  <Link2 className="w-4 h-4 text-gray-300 dark:text-neutral-700 hover:text-gray-500 dark:hover:text-neutral-400 transition-colors cursor-pointer" onClick={() => handleSharePosition(bet)} />
-                                </td>
-                              </tr>
+                                </div>
+                                <div className="col-span-2 text-right font-mono text-sm text-gray-700 dark:text-neutral-300">{avg}</div>
+                                <div className="col-span-2 text-right font-mono text-sm text-gray-700 dark:text-neutral-300">{current}</div>
+                                <div className="col-span-2 text-right">
+                                  <div className="font-semibold text-sm text-gray-900 dark:text-white">{formatUsd(value)}</div>
+                                  <div className="text-[11px] font-medium text-neutral-500">0.0%</div>
+                                </div>
+                                <div className="col-span-1 flex justify-end">
+                                  <button onClick={() => handleSharePosition(bet)} className="p-1 rounded text-gray-400 dark:text-neutral-600 hover:text-green-500 transition-colors" title="Share on WhatsApp">
+                                    <Share2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
                             );
                           })}
-                        </>
-                      );
-                    })()}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
-                    {/* Closed tab */}
-                    {positionSub === 'closed' && (
-                      <>
-                        {displayBets.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="py-16 text-center text-sm text-gray-400 dark:text-neutral-600">
-                              No closed positions yet.
-                            </td>
-                          </tr>
-                        ) : (
-                          displayBets.map(bet => {
-                            const cat = getBetCategory(bet);
-                            const marketName = getMarketDisplayName(bet);
-                            const marketImg = getMarketImage(bet);
-                            const { value, pnlAbs, pnlPct } = getPositionValue(bet);
-                            const stakeVal = Number(formatAmount(bet.stake, 6));
-                            const isWon = bet.finalized && bet.won;
-                            const isLost = bet.finalized && !bet.won;
-                            const isUnredeemed = isWon && !bet.claimed;
-                            const expectedPayout = Number(formatAmount(bet.expectedPayout || bet.stake, 6));
-                            const marketQuestion = cat.toUpperCase() === 'CRYPTO' ? getCryptoQuestion(bet) : marketName;
-
-                            return (
-                              <tr key={bet.id} className="border-b border-gray-100 dark:border-neutral-800/60 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors">
-                                {/* RESULT */}
-                                <td className="px-5 py-4">
-                                  {isWon ? (
-                                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-green-500">
-                                      <CheckCircle className="w-4 h-4" />
-                                      Won
-                                    </span>
-                                  ) : isLost ? (
-                                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-400">
-                                      <XCircle className="w-4 h-4" />
-                                      Lost
-                                    </span>
-                                  ) : (
-                                    <span className="text-xs text-gray-400 dark:text-neutral-500">--</span>
-                                  )}
-                                </td>
-
-                                {/* MARKET */}
-                                <td className="px-4 py-4">
-                                  <div className="flex items-center gap-3">
-                                    {marketImg ? (
-                                      <img src={marketImg} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                {/* Closed positions: standard table */}
+                {positionSub === 'closed' && (
+                  <div className="bg-white dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+                    <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[11px] font-medium text-gray-500 dark:text-neutral-500 uppercase tracking-wider border-b border-gray-200 dark:border-neutral-800">
+                      <div className="col-span-5 flex items-center gap-1 cursor-pointer select-none" onClick={() => toggleSort('market')}>Market <SortIcon field="market" /></div>
+                      <div className="col-span-2 text-right flex items-center justify-end gap-1 cursor-pointer select-none" onClick={() => toggleSort('avg')}>Avg <SortIcon field="avg" /></div>
+                      <div className="col-span-2 text-right flex items-center justify-end gap-1 cursor-pointer select-none" onClick={() => toggleSort('current')}>Current <SortIcon field="current" /></div>
+                      <div className="col-span-2 text-right flex items-center justify-end gap-1 cursor-pointer select-none" onClick={() => toggleSort('value')}>Value <SortIcon field="value" /></div>
+                      <div className="col-span-1" />
+                    </div>
+                    {displayBets.length === 0 ? (
+                      <div className="py-16 text-center text-sm text-gray-400 dark:text-neutral-500">No closed positions yet.</div>
+                    ) : (
+                      displayBets.map(bet => {
+                        const cat = getBetCategory(bet);
+                        const marketName = getMarketDisplayName(bet);
+                        const marketImg = getMarketImage(bet);
+                        const avg = getAvgPrice(bet);
+                        const current = getCurrentPrice(bet);
+                        const { value, pnlPct } = getPositionValue(bet);
+                        const stakeVal = Number(formatAmount(bet.stake, 6));
+                        const isWon = bet.finalized && bet.won;
+                        const isLost = bet.finalized && !bet.won;
+                        const isUnredeemed = bet.finalized && bet.won && !bet.claimed;
+                        const isYes = cat.toUpperCase() !== 'CRYPTO';
+                        return (
+                          <div key={bet.id} className="grid grid-cols-12 gap-2 px-4 py-3.5 border-b border-gray-100 dark:border-neutral-800/50 hover:bg-gray-50 dark:hover:bg-neutral-900/30 transition-colors items-center text-sm">
+                            <div className="col-span-5">
+                              <div className="flex items-center gap-3">
+                                {marketImg ? (
+                                  <img src={marketImg} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                                ) : (
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${
+                                    cat.toUpperCase() === 'CRYPTO' ? 'bg-orange-500/10 text-orange-400' :
+                                    cat.toUpperCase() === 'POLITICS' ? 'bg-blue-500/10 text-blue-400' :
+                                    cat.toUpperCase() === 'SPORTS' ? 'bg-green-500/10 text-green-400' :
+                                    'bg-purple-500/10 text-purple-400'
+                                  }`}>{cat.charAt(0).toUpperCase()}</div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="font-medium text-gray-900 dark:text-white truncate text-[13px] leading-tight">{marketName}</div>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    {isYes ? (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-green-500/10 text-green-500">Yes</span>
                                     ) : (
-                                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-                                        cat.toUpperCase() === 'CRYPTO' ? 'bg-orange-500/10 text-orange-400'
-                                        : cat.toUpperCase() === 'POLITICS' ? 'bg-blue-500/10 text-blue-400'
-                                        : cat.toUpperCase() === 'SPORTS' ? 'bg-green-500/10 text-green-400'
-                                        : 'bg-purple-500/10 text-purple-400'
-                                      }`}>
-                                        {cat.charAt(0).toUpperCase()}
-                                      </div>
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-orange-500/10 text-orange-400">{bet.asset || 'HBAR'}</span>
                                     )}
-                                    <div>
-                                      <div className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 leading-snug">
-                                        {marketQuestion}
-                                      </div>
-                                      <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
-                                        {stakeVal.toFixed(2)} {currency.symbol} {t.staked}
-                                      </div>
-                                    </div>
+                                    <span className="text-[10px] text-gray-400 dark:text-neutral-600">{stakeVal.toFixed(2)} shares</span>
                                   </div>
-                                </td>
-
-                                {/* TOTAL TRADED */}
-                                <td className="px-4 py-4 text-right">
-                                  <span className="text-sm text-gray-900 dark:text-white font-medium">{isHidden ? HIDDEN_VALUE : formatUsd(stakeVal)}</span>
-                                </td>
-
-                                {/* AMOUNT / P&L */}
-                                <td className="px-4 py-4 text-right">
-                                  <div className="flex flex-col items-end gap-0.5">
-                                    <span className="text-sm font-bold text-gray-900 dark:text-white">
-                                      {isHidden ? HIDDEN_VALUE : formatUsd(value)}
-                                    </span>
-                                    {pnlAbs !== 0 && !isHidden && (
-                                      <span className={`text-xs font-semibold ${pnlAbs > 0 ? 'text-green-500' : 'text-red-400'}`}>
-                                        {pnlAbs > 0 ? '+' : ''}{formatUsd(pnlAbs)} ({pnlPct > 0 ? '+' : ''}{pnlPct.toFixed(2)}%)
-                                      </span>
-                                    )}
-                                    {isUnredeemed && (
-                                      <button
-                                        onClick={() => redeemBet(bet.id)}
-                                        disabled={redeemingBetId === bet.id}
-                                        className="mt-1 text-[11px] font-semibold text-white bg-green-600 hover:bg-green-500 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
-                                      >
-                                        {redeemingBetId === bet.id ? 'Redeeming...' : 'Redeem'}
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-
-                                {/* CHAIN LINK */}
-                                <td className="px-4 py-4">
-                                  <Link2
-                                    className="w-4 h-4 text-gray-300 dark:text-neutral-700 hover:text-gray-500 dark:hover:text-neutral-400 transition-colors cursor-pointer"
-                                    onClick={() => handleSharePosition(bet)}
-                                  />
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="col-span-2 text-right font-mono text-sm text-gray-700 dark:text-neutral-300">{avg}</div>
+                            <div className="col-span-2 text-right font-mono text-sm text-gray-700 dark:text-neutral-300">{current}</div>
+                            <div className="col-span-2 text-right">
+                              <div className={`font-semibold text-sm ${isWon ? 'text-green-500' : isLost ? 'text-red-400' : 'text-gray-900 dark:text-white'}`}>{formatUsd(value)}</div>
+                              {pnlPct !== 0 && (
+                                <div className={`text-[11px] font-medium ${pnlPct > 0 ? 'text-green-500' : 'text-red-400'}`}>
+                                  {pnlPct > 0 ? '+' : ''}{pnlPct.toFixed(1)}%
+                                </div>
+                              )}
+                              {isUnredeemed && (
+                                <button onClick={() => redeemBet(bet.id)} disabled={redeemingBetId === bet.id}
+                                  className="mt-1 text-[10px] font-medium text-green-500 bg-green-500/10 hover:bg-green-500/20 px-2 py-0.5 rounded transition-colors disabled:opacity-50">
+                                  {redeemingBetId === bet.id ? 'Redeeming...' : 'Redeem'}
+                                </button>
+                              )}
+                            </div>
+                            <div className="col-span-1 flex justify-end">
+                              <button onClick={() => handleSharePosition(bet)} className="p-1 rounded text-gray-400 dark:text-neutral-600 hover:text-green-500 transition-colors" title="Share on WhatsApp">
+                                <Share2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
                     )}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+                )}
+              </>
             )}
-          </div>
+          </>
         )}
 
         {/* ============ ACTIVITY TAB ============ */}
         {mainTab === 'activity' && (
           <div className="mt-4">
-            <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+            <div className="bg-white dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden">
               {!activityData && (
                 <div className="flex justify-center py-16">
-                  <Loader2 className="h-6 w-6 animate-spin text-vibrant-purple" />
+                  <Loader2 className="h-7 w-7 animate-spin text-vibrant-purple" />
                 </div>
               )}
               {activityData && activityData.length === 0 && (
-                <div className="py-16 text-center text-sm text-gray-400 dark:text-neutral-600">
+                <div className="py-16 text-center text-sm text-gray-400 dark:text-neutral-500">
                   No activity yet. Place your first prediction to get started.
                 </div>
               )}
-              {activityData &&
-                activityData.length > 0 &&
+              {activityData && activityData.length > 0 && (
                 activityData.map((item: any, idx: number) => (
-                  <ActivityRow
-                    key={`${item.type}-${item.timestamp}-${idx}`}
-                    item={item}
-                    explorerBase={EXPLORER_BASE}
-                    getCryptoImage={getCryptoImage}
-                  />
-                ))}
+                  <ActivityRow key={`${item.type}-${item.timestamp}-${idx}`} item={item} hashscanBase={HASHSCAN_BASE} />
+                ))
+              )}
             </div>
           </div>
         )}
@@ -2056,22 +1389,4 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
       <Toaster />
     </div>
   );
-}
-
-// Next.js page wrapper
-export default function PortfolioPage() {
-  // Support public view via ?viewUser= query param (used by /profile/[id] redirect)
-  const [viewUser, setViewUser] = React.useState<string | undefined>(undefined);
-  const [checked, setChecked] = React.useState(false);
-  React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const vu = params.get('viewUser') || undefined;
-    setViewUser(vu);
-    setChecked(true);
-  }, []);
-  if (!checked) {
-    const { BetsPageSkeleton } = require('@/components/page-skeleton');
-    return <BetsPageSkeleton />;
-  }
-  return <PortfolioPageContent publicViewUserId={viewUser} />;
 }
