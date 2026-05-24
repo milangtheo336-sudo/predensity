@@ -25,7 +25,7 @@ export default function PublicProfilePage() {
   }
 
   // If viewing own profile, redirect to my-bets
-  if (isSignedIn && user?.id === profileUserId) {
+  if (isSignedIn && user?.issuer === profileUserId) {
     redirect('/my-bets');
   }
 
