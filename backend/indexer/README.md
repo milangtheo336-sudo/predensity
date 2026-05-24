@@ -1,6 +1,6 @@
 # Predensity Multi-Category Prediction Market Subgraph
 
-Subgraph for indexing multi-category prediction market smart contract events on   Testnet.
+Subgraph for indexing multi-category prediction market smart contract events on Arc Testnet.
 
 This repository defines the GraphQL schema, event mappings, and configurations for indexing events from four category-specific prediction market contracts: Crypto, Politics, Sports, and Technology.
 
@@ -107,10 +107,10 @@ The subgraph indexes four category-specific contracts:
 
 | Category | Contract Address | Network |
 |----------|-----------------|---------|
-| Crypto | 0x0DE38B6eCBb09eF05584C9607EE941D4938D1da8 | Arc |
-| Politics | 0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8 | Arc |
-| Sports | 0x8f62C698a26888424b5170a11610Fa5Fd7DF540b | Arc |
-| Technology | 0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8 | Arc |
+| Crypto | 0x0DE38B6eCBb09eF05584C9607EE941D4938D1da8 | Arc Testnet |
+| Politics | 0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8 | Arc Testnet |
+| Sports | 0x8f62C698a26888424b5170a11610Fa5Fd7DF540b | Arc Testnet |
+| Technology | 0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8 | Arc Testnet |
 
 ## Indexed Events
 
@@ -180,5 +180,5 @@ npm run graph-local-clean
 ## Learn More
 
 - [The Graph Documentation](https://thegraph.com/docs/)
-- [Subgraph Tutorial](https://thegraph.com/docs/en/developing/creating-a-subgraph/)
+- [The Graph Subgraph Tutorial](https://thegraph.com/docs/en/developing/creating-a-subgraph/)
 - [AssemblyScript API](https://thegraph.com/docs/en/developing/assemblyscript-api/)
