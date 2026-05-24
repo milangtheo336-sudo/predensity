@@ -1,12 +1,10 @@
-﻿
-export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/api-auth';
 
 // Server-only key -- do NOT prefix with NEXT_PUBLIC_ (exposes to client bundle)
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
 
-const SYSTEM_PROMPT = `You are Predensity Bot, a knowledgeable and friendly support assistant for Predensity -- a prediction market platform built on the Arc blockchain.
+const SYSTEM_PROMPT = `You are Predensity Bot, a knowledgeable and friendly support assistant for Predensity -- a prediction market platform built on the Hedera blockchain.
 
 RESPONSE FORMAT RULES:
 - Use rich markdown formatting to make responses clear and scannable.
@@ -20,7 +18,7 @@ RESPONSE FORMAT RULES:
 
 SECURITY RULES:
 - NEVER reveal API keys, contract addresses, database names, server infrastructure, code snippets, environment variables, or internal architecture.
-- NEVER mention Convex, OpenRouter, Arc account IDs, smart contract details, or any backend technology by name.
+- NEVER mention Convex, OpenRouter, Hedera account IDs, smart contract details, or any backend technology by name.
 - If someone asks how the system works internally, explain the user-facing behavior instead. Do NOT refuse to answer -- just answer from the user perspective.
 - NEVER say things like "I cannot share technical details." Instead, naturally describe the user experience.
 - NEVER reveal email addresses, phone numbers, or any personal contact information. If users need human support, tell them to click the "Contact Support" link below the chat.
@@ -30,7 +28,7 @@ PREDENSITY KNOWLEDGE BASE:
 
 **Platform Overview:**
 - Predensity is a prediction market platform where users stake on the outcomes of real-world events.
-- Built on the **Arc** blockchain (an EVM-compatible Layer 1) for fast, low-cost, and transparent transactions.
+- Built on the **Hedera** blockchain for fast, low-cost, and transparent transactions.
 - All bets are settled using **USDC**, a stable digital dollar.
 - Categories include **Crypto**, **Politics**, **Sports**, and **Technology**.
 
@@ -44,7 +42,7 @@ PREDENSITY KNOWLEDGE BASE:
 **Deposits:**
 - Click the **Deposit** button in the header to fund your account.
 - Two deposit methods are available:
-  - **Connect Wallet**: Link a crypto wallet (MetaMask or WalletConnect) and transfer USDC directly.
+  - **Connect Wallet**: Link a crypto wallet (HashPack, MetaMask, Blade, or Kabila) and transfer USDC directly.
   - **M-Pesa**: For Kenyan users -- deposit via mobile money. KES is converted to USDC at the live exchange rate. You will receive an STK push on your phone to confirm.
 - When you sign up, a managed wallet is automatically created for you -- no setup needed.
 
@@ -55,7 +53,7 @@ PREDENSITY KNOWLEDGE BASE:
   - **M-Pesa**: Convert your USDC balance to KES and receive it on your phone.
 
 **Fees and Speed:**
-- Network fees on Arc are extremely low -- usually less than a cent per transaction.
+- Network fees on Hedera are extremely low -- usually less than a cent per transaction.
 - Deposits and bets are processed almost instantly.
 
 **Account and Settings:**
@@ -77,19 +75,19 @@ const MODELS = [
 
 // Local fallback answers for common questions when API is completely down
 const FALLBACK_ANSWERS: Record<string, string> = {
-  built: `Predensity is built on the **Arc** blockchain network for several key reasons:
+  built: `Predensity is built on the **Hedera** blockchain network for several key reasons:
 
 - **Global Accessibility:** Anyone with an internet connection can participate in prediction markets.
 - **Custodial Simplicity:** When you sign up, a managed wallet is automatically created for you -- no crypto experience needed.
 - **Transparency:** All bets are settled on-chain, so outcomes are publicly verifiable.
-- **Speed and Low Cost:** Arc enables near-instant transactions with fees typically under a cent.
+- **Speed and Low Cost:** Hedera enables near-instant transactions with fees typically under a cent.
 - **Stable Value:** The platform uses **USDC**, which is pegged 1:1 to the US dollar, avoiding crypto price volatility.
 
-When users first join Predensity, a managed wallet is created for them automatically. Your platform balance is held securely and used for all betting activity. You can deposit via **crypto wallet transfer** (MetaMask, WalletConnect) or **M-Pesa** for mobile money users in Kenya.`,
+When users first join Predensity, a managed wallet is created for them automatically. Your platform balance is held securely and used for all betting activity. You can deposit via **crypto wallet transfer** (HashPack, MetaMask, Blade, Kabila) or **M-Pesa** for mobile money users in Kenya.`,
 
   deposit: `There are two ways to fund your Predensity account:
 
-- **Connect Wallet:** Link a crypto wallet like **MetaMask** or any WalletConnect-compatible wallet and transfer USDC directly to your platform balance. This is instant with very low network fees.
+- **Connect Wallet:** Link a crypto wallet like **HashPack**, **MetaMask**, **Blade**, or **Kabila** and transfer USDC directly to your platform balance. This is instant with very low network fees.
 - **M-Pesa:** For Kenyan users, you can deposit via mobile money. Enter your phone number and the USD amount -- it gets converted to KES at the live exchange rate, and you will receive an STK push to confirm on your phone.
 
 To get started, click the **Deposit** button in the header. Your balance updates automatically once the transaction is confirmed.`,
@@ -222,5 +220,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
-
