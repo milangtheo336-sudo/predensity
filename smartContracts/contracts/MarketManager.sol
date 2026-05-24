@@ -148,7 +148,7 @@ contract MarketManager is Ownable, ReentrancyGuard, Pausable {
         address[] calldata outcomeTokenAddresses
     ) external onlyOwner returns (uint256 marketId) {
         require(outcomeNames.length >= 2, "Need at least 2 outcomes");
-        require(outcomeNames.length <= 6, "Max 6 outcomes");
+        require(outcomeNames.length <= 20, "Max 20 outcomes");
         require(outcomeNames.length == outcomeTokenAddresses.length, "Names and tokens length mismatch");
         require(resolutionTimestamp > block.timestamp, "Resolution must be in the future");
 
