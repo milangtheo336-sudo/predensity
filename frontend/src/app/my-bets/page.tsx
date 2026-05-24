@@ -2009,6 +2009,9 @@ export default function PortfolioPage() {
     setViewUser(vu);
     setChecked(true);
   }, []);
-  if (!checked) return null;
+  if (!checked) {
+    const { BetsPageSkeleton } = require('@/components/page-skeleton');
+    return <BetsPageSkeleton />;
+  }
   return <PortfolioPageContent publicViewUserId={viewUser} />;
 }
