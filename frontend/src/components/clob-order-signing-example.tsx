@@ -4,14 +4,13 @@
  * Copy this handlePlaceOrder function to replace the existing one.
  */
 
-import { signTypedDataWithMagic, getMagicAddress } from '@/lib/magic';
+import { signTypedData, getUserInfo } from '@/lib/magic';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { toast } from 'sonner';
 
 export function useClobOrderSigning(user: any, market: any) {
   const wallet = useQuery(api.users.getManagedWalletByUserId, 
-    user?.id ? { userId: user.id } : 'skip'
+    user?.issuer ? { userId: user.issuer } : 'skip'
   );
 
   const handlePlaceOrder = async (
@@ -26,14 +25,14 @@ export function useClobOrderSigning(user: any, market: any) {
       setIsPlacing(true);
 
       if (!wallet) {
-        toast.error('No wallet found');
+        console.error('No wallet found');
         return;
       }
 
       // Verify user is logged into Magic Link
-      const magicAddress = await getMagicAddress();
-      if (!magicAddress || magicAddress.toLowerCase() !== wallet.magicEOAAddress.toLowerCase()) {
-        toast.error('Please authenticate with Magic Link first');
+      const userInfo = await getUserInfo();
+      if (!userInfo || userInfo.publicAddress.toLowerCase() !== (wallet as any).magicEOAAddress?.toLowerCase()) {
+        console.error('Please authenticate with Magic Link first');
         return;
       }
 
@@ -68,15 +67,15 @@ export function useClobOrderSigning(user: any, market: any) {
       };
 
       // User signs with Magic Link (MPC signature)
-      toast.info('Please sign the order...');
-      const signature = await signTypedDataWithMagic(domain, types, message);
+      console.log('Please sign the order...');
+      const signature = await signTypedData(domain, types, message);
 
       // Send signed order to backend
       const response = await fetch('/api/clob/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
+          userId: user.issuer,
           marketId: market.marketId,
           outcomeIndex: selectedOutcome,
           side: orderSide,
@@ -92,11 +91,11 @@ export function useClobOrderSigning(user: any, market: any) {
         throw new Error(error.error || 'Order placement failed');
       }
 
-      toast.success('Order placed successfully');
+      console.log('Order placed successfully');
       setAmount('');
     } catch (error) {
       console.error('Order placement error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to place order');
+      alert(error instanceof Error ? error.message : 'Failed to place order');
     } finally {
       setIsPlacing(false);
     }
