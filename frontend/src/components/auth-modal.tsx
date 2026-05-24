@@ -10,6 +10,7 @@ import { HashpackConnector } from '@buidlerlabs/hashgraph-react-wallets/connecto
 import { useEIP6963Wallets, EIP6963ProviderDetail } from '@/hooks/useEIP6963Wallets';
 import { connectWithWalletConnect, signWithWalletConnect } from '@/lib/walletconnect-modal';
 import Image from 'next/image';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ interface SigningWalletInfo {
 }
 
 function SigningOverlay({ signingWallet }: { signingWallet: SigningWalletInfo }) {
+  const { t } = useLanguage();
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md">
       <div className="bg-[#111318] border border-white/10 rounded-3xl p-10 flex flex-col items-center gap-6 w-[320px] shadow-2xl">
@@ -41,8 +43,8 @@ function SigningOverlay({ signingWallet }: { signingWallet: SigningWalletInfo })
         ) : null}
         <p className="text-white text-xl font-bold">{signingWallet.name}</p>
         <div className="text-center space-y-1">
-          <p className="text-white text-lg font-semibold">Requesting Signature</p>
-          <p className="text-gray-400 text-sm">Please sign to connect.</p>
+          <p className="text-white text-lg font-semibold">{t.requestingSignature}</p>
+          <p className="text-gray-400 text-sm">{t.pleaseSign}</p>
         </div>
         {/* Spinner below the card — clean, no clipping */}
         <div className="w-8 h-8 rounded-full border-2 border-white/10 border-t-white/60 animate-spin" />
@@ -52,6 +54,7 @@ function SigningOverlay({ signingWallet }: { signingWallet: SigningWalletInfo })
 }
 
 export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [signingWallet, setSigningWallet] = useState<SigningWalletInfo | null>(null);
@@ -458,8 +461,8 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
               </div>
             </div>
             <div className="text-center">
-              <p className="text-white text-lg font-medium mb-2">Authenticating...</p>
-              <p className="text-gray-400 text-sm">Please wait while we verify your login</p>
+              <p className="text-white text-lg font-medium mb-2">{t.authenticating}</p>
+              <p className="text-gray-400 text-sm">{t.pleaseSign}</p>
             </div>
           </div>
         </div>
@@ -484,20 +487,20 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
           {view === 'main' ? (
             <>
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-semibold text-white mb-2">Log in or sign up</h2>
+                <h2 className="text-2xl font-semibold text-white mb-2">{t.loginOrSignUp}</h2>
               </div>
 
               <div className="space-y-3">
                 {/* Google */}
                 <button onClick={handleGoogleLogin} disabled={isLoading} className="w-full flex items-center justify-center gap-3 px-5 py-3.5 bg-[#0a0a0a] hover:bg-[#1a1a1a] text-white border border-white/5 rounded-xl text-[15px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed relative">
-                  {lastUsedMethod === 'google' && <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-gray-700 text-gray-300 text-[10px] font-semibold rounded-full border border-white/10">Last used</span>}
+                  {lastUsedMethod === 'google' && <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-gray-700 text-gray-300 text-[10px] font-semibold rounded-full border border-white/10">{t.lastUsed}</span>}
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
-                  Continue with Google
+                  {t.continueWithGoogle}
                 </button>
 
                 <div className="relative my-5">
@@ -508,8 +511,8 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
                 {/* Email */}
                 <form onSubmit={handleEmailSubmit} className="space-y-3">
                   <div className="relative">
-                    {lastUsedMethod === 'email' && <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-gray-700 text-gray-300 text-[10px] font-semibold rounded-full border border-white/10 z-10">Last used</span>}
-                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-5 py-3.5 bg-[#0a0a0a] border border-white/10 rounded-xl text-white text-[15px] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12" placeholder="Email address" disabled={isLoading} />
+                    {lastUsedMethod === 'email' && <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-gray-700 text-gray-300 text-[10px] font-semibold rounded-full border border-white/10 z-10">{t.lastUsed}</span>}
+                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-5 py-3.5 bg-[#0a0a0a] border border-white/10 rounded-xl text-white text-[15px] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12" placeholder={t.emailAddress} disabled={isLoading} />
                     <button type="submit" disabled={isLoading || !email} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors disabled:opacity-30">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                     </button>
@@ -518,20 +521,20 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
 
                 {/* Continue with wallet */}
                 <button onClick={() => setView('wallets')} disabled={isLoading} className="w-full flex items-center justify-center gap-3 px-5 py-3.5 bg-[#0a0a0a] hover:bg-[#1a1a1a] text-white border border-white/5 rounded-xl text-[15px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                  Continue with a wallet
+                  {t.continueWithWallet}
                 </button>
 
                 {error && <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>}
               </div>
 
               <div className="mt-6 text-center text-xs text-gray-400 leading-relaxed">
-                By continuing, you agree to our{' '}
-                <a href="/terms" className="text-blue-400 hover:underline">Terms of Service</a>{' '}&{' '}
-                <a href="/privacy" className="text-blue-400 hover:underline">Privacy Policy</a>
+                {t.agreeTerms}{' '}
+                <a href="/terms" className="text-blue-400 hover:underline">{t.termsOfService}</a>{' '}&{' '}
+                <a href="/privacy" className="text-blue-400 hover:underline">{t.privacyPolicy}</a>
               </div>
 
               <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-center gap-2">
-                <span className="text-[11px] text-gray-500 uppercase tracking-wide font-bold">Secured by</span>
+                <span className="text-[11px] text-gray-500 uppercase tracking-wide font-bold">{t.securedBy}</span>
                 <Image src="/1-Icon_Magic_Color.png" alt="Magic Link" width={16} height={16} className="opacity-80" />
                 <span className="text-[11px] text-gray-400 font-medium">Magic Link</span>
               </div>
@@ -543,7 +546,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
               {/* Back button */}
               <button onClick={() => setView('main')} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-6">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-                <span className="text-sm">Back</span>
+                <span className="text-sm">{t.back}</span>
               </button>
 
               {/* Icon + title */}
@@ -554,7 +557,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
                     <path d="M2 10h20"/>
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-white">Select your wallet</h2>
+                <h2 className="text-2xl font-bold text-white">{t.selectYourWallet}</h2>
               </div>
 
               {/* Wallet list — no scrollbar, no search */}
@@ -572,7 +575,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
                   </div>
                   <span className="text-[15px] font-medium">HashPack</span>
                   {lastUsedMethod === 'hashpack' && (
-                    <span className="ml-auto text-[10px] text-gray-500 font-medium">Last used</span>
+                    <span className="ml-auto text-[10px] text-gray-500 font-medium">{t.lastUsed}</span>
                   )}
                 </button>
 
@@ -593,7 +596,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
                     </div>
                     <span className="text-[15px] font-medium">{w.info.name}</span>
                     {lastUsedMethod === w.info.name.toLowerCase() && (
-                      <span className="ml-auto text-[10px] text-gray-500 font-medium">Last used</span>
+                      <span className="ml-auto text-[10px] text-gray-500 font-medium">{t.lastUsed}</span>
                     )}
                   </button>
                 ))}
@@ -617,7 +620,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
                     <div className="text-xs text-gray-500">300+ wallets · QR code</div>
                   </div>
                   {lastUsedMethod === 'walletconnect' && (
-                    <span className="ml-auto text-[10px] text-gray-500 font-medium">Last used</span>
+                    <span className="ml-auto text-[10px] text-gray-500 font-medium">{t.lastUsed}</span>
                   )}
                 </button>
               </div>
