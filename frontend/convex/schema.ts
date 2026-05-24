@@ -396,4 +396,19 @@ export default defineSchema({
   })
     .index("by_user_nonce", ["userId", "nonce"])
     .index("by_user", ["userId"]),
+
+  // Session keys for non-custodial betting (sign once, bet multiple times)
+  sessionKeys: defineTable({
+    userId: v.string(),             // Magic Link user ID
+    delegate: v.string(),           // Operator address that can execute bets
+    maxAmount: v.number(),          // Max USDC per transaction
+    dailyLimit: v.number(),         // Max USDC per day
+    expiry: v.number(),             // Timestamp when session expires
+    signature: v.string(),          // User's signature authorizing this session
+    revoked: v.boolean(),           // Can be revoked by user anytime
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_delegate", ["userId", "delegate"]),
 });
