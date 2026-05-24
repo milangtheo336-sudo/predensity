@@ -5,6 +5,7 @@ import {
 } from '@buidlerlabs/hashgraph-react-wallets';
 import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
 import { useMagic } from '@/context/MagicContext';
+import { useWalletUser } from '@/context/WalletUserContext';
 import { api } from '../../../convex/_generated/api';
 
 import { Bet } from '@/lib/types';
@@ -616,21 +617,24 @@ function SortDropdown({
 function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string }) {
   const isPublicView = !!publicViewUserId;
   const { user } = useMagic();
-  const isSignedIn = !!user;
+  const { walletUser } = useWalletUser();
+  const isSignedIn = !!user || !!walletUser;
+  const effectivePublicAddress = user?.publicAddress ?? walletUser?.publicAddress ?? null;
+  const effectiveIssuer = user?.issuer ?? walletUser?.userId ?? null;
   const { data: evmAddress } = useEvmAddress();
   
   // Get proxy wallet address
   const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
   
   useEffect(() => {
-    if (!user?.publicAddress) return;
-    
+    if (!effectivePublicAddress) return;
+
     let pollingInterval: NodeJS.Timeout;
 
     const fetchProxyWallet = async () => {
       // Check cache first
       try {
-        const cached = localStorage.getItem(`predensity_proxy_wallet_${user.publicAddress}`);
+        const cached = localStorage.getItem(`predensity_proxy_wallet_${effectivePublicAddress}`);
         if (cached) {
           const data = JSON.parse(cached);
           if (Date.now() - data.timestamp < 86400000) { // 24 hour cache
@@ -641,15 +645,15 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
       } catch (e) {
         console.error('[my-bets] Cache read error:', e);
       }
-      
+
       try {
-        const response = await fetch(`/api/proxy-wallet/create?userAddress=${user.publicAddress}`);
+        const response = await fetch(`/api/proxy-wallet/create?userAddress=${effectivePublicAddress}`);
         const data = await response.json();
         if (data.exists && data.proxyWalletAddress) {
           setProxyWalletAddress(data.proxyWalletAddress);
           // Cache it
           localStorage.setItem(
-            `predensity_proxy_wallet_${user.publicAddress}`,
+            `predensity_proxy_wallet_${effectivePublicAddress}`,
             JSON.stringify({
               proxyWallet: data.proxyWalletAddress,
               timestamp: Date.now(),
@@ -660,7 +664,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
         console.error('[my-bets] Failed to fetch proxy wallet:', err);
       }
     };
-    
+
     if (!proxyWalletAddress) {
       fetchProxyWallet();
       pollingInterval = setInterval(fetchProxyWallet, 5000);
@@ -669,7 +673,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     return () => {
       if (pollingInterval) clearInterval(pollingInterval);
     };
-  }, [user?.publicAddress, proxyWalletAddress]);
+  }, [effectivePublicAddress, proxyWalletAddress]);
   const { balancesHidden, toggleBalancesHidden } = useBalanceVisibility();
   // Local state synced with localStorage for when context is not available
   const [localHidden, setLocalHidden] = useState(() => {
@@ -717,10 +721,10 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
 
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    isPublicView ? 'skip' : (isSignedIn && user ? { userId: user.issuer } : 'skip')
+    isPublicView ? 'skip' : (isSignedIn && effectiveIssuer ? { userId: effectiveIssuer } : 'skip')
   );
 
-  const effectiveUserId = isPublicView ? publicViewUserId : (isSignedIn && user ? user.issuer : null);
+  const effectiveUserId = isPublicView ? publicViewUserId : (isSignedIn ? effectiveIssuer : null);
   const managedUserAddress = effectiveUserId ? `managed:${effectiveUserId}`.toLowerCase() : null;
   const walletAddress = isPublicView ? null : (evmAddress?.toLowerCase() || null);
   const managedEvmAddress = isPublicView ? null : (managedWallet?.evmAddress?.toLowerCase() || null);
@@ -748,7 +752,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   );
 
   // Also query by the managed EOA address (the cryptographically secure identity used by proxy wallets)
-  const userEoa = user?.publicAddress || evmAddress;
+  const userEoa = effectivePublicAddress || evmAddress;
   const managedEoaAddress = isPublicView ? null : (userEoa ? `managed:${userEoa}`.toLowerCase() : null);
   const managedEoaBetsRaw = useConvexQuery(
     api.sync.getBetsByUser,
@@ -804,7 +808,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   useEffect(() => {
     if (repairAttempted) return;
     if (loading) return;
-    if (!isSignedIn || !user) return;
+    if (!isSignedIn || !effectiveIssuer) return;
     // Only repair if user has no bets but has a managed wallet
     if (allBets.length > 0) return;
     if (!managedWallet) return;
@@ -815,11 +819,11 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     setRepairAttempted(true);
     reassignOperatorBets({
       operatorAddress: treasuryAddress,
-      userId: user.issuer,
+      userId: effectiveIssuer,
     }).catch(() => {
       // Silently ignore repair errors
     });
-  }, [loading, allBets.length, isSignedIn, user, managedWallet, repairAttempted]);
+  }, [loading, allBets.length, isSignedIn, effectiveIssuer, managedWallet, repairAttempted]);
 
   // Auto-fix: correct asset field on crypto bets that have wrong values
   // (e.g. "HBAR" or "UNKNOWN" when the price range indicates BTC).
@@ -827,7 +831,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   useEffect(() => {
     if (assetFixAttempted) return;
     if (loading) return;
-    if (!isSignedIn || !user) return;
+    if (!isSignedIn) return;
     if (allBets.length === 0) return;
 
     // Check if any crypto bet has a suspicious asset (HBAR with high prices)
@@ -848,14 +852,14 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     if (addr) {
       fixBetAssets({ userAddress: addr }).catch(() => {});
     }
-  }, [loading, allBets, isSignedIn, user, assetFixAttempted, managedUserAddress, walletAddress]);
+  }, [loading, allBets, isSignedIn, assetFixAttempted, managedUserAddress, walletAddress]);
 
   // Auto-fix: set bucket on bets that have undefined/0 bucket values.
   // Runs once per page load when bets are loaded.
   useEffect(() => {
     if (bucketFixAttempted) return;
     if (loading) return;
-    if (!isSignedIn || !user) return;
+    if (!isSignedIn) return;
     if (allBets.length === 0) return;
 
     const needsFix = allBets.some(b => !b.bucket || b.bucket === 0);
@@ -866,7 +870,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     if (addr) {
       fixBetBuckets({ userAddress: addr }).catch(() => {});
     }
-  }, [loading, allBets, isSignedIn, user, bucketFixAttempted, managedUserAddress, walletAddress]);
+  }, [loading, allBets, isSignedIn, bucketFixAttempted, managedUserAddress, walletAddress]);
 
   const betCategories = useMemo(() => {
     const cats = new Set<string>();
@@ -948,9 +952,9 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
           phoneNumber: undefined,
           managedEvmAddress: undefined,
         }
-      : (isSignedIn && user
+      : (isSignedIn && effectiveIssuer
         ? {
-            userId: user.issuer,
+            userId: effectiveIssuer,
             userAddress: walletAddress || '',
             phoneNumber: managedWallet?.phoneNumber || undefined,
             managedEvmAddress: managedEvmAddress || undefined,
@@ -1142,7 +1146,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   const redeemBet = async (betId: string) => {
     try {
       setRedeemingBetId(betId);
-      if (!user) {
+      if (!isSignedIn || !effectiveIssuer) {
         toast({ variant: 'destructive', title: 'Redeem failed', description: 'Please sign in first.' });
         setRedeemingBetId(null);
         return;
@@ -1152,7 +1156,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
       const res = await fetch('/api/bet/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.issuer, userAddress: user.publicAddress, betId, category }),
+        body: JSON.stringify({ userId: effectiveIssuer, userAddress: effectivePublicAddress, betId, category }),
       });
       const data = await res.json();
       if (!res.ok) {
