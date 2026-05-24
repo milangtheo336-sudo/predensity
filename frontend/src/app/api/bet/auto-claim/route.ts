@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
 
         // Verify on-chain state before claiming
         const onChainBet = await readOnChainBet(client, contractId, numericId);
-        if (!onChainBet.finalized || !onChainBet.won || onChainBet.claimed || onChainBet.exited) {
+        if (!onChainBet.finalized || !onChainBet.won || onChainBet.claimed) {
           // Already claimed or not eligible -- just mark claimed in Convex if on-chain says so
           if (onChainBet.claimed) {
             await convex.adminMutation(api.sync.markBetClaimed, { betId: bet.betId });
@@ -121,7 +121,6 @@ export async function POST(request: NextRequest) {
           } else {
             const reason = !onChainBet.finalized ? 'not finalized on-chain'
               : !onChainBet.won ? 'did not win on-chain'
-              : onChainBet.exited ? 'already exited via DPM'
               : 'unknown';
             errors.push(`${bet.betId} (id:${numericId}): ${reason}`);
           }
