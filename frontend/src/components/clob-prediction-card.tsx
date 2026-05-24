@@ -1071,7 +1071,45 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
             {/* Outcome cards -- Polymarket style matching guidance exactly */}
             <div className="space-y-3 px-4 lg:px-0">
-              {outcomes
+              {/* Binary market: exactly 2 outcomes (Yes/No) -- single card layout */}
+              {outcomes.length === 2 && outcomes.every(o => ['yes', 'no'].includes(o.name.toLowerCase())) ? (
+                <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-200 dark:border-[#2a2a2a] overflow-hidden">
+                  <div className="flex gap-2 p-4">
+                    <button
+                      onClick={() => {
+                        setSelectedOutcome(0);
+                        setOrderSide('buy');
+                        setOrderBookSide('yes');
+                        setShowMobileTradingModal(true);
+                      }}
+                      className={`flex-1 py-3 text-center text-base font-bold rounded-xl transition-colors ${
+                        selectedOutcome === 0 && orderSide === 'buy'
+                          ? 'bg-[#3fdc8c]/20 border border-[#3fdc8c]/30 text-gray-900 dark:text-white'
+                          : 'bg-white dark:bg-[#141414] border border-[#3fdc8c]/30 text-[#3fdc8c] hover:bg-[#3fdc8c]/10'
+                      }`}
+                    >
+                      Yes {outcomes[0].price}¢
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedOutcome(1);
+                        setOrderSide('sell');
+                        setOrderBookSide('no');
+                        setShowMobileTradingModal(true);
+                      }}
+                      className={`flex-1 py-3 text-center text-base font-bold rounded-xl transition-colors ${
+                        selectedOutcome === 1 && orderSide === 'sell'
+                          ? 'bg-[#ff8c42]/15 border border-[#ff8c42]/30 text-gray-900 dark:text-white'
+                          : 'bg-white dark:bg-[#141414] border border-[#ff8c42]/30 text-[#ff8c42] hover:bg-[#ff8c42]/10'
+                      }`}
+                    >
+                      No {outcomes[1].price}¢
+                    </button>
+                  </div>
+                </div>
+              ) : (
+              /* Multi-outcome cards */
+              outcomes
                 .filter((o, i) => {
                   const isEliminated = market.eliminatedOutcomes?.includes(i);
                   const isWinner = market.resolved && market.winningOutcome === i;
@@ -1328,6 +1366,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                     </div>
                   );
                 })}
+              )}
               
               {/* Hide resolved toggle */}
               {((market.eliminatedOutcomes && market.eliminatedOutcomes.length > 0) || market.resolved) && (
