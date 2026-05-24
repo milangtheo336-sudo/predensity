@@ -1,44 +1,42 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-import { HWBridgeProvider } from '@buidlerlabs/hashgraph-react-wallets';
-import {
-  HashpackConnector,
-  BladeConnector,
-  MetamaskConnector,
-  HWCConnector,
-} from '@buidlerlabs/hashgraph-react-wallets/connectors';
-import { hederaChain } from '../config';
+import { WagmiProvider, createConfig, http } from 'wagmi';
+import { injected, walletConnect } from 'wagmi/connectors';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { arcChain } from '../config';
 
-const connectors = [
-  HashpackConnector,
-  BladeConnector,
-  MetamaskConnector,
-  HWCConnector,
-];
+const queryClient = new QueryClient();
 
-const metadata = {
-  name: 'Predensity - Crypto Prediction Market',
-  description: 'Predict cryptocurrency token prices and earn rewards',
-  url: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
-  icons: ['https://your-icon-url.com/icon.png'],
-};
-
-// Render children immediately — don't block the app on wallet initialization.
-// The wallet bridge initializes in the background; components that need it
-// will simply get null from useWallet() until it's ready.
-const PassThrough = ({ children }: { children?: ReactNode }) => <>{children}</>;
+const config = createConfig({
+  chains: [arcChain],
+  connectors: [
+    injected(),
+    ...(process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID
+      ? [
+          walletConnect({
+            projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID,
+            metadata: {
+              name: 'Predensity',
+              description: 'The prediction market for everyone',
+              url: typeof window !== 'undefined' ? window.location.origin : 'https://predensity.com',
+              icons: [],
+            },
+          }),
+        ]
+      : []),
+  ],
+  transports: {
+    [arcChain.id]: http(),
+  },
+});
 
 export default function ContextProvider({ children }: { children: ReactNode }) {
   return (
-    <HWBridgeProvider
-      metadata={metadata}
-      projectId={process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || ''}
-      connectors={connectors}
-      chains={[hederaChain]}
-      LoadingFallback={PassThrough}
-    >
-      {children}
-    </HWBridgeProvider>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
