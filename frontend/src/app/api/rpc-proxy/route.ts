@@ -1,5 +1,6 @@
 ﻿
 export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/api-auth';
 
 const RPC_URLS: Record<string, string> = {
@@ -133,4 +134,5 @@ export async function POST(request: NextRequest) {
     return rpcError(-32603, error?.message || 'RPC proxy error', null, 502);
   }
 }
+
 
