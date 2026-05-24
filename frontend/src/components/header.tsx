@@ -41,7 +41,6 @@ import {
 import {
   HashpackConnector,
   BladeConnector,
-  KabilaConnector,
 } from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { useMagic } from '@/context/MagicContext';
 import { useWalletUser } from '@/context/WalletUserContext';
@@ -53,6 +52,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { QRCodeSVG } from 'qrcode.react';
 import { AuthModal } from '@/components/auth-modal';
 import { useBlockchainBalance } from '@/hooks/useBlockchainBalance';
+import { useEIP6963Wallets } from '@/hooks/useEIP6963Wallets';
 
 // ---------------------------------------------------------------------------
 // Balance Visibility Context -- persisted to localStorage
@@ -112,6 +112,7 @@ export function DepositModal({
 }) {
   const [view, setView] = useState<DepositView>(initialView);
   const [mounted, setMounted] = useState(false);
+  const [eip6963Provider, setEip6963Provider] = useState<any>(null);
   const balancesHidden = typeof window !== 'undefined' && localStorage.getItem('predensity-hide-balances') === 'true';
 
   useEffect(() => setMounted(true), []);
@@ -180,8 +181,8 @@ export function DepositModal({
         <div className="px-6 pb-6">
           {view === 'crypto' && <CryptoMenuView onSelect={setView} />}
           {view === 'crypto-transfer' && <CryptoDepositView onBack={() => setView('crypto')} />}
-          {view === 'wallet-connect' && <WalletConnectView onBack={() => setView('crypto')} onConnected={() => setView('wallet-transfer')} />}
-          {view === 'wallet-transfer' && <WalletTransferView onBack={() => setView('wallet-connect')} onClose={onClose} />}
+          {view === 'wallet-connect' && <WalletConnectView onBack={() => setView('crypto')} onConnected={(provider) => { setEip6963Provider(provider || null); setView('wallet-transfer'); }} />}
+          {view === 'wallet-transfer' && <WalletTransferView onBack={() => setView('wallet-connect')} onClose={onClose} eip6963Provider={eip6963Provider} />}
           {view === 'cex-deposit' && <CexDepositView onBack={() => setView('crypto')} />}
           {view === 'cash' && <CashMenuView />}
           {view === 'withdraw' && <WithdrawView onBack={() => setView('crypto')} onClose={onClose} />}
@@ -274,14 +275,15 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
   const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
   const [loadingProxy, setLoadingProxy] = useState(false);
   const { user } = useMagic();
+  const { walletUser } = useWalletUser();
   const currency = getStakingCurrency();
 
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
     user ? { userId: user.issuer } : 'skip'
   );
-  
-  const userAddress = user?.publicAddress || '';
+
+  const userAddress = user?.publicAddress ?? walletUser?.publicAddress ?? '';
   
   // Fetch proxy wallet address with caching
   useEffect(() => {
@@ -554,28 +556,24 @@ function CexDepositView({ onBack }: { onBack: () => void }) {
 // Wallet Connect View -- just wallet icons, transitions to transfer on connect
 // ---------------------------------------------------------------------------
 
-function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConnected: () => void }) {
+function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConnected: (eip6963Provider?: any) => void }) {
   const { isConnected } = useWallet();
   const prevConnected = useRef(isConnected);
   const [connecting, setConnecting] = useState<string | null>(null);
+  const eip6963Wallets = useEIP6963Wallets();
 
-  // Use directly imported connectors (no dynamic require needed)
-  let hashpackWallet: any, bladeWallet: any, kabilaWallet: any;
+  let hashpackWallet: any, bladeWallet: any;
   try {
     hashpackWallet = useWallet(HashpackConnector);
     bladeWallet = useWallet(BladeConnector);
-    kabilaWallet = useWallet(KabilaConnector);
-  } catch {
-    // Fallback if connectors not available
-  }
+  } catch { /* fallback */ }
 
-  const walletMap: Record<string, any> = {
+  const hederaWalletMap: Record<string, any> = {
     hashpack: hashpackWallet,
     blade: bladeWallet,
-    kabila: kabilaWallet,
   };
 
-  // Auto-transition when wallet connects
+  // Auto-transition when a Hedera wallet connects
   useEffect(() => {
     if (!prevConnected.current && isConnected) {
       onConnected();
@@ -583,10 +581,10 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
     prevConnected.current = isConnected;
   }, [isConnected, onConnected]);
 
-  const handleConnect = async (type: string) => {
+  const handleHederaConnect = async (type: string) => {
     setConnecting(type);
     try {
-      const wallet = walletMap[type];
+      const wallet = hederaWalletMap[type];
       if (wallet) await wallet.connect();
     } catch (err) {
       console.error('Wallet connect failed:', err);
@@ -595,11 +593,25 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
     }
   };
 
-  const wallets = [
+  const handleEIP6963Connect = async (providerDetail: any) => {
+    setConnecting(providerDetail.info.uuid);
+    try {
+      await providerDetail.provider.request({ method: 'eth_requestAccounts' });
+      onConnected(providerDetail.provider);
+    } catch (err) {
+      console.error('EIP-6963 wallet connect failed:', err);
+    } finally {
+      setConnecting(null);
+    }
+  };
+
+  const hederaWallets = [
     { name: 'HashPack', img: '/hashpack.jpg', type: 'hashpack' },
     { name: 'Blade', img: '/blade.png', type: 'blade' },
-    { name: 'Kabila', img: '/kabila.jpg', type: 'kabila' },
   ];
+
+  // Filter out Kabila from EIP-6963 (it rejects EIP-1193)
+  const filteredEIP6963 = eip6963Wallets.filter((w: any) => !w.info.name.toLowerCase().includes('kabila'));
 
   return (
     <div className="space-y-4">
@@ -608,11 +620,12 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
       </button>
       <p className="text-sm text-gray-400 text-center">Select a wallet to connect</p>
 
+      {/* Hedera native wallets */}
       <div className="grid grid-cols-2 gap-3">
-        {wallets.map((w) => (
+        {hederaWallets.map((w) => (
           <button
             key={w.type}
-            onClick={() => handleConnect(w.type)}
+            onClick={() => handleHederaConnect(w.type)}
             disabled={connecting !== null}
             className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50"
           >
@@ -622,6 +635,31 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
           </button>
         ))}
       </div>
+
+      {/* Browser-detected EIP-6963 wallets (MetaMask, Rabby, etc.) */}
+      {filteredEIP6963.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 my-1">
+            <div className="flex-1 h-px bg-gray-200 dark:bg-white/10" />
+            <span className="text-[10px] text-gray-400 uppercase tracking-wider">Detected in browser</span>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-white/10" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {filteredEIP6963.map((w: any) => (
+              <button
+                key={w.info.uuid}
+                onClick={() => handleEIP6963Connect(w)}
+                disabled={connecting !== null}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50"
+              >
+                <img src={w.info.icon} alt={w.info.name} width={48} height={48} className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
+                <span className="text-xs text-gray-300 font-medium">{w.info.name}</span>
+                {connecting === w.info.uuid && <Loader2 className="w-3 h-3 animate-spin text-vibrant-purple" />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -758,8 +796,10 @@ function MpesaDepositView({ onBack, onClose }: { onBack: () => void; onClose: ()
 // Wallet Transfer View -- ERC-20 approve + transfer
 // ---------------------------------------------------------------------------
 
-function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
+function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () => void; onClose: () => void; eip6963Provider?: any }) {
   const { user } = useMagic();
+  const { walletUser } = useWalletUser();
+  const effectiveAddress = user?.publicAddress ?? walletUser?.publicAddress ?? null;
   const { isConnected } = useWallet();
   const { data: evmAddress } = useEvmAddress();
   const { data: accountId } = useAccountId();
@@ -778,14 +818,14 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
   // Fetch proxy wallet address with caching
   useEffect(() => {
     const fetchProxyWallet = async () => {
-      if (!user?.publicAddress) return;
-      
+      if (!effectiveAddress) return;
+
       // Check cache first
       try {
-        const cached = localStorage.getItem(`predensity_proxy_wallet_${user.publicAddress}`);
+        const cached = localStorage.getItem(`predensity_proxy_wallet_${effectiveAddress}`);
         if (cached) {
           const data = JSON.parse(cached);
-          if (Date.now() - data.timestamp < 86400000) { // 24 hour cache
+          if (Date.now() - data.timestamp < 86400000) {
             setProxyWalletAddress(data.proxyWallet);
             setLoadingProxy(false);
             return;
@@ -794,16 +834,15 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
       } catch (e) {
         console.error('[WalletTransferView] Cache read error:', e);
       }
-      
+
       setLoadingProxy(true);
       try {
-        const response = await fetch(`/api/proxy-wallet/create?userAddress=${user.publicAddress}`);
+        const response = await fetch(`/api/proxy-wallet/create?userAddress=${effectiveAddress}`);
         const data = await response.json();
         if (data.exists && data.proxyWalletAddress) {
           setProxyWalletAddress(data.proxyWalletAddress);
-          // Cache it
           localStorage.setItem(
-            `predensity_proxy_wallet_${user.publicAddress}`,
+            `predensity_proxy_wallet_${effectiveAddress}`,
             JSON.stringify({
               proxyWallet: data.proxyWalletAddress,
               timestamp: Date.now(),
@@ -818,7 +857,7 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
     };
 
     fetchProxyWallet();
-  }, [user?.publicAddress]);
+  }, [effectiveAddress]);
 
   // Fetch the connected wallet's USDC token balance from Hedera mirror node
   useEffect(() => {
@@ -848,50 +887,60 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
   }, [accountId, tokenId, currency.decimals, step]);
 
   const handleTransfer = async () => {
-    if (!amount || !isConnected) return;
-    
-    // Debug logging
-    console.log('[WalletTransfer] user:', user);
-    console.log('[WalletTransfer] proxyWalletAddress:', proxyWalletAddress);
-    
+    if (!amount) return;
+    if (!isConnected && !eip6963Provider) return;
+
     if (!proxyWalletAddress) {
       setStep('error');
       setErrorMsg('Proxy wallet not found. Please refresh the page and try again.');
       return;
     }
-    
+
     const rawAmount = BigInt(Math.floor(parseFloat(amount) * Math.pow(10, currency.decimals)));
 
     try {
       setStep('transferring');
       setErrorMsg('Processing transfer to your proxy wallet...');
-      
-      // Transfer USDC from connected wallet to proxy wallet
-      const transferTxId = await writeContract({
-        contractId: tokenId,
-        abi: [{ type: 'function', name: 'transfer', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'nonpayable' }] as const,
-        functionName: 'transfer',
-        args: [proxyWalletAddress as `0x${string}`, rawAmount],
-      });
 
-      await new Promise<void>((resolve, reject) => {
-        watch(transferTxId as string, {
-          onSuccess: (tx) => { resolve(); return tx; },
-          onError: (receipt, err) => { reject(new Error('Transfer failed')); return receipt; },
+      if (eip6963Provider) {
+        // EIP-6963 wallet (MetaMask, Rabby, etc.) — use eth_sendTransaction
+        const accounts: string[] = await eip6963Provider.request({ method: 'eth_accounts' });
+        if (!accounts.length) throw new Error('No accounts found in wallet');
+        // ERC-20 transfer(address,uint256) selector = 0xa9059cbb
+        const paddedTo = proxyWalletAddress.slice(2).padStart(64, '0');
+        const paddedAmt = rawAmount.toString(16).padStart(64, '0');
+        const data = '0xa9059cbb' + paddedTo + paddedAmt;
+        // Hedera HTS token EVM address: 0x0000...{tokenNum in hex}
+        const tokenParts = tokenId.split('.');
+        const tokenEvmAddr = '0x' + parseInt(tokenParts[tokenParts.length - 1]).toString(16).padStart(40, '0');
+        await eip6963Provider.request({
+          method: 'eth_sendTransaction',
+          params: [{ from: accounts[0], to: tokenEvmAddr, data }],
         });
-      });
+      } else {
+        // Hedera native wallet (HashPack, Blade) — use hashgraph writeContract
+        const transferTxId = await writeContract({
+          contractId: tokenId,
+          abi: [{ type: 'function', name: 'transfer', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'nonpayable' }] as const,
+          functionName: 'transfer',
+          args: [proxyWalletAddress as `0x${string}`, rawAmount],
+        });
 
-      // Immediately update balance optimistically
+        await new Promise<void>((resolve, reject) => {
+          watch(transferTxId as string, {
+            onSuccess: (tx) => { resolve(); return tx; },
+            onError: (receipt, err) => { reject(new Error('Transfer failed')); return receipt; },
+          });
+        });
+      }
+
       if (typeof window !== 'undefined' && (window as any).adjustBalance) {
-        console.log('[WalletTransfer] Updating balance immediately (optimistic)');
         (window as any).adjustBalance(parseFloat(amount));
       }
 
-      // Balance updates automatically from blockchain
       setStep('done');
     } catch (err: any) {
       let errorMessage = 'Transfer failed. Please try again.';
-      
       if (err.message) {
         if (err.message.includes('User denied') || err.message.includes('cancelled') || err.message.includes('rejected')) {
           errorMessage = 'You cancelled the transfer.';
@@ -903,13 +952,12 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
           errorMessage = err.message;
         }
       }
-      
       setErrorMsg(errorMessage);
       setStep('error');
     }
   };
 
-  if (!isConnected) {
+  if (!isConnected && !eip6963Provider) {
     return (
       <div className="space-y-4">
         <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back</button>
@@ -2159,6 +2207,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
         onClose={() => setProfileDropdownOpen(false)}
         parentCloseTimer={profileCloseTimer}
         user={user}
+        walletUser={walletUser}
         isConnected={isConnected}
         accountId={accountId}
         evmAddress={managedWallet?.evmAddress || undefined}
@@ -2184,6 +2233,7 @@ function ProfileDropdownPortal({
   onClose,
   parentCloseTimer,
   user,
+  walletUser,
   isConnected,
   accountId,
   evmAddress,
@@ -2197,6 +2247,7 @@ function ProfileDropdownPortal({
   onClose: () => void;
   parentCloseTimer: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
   user: any;
+  walletUser: any;
   isConnected: boolean;
   accountId: string | undefined;
   evmAddress: string | undefined;
@@ -2361,32 +2412,45 @@ function ProfileDropdownPortal({
 
       {/* Bottom actions */}
       <div className="py-1.5">
-        {isConnected && (
+        {walletUser ? (
+          /* Wallet-auth user: one button does both disconnect + logout */
           <button
-            onClick={() => { disconnect(); clearWalletUser(); onClose(); }}
-            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
+            onClick={async () => {
+              if (isConnected) { try { await disconnect(); } catch { /* ignore */ } }
+              clearWalletUser();
+              onClose();
+            }}
+            className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
           >
-            <Wallet className="w-4 h-4" />
-            Disconnect Wallet
+            <LogOut className="w-4 h-4" />
+            Disconnect &amp; Log Out
           </button>
+        ) : (
+          /* Email/OAuth user: separate disconnect and logout buttons */
+          <>
+            {isConnected && (
+              <button
+                onClick={() => { disconnect(); onClose(); }}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
+              >
+                <Wallet className="w-4 h-4" />
+                Disconnect Wallet
+              </button>
+            )}
+            <button
+              onClick={async () => {
+                if (isConnected) { try { await disconnect(); } catch { /* ignore */ } }
+                clearWalletUser();
+                logout();
+                onClose();
+              }}
+              className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </>
         )}
-        <button
-          onClick={async () => {
-            // Always disconnect wallet library too — covers the case where
-            // user connected a wallet for deposits and then logs out without
-            // explicitly disconnecting first
-            if (isConnected) {
-              try { await disconnect(); } catch { /* ignore */ }
-            }
-            clearWalletUser();
-            logout();
-            onClose();
-          }}
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
-        >
-          <LogOut className="w-4 h-4" />
-          Logout
-        </button>
       </div>
     </div>,
     document.body
