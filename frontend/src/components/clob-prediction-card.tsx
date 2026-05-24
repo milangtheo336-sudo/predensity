@@ -53,20 +53,20 @@ function ClobMarketInfoSection({
       <div className="flex items-center gap-6">
         <button
           onClick={() => { setActiveTab('rules'); setExpanded(false); }}
-          className={`pb-2.5 text-sm font-semibold transition-colors ${
+          className={`pb-2.5 text-sm font-semibold transition-colors border-b-2 ${
             activeTab === 'rules'
-              ? 'text-gray-900 dark:text-white'
-              : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+              ? 'text-gray-900 dark:text-white border-black dark:border-white'
+              : 'text-gray-400 dark:text-gray-500 border-transparent hover:text-gray-600 dark:hover:text-gray-300'
           }`}
         >
           Rules
         </button>
         <button
           onClick={() => { setActiveTab('context'); setExpanded(false); }}
-          className={`pb-2.5 text-sm font-semibold transition-colors ${
+          className={`pb-2.5 text-sm font-semibold transition-colors border-b-2 ${
             activeTab === 'context'
-              ? 'text-gray-900 dark:text-white'
-              : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+              ? 'text-gray-900 dark:text-white border-black dark:border-white'
+              : 'text-gray-400 dark:text-gray-500 border-transparent hover:text-gray-600 dark:hover:text-gray-300'
           }`}
         >
           Market Context
@@ -81,6 +81,11 @@ function ClobMarketInfoSection({
             </button>
           )}
         </p>
+        {expanded && activeTab === 'rules' && (
+          <div className="flex items-center gap-3 mt-3 text-xs text-gray-500">
+            <span>Resolved on-chain via Hedera</span>
+          </div>
+        )}
         {expanded && (
           <button onClick={() => setExpanded(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm mt-2 block">
             Show less
@@ -549,13 +554,6 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1 text-[11px] text-[#888888]">
-          Powered by
-          <svg viewBox="0 0 12 12" fill="#888" className="w-2.5 h-2.5">
-            <path d="M6 0l1.5 4.5H12L8.25 7.5l1.5 4.5L6 9.75 2.25 12l1.5-4.5L0 4.5h4.5z"/>
-          </svg>
-          Predensity
-        </div>
       </div>
 
       {/* Legend - shows first 4 visible outcomes */}
@@ -635,6 +633,14 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
 
       {/* Chart with grid */}
       <div className="relative h-[180px] border-b border-[#2a2a2a]">
+        {/* Predensity Watermark Overlay */}
+        <div className="absolute top-2 right-12 z-0 opacity-20 pointer-events-none flex items-center gap-1.5 text-lg font-bold text-white tracking-widest uppercase">
+          Powered by
+          <svg viewBox="0 0 12 12" fill="currentColor" className="w-4 h-4">
+            <path d="M6 0l1.5 4.5H12L8.25 7.5l1.5 4.5L6 9.75 2.25 12l1.5-4.5L0 4.5h4.5z"/>
+          </svg>
+          Predensity
+        </div>
         {/* Grid lines */}
         <div className="absolute inset-0 pr-10">
           {[100, 75, 50, 25, 0].map((pct, i) => (
@@ -1323,27 +1329,12 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
             </div>
 
             {/* Market Information Section */}
-            <div className="border-t border-gray-200 dark:border-white/[0.06] pt-4 mt-4">
-              <button
-                onClick={() => setInfoExpanded(!infoExpanded)}
-                className="flex items-center justify-between w-full text-left"
-              >
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">Market Information</span>
-                {infoExpanded ? (
-                  <ChevronUp className="w-4 h-4 text-gray-400" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                )}
-              </button>
-              {infoExpanded && (
-                <div className="mt-3">
-                  <ClobMarketInfoSection market={market} />
-                </div>
-              )}
+            <div className="border-t border-gray-200 dark:border-white/[0.06] pt-6 mt-6">
+              <ClobMarketInfoSection market={market} />
             </div>
 
             {/* Activity Section (Ideas/Positions/Activity) */}
-            <div className="border-t border-gray-200 dark:border-white/[0.06] pt-4 mt-4">
+            <div className="border-t border-gray-200 dark:border-white/[0.06] pt-6 mt-6">
               <ClobActivitySection marketId={marketId} currentUser={isSignedIn && user ? { id: user.issuer, name: user.email?.split('@')[0] || '', imageUrl: undefined } : undefined} />
             </div>
           </div>
