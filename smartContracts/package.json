@@ -1,14 +1,18 @@
 {
-  "name": "predensity-smart-contracts",
+  "name": "hedera-example-hardhat-project",
   "version": "1.0.0",
-  "description": "Predensity prediction market smart contracts (Arc/EVM)",
+  "description": "This is a example hardhat project",
   "main": "index.js",
   "scripts": {
-    "test": "npx hardhat test"
+    "test": "npx hardhat test",
+    "patch-hedera-local-port": "node scripts/ensure-hedera-local-port.js",
+    "postinstall": "npm run patch-hedera-local-port",
+    "local-node": "npm run patch-hedera-local-port && npx @hashgraph/hedera-local restart -d"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@hashgraph/hedera-local": "^2.4.5",
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
     "@openzeppelin/contracts": "^4.1.0",
     "@prb/math": "^4.1.1",
@@ -20,5 +24,13 @@
   "directories": {
     "test": "test"
   },
-  "keywords": []
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hashgraph/hedera-hardhat-example-project.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/hashgraph/hedera-hardhat-example-project/issues"
+  },
+  "homepage": "https://github.com/hashgraph/hedera-hardhat-example-project"
 }
