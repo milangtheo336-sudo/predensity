@@ -207,7 +207,7 @@ export default function OnboardingPage() {
           </motion.div>
         )}
 
-        {/* STEP 3: Full-screen trading UI -- matches CLOB trading panel exactly */}
+        {/* STEP 3: Full-screen trading UI */}
         {step === 'modal' && (
           <motion.div
             key="trading"
