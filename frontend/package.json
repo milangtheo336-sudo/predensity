@@ -33,6 +33,7 @@
     "@types/d3": "^7.4.3",
     "@types/lodash.debounce": "^4.0.9",
     "@walletconnect/modal": "^2.7.0",
+    "boring-avatars": "^2.0.4",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "convex": "^1.16.0",
