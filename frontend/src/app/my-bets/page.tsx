@@ -4,7 +4,7 @@ import {
   useEvmAddress,
 } from '@buidlerlabs/hashgraph-react-wallets';
 import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
-import { useUser } from '@clerk/nextjs';
+import { useMagic } from '@/context/MagicContext';
 import { api } from '../../../convex/_generated/api';
 
 import { Bet } from '@/lib/types';
@@ -614,7 +614,8 @@ function SortDropdown({
 // ---------------------------------------------------------------------------
 function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string }) {
   const isPublicView = !!publicViewUserId;
-  const { user, isSignedIn } = useUser();
+  const { user } = useMagic();
+  const isSignedIn = !!user;
   const { data: evmAddress } = useEvmAddress();
   const { balancesHidden, toggleBalancesHidden } = useBalanceVisibility();
   // Local state synced with localStorage for when context is not available
