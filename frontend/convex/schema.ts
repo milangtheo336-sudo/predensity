@@ -317,7 +317,7 @@ export default defineSchema({
   clobOrders: defineTable({
     orderId: v.string(),
     marketId: v.string(),           // References clobMarkets.marketId
-    userId: v.string(),             // Clerk user ID (managed:{userId})
+    userId: v.string(),             // Magic Link user ID (managed:{userId})
     outcomeIndex: v.number(),       // Which outcome (0, 1, 2, ...)
     side: v.string(),               // "buy" or "sell"
     price: v.number(),              // Price in cents (0-100, represents probability)
@@ -365,7 +365,7 @@ export default defineSchema({
 
   // User positions: how many outcome tokens each user holds per market
   clobPositions: defineTable({
-    userId: v.string(),             // Clerk user ID
+    userId: v.string(),             // Magic Link user ID
     marketId: v.string(),
     outcomeIndex: v.number(),
     shares: v.number(),             // Number of shares held
