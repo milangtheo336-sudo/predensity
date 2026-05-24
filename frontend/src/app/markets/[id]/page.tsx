@@ -5,7 +5,6 @@ import { useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import { Header } from '@/components/header';
 import { PredictionCard } from '@/components/prediction-card';
-import { ClobPredictionCard } from '@/components/clob-prediction-card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
@@ -58,11 +57,6 @@ export default function MarketDetailPage() {
     );
   }
 
-  // Non-crypto (politics, sports, tech, finance): use CLOB card
-  return (
-    <div className="min-h-screen bg-white dark:bg-black">
-      <Header />
-      <ClobPredictionCard marketId={marketId} />
-    </div>
-  );
+  // Non-crypto: show not found for now (event-based markets use event IDs)
+  return <NotFoundView message="This market doesn't exist." onBack={goBack} />;
 }
