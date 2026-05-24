@@ -25,8 +25,9 @@ export default function MarketsPage() {
 
   const convexEvents = useQuery(api.events.getEvents, {});
   const cryptoMarkets = useQuery(api.events.getCryptoMarkets, {});
+  const clobMarkets = useQuery(api.clob.getClobMarkets, {});
 
-  const loading = convexEvents === undefined || cryptoMarkets === undefined;
+  const loading = convexEvents === undefined || cryptoMarkets === undefined || clobMarkets === undefined;
 
   const markets: MarketCard[] = convexEvents
     ? convexEvents
@@ -98,6 +99,48 @@ export default function MarketsPage() {
       imageUrl: cm.imageUrl,
     }));
     markets.unshift(...cryptoMarketCards); // Add to beginning of array
+  }
+
+  // Add CLOB markets (politics, sports, technology, international)
+  if (clobMarkets) {
+    const clobCards: MarketCard[] = clobMarkets
+      .filter((cm) => {
+        if (activeCategory !== 'all' && cm.category !== activeCategory) return false;
+        if (status === MarketStatus.OPEN && cm.status !== 'open') return false;
+        if (status === MarketStatus.CLOSED && cm.status !== 'closed') return false;
+        if (status === MarketStatus.RESOLVED && !cm.resolved) return false;
+        return true;
+      })
+      .map((cm) => {
+        const catIcon = cm.category === 'politics' ? 'P'
+          : cm.category === 'sports' ? 'S'
+          : cm.category === 'technology' ? 'T'
+          : cm.category === 'international' ? 'I' : '?';
+
+        // Build outcome prices -- default to equal probability if no trades yet
+        const defaultPrice = Math.round(100 / cm.numOutcomes);
+        const outcomes = cm.outcomeNames.map((name: string, i: number) => ({
+          name,
+          price: defaultPrice,
+        }));
+
+        return {
+          id: cm.marketId,
+          category: cm.category as Category,
+          question: cm.question,
+          description: cm.description,
+          icon: catIcon,
+          targetTimestamp: cm.resolutionTimestamp,
+          totalVolume: cm.totalVolume.toFixed(2),
+          totalBets: 0,
+          status: (cm.resolved ? 'resolved' : cm.status === 'open' ? 'open' : 'closed') as 'open' | 'closed' | 'resolved',
+          imageUrl: cm.imageUrl,
+          isClob: true,
+          outcomes,
+          numOutcomes: cm.numOutcomes,
+        };
+      });
+    markets.push(...clobCards);
   }
 
   const handleMarketClick = (market: MarketCard) => {
