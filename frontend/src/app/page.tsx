@@ -232,11 +232,11 @@ export default function MarketsPage() {
       </div>
 
       {/* TEXT layer — normal flow, scrolls with the page, sits over the video */}
-      <div className={`relative z-[1] -mt-[125px] ${showSidebar ? 'pl-[280px]' : ''}`}>
+      <div className="relative z-[1] -mt-[125px]">
         <CategoryHeroText category={activeCategory} />
       </div>
 
-      <main className={`relative z-10 bg-white dark:bg-black ${showSidebar ? 'w-full md:px-0 px-4' : 'container mx-auto px-4'} pt-2 pb-8 flex-1 flex gap-6`}>
+      <main className={`relative z-10 bg-white dark:bg-black ${showSidebar ? 'w-full px-4 md:px-0' : 'container mx-auto px-4'} pt-2 pb-8 flex-1 flex gap-6`}>
         {showSidebar && (
           <div className="hidden md:block pl-4 w-64 shrink-0">
             <MarketsSidebar
@@ -281,7 +281,7 @@ export default function MarketsPage() {
           </>
         )}
 
-        <div className={`flex-1 flex flex-col min-w-0 ${showSidebar ? 'pr-4' : ''}`}>
+        <div className={`flex-1 flex flex-col min-w-0 ${showSidebar ? 'md:pr-4' : ''}`}>
           <div className="mb-6">
             <CategoryTabs
               activeCategory={activeCategory}
