@@ -139,7 +139,7 @@ const COINGECKO_IDS: Record<string, string> = {
   ICP: 'internet-computer',
   FIL: 'filecoin',
   AVAIL: 'avail',
-  // Other
+  // KRW pairs (uses USD price, convert in UI if needed)
   BTC_KRW: 'bitcoin',
   ETH_KRW: 'ethereum',
   XRP_KRW: 'ripple',
