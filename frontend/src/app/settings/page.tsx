@@ -87,25 +87,71 @@ function ProfileTab({ user }: { user: any }) {
   const { data: accountId } = useAccountId();
   const [bio, setBio] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copiedProxy, setCopiedProxy] = useState(false);
+  const [copiedMagic, setCopiedMagic] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
+  const [loadingProxy, setLoadingProxy] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const managedWallet = useQuery(
     api.users.getManagedWalletByUserId,
     user ? { userId: user.issuer } : 'skip'
   );
 
-  // The EVM address: from connected wallet or managed wallet
-  const evmAddress = isConnected && accountId
-    ? accountId
-    : managedWallet?.evmAddress || 'Not available';
+  // Always use Magic Link address for proxy wallet lookup (not connected wallet)
+  const magicLinkAddress = managedWallet?.evmAddress || user?.publicAddress;
+  
+  // For display: show connected wallet if available, otherwise Magic Link
+  const displayAddress = isConnected && accountId ? accountId : magicLinkAddress;
 
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const handleCopyProxy = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedProxy(true);
+    setTimeout(() => setCopiedProxy(false), 2000);
+  };
+
+  const handleCopyMagic = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedMagic(true);
+    setTimeout(() => setCopiedMagic(false), 2000);
+  };
+
+  // Fetch proxy wallet address using Magic Link address (not connected wallet)
+  useEffect(() => {
+    const fetchProxyWallet = async () => {
+      if (!magicLinkAddress) return;
+      
+      // Skip if address is in Hedera format (0.0.x)
+      if (magicLinkAddress.startsWith('0.0.')) {
+        console.log('[settings] Skipping proxy wallet fetch - address is in Hedera format:', magicLinkAddress);
+        return;
+      }
+      
+      setLoadingProxy(true);
+      try {
+        const response = await fetch(`/api/proxy-wallet/create?userAddress=${magicLinkAddress}`);
+        const data = await response.json();
+        if (data.exists && data.proxyWalletAddress) {
+          setProxyWalletAddress(data.proxyWalletAddress);
+        }
+      } catch (error) {
+        console.error('Failed to fetch proxy wallet:', error);
+      } finally {
+        setLoadingProxy(false);
+      }
+    };
+
+    fetchProxyWallet();
+  }, [magicLinkAddress]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -193,29 +239,96 @@ function ProfileTab({ user }: { user: any }) {
         </CardContent>
       </Card>
 
-      {/* EVM Address */}
+      {/* Wallet Address (Proxy Wallet) - PRIMARY */}
+      {proxyWalletAddress && (
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Wallet Address</h3>
+            <div className="flex items-center gap-2">
+              <code className="text-sm font-mono bg-muted px-2 py-1 rounded break-all">
+                {proxyWalletAddress}
+              </code>
+              <button
+                onClick={() => handleCopyProxy(proxyWalletAddress)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Copy proxy wallet address"
+              >
+                {copiedProxy ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Send USDC to this address for gasless betting. Funds are held in your smart contract wallet.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+      {loadingProxy && !proxyWalletAddress && (
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Wallet Address</h3>
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Advanced Section - Collapsed by default */}
       <Card>
         <CardContent className="p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">EVM Address</h3>
-          <div className="flex items-center gap-2">
-            <code className="text-sm font-mono bg-muted px-2 py-1 rounded break-all">
-              {evmAddress}
-            </code>
-            {evmAddress !== 'Not available' && (
-              <button
-                onClick={() => handleCopy(evmAddress)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Copy address"
-              >
-                {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {isConnected
-              ? 'From your connected wallet'
-              : 'Auto-generated managed wallet address'}
-          </p>
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center justify-between w-full text-left"
+          >
+            <h3 className="text-sm font-medium text-muted-foreground">Advanced</h3>
+            <span className="text-xs text-muted-foreground">{showAdvanced ? '▲' : '▼'}</span>
+          </button>
+          
+          {showAdvanced && (
+            <div className="mt-4 pt-4 border-t border-border space-y-4">
+              {/* Magic Link Signing Key */}
+              <div>
+                <h4 className="text-xs font-medium text-muted-foreground mb-2">Signing Key Address (Magic Link)</h4>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs font-mono bg-muted px-2 py-1 rounded break-all">
+                    {magicLinkAddress || 'Not available'}
+                  </code>
+                  {magicLinkAddress && magicLinkAddress !== 'Not available' && (
+                    <button
+                      onClick={() => handleCopyMagic(magicLinkAddress)}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Copy Magic Link address"
+                    >
+                      {copiedMagic ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-red-400 mt-1">
+                  ⚠️ Used for authentication only. Do not send funds to this address.
+                </p>
+              </div>
+              
+              {/* Connected Wallet (if any) */}
+              {isConnected && accountId && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2">Connected External Wallet</h4>
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs font-mono bg-muted px-2 py-1 rounded break-all">
+                      {accountId}
+                    </code>
+                    <button
+                      onClick={() => handleCopy(accountId)}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Copy connected wallet address"
+                    >
+                      {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    External wallet connected for deposits only
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
