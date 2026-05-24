@@ -108,6 +108,8 @@ export default function AuthCallback() {
           console.log('[auth/callback] Proxy wallet already exists:', proxyData.proxyWalletAddress);
         } else {
           console.log('[auth/callback] Proxy wallet created successfully:', proxyData.proxyWalletAddress);
+          // Mark as new user for onboarding redirect
+          sessionStorage.setItem('predensity-new-user', 'true');
           
           // If address not immediately available, wait for it
           if (!proxyData.proxyWalletAddress) {
@@ -149,8 +151,11 @@ export default function AuthCallback() {
         // Small delay to ensure context updates propagate
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        // Navigate to markets page
-        router.push(returnUrl);
+        // New users go to onboarding, returning users go to their return URL
+        const isNewUser = sessionStorage.getItem('predensity-new-user') === 'true';
+        sessionStorage.removeItem('predensity-new-user');
+        
+        router.push(isNewUser ? '/onboarding' : returnUrl);
       } catch (err) {
         if (err instanceof Error && err.message.includes('MISSING_PKCE_METADATA')) {
           setStatus('Session expired. Please try signing in again.');
