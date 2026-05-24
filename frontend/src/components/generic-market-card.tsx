@@ -239,6 +239,9 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
           <h3 className="text-gray-900 dark:text-white text-[15px] font-bold leading-snug group-hover:underline group-hover:decoration-gray-400 dark:group-hover:decoration-neutral-500 underline-offset-2">
             {market.description || market.question}
           </h3>
+          {market.description && market.question && market.description !== market.question && (
+            <p className="text-[13px] text-gray-500 mt-0.5 truncate">{market.question}</p>
+          )}
         </div>
       </div>
 
