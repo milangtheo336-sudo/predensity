@@ -152,8 +152,8 @@ export default function AuthCallback() {
         await new Promise(resolve => setTimeout(resolve, 200));
         
         // New users go to onboarding, returning users go to their return URL
+        // Note: 'predensity-new-user' flag is intentionally left for the onboarding page to read and clear
         const isNewUser = sessionStorage.getItem('predensity-new-user') === 'true';
-        sessionStorage.removeItem('predensity-new-user');
         
         router.push(isNewUser ? '/onboarding' : returnUrl);
       } catch (err) {
