@@ -645,6 +645,10 @@ const CRYPTO_BET_PLACED = "0xb075e5b7e9b8e0e1e0e5b7e9b8e0e1e0"; // placeholder, 
 export const syncFromMirrorNode = internalAction({
   args: {},
   handler: async (ctx): Promise<{ success: boolean; reconciled?: number; expired?: number; claimed?: number; error?: string }> => {
+    // Skip sync if disabled via env var (set DISABLE_SYNC=true on dev to save costs)
+    if (process.env.DISABLE_SYNC === 'true') {
+      return { success: true, reconciled: 0, expired: 0, claimed: 0 };
+    }
     try {
       // Step 1: Expire stale pending bets
       const expireResult: { expired: number } = await ctx.runMutation(internal.sync.expireStalePendingBets);
