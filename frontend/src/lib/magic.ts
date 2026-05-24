@@ -30,16 +30,12 @@ export function getMagic(): any {
       // Dynamic imports to avoid SSR issues
       const { Magic } = require('magic-sdk');
       const { OAuthExtension } = require('@magic-ext/oauth2');
-      const { HederaExtension } = require('@magic-ext/hedera');
       
-      // Initialize Magic with extensions as an object (not array)
+      // Initialize Magic with default Ethereum provider
+      // We'll use Hedera's JSON-RPC separately for contract interactions
       magicInstance = new Magic(publishableKey, {
         extensions: {
           oauth2: new OAuthExtension(),
-          hedera: new HederaExtension({ 
-            network: 'testnet',
-            rpcUrl: 'https://testnet.hashio.io/api'
-          }),
         },
       });
       
@@ -190,19 +186,53 @@ export async function signTypedData(
 
 /**
  * Get Magic provider for direct Web3 calls.
+ * Returns a custom provider that connects to Hedera testnet.
  */
 export function getMagicProvider(): any {
   const magic = getMagic();
-  return (magic as any).rpcProvider;
+  const magicProvider = (magic as any).rpcProvider;
+  
+  // Wrap Magic's provider to use Hedera RPC
+  return new Proxy(magicProvider, {
+    get(target, prop) {
+      if (prop === 'request') {
+        return async (args: any) => {
+          // For network-related calls, use Hedera RPC directly
+          if (args.method === 'eth_chainId') {
+            return '0x128'; // 296 in hex (Hedera testnet)
+          }
+          if (args.method === 'net_version') {
+            return '296';
+          }
+          // For all other calls, use Magic's provider
+          return target.request(args);
+        };
+      }
+      return target[prop];
+    },
+  });
 }
 
 /**
  * Get ethers signer for transactions.
+ * Uses Hedera testnet RPC for network calls.
  */
 export async function getMagicSigner(): Promise<ethers.Signer> {
   const magic = getMagic();
-  const provider = new ethers.providers.Web3Provider((magic as any).rpcProvider);
-  return provider.getSigner();
+  const magicProvider = (magic as any).rpcProvider;
+  
+  // Create a custom provider that uses Hedera RPC
+  const hederaProvider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api', {
+    name: 'hedera-testnet',
+    chainId: 296,
+  });
+  
+  // Use Magic's provider for signing, but Hedera's provider for network calls
+  const provider = new ethers.providers.Web3Provider(magicProvider);
+  const signer = provider.getSigner();
+  
+  // Connect signer to Hedera provider
+  return signer.connect(hederaProvider);
 }
 
 /**
@@ -221,9 +251,7 @@ export async function sendTransaction(
   value?: string,
   gasLimit?: number
 ): Promise<string> {
-  const magic = getMagic();
-  const provider = new ethers.providers.Web3Provider((magic as any).rpcProvider);
-  const signer = provider.getSigner();
+  const signer = await getMagicSigner();
   
   const tx = await signer.sendTransaction({
     to,
@@ -246,9 +274,11 @@ export async function waitForTransaction(
   txHash: string,
   confirmations: number = 1
 ): Promise<any> {
-  const magic = getMagic();
-  const provider = new ethers.providers.Web3Provider((magic as any).rpcProvider);
-  return await provider.waitForTransaction(txHash, confirmations);
+  const hederaProvider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api', {
+    name: 'hedera-testnet',
+    chainId: 296,
+  });
+  return await hederaProvider.waitForTransaction(txHash, confirmations);
 }
 
 /**
@@ -264,7 +294,10 @@ export async function getTokenBalance(
 ): Promise<string> {
   const magic = getMagic();
   const magicProvider = (magic as any).rpcProvider;
-  const provider = new ethers.providers.Web3Provider(magicProvider);
+  const hederaProvider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api', {
+    name: 'hedera-testnet',
+    chainId: 296,
+  });
   
   if (!userAddress) {
     // Get user address from Magic provider directly (avoid getAddress() error)
@@ -277,7 +310,7 @@ export async function getTokenBalance(
   }
   
   const tokenAbi = ['function balanceOf(address) view returns (uint256)'];
-  const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, provider);
+  const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, hederaProvider);
   const balance = await tokenContract.balanceOf(userAddress);
   
   return balance.toString();
@@ -296,9 +329,7 @@ export async function approveToken(
   spenderAddress: string,
   amount: string
 ): Promise<string> {
-  const magic = getMagic();
-  const provider = new ethers.providers.Web3Provider((magic as any).rpcProvider);
-  const signer = provider.getSigner();
+  const signer = await getMagicSigner();
   
   const tokenAbi = ['function approve(address spender, uint256 amount) returns (bool)'];
   const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, signer);
