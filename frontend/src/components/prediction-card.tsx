@@ -842,11 +842,11 @@ export function PredictionCard({
   const getButtonText = () => {
     if (isApproving) return 'Approving USDC...';
     if (isPlacingBet || isPlacing) return 'Signing Transaction...';
-    if (!isSignedIn) return 'Sign In to Bet';
+    if (!isSignedIn) return 'Sign In to Trade';
     if (platformBalance === 0) return 'Deposit to Start';
     if (!hasValidLeadPeriod) return `Min 24h lead required (${leadPeriodHours < 1 ? Math.round(leadPeriodHours * 60) + 'min' : leadPeriodHours.toFixed(1) + 'h'})`;
     if (!hasValidAmount) return 'Enter Amount';
-    return 'Place Bet';
+    return 'Place Trade';
   };
 
   // Time remaining display
@@ -1552,7 +1552,7 @@ export function PredictionCard({
                   onClick={() => setShowDetails(!showDetails)}
                   className="w-full flex justify-between items-center py-2 text-sm text-gray-500 hover:text-gray-300 transition-colors"
                 >
-                  <span>Bet Multipliers & Fees</span>
+                  <span>Trade Multipliers & Fees</span>
                   {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
 
