@@ -34,7 +34,7 @@ import { Toaster } from '@/components/ui/toaster';
 import NoWalletConnectedContainer from '@/components/no-wallet-connected-container';
 import CryptoPredictionMarketABI from '../../../abi/CryptoPredictionMarket.json';
 
-// Old ABIs removed -- politics/sports/tech now use CLOB system
+// Old ABIs removed -- politics/sports/tech contracts deprecated
 const PoliticsPredictionMarketABI = { abi: [] as any[] };
 const SportsPredictionMarketABI = { abi: [] as any[] };
 const TechnologyPredictionMarketABI = { abi: [] as any[] };
@@ -437,7 +437,7 @@ function SportLeagueSelector({ sport, league, onChange, category }: SportLeagueS
 
 // Finance-specific market-creation fields. Picks a sub-category first, then
 // renders only the inputs that sub-category needs. Writes into the same
-// clobMarketForm shared with the non-finance flow so submission is unified.
+// marketForm shared with the non-finance flow so submission is unified.
 interface FinanceMarketFieldsProps {
   form: any;
   setForm: (updater: (prev: any) => any) => void;
@@ -1036,7 +1036,7 @@ function TechnologyEventFields({ formData, updateField }: any) {
   );
 }
 
-// CLOB Markets Display Component
+// Markets Display Component
 function ClobMarketsDisplay({ category }: { category: Category }) {
   const { toast } = useToast();
   const [selectedMarketForElimination, setSelectedMarketForElimination] = useState<string | null>(null);
