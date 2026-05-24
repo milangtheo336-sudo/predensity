@@ -988,16 +988,68 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
         </div>
       )}
       {step === 'done' && (
-        <div className="text-center py-8">
-          <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
+        <div className="text-center py-12">
+          {/* Animated checkmark circle */}
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            {/* Animated circle border */}
+            <svg className="w-24 h-24 animate-[spin_1s_ease-in-out]" viewBox="0 0 100 100">
+              <circle
+                cx="50"
+                cy="50"
+                r="45"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="4"
+                className="text-green-500"
+                strokeDasharray="283"
+                strokeDashoffset="0"
+                style={{
+                  animation: 'drawCircle 0.6s ease-out forwards'
+                }}
+              />
+            </svg>
+            {/* Checkmark */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Check 
+                className="w-12 h-12 text-green-500" 
+                style={{
+                  animation: 'fadeIn 0.3s ease-in 0.4s forwards',
+                  opacity: 0
+                }}
+              />
+            </div>
           </div>
-          <p className="text-base font-semibold text-gray-900 dark:text-white mb-1">Transfer complete</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{amount} {currency.symbol} sent to your proxy wallet</p>
-          <p className="text-xs text-gray-400 mt-2">Balance will update automatically</p>
-          <button onClick={onClose} className="mt-5 px-8 py-2.5 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white text-sm font-medium transition-colors">
+          
+          <p className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">Transfer complete</p>
+          <p className="text-base text-gray-600 dark:text-gray-400">{amount} {currency.symbol} sent to your proxy wallet</p>
+          
+          <button 
+            onClick={onClose} 
+            className="mt-8 px-12 py-3 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white text-base font-medium transition-colors"
+          >
             Done
           </button>
+          
+          <style jsx>{`
+            @keyframes drawCircle {
+              from {
+                stroke-dashoffset: 283;
+              }
+              to {
+                stroke-dashoffset: 0;
+              }
+            }
+            @keyframes fadeIn {
+              from {
+                opacity: 0;
+                transform: scale(0.5);
+              }
+              to {
+                opacity: 1;
+                transform: scale(1);
+              }
+            }
+          `}</style>
         </div>
       )}
       {step === 'error' && (
@@ -1519,6 +1571,10 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const { data: evmAddr } = useEvmAddress();
   const walletAddress = evmAddr?.toLowerCase() || null;
 
+  const managedEoaAddress = isSignedIn && (user?.publicAddress || evmAddr) 
+    ? `managed:${user?.publicAddress || evmAddr}`.toLowerCase() 
+    : null;
+
   const managedBetsRaw = useConvexQuery(
     api.sync.getBetsByUser,
     managedUserAddress ? { userAddress: managedUserAddress } : 'skip'
@@ -1533,6 +1589,10 @@ export function Header({ children }: { children?: React.ReactNode }) {
       ? { userAddress: managedEvmAddress }
       : 'skip'
   );
+  const managedEoaBetsRaw = useConvexQuery(
+    api.sync.getBetsByUser,
+    managedEoaAddress ? { userAddress: managedEoaAddress } : 'skip'
+  );
 
   // Calculate portfolio value: active positions value + unrealized P&L
   const portfolioValue = React.useMemo(() => {
@@ -1540,6 +1600,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
       ...(managedBetsRaw || []),
       ...(walletBetsRaw || []),
       ...(managedEvmBetsRaw || []),
+      ...(managedEoaBetsRaw || []),
     ].filter((b: any) => b.status !== 'failed');
     // Deduplicate by betId
     const seen = new Set<string>();
