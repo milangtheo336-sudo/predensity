@@ -62,7 +62,7 @@ export const CONTRACT_ADDRESSES = {
   [Category.POLITICS]: process.env.NEXT_PUBLIC_POLITICS_CONTRACT_ADDRESS || '0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8',
   [Category.SPORTS]: process.env.NEXT_PUBLIC_SPORTS_CONTRACT_ADDRESS || '0x8f62C698a26888424b5170a11610Fa5Fd7DF540b',
   [Category.TECHNOLOGY]: process.env.NEXT_PUBLIC_TECH_CONTRACT_ADDRESS || '0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8',
-  [Category.INTERNATIONAL]: '', // Not yet deployed
+  [Category.FINANCE]: '', // Not yet deployed
 };
 
 // Hedera Contract IDs (0.0.X format) for each category -- USDC Token Mode
@@ -72,7 +72,7 @@ export const CONTRACT_IDS = {
   [Category.POLITICS]: process.env.NEXT_PUBLIC_POLITICS_CONTRACT_ID || '0.0.8232724',
   [Category.SPORTS]: process.env.NEXT_PUBLIC_SPORTS_CONTRACT_ID || '0.0.8232726',
   [Category.TECHNOLOGY]: process.env.NEXT_PUBLIC_TECH_CONTRACT_ID || '0.0.8232727',
-  [Category.INTERNATIONAL]: '', // Not yet deployed
+  [Category.FINANCE]: '', // Not yet deployed
 };
 
 // Helper to get contract address by category (EVM format)
@@ -98,7 +98,7 @@ export const CONTRACT_START_TIMESTAMPS: Record<string, number> = {
   [Category.POLITICS]: Number(process.env.NEXT_PUBLIC_POLITICS_START_TIMESTAMP) || 1773586860,
   [Category.SPORTS]: Number(process.env.NEXT_PUBLIC_SPORTS_START_TIMESTAMP) || 1773586872,
   [Category.TECHNOLOGY]: Number(process.env.NEXT_PUBLIC_TECH_START_TIMESTAMP) || 1773586888,
-  [Category.INTERNATIONAL]: 0,
+  [Category.FINANCE]: 0,
 };
 
 // Compute the correct on-chain bucket index for a given targetTimestamp and category.
