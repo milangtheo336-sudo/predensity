@@ -208,6 +208,64 @@ contract SimpleProxyWallet {
     }
     
     /**
+     * Execute a bet transaction with signature verification.
+     * Backend calls this with user's signature to place bet.
+     * Proxy wallet verifies the signature matches the owner.
+     */
+    function executeBetWithSignature(
+        address predictionContract,
+        uint256 betAmount,
+        bytes calldata betData,
+        bytes32 messageHash,
+        bytes calldata signature
+    ) external returns (bytes memory) {
+        // Verify signature matches owner
+        address signer = recoverSigner(messageHash, signature);
+        require(signer == owner, "Invalid signature");
+        
+        // Approve USDC spending for the prediction market
+        // USDC token address on Hedera testnet: 0x0000000000000000000000000000000000068cDa
+        address usdcToken = address(0x0000000000000000000000000000000000068cDa);
+        (bool approveSuccess, ) = usdcToken.call(
+            abi.encodeWithSignature("approve(address,uint256)", predictionContract, betAmount)
+        );
+        require(approveSuccess, "USDC approval failed");
+        
+        // Execute bet
+        (bool success, bytes memory result) = predictionContract.call(betData);
+        require(success, "Bet execution failed");
+        emit Executed(predictionContract, 0, betData);
+        return result;
+    }
+    
+    /**
+     * Recover signer from signature.
+     */
+    function recoverSigner(bytes32 messageHash, bytes memory signature) internal pure returns (address) {
+        require(signature.length == 65, "Invalid signature length");
+        
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        
+        assembly {
+            r := mload(add(signature, 32))
+            s := mload(add(signature, 64))
+            v := byte(0, mload(add(signature, 96)))
+        }
+        
+        if (v < 27) {
+            v += 27;
+        }
+        
+        require(v == 27 || v == 28, "Invalid signature v value");
+        
+        // EIP-191 signed message
+        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        return ecrecover(ethSignedMessageHash, v, r, s);
+    }
+    
+    /**
      * Execute a bet transaction with explicit amount tracking.
      * Used by session keys to place bets with proper limit enforcement.
      */
