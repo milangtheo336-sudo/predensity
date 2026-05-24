@@ -1,6 +1,6 @@
 'use client';
 
-import { Inter } from 'next/font/google';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { MobileBottomNav } from '@/components/mobile-bottom-nav';
@@ -11,7 +11,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
 
 
-const inter = Inter({ subsets: ['latin'] });
+const appFont = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-app' });
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="twitter:title" content="Predensity - Decentralized Prediction Market" />
         <meta name="twitter:description" content="Trade on future events across crypto, politics, sports, and technology. Powered by Hedera." />
       </head>
-      <body className={inter.className} style={{ backgroundColor: '#000' }}>
+      <body className={`${appFont.variable} font-sans`} style={{ backgroundColor: '#000' }}>
         {/* Inline splash screen visible before JS hydrates */}
         <div
           id="splash"
