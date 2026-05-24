@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Look up wallet by userId first (Clerk-authenticated users), fall back to phoneNumber
+    // Look up wallet by userId first (Magic-authenticated users), fall back to phoneNumber
     let wallet = null;
     let walletLookupKey: { userId?: string; phoneNumber?: string } = {};
 
