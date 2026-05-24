@@ -31,7 +31,7 @@ function getHederaClient(): Client {
 
 const CONTRACT_ABI = new ethers.utils.Interface([
   'function claimBet(uint256 betId) external',
-  'function getBet(uint256 betId) external view returns (tuple(address bettor, uint256 targetTimestamp, uint256 priceMin, uint256 priceMax, uint256 stake, uint256 qualityBps, uint256 weight, bool finalized, bool claimed, uint256 actualPrice, bool won, uint256 entryBandWeight, bool exited))',
+  'function getBet(uint256 betId) external view returns (tuple(address bettor, uint256 targetTimestamp, uint256 priceMin, uint256 priceMax, uint256 stake, uint256 qualityBps, uint256 weight, bool finalized, bool claimed, uint256 actualPrice, bool won))',
   'function getContractStats() external view returns (uint256 nextBetId, uint256 totalStaked, uint256 totalFees, uint256 totalObligations)',
   'function getBucketInfo(uint256 bucket) external view returns (uint256 totalBets, uint256 totalWinningWeight, uint256 nextProcessIndex, bool aggregationComplete)',
   'function bucketIndex(uint256 targetTimestamp) external view returns (uint256)',
