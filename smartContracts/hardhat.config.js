@@ -161,6 +161,7 @@ module.exports = {
         enabled: true,
         runs: 500,
       },
+      viaIR: true,
     },
   },
   defaultNetwork: "hardhat",
