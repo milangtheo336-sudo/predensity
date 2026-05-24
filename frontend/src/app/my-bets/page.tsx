@@ -613,8 +613,8 @@ export default function PortfolioPage() {
   const { watch } = useWatchTransactionReceipt();
 
   const [depositOpen, setDepositOpen] = useState(false);
-  const [depositInitialView, setDepositInitialView] = useState<'menu' | 'withdraw'>('menu');
-  const openDeposit = () => { setDepositInitialView('menu'); setDepositOpen(true); };
+  const [depositInitialView, setDepositInitialView] = useState<'crypto' | 'withdraw'>('crypto');
+  const openDeposit = () => { setDepositInitialView('crypto'); setDepositOpen(true); };
   const openWithdraw = () => { setDepositInitialView('withdraw'); setDepositOpen(true); };
 
   const [mainTab, setMainTab] = useState<MainTab>('positions');
