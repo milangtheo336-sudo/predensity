@@ -1,42 +1,38 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-import { WagmiProvider, createConfig, http } from 'wagmi';
-import { injected, walletConnect } from 'wagmi/connectors';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { arcChain } from '../config';
+import { HWBridgeProvider } from '@buidlerlabs/hashgraph-react-wallets';
+import {
+  HashpackConnector,
+  BladeConnector,
+  MetamaskConnector,
+  HWCConnector,
+} from '@buidlerlabs/hashgraph-react-wallets/connectors';
+import { hederaChain } from '../config';
 
-const queryClient = new QueryClient();
+const connectors = [
+  HashpackConnector,
+  BladeConnector,
+  MetamaskConnector,
+  HWCConnector,
+];
 
-const config = createConfig({
-  chains: [arcChain],
-  connectors: [
-    injected(),
-    ...(process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID
-      ? [
-          walletConnect({
-            projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID,
-            metadata: {
-              name: 'Predensity',
-              description: 'The prediction market for everyone',
-              url: typeof window !== 'undefined' ? window.location.origin : 'https://predensity.com',
-              icons: [],
-            },
-          }),
-        ]
-      : []),
-  ],
-  transports: {
-    [arcChain.id]: http(),
-  },
-});
+const metadata = {
+  name: 'Predensity - Crypto Prediction Market',
+  description: 'Predict cryptocurrency token prices and earn rewards',
+  url: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
+  icons: ['https://your-icon-url.com/icon.png'],
+};
 
 export default function ContextProvider({ children }: { children: ReactNode }) {
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    </WagmiProvider>
+    <HWBridgeProvider
+      metadata={metadata}
+      projectId={process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || ''}
+      connectors={connectors}
+      chains={[hederaChain]}
+    >
+      {children}
+    </HWBridgeProvider>
   );
 }
