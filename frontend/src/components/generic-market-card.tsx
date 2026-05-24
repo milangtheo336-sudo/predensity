@@ -9,6 +9,7 @@ import { TrendingUp } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useQuery as useConvexQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { useLanguage } from '@/context/LanguageContext';
 
 function getDefaultThreshold(category: Category): number {
   switch (category) {
@@ -114,6 +115,7 @@ function CryptoSparkline({ convexBets }: { convexBets: any[] | undefined }) {
 }
 
 export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
+  const { t } = useLanguage();
   const categoryConfig = CATEGORIES[market.category];
   const timeRemaining = formatDistanceToNow(new Date(market.targetTimestamp * 1000), { addSuffix: false });
 
@@ -257,20 +259,20 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
                   onClick={(e) => { e.stopPropagation(); onClick?.(); }}
                   className="px-3 py-1 text-xs font-semibold rounded-md bg-green-600/15 text-green-600 dark:bg-green-500/20 dark:text-green-400 hover:bg-green-600/25 dark:hover:bg-green-500/30 transition-colors"
                 >
-                  Yes
+                  {t.yes}
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); onClick?.(); }}
                   className="px-3 py-1 text-xs font-semibold rounded-md bg-red-600/15 text-red-600 dark:bg-red-500/20 dark:text-red-400 hover:bg-red-600/25 dark:hover:bg-red-500/30 transition-colors"
                 >
-                  No
+                  {t.no}
                 </button>
               </div>
             </div>
           ))}
           {hiddenCount > 0 && (
             <div className="text-xs text-gray-400 dark:text-neutral-500 pl-0.5">
-              +{hiddenCount} more outcome{hiddenCount > 1 ? 's' : ''}
+              {t.moreOutcomes.replace('{n}', String(hiddenCount))}
             </div>
           )}
         </div>
@@ -279,9 +281,9 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
         <div className="flex items-center justify-between text-xs px-4 py-3 mt-auto border-t border-gray-100 dark:border-neutral-800/60">
           <div className="flex items-center gap-1 text-gray-400">
             <TrendingUp className="w-3.5 h-3.5" />
-            <span>{volumeStr} Vol.</span>
+            <span>{volumeStr} {t.vol}.</span>
           </div>
-          <span className="text-gray-400">{timeRemaining} left</span>
+          <span className="text-gray-400">{timeRemaining} {t.daysLeft}</span>
         </div>
       </div>
     );
@@ -349,10 +351,10 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className={hasBets ? 'text-green-500' : 'text-gray-500'}>
-              YES {hasBets ? `${yesPercentage}%` : '--'}
+              {t.yes.toUpperCase()} {hasBets ? `${yesPercentage}%` : '--'}
             </span>
             <span className={hasBets ? 'text-red-500' : 'text-gray-500'}>
-              NO {hasBets ? `${noPercentage}%` : '--'}
+              {t.no.toUpperCase()} {hasBets ? `${noPercentage}%` : '--'}
             </span>
           </div>
         </div>
@@ -362,7 +364,7 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
       <div className="flex items-center justify-between text-xs mt-auto">
         <div className="flex items-center gap-1 text-gray-400">
           <TrendingUp className="w-3.5 h-3.5" />
-          <span>{volumeStr} Vol.</span>
+          <span>{volumeStr} {t.vol}.</span>
         </div>
         <div className="flex items-center gap-2">
           {isCrypto && (
@@ -371,10 +373,10 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
                 <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 animate-ripple" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
               </span>
-              <span className="text-red-500 font-semibold text-[10px] tracking-wide">LIVE</span>
+              <span className="text-red-500 font-semibold text-[10px] tracking-wide">{t.live}</span>
             </div>
           )}
-          <span className="text-gray-400">{timeRemaining} remaining</span>
+          <span className="text-gray-400">{timeRemaining} {t.remaining}</span>
         </div>
       </div>
     </div>
