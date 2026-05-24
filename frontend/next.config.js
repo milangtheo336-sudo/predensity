@@ -11,18 +11,29 @@ const nextConfig = {
     'derive-valtio',
   ],
 
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     // Fix: @walletconnect/ethereum-provider bundles @reown/appkit which requires
-    // valtio/vanilla and valtio/vanilla/utils but the nested copy can't resolve
-    // them through Next.js. Alias all valtio subpaths to the top-level installation.
-    const valtioPath = require.resolve('valtio').replace('/index.js', '');
+    // valtio/vanilla* but the nested copy can't resolve through Next.js.
+    // Stub out the entire broken @reown/appkit package so it never tries to load.
     config.resolve.alias = {
       ...config.resolve.alias,
-      'valtio': valtioPath,
+      // Point all valtio imports to the top-level installation
+      'valtio': require.resolve('valtio'),
       'valtio/vanilla': require.resolve('valtio/vanilla'),
       'valtio/vanilla/utils': require.resolve('valtio/vanilla/utils'),
       'valtio/utils': require.resolve('valtio/utils'),
+      // Stub out the nested @reown/appkit that lives inside @walletconnect/ethereum-provider
+      // This package is only needed for WalletConnect's own UI modal which we don't use
+      '@walletconnect/ethereum-provider/node_modules/@reown/appkit': false,
+      '@walletconnect/ethereum-provider/node_modules/@reown/appkit-controllers': false,
     };
+
+    // Also resolve the nested valtio to the top-level one via modules
+    config.resolve.modules = [
+      ...(config.resolve.modules || []),
+      'node_modules',
+    ];
+
     return config;
   },
   modularizeImports: {
