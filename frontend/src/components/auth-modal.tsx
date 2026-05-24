@@ -158,18 +158,14 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   // ---------------------------------------------------------------------------
   // Shared post-sign-in backend flow
   // ---------------------------------------------------------------------------
-  // Shared post-sign-in backend flow
-  // Called AFTER signature is obtained. Closes modal, shows overlay, creates
-  // user record + proxy wallet, then sets wallet user in context.
-  // Throws on error so callers can catch and show the error.
-  // ---------------------------------------------------------------------------
   const finishWalletSignIn = async (
     normalizedAddress: string,
     signature: string,
     nonce: string,
     walletType: 'hashpack' | 'metamask' | 'blade' | 'kabila',
   ) => {
-    // Close the auth modal and show the full-screen "Setting up..." overlay
+    // Close the auth modal immediately and show the "Redirecting..." overlay
+    // (same as Magic OAuth flow) while the slow proxy wallet creation happens
     onClose();
     setView('main');
     setIsWalletAuthenticating(true);
@@ -192,12 +188,8 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
 
       setWalletUser({ publicAddress: normalizedAddress, hederaAccountId: normalizedAddress, walletType, userId });
       if (isNewUser) sessionStorage.setItem('predensity-new-user', 'true');
+
       if (isNewUser) router.push('/onboarding');
-    } catch (err) {
-      // On failure, clear the overlay — user will see the error in console
-      // (modal is already closed so we can't show it there)
-      console.error('[auth-modal] finishWalletSignIn error:', err);
-      throw err;
     } finally {
       setIsWalletAuthenticating(false);
     }
