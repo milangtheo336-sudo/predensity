@@ -250,9 +250,14 @@ abstract contract BasePredictionMarket is Ownable {
         }
         
         if (startIndex >= bucketInfo.betIds.length) {
-            bucketInfo.aggregationComplete = true;
-            totalObligations += bucketInfo.totalStaked - bucketInfo.totalExited;
-            emit AggregationCompleted(bucket, bucketInfo.totalWinningWeight);
+            // Guard against double-adding to totalObligations. The check is redundant
+            // because the outer require(!aggregationComplete) catches re-entry into
+            // this function, but an explicit guard makes the invariant local.
+            if (!bucketInfo.aggregationComplete) {
+                bucketInfo.aggregationComplete = true;
+                totalObligations += bucketInfo.totalStaked - bucketInfo.totalExited;
+                emit AggregationCompleted(bucket, bucketInfo.totalWinningWeight);
+            }
             return (0, 0);
         }
         
@@ -283,9 +288,14 @@ abstract contract BasePredictionMarket is Ownable {
         bucketInfo.nextProcessIndex = endIndex;
         
         if (endIndex >= bucketInfo.betIds.length) {
-            bucketInfo.aggregationComplete = true;
-            totalObligations += bucketInfo.totalStaked - bucketInfo.totalExited;
-            emit AggregationCompleted(bucket, bucketInfo.totalWinningWeight);
+            // Only flip aggregationComplete + credit obligations ONCE per bucket.
+            // Without this guard, an empty-bucket code path above plus this branch
+            // could both add totalObligations (seen in the earlier audit as C2).
+            if (!bucketInfo.aggregationComplete) {
+                bucketInfo.aggregationComplete = true;
+                totalObligations += bucketInfo.totalStaked - bucketInfo.totalExited;
+                emit AggregationCompleted(bucket, bucketInfo.totalWinningWeight);
+            }
         }
         
         emit BatchProcessed(bucket, processed, batchWinningWeight);
