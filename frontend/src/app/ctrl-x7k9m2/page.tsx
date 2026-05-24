@@ -5,12 +5,8 @@ import Link from 'next/link';
 import { useMagic } from '@/context/MagicContext';
 import { useMutation, useQuery as useConvexQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
-import {
-  useWallet,
-  useWriteContract,
-  useWatchTransactionReceipt,
-  useReadContract,
-} from '@buidlerlabs/hashgraph-react-wallets';
+import { useAccount } from 'wagmi';
+import { useContractWriteCompat, useReadContractCompat } from '@/hooks/useContractWrite';
 import { parseUnits } from 'ethers/lib/utils';
 import { ethers } from 'ethers';
 import { Calendar, RefreshCw } from 'lucide-react';
@@ -70,8 +66,7 @@ interface EventResolutionSectionProps {
 
 function EventResolutionSection({ category, contractId }: EventResolutionSectionProps) {
   const events = useConvexQuery(api.events.getEventsByCategory, { category });
-  const { writeContract } = useWriteContract();
-  const { watch } = useWatchTransactionReceipt();
+  const { writeContract, watch } = useContractWriteCompat();
   const { toast } = useToast();
   // Gated Convex mutation; proxied through admin API route that enforces requireAdmin().
   const resolveEventMutation = async (input: { eventId: string; actualValue: number }) => {
@@ -1305,10 +1300,9 @@ function AdminPage() {
   const isAdmin = user && adminEmails.includes(user.email);
 
   // Wallet connection
-  const { isConnected } = useWallet();
-  const { writeContract } = useWriteContract();
-  const { watch } = useWatchTransactionReceipt();
-  const { readContract } = useReadContract();
+  const { isConnected } = useAccount();
+  const { writeContract, watch } = useContractWriteCompat();
+  const { readContract } = useReadContractCompat();
 
   // Convex mutations
   // Gated Convex mutation; proxied through admin API route that enforces requireAdmin().
