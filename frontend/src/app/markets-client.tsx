@@ -206,15 +206,18 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets, ini
 
       <main className={`relative z-10 bg-white dark:bg-black ${showSidebar ? 'w-full px-4 md:px-0' : 'container mx-auto px-4'} pt-2 pb-8 flex-1 flex gap-6`}>
         {showSidebar && (
-          <div className="hidden md:block pl-4 w-64 shrink-0">
-            <MarketsSidebar
-              markets={markets}
-              selection={sidebarSelection}
-              onSelect={setSidebarSelection}
-              taxonomy={sidebarTaxonomy}
-              sectionLabel={sidebarLabel}
-              defaultExpandAll={activeCategory === Category.FINANCE}
-            />
+          <div className="hidden md:block pl-4 w-56 shrink-0">
+            {/* Sticky sidebar — starts at top of main, stays in view while scrolling */}
+            <div className="sticky top-4 max-h-[calc(100vh-5rem)] overflow-y-auto pr-1 scrollbar-thin">
+              <MarketsSidebar
+                markets={markets}
+                selection={sidebarSelection}
+                onSelect={setSidebarSelection}
+                taxonomy={sidebarTaxonomy}
+                sectionLabel={sidebarLabel}
+                defaultExpandAll={activeCategory === Category.FINANCE}
+              />
+            </div>
           </div>
         )}
 
@@ -240,16 +243,6 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets, ini
         )}
 
         <div className={`flex-1 flex flex-col min-w-0 ${showSidebar ? 'md:pr-4' : ''}`}>
-          <div className="mb-6">
-            <CategoryTabs
-              activeCategory={activeCategory}
-              onCategoryChange={(cat) => {
-                setActiveCategory(cat);
-                if (cat !== Category.SPORTS && cat !== Category.FINANCE) setSidebarSelection(null);
-              }}
-            />
-          </div>
-
           {showSidebar && (
             <div className="md:hidden mb-4">
               <button
@@ -261,6 +254,16 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets, ini
               </button>
             </div>
           )}
+
+          <div className="mb-4">
+            <CategoryTabs
+              activeCategory={activeCategory}
+              onCategoryChange={(cat) => {
+                setActiveCategory(cat);
+                if (cat !== Category.SPORTS && cat !== Category.FINANCE) setSidebarSelection(null);
+              }}
+            />
+          </div>
 
           <div className="mb-6">
             <MarketFilters
@@ -284,16 +287,16 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets, ini
                 {Array.from({ length: 12 }).map((_, i) => (
                   <div
                     key={i}
-                    className="rounded-2xl bg-neutral-900 border border-neutral-800 overflow-hidden animate-pulse"
+                    className="rounded-2xl bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 overflow-hidden animate-pulse"
                   >
-                    <div className="h-24 bg-neutral-800" />
+                    <div className="h-24 bg-gray-200 dark:bg-neutral-800" />
                     <div className="p-3 flex flex-col gap-2">
-                      <div className="h-3 bg-neutral-700 rounded w-4/5" />
-                      <div className="h-3 bg-neutral-700 rounded w-3/5" />
-                      <div className="h-2.5 bg-neutral-800 rounded w-2/5 mt-1" />
+                      <div className="h-3 bg-gray-300 dark:bg-neutral-700 rounded w-4/5" />
+                      <div className="h-3 bg-gray-300 dark:bg-neutral-700 rounded w-3/5" />
+                      <div className="h-2.5 bg-gray-200 dark:bg-neutral-800 rounded w-2/5 mt-1" />
                       <div className="flex gap-2 mt-2">
-                        <div className="h-8 bg-neutral-800 rounded-lg flex-1" />
-                        <div className="h-8 bg-neutral-800 rounded-lg flex-1" />
+                        <div className="h-8 bg-gray-200 dark:bg-neutral-800 rounded-lg flex-1" />
+                        <div className="h-8 bg-gray-200 dark:bg-neutral-800 rounded-lg flex-1" />
                       </div>
                     </div>
                   </div>
