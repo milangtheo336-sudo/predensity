@@ -58,20 +58,18 @@ export const viewport: Viewport = {
 
 async function fetchSeoData() {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-  if (!convexUrl) return { events: [], cryptoMarkets: [], clobMarkets: [] };
+  if (!convexUrl) return { events: [], cryptoMarkets: [] };
   const base = convexUrl.endsWith('/') ? convexUrl.slice(0, -1) : convexUrl;
   try {
-    const [eventsRes, cryptoRes, clobRes] = await Promise.allSettled([
+    const [eventsRes, cryptoRes] = await Promise.allSettled([
       fetch(`${base}/api/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: 'events:getEvents', args: {} }), next: { revalidate: 60 } }),
       fetch(`${base}/api/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: 'events:getCryptoMarkets', args: {} }), next: { revalidate: 60 } }),
-      fetch(`${base}/api/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: 'clob:getClobMarkets', args: {} }), next: { revalidate: 60 } }),
     ]);
     return {
       events: eventsRes.status === 'fulfilled' && eventsRes.value.ok ? (await eventsRes.value.json()).value ?? [] : [],
       cryptoMarkets: cryptoRes.status === 'fulfilled' && cryptoRes.value.ok ? (await cryptoRes.value.json()).value ?? [] : [],
-      clobMarkets: clobRes.status === 'fulfilled' && clobRes.value.ok ? (await clobRes.value.json()).value ?? [] : [],
     };
-  } catch { return { events: [], cryptoMarkets: [], clobMarkets: [] }; }
+  } catch { return { events: [], cryptoMarkets: [] }; }
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -92,7 +90,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <SeoContent
           events={seoData.events}
           cryptoMarkets={seoData.cryptoMarkets}
-          clobMarkets={seoData.clobMarkets}
         />
         <WalletErrorSuppressor />
         <HydrationErrorBoundary>
