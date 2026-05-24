@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireServerToken } from "./_lib/auth";
 
 /**
  * Create a session key for a user
@@ -12,8 +13,10 @@ export const createSessionKey = mutation({
     dailyLimit: v.number(),
     expiry: v.number(),
     signature: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     // Check if session key already exists
     const existing = await ctx.db
       .query("sessionKeys")
@@ -88,8 +91,10 @@ export const revokeSessionKey = mutation({
   args: {
     userId: v.string(),
     delegate: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const sessionKey = await ctx.db
       .query("sessionKeys")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -114,8 +119,12 @@ export const revokeSessionKey = mutation({
  * Revoke all session keys for a user
  */
 export const revokeAllSessionKeys = mutation({
-  args: { userId: v.string() },
+  args: {
+    userId: v.string(),
+    _serverToken: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const sessionKeys = await ctx.db
       .query("sessionKeys")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
