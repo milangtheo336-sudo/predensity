@@ -107,6 +107,12 @@ export const placeOrder = mutation({
     if (market.status !== "open") throw new Error("Market is not open");
     if (market.resolved) throw new Error("Market is resolved");
     if (args.outcomeIndex >= market.numOutcomes) throw new Error("Invalid outcome index");
+    
+    // Check if outcome is eliminated
+    const eliminated = market.eliminatedOutcomes || [];
+    if (eliminated.includes(args.outcomeIndex)) {
+      throw new Error("This outcome has been eliminated");
+    }
 
     // For buy orders: check user has enough USDC balance
     // For sell orders: check user has enough shares
@@ -226,6 +232,19 @@ export const cancelOrder = mutation({
 // =========================================================================
 
 async function matchOrders(ctx: any, marketId: string, outcomeIndex: number) {
+  // Check if outcome is eliminated - don't match if so
+  const market = await ctx.db
+    .query("clobMarkets")
+    .withIndex("by_market_id", (q: any) => q.eq("marketId", marketId))
+    .first();
+  
+  if (market) {
+    const eliminated = market.eliminatedOutcomes || [];
+    if (eliminated.includes(outcomeIndex)) {
+      return; // Don't match orders for eliminated outcomes
+    }
+  }
+
   // Get all open buy orders sorted by price DESC (highest bid first), then time ASC
   const buyOrders = await ctx.db
     .query("clobOrders")
@@ -540,106 +559,6 @@ export const getMarketPrices = query({
 });
 
 // =========================================================================
-// MARKET RESOLUTION
-// =========================================================================
-
-export const resolveMarket = mutation({
-  args: {
-    marketId: v.string(),
-    winningOutcome: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const market = await ctx.db
-      .query("clobMarkets")
-      .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
-      .first();
-    if (!market) throw new Error("Market not found");
-    if (market.resolved) throw new Error("Already resolved");
-
-    // Mark market as resolved
-    await ctx.db.patch(market._id, {
-      resolved: true,
-      winningOutcome: args.winningOutcome,
-      status: "resolved",
-    });
-
-    // Cancel all open orders
-    const orders = await ctx.db
-      .query("clobOrders")
-      .withIndex("by_market", (q) => q.eq("marketId", args.marketId))
-      .collect();
-
-    for (const order of orders) {
-      if (order.status === "open" || order.status === "partial") {
-        const remaining = order.quantity - order.filledQuantity;
-
-        // Return reserved funds/shares
-        if (order.side === "buy") {
-          const usdcToReturn = (order.price * remaining) / 100;
-          const wallet = await ctx.db
-            .query("managedWallets")
-            .withIndex("by_user_id", (q) => q.eq("userId", order.userId))
-            .first();
-          if (wallet) {
-            const balance = parseFloat(wallet.usdcBalance || "0");
-            await ctx.db.patch(wallet._id, {
-              usdcBalance: (balance + usdcToReturn).toFixed(6),
-            });
-          }
-        } else {
-          // Return shares (they'll be redeemed below if winning)
-          const position = await ctx.db
-            .query("clobPositions")
-            .withIndex("by_user_market_outcome", (q) =>
-              q.eq("userId", order.userId).eq("marketId", args.marketId).eq("outcomeIndex", order.outcomeIndex)
-            )
-            .first();
-          if (position) {
-            await ctx.db.patch(position._id, {
-              shares: position.shares + remaining,
-              updatedAt: Date.now(),
-            });
-          }
-        }
-
-        await ctx.db.patch(order._id, {
-          status: "cancelled",
-          updatedAt: Date.now(),
-        });
-      }
-    }
-
-    // Auto-redeem: credit USDC to all holders of the winning outcome
-    const winningPositions = await ctx.db
-      .query("clobPositions")
-      .withIndex("by_market", (q) => q.eq("marketId", args.marketId))
-      .collect();
-
-    for (const pos of winningPositions) {
-      if (pos.outcomeIndex === args.winningOutcome && pos.shares > 0) {
-        // Each winning share redeems for $1 (100 cents)
-        const payout = pos.shares; // 1 share = 1 USDC
-        const wallet = await ctx.db
-          .query("managedWallets")
-          .withIndex("by_user_id", (q) => q.eq("userId", pos.userId))
-          .first();
-        if (wallet) {
-          const balance = parseFloat(wallet.usdcBalance || "0");
-          await ctx.db.patch(wallet._id, {
-            usdcBalance: (balance + payout).toFixed(6),
-          });
-        }
-        // Zero out the position
-        await ctx.db.patch(pos._id, {
-          shares: 0,
-          updatedAt: Date.now(),
-        });
-      }
-    }
-  },
-});
-
-// =========================================================================
 // UNSETTLED TRADES (for operator bot to settle on-chain)
 // =========================================================================
 
@@ -738,6 +657,13 @@ export const getUserTradeSettlementStatus = query({
 /**
  * Eliminate a specific outcome (e.g., Italy knocked out of World Cup).
  * Market stays open for remaining outcomes.
+ * 
+ * What happens:
+ * 1. Outcome is marked as eliminated
+ * 2. All open orders for that outcome are cancelled
+ * 3. Reserved funds/shares are returned to users
+ * 4. Existing positions remain (worthless but visible)
+ * 5. No new orders can be placed for this outcome
  */
 export const eliminateOutcome = mutation({
   args: {
@@ -759,6 +685,62 @@ export const eliminateOutcome = mutation({
       throw new Error("Outcome already eliminated");
     }
 
+    // Check we're not eliminating the last remaining outcome
+    if (eliminated.length >= market.numOutcomes - 1) {
+      throw new Error("Cannot eliminate all outcomes. Use full resolution instead.");
+    }
+
+    // Cancel all open orders for this outcome
+    const ordersToCancel = await ctx.db
+      .query("clobOrders")
+      .withIndex("by_market_outcome", (q) =>
+        q.eq("marketId", args.marketId).eq("outcomeIndex", args.outcomeIndex)
+      )
+      .collect();
+
+    let cancelledCount = 0;
+    for (const order of ordersToCancel) {
+      if (order.status === "open" || order.status === "partial") {
+        const remainingQty = order.quantity - order.filledQuantity;
+
+        // Return reserved funds/shares to users
+        if (order.side === "buy") {
+          const usdcToReturn = (order.price * remainingQty) / 100;
+          const wallet = await ctx.db
+            .query("managedWallets")
+            .withIndex("by_user_id", (q) => q.eq("userId", order.userId))
+            .first();
+          if (wallet) {
+            const balance = parseFloat(wallet.usdcBalance || "0");
+            await ctx.db.patch(wallet._id, {
+              usdcBalance: (balance + usdcToReturn).toFixed(6),
+            });
+          }
+        } else {
+          // Return shares to position
+          const position = await ctx.db
+            .query("clobPositions")
+            .withIndex("by_user_market_outcome", (q) =>
+              q.eq("userId", order.userId).eq("marketId", args.marketId).eq("outcomeIndex", args.outcomeIndex)
+            )
+            .first();
+          if (position) {
+            await ctx.db.patch(position._id, {
+              shares: position.shares + remainingQty,
+              updatedAt: Date.now(),
+            });
+          }
+        }
+
+        // Mark order as cancelled
+        await ctx.db.patch(order._id, {
+          status: "cancelled",
+          updatedAt: Date.now(),
+        });
+        cancelledCount++;
+      }
+    }
+
     // Add to eliminated list
     eliminated.push(args.outcomeIndex);
 
@@ -766,13 +748,24 @@ export const eliminateOutcome = mutation({
       eliminatedOutcomes: eliminated,
     });
 
-    return { success: true, eliminatedCount: eliminated.length };
+    return { 
+      success: true, 
+      eliminatedCount: eliminated.length,
+      ordersCancelled: cancelledCount,
+    };
   },
 });
 
 /**
  * Fully resolve the market by declaring the final winner.
  * This should be called after all eliminations are done.
+ * 
+ * What happens:
+ * 1. Market is marked as fully resolved
+ * 2. All remaining open orders are cancelled (all outcomes)
+ * 3. Reserved funds/shares are returned
+ * 4. Winners are auto-paid (winning outcome holders get 1 USDC per share)
+ * 5. Losing positions become worthless
  */
 export const resolveClobMarket = mutation({
   args: {
@@ -795,13 +788,100 @@ export const resolveClobMarket = mutation({
       throw new Error("Cannot set an eliminated outcome as winner");
     }
 
+    // Mark market as resolved
     await ctx.db.patch(market._id, {
       resolved: true,
       winningOutcome: args.winningOutcome,
       status: "resolved",
     });
 
-    return { success: true };
+    // Cancel ALL open orders (all outcomes)
+    const allOrders = await ctx.db
+      .query("clobOrders")
+      .withIndex("by_market", (q) => q.eq("marketId", args.marketId))
+      .collect();
+
+    let cancelledCount = 0;
+    for (const order of allOrders) {
+      if (order.status === "open" || order.status === "partial") {
+        const remainingQty = order.quantity - order.filledQuantity;
+
+        // Return reserved funds/shares
+        if (order.side === "buy") {
+          const usdcToReturn = (order.price * remainingQty) / 100;
+          const wallet = await ctx.db
+            .query("managedWallets")
+            .withIndex("by_user_id", (q) => q.eq("userId", order.userId))
+            .first();
+          if (wallet) {
+            const balance = parseFloat(wallet.usdcBalance || "0");
+            await ctx.db.patch(wallet._id, {
+              usdcBalance: (balance + usdcToReturn).toFixed(6),
+            });
+          }
+        } else {
+          // Return shares to position
+          const position = await ctx.db
+            .query("clobPositions")
+            .withIndex("by_user_market_outcome", (q) =>
+              q.eq("userId", order.userId).eq("marketId", args.marketId).eq("outcomeIndex", order.outcomeIndex)
+            )
+            .first();
+          if (position) {
+            await ctx.db.patch(position._id, {
+              shares: position.shares + remainingQty,
+              updatedAt: Date.now(),
+            });
+          }
+        }
+
+        await ctx.db.patch(order._id, {
+          status: "cancelled",
+          updatedAt: Date.now(),
+        });
+        cancelledCount++;
+      }
+    }
+
+    // Auto-redeem: credit USDC to all holders of the winning outcome
+    const allPositions = await ctx.db
+      .query("clobPositions")
+      .withIndex("by_market", (q) => q.eq("marketId", args.marketId))
+      .collect();
+
+    let winnersCount = 0;
+    let totalPayout = 0;
+
+    for (const pos of allPositions) {
+      if (pos.outcomeIndex === args.winningOutcome && pos.shares > 0) {
+        // Each winning share redeems for $1 (100 cents)
+        const payout = pos.shares; // 1 share = 1 USDC
+        const wallet = await ctx.db
+          .query("managedWallets")
+          .withIndex("by_user_id", (q) => q.eq("userId", pos.userId))
+          .first();
+        if (wallet) {
+          const balance = parseFloat(wallet.usdcBalance || "0");
+          await ctx.db.patch(wallet._id, {
+            usdcBalance: (balance + payout).toFixed(6),
+          });
+          winnersCount++;
+          totalPayout += payout;
+        }
+        // Zero out the position
+        await ctx.db.patch(pos._id, {
+          shares: 0,
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    return { 
+      success: true,
+      ordersCancelled: cancelledCount,
+      winnersPaid: winnersCount,
+      totalPayout,
+    };
   },
 });
 
@@ -826,6 +906,33 @@ export const unEliminateOutcome = mutation({
 
     await ctx.db.patch(market._id, {
       eliminatedOutcomes: filtered,
+    });
+
+    return { success: true };
+  },
+});
+
+/**
+ * Un-resolve a market (admin correction for mistakes).
+ * WARNING: This should only be used to fix admin errors.
+ */
+export const unResolveMarket = mutation({
+  args: {
+    marketId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const market = await ctx.db
+      .query("clobMarkets")
+      .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
+      .first();
+
+    if (!market) throw new Error("Market not found");
+    if (!market.resolved) throw new Error("Market is not resolved");
+
+    await ctx.db.patch(market._id, {
+      resolved: false,
+      winningOutcome: undefined,
+      status: "open",
     });
 
     return { success: true };
