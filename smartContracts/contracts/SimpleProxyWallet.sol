@@ -47,7 +47,11 @@ contract SimpleProxyWallet {
     }
     
     mapping(bytes32 => PendingWithdrawal) public pendingWithdrawals;
+    uint256 public withdrawalNonce;
     uint256 public constant WITHDRAWAL_DELAY = 24 hours;
+
+    // Session key delegate list for revocation during emergency
+    address[] private _delegates;
     
     // Whitelisted contracts (prediction markets)
     mapping(address => bool) public whitelistedContracts;
@@ -119,6 +123,11 @@ contract SimpleProxyWallet {
         require(maxAmount > 0 && dailyLimit > 0, "Invalid limits");
         require(duration > 0 && duration <= 90 days, "Invalid duration");
         
+        // Track delegate for emergency revocation
+        if (sessionKeys[delegate].delegate == address(0)) {
+            _delegates.push(delegate);
+        }
+
         sessionKeys[delegate] = SessionKey({
             delegate: delegate,
             maxAmount: maxAmount,
@@ -128,7 +137,7 @@ contract SimpleProxyWallet {
             spentToday: 0,
             lastResetDay: block.timestamp / 1 days
         });
-        
+
         emit SessionKeyCreated(delegate, maxAmount, dailyLimit, block.timestamp + duration);
     }
     
@@ -313,12 +322,9 @@ contract SimpleProxyWallet {
         string calldata message,
         bytes calldata signature
     ) external returns (bytes memory) {
-        // Prevent replay attacks: The backend will append the nonce to the message
-        // and we increment it after a successful bet execution
-        nonces[owner]++;
-        
-        // Verify signature matches owner
+        // Verify signature BEFORE incrementing nonce to prevent griefing
         require(recoverSigner(message, signature) == owner, "Invalid signature");
+        nonces[owner]++;
         
         // Transfer USDC using HTS precompile
         // HTS: 0x0000000000000000000000000000000000000167
@@ -402,19 +408,30 @@ contract SimpleProxyWallet {
     /**
      * Execute a bet transaction with explicit amount tracking.
      * Used by session keys to place bets with proper limit enforcement.
+     *
+     * betAmount must match the actual value encoded in betData — we decode
+     * betData independently and require they agree, so a delegate cannot
+     * pass betAmount=0 to skip the daily-limit check while encoding a
+     * larger real amount inside betData.
      */
     function executeBet(
         address predictionContract,
         uint256 betAmount,
         bytes calldata betData
     ) external onlyOwnerOrDelegate returns (bytes memory) {
-        // If caller is a delegate, enforce restrictions
         if (msg.sender != owner) {
             require(isValidDelegate(msg.sender), "Invalid session key");
             require(whitelistedContracts[predictionContract], "Contract not whitelisted");
+            require(betAmount > 0, "Bet amount must be > 0");
+
+            // Decode the real amount from betData and require it matches
+            // the caller-supplied betAmount so the limit cannot be bypassed.
+            (uint256 decodedAmount, ) = _decodeERC20Amount(betData);
+            require(decodedAmount == betAmount, "betAmount mismatch");
+
             _checkAndUpdateDailyLimit(msg.sender, betAmount);
         }
-        
+
         (bool success, bytes memory result) = predictionContract.call(betData);
         require(success, "Bet execution failed");
         emit Executed(predictionContract, 0, betData);
@@ -437,7 +454,7 @@ contract SimpleProxyWallet {
         require(to != address(0), "Invalid recipient");
         require(amount > 0, "Invalid amount");
         
-        bytes32 withdrawalId = keccak256(abi.encodePacked(token, to, amount, block.timestamp));
+        bytes32 withdrawalId = keccak256(abi.encodePacked(token, to, amount, block.timestamp, withdrawalNonce++));
         
         pendingWithdrawals[withdrawalId] = PendingWithdrawal({
             token: token,
@@ -501,11 +518,15 @@ contract SimpleProxyWallet {
     function emergencyWithdraw(address token, address to, uint256 amount) external onlyOwner {
         require(to != address(0), "Invalid recipient");
         require(amount > 0, "Invalid amount");
-        
-        // Revoke all session keys for security
-        // Note: In production, you'd want to iterate through all delegates
-        // For now, users should manually revoke session keys before emergency withdrawal
-        
+
+        // Revoke all active session keys before moving funds
+        for (uint256 i = 0; i < _delegates.length; i++) {
+            if (!sessionKeys[_delegates[i]].revoked) {
+                sessionKeys[_delegates[i]].revoked = true;
+                emit SessionKeyRevoked(_delegates[i]);
+            }
+        }
+
         if (token == address(0)) {
             (bool success, ) = to.call{value: amount}("");
             require(success, "Emergency HBAR withdrawal failed");
@@ -515,7 +536,7 @@ contract SimpleProxyWallet {
             );
             require(success, "Emergency token withdrawal failed");
         }
-        
+
         emit Executed(token, amount, "");
     }
     function executeBatch(
