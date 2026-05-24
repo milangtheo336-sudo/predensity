@@ -154,7 +154,9 @@ function StepThreeCard() {
   return (
     <div className="w-[280px] bg-white dark:bg-[#121212] rounded-2xl border border-gray-200 dark:border-[#1f1f1f] shadow-md dark:shadow-[inset_1px_1px_1px_rgba(255,255,255,0.05),0_8px_0_#050505] my-4 mx-auto" style={{ fontFamily: 'Arial, sans-serif' }}>
       <div className="flex items-center gap-3 px-4 pt-5 pb-3.5">
-        <div className="w-10 h-10 rounded-full bg-[#F7931A] flex items-center justify-center text-lg font-bold text-white flex-shrink-0">B</div>
+        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+          <Image src="/bitcoin.svg" alt="Bitcoin" width={40} height={40} />
+        </div>
         <div className="text-sm font-bold text-gray-900 dark:text-white leading-snug">Predict Where Bitcoin&apos;s Price Will Land</div>
       </div>
       <div className="px-4 pb-5">
