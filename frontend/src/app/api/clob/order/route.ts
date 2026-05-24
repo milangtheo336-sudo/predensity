@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConvexHttpClient } from 'convex/browser';
 import { rateLimit, validateNumericRange, requireAuthMatchingUser } from '@/lib/api-auth';
 import { api } from '../../../../../convex/_generated/api';
 import { ethers } from 'ethers';
+import { getServerConvex } from '@/lib/convex-server';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
 /**
  * POST /api/clob/order
@@ -87,10 +87,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Mark nonce as used
-    await convex.mutation(api.clob.markNonceUsed, { userId, nonce });
+    await convex.adminMutation(api.clob.markNonceUsed, { userId, nonce });
 
     // Place order
-    const orderId = await convex.mutation(api.clob.placeOrder, {
+    const orderId = await convex.adminMutation(api.clob.placeOrder, {
       marketId, userId, outcomeIndex: Number(outcomeIndex),
       side, price: Number(price), quantity: Number(quantity),
     });
@@ -159,8 +159,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Nonce already used' }, { status: 400 });
     }
 
-    await convex.mutation(api.clob.markNonceUsed, { userId, nonce });
-    await convex.mutation(api.clob.cancelOrder, { orderId, userId });
+    await convex.adminMutation(api.clob.markNonceUsed, { userId, nonce });
+    await convex.adminMutation(api.clob.cancelOrder, { orderId, userId });
     
     return NextResponse.json({ success: true });
   } catch (error) {
