@@ -1003,7 +1003,7 @@ function inferAssetFromPrice(bet: any, fallbackBet?: any): string | undefined {
   if (category !== "crypto") return asset;
 
   // If asset looks correct (not a default/unknown), keep it
-  if (asset && asset !== "HBAR" && asset !== "UNKNOWN" && asset !== "hbar") {
+  if (asset && asset !== "HBAR" && asset !== "UNKNOWN" && asset !== "USDC ") {
     return asset;
   }
 
