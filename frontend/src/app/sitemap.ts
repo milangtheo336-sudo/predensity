@@ -46,8 +46,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: BASE_URL, lastModified: new Date(), changeFrequency: 'hourly', priority: 1 },
-    { url: `${BASE_URL}/my-bets`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.5 },
-    { url: `${BASE_URL}/settings`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
+
+    { url: `${BASE_URL}/privacy`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${BASE_URL}/terms`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${BASE_URL}/markets/crypto-hbar`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.9 },
+    { url: `${BASE_URL}/markets/crypto-btc`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.9 },
+    { url: `${BASE_URL}/markets/crypto-eth`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.9 },
+    { url: `${BASE_URL}/markets/crypto-doge`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.9 },
+    { url: `${BASE_URL}/markets/crypto-sol`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.9 },
+    { url: `${BASE_URL}/markets/crypto-bnb`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.9 },
   ];
 
   const marketRoutes: MetadataRoute.Sitemap = marketIds.map((id: string) => ({
