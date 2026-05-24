@@ -10,10 +10,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 /**
  * @title CryptoPredictionMarket
  * @dev Prediction market for cryptocurrency price ranges with multi-asset support
- * @notice Users predict price ranges for crypto assets (HBAR, BTC, ETH, etc.)
+ * @notice Users predict price ranges for crypto assets (BTC, ETH, etc.)
  *
  * Example predictions:
- * - "HBAR will be between $0.29-$0.31 on March 15"
+ * - "BTC will be between $60000-$62000 on March 15"
  * - "BTC will be between $65,000-$68,000 on April 1"
  * - "ETH will be between $3,200-$3,500 on March 20"
  *
@@ -45,7 +45,6 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     uint256 public constant MAX_BUCKET_SCAN = 200;
 
     // Stake bounds: set per-deployment so they match the staking token's decimals.
-    // For native HBAR (18 decimals): 0.01 ether / 100 ether are sensible defaults.
     // For USDC (6 decimals): 10_000 (= 0.01 USDC) / 100_000_000 (= 100 USDC).
     uint256 public immutable minStake;
     uint256 public immutable maxStake;
@@ -57,13 +56,13 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     uint256 public nextBetId;
     uint256 public knownTokenBalance;  // Track actual token balance to prevent fake deposits
     
-    // Asset identifier (e.g., "HBAR", "BTC", "ETH")
+    // Asset identifier (e.g., "BTC", "ETH")
     string public assetSymbol;
     
     // Price decimals (e.g., 8 for BTC, 18 for ETH)
     uint8 public priceDecimals;
 
-    // Staking token: address(0) = native HBAR mode, otherwise ERC-20 (e.g., USDC)
+    // Staking token (ERC-20, e.g. USDC on Arc)
     IERC20 public stakingToken;
     
     // Mapping of betId to asset symbol (for multi-asset support)
@@ -112,7 +111,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     // ==============================================================
     mapping(uint256 => Bet) public bets;
     mapping(uint256 => BucketInfo) public buckets;
-    // (asset symbol => targetTimestamp => price). Per-asset keyed so HBAR/BTC/ETH
+    // (asset symbol => targetTimestamp => price). Per-asset keyed so BTC/ETH
     // resolutions cannot collide on the same bucket day.
     mapping(string => mapping(uint256 => uint256)) public pricesAtTimestamp;
     // (asset symbol => targetTimestamp => block.timestamp at which the price was last set).
@@ -184,15 +183,11 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     // ==============================================================
     
     /**
-     * @param _assetSymbol The primary asset symbol (e.g., "HBAR")
+     * @param _assetSymbol The primary asset symbol (e.g., "BTC", "ETH")
      * @param _priceDecimals Number of decimals for price representation
-     * @param _stakingToken ERC-20 token for stakes (address(0) = native HBAR mode)
+     * @param _stakingToken ERC-20 token for stakes (USDC on Arc)
      * @param _minStake Minimum stake in the staking token's smallest unit
      * @param _maxStake Maximum stake in the staking token's smallest unit
-     *
-     * Examples:
-     *   Native HBAR (18 decimals): _minStake = 0.01 ether, _maxStake = 100 ether
-     *   USDC (6 decimals):         _minStake = 10_000,     _maxStake = 100_000_000
      */
     constructor(
         string memory _assetSymbol,
@@ -245,24 +240,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         validBetAmount(msg.value)
         returns (uint256)
     {
-        require(address(stakingToken) == address(0), "Native mode disabled");
-        require(priceMin < priceMax, "Invalid price range");
-        require(priceMin > 0 && priceMax > 0, "Prices must be positive");
-        require(targetTimestamp > block.timestamp, "Cannot bet on past timestamps");
-
-        // Calculate fee and net stake
-        uint256 fee = (msg.value * FEE_BPS) / BPS_DENOM;
-        uint256 stakeNet = msg.value - fee;
-        
-        totalFeesCollected += fee;
-        emit FeeCollected(fee);
-
-        // Compute bet quality and weight
-        uint256 qualityBps = (getSharpnessMultiplier(priceMin, priceMax) * getTimeMultiplier(targetTimestamp)) / BPS_DENOM;
-        uint256 weight = (stakeNet * qualityBps) / BPS_DENOM;
-
-        // Create bet for primary asset
-        return _createBet(msg.sender, targetTimestamp, priceMin, priceMax, stakeNet, qualityBps, weight, assetSymbol);
+        revert("Use placeBetWithToken instead");
     }
 
     /**
@@ -366,7 +344,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
 
     /**
      * @notice Place a bet with tokens that have already been transferred to this contract.
-     * Used by proxy wallets that transfer tokens via HTS before calling this function.
+     * Used by proxy wallets that transfer tokens before calling this function.
      */
     function placeBetWithPreTransferredToken(
         address bettor,
@@ -525,7 +503,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
 
     /**
      * @notice Set prices for the primary asset across multiple timestamps (owner only).
-     *         Uses the contract's `assetSymbol` (e.g. "HBAR"). For non-primary assets,
+     *         Uses the contract's `assetSymbol` (e.g. "BTC"). For non-primary assets,
      *         use {setAssetPrices}.
      * @param timestamps Array of target timestamps
      * @param prices Array of corresponding prices
@@ -636,36 +614,15 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         _unpause();
     }
 
-    /**
-     * @notice Associate with a Arc token (required before receiving HTS tokens like USDC).
-     * On Arc, contracts must explicitly associate with tokens.
-     * 
-     * Arc Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
-     */
-    function associateToken(address token) external onlyOwner {
-        (bool success, ) = address(0x0000000000000000000000000000000000000167).call(
-            abi.encodeWithSelector(0x49146bde, address(this), token)
-        );
-        require(success, "Token association failed");
-    }
 
     // ==============================================================
     // |                    Helper Functions                        |
     // ==============================================================
 
-    /**
-     * @notice Transfer funds out -- native HBAR or ERC-20 depending on mode
-     */
     function _transferOut(address to, uint256 amount) internal {
         if (amount == 0) return;
-        if (address(stakingToken) != address(0)) {
-            stakingToken.safeTransfer(to, amount);
-            // Keep knownTokenBalance in sync
-            knownTokenBalance = stakingToken.balanceOf(address(this));
-        } else {
-            (bool success, ) = payable(to).call{value: amount}("");
-            require(success, "Transfer failed");
-        }
+        stakingToken.safeTransfer(to, amount);
+        knownTokenBalance = stakingToken.balanceOf(address(this));
     }
 
     /**
@@ -711,14 +668,8 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
         return pricesAtTimestamp[asset][bet.targetTimestamp];
     }
 
-    /**
-     * @notice Get contract balance -- native HBAR or ERC-20 depending on mode
-     */
     function _contractBalance() internal view returns (uint256) {
-        if (address(stakingToken) != address(0)) {
-            return stakingToken.balanceOf(address(this));
-        }
-        return address(this).balance;
+        return stakingToken.balanceOf(address(this));
     }
 
     /**
