@@ -4,6 +4,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { ArrowLeft, Clock, Share2, Twitter, Link2, Check as CheckIcon, Loader2, Activity as ActivityIcon, Heart, ExternalLink, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Book, ChartLine, Hourglass, Briefcase } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { PredictionCardSkeleton } from '@/components/prediction-card-skeleton';
 import { useQuery as useConvexQuery, useMutation } from 'convex/react';
@@ -509,12 +510,27 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
   const W = 700;
   const H = 180;
 
-  // Generate x-axis labels
+  // Generate x-axis labels based on actual data
   const generateXAxisLabels = () => {
+    if (allPoints.length === 0) {
+      // Fallback to current time range
+      const labels = [];
+      const now = Date.now();
+      for (let i = 2; i >= 0; i--) {
+        const date = new Date(now - i * 24 * 60 * 60 * 1000);
+        labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+      }
+      return labels;
+    }
+    
+    // Use actual data range
     const labels = [];
-    const now = Date.now();
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(now - i * 24 * 60 * 60 * 1000);
+    const range = maxTime - minTime;
+    const numLabels = 3;
+    
+    for (let i = 0; i < numLabels; i++) {
+      const timestamp = minTime + (range * i / (numLabels - 1));
+      const date = new Date(timestamp);
       labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
     }
     return labels;
@@ -797,6 +813,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const [activeTab, setActiveTab] = useState<'chart' | 'orderbook'>('chart');
   const [infoExpanded, setInfoExpanded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [showMobileTradingModal, setShowMobileTradingModal] = useState(false);
   const [hideEliminated, setHideEliminated] = useState(false);
   const [inputMode, setInputMode] = useState<'contracts' | 'dollars'>('contracts');
   const [outcomeTab, setOutcomeTab] = useState<'orderbook' | 'probability' | 'orders' | 'positions'>('orderbook');
@@ -994,26 +1011,26 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Markets
         </button>
 
-        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-10">
+        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-10">
 
           {/* LEFT COLUMN -- Market info + Chart */}
-          <div className="lg:col-span-8 space-y-6 order-1 lg:order-none">
+          <div className="lg:col-span-8 space-y-4 lg:space-y-6 order-1 lg:order-none">
 
             {/* Header */}
-            <div className="flex gap-3 items-start">
+            <div className="flex gap-3 items-start px-4 lg:px-0">
               {market.imageUrl && (
-                <img src={market.imageUrl} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-gray-200 dark:border-white/[0.06]" />
+                <img src={market.imageUrl} alt="" className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover flex-shrink-0 border border-gray-200 dark:border-white/[0.06]" />
               )}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-300 text-xs font-medium px-3 py-1 rounded capitalize">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-300 text-xs font-medium px-2.5 py-0.5 sm:px-3 sm:py-1 rounded capitalize">
                     {market.category}
                   </span>
-                  <span className="text-gray-500 dark:text-gray-400 text-sm flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" /> {timeRemaining}
+                  <span className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm flex items-center gap-1">
+                    <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> {timeRemaining}
                   </span>
                 </div>
-                <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white leading-tight">
+                <h1 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 dark:text-white leading-tight">
                   {market.question}
                 </h1>
                 {market.description && (
@@ -1038,10 +1055,12 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
             </div>
 
             {/* Main Chart - Always visible at top */}
-            <PriceChart marketId={marketId} outcomes={outcomes} />
+            <div className="px-4 lg:px-0">
+              <PriceChart marketId={marketId} outcomes={outcomes} />
+            </div>
 
             {/* Volume row */}
-            <div className="flex items-center gap-1.5 text-[13px] text-[#888888] mb-5">
+            <div className="flex items-center gap-1.5 text-xs sm:text-[13px] text-[#888888] mb-4 lg:mb-5 px-4 lg:px-0">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
                 <path d="M2 12l4-4 3 3 5-7"/>
               </svg>
@@ -1049,10 +1068,10 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
             </div>
 
             {/* Outcomes header */}
-            <h2 className="text-xl font-bold text-white mb-3.5">Outcomes</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-white mb-3 px-4 lg:px-0">Outcomes</h2>
 
             {/* Outcome cards -- Polymarket style matching guidance exactly */}
-            <div className="space-y-3">
+            <div className="space-y-3 px-4 lg:px-0">
               {outcomes
                 .filter((o, i) => {
                   const isEliminated = market.eliminatedOutcomes?.includes(i);
@@ -1141,6 +1160,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                               setSelectedOutcome(i);
                               setOrderSide('buy');
                               setOrderBookSide('yes');
+                              setShowMobileTradingModal(true);
                             }}
                             className="flex-1 py-3.5 text-center text-base font-bold text-[#3fdc8c] bg-[#0d2818] rounded-xl hover:bg-[#0e3020] transition-colors"
                           >
@@ -1151,6 +1171,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                               setSelectedOutcome(i);
                               setOrderSide('sell');
                               setOrderBookSide('no');
+                              setShowMobileTradingModal(true);
                             }}
                             className="flex-1 py-3.5 text-center text-base font-bold text-[#ff6b35] bg-[#2d1410] rounded-xl hover:bg-[#3d1810] transition-colors"
                           >
@@ -1172,10 +1193,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                                   : 'text-[#888888] border-transparent hover:text-[#cccccc]'
                               }`}
                             >
-                              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
-                                <rect x="1" y="1" width="10" height="10" rx="1"/>
-                                <path d="M3 4h6M3 6h6M3 8h4"/>
-                              </svg>
+                              <Book size={16} weight="regular" />
                               Order book
                             </button>
                             <button
@@ -1186,9 +1204,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                                   : 'text-[#888888] border-transparent hover:text-[#cccccc]'
                               }`}
                             >
-                              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
-                                <path d="M2 10 L2 6 L5 6 L5 10 M5 10 L5 4 L8 4 L8 10 M8 10 L8 2 L11 2 L11 10"/>
-                              </svg>
+                              <ChartLine size={16} weight="regular" />
                               Probability
                             </button>
                             <button
@@ -1199,10 +1215,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                                   : 'text-[#888888] border-transparent hover:text-[#cccccc]'
                               }`}
                             >
-                              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
-                                <circle cx="6" cy="6" r="5"/>
-                                <path d="M6 3v3l2 2"/>
-                              </svg>
+                              <Hourglass size={16} weight="regular" />
                               Open Orders
                             </button>
                             <button
@@ -1213,10 +1226,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                                   : 'text-[#888888] border-transparent hover:text-[#cccccc]'
                               }`}
                             >
-                              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
-                                <rect x="1" y="2" width="10" height="8" rx="1"/>
-                                <path d="M4 5h4M4 7h2"/>
-                              </svg>
+                              <Briefcase size={16} weight="regular" />
                               Positions
                             </button>
                           </div>
@@ -1350,7 +1360,17 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
           {/* RIGHT COLUMN -- Trading Panel */}
           <div className="order-2 lg:order-none lg:col-span-4">
-            <div className="lg:sticky lg:top-20 z-10 bg-[#141414] border border-[#2a2a2a] rounded-2xl overflow-hidden">
+            <div className={`${showMobileTradingModal ? 'fixed' : 'hidden'} lg:block bottom-0 left-0 right-0 lg:static lg:sticky lg:top-20 z-50 lg:z-10 bg-[#141414] border-t lg:border border-[#2a2a2a] lg:rounded-2xl overflow-hidden max-h-[85vh] lg:max-h-none overflow-y-auto`}>
+
+              {/* Mobile close button */}
+              <button
+                onClick={() => setShowMobileTradingModal(false)}
+                className="lg:hidden absolute top-3 right-3 z-10 p-2 text-[#888888] hover:text-white"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
 
               {/* Settlement Status Banners */}
               {pendingSettlements > 0 && (
@@ -1371,8 +1391,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               )}
 
               {/* Panel header with icon and title */}
-              <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-[#2a2a2a]">
-                <div className="w-8 h-8 bg-[#1a1a2e] rounded-lg flex items-center justify-center flex-shrink-0 text-base">
+              <div className="flex items-center gap-2.5 px-3 sm:px-4 py-3 sm:py-3.5 border-b border-[#2a2a2a]">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#1a1a2e] rounded-lg flex items-center justify-center flex-shrink-0 text-sm sm:text-base">
                   {market.imageUrl ? (
                     <img src={market.imageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
                   ) : (
@@ -1380,12 +1400,12 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold text-white leading-tight line-clamp-2">{market.question}</div>
+                  <div className="text-[11px] sm:text-xs font-semibold text-white leading-tight line-clamp-2">{market.question}</div>
                 </div>
               </div>
 
               {/* Trading panel tabs */}
-              <div className="flex justify-between items-center px-4 py-3 border-b border-[#2a2a2a]">
+              <div className="flex justify-between items-center px-3 sm:px-4 py-2.5 sm:py-3 border-b border-[#2a2a2a]">
                 <div className="flex gap-0">
                   <button
                     onClick={() => setOrderSide('buy')}
