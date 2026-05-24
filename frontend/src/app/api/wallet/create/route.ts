@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 import { rateLimit } from '@/lib/api-auth';
 import { CONTRACT_ADDRESSES } from '@/lib/contracts/contract-config';
@@ -9,8 +8,9 @@ import {
   AccountId,
 } from '@hashgraph/sdk';
 import { ethers } from 'ethers';
+import { getServerConvex } from '@/lib/convex-server';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
 const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || '';
 const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || '';
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Store user info in Convex (for bet history, NOT for balance)
     // Balance will be read from blockchain
-    await convex.mutation(api.users.createManagedWallet, {
+    await convex.adminMutation(api.users.createManagedWallet, {
       userId,
       email,
       phoneNumber,
