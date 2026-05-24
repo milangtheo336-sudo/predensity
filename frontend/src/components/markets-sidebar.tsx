@@ -30,16 +30,25 @@ export function MarketsSidebar({
   defaultExpandAll = false,
 }: MarketsSidebarProps) {
   const [expanded, setExpanded] = useState<Set<string>>(
-    () => (defaultExpandAll ? new Set(taxonomy.map((s) => s.id)) : new Set())
+    () => {
+      if (defaultExpandAll) return new Set(taxonomy.map((s) => s.id));
+      // Auto-expand the first sport that has leagues (Football)
+      const firstWithLeagues = taxonomy.find((s) => s.leagues.length > 0);
+      return firstWithLeagues ? new Set([firstWithLeagues.id]) : new Set();
+    }
   );
 
-  // When the taxonomy changes (e.g. switching between Sports and Finance tabs),
-  // reset expansion to match the new taxonomy's default.
   useEffect(() => {
-    setExpanded(defaultExpandAll ? new Set(taxonomy.map((s) => s.id)) : new Set());
+    if (defaultExpandAll) {
+      setExpanded(new Set(taxonomy.map((s) => s.id)));
+    } else {
+      const firstWithLeagues = taxonomy.find((s) => s.leagues.length > 0);
+      setExpanded(firstWithLeagues ? new Set([firstWithLeagues.id]) : new Set());
+    }
     setShowAllLeagues(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taxonomy]);
+
   const [showAllLeagues, setShowAllLeagues] = useState<Set<string>>(new Set());
 
   const { sportCounts, leagueCounts, total } = useMemo(() => {
@@ -88,28 +97,33 @@ export function MarketsSidebar({
 
   return (
     <aside className="w-full">
-      <nav className="flex flex-col gap-1">
-        {/* "All" row -- larger, bolder */}
+      <nav className="flex flex-col">
+
+        {/* ALL row */}
         <button
           onClick={() => onSelect(null)}
-          className={`flex items-center justify-between px-2 py-2 text-left transition-colors ${
+          className={`flex items-center justify-between px-2 py-2 rounded-md text-left transition-colors group ${
             isAllActive
               ? 'text-gray-900 dark:text-white'
-              : 'text-gray-800 dark:text-gray-100'
+              : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
           }`}
         >
-          <span className="text-base font-semibold">All</span>
-          <span className="text-sm text-gray-400 dark:text-gray-400">{total}</span>
+          <span className={`text-sm font-bold ${isAllActive ? 'text-gray-900 dark:text-white' : ''}`}>
+            All
+          </span>
+          {total > 0 && (
+            <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">{total}</span>
+          )}
         </button>
 
-        <div className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 px-2 pt-2 pb-1">
+        {/* Section label */}
+        <div className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 px-2 pt-3 pb-1.5">
           {sectionLabel}
         </div>
 
         {taxonomy.map((sport) => {
           const isExpanded = expanded.has(sport.id);
-          const isSportActive =
-            selection?.sport === sport.id && !selection?.league;
+          const isSportActive = selection?.sport === sport.id && !selection?.league;
           const count = sportCounts.get(sport.id) ?? 0;
           const showAll = showAllLeagues.has(sport.id);
           const leaguesToShow = showAll
@@ -118,61 +132,79 @@ export function MarketsSidebar({
           const hasMoreLeagues = sport.leagues.length > LEAGUES_COLLAPSED_LIMIT;
 
           return (
-            <div key={sport.id} className="flex flex-col">
+            <div key={sport.id}>
+              {/* Sport row */}
               <button
                 onClick={() => handleSportClick(sport.id)}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`w-full flex items-center justify-between px-2 py-2 rounded-md text-sm transition-colors group ${
                   isSportActive
-                    ? 'bg-gray-100 dark:bg-neutral-900 text-gray-900 dark:text-white'
-                    : 'text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-neutral-900/60'
+                    ? 'bg-gray-100 dark:bg-neutral-800/70 text-gray-900 dark:text-white font-semibold'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800/40 hover:text-gray-900 dark:hover:text-white font-medium'
                 }`}
               >
-                <span className="flex items-center gap-2.5 min-w-0">
-                  {sport.iconUrl && (
-                    <img src={sport.iconUrl} alt="" className="w-5 h-5 object-contain shrink-0 rounded-sm" />
+                <span className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {sport.iconUrl ? (
+                    <img
+                      src={sport.iconUrl}
+                      alt=""
+                      className="w-[18px] h-[18px] object-contain shrink-0 rounded-sm"
+                    />
+                  ) : (
+                    /* Placeholder dot when no icon */
+                    <span className="w-[18px] h-[18px] shrink-0 flex items-center justify-center">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-neutral-600" />
+                    </span>
                   )}
-                  <span className="truncate">{sport.label}</span>
+                  <span className="truncate leading-tight">{sport.label}</span>
                 </span>
-                <span className="flex items-center gap-2">
-                  {isExpanded && count > 0 && (
-                    <span className="text-sm text-gray-400 dark:text-gray-400">{count}</span>
+
+                <span className="flex items-center gap-1.5 shrink-0 ml-1">
+                  {/* Only show count when > 0 */}
+                  {count > 0 && (
+                    <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">{count}</span>
                   )}
-                  {sport.leagues.length > 0 &&
-                    (isExpanded ? (
-                      <ChevronUp className="w-4 h-4 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-gray-400" />
-                    ))}
+                  {sport.leagues.length > 0 && (
+                    isExpanded
+                      ? <ChevronUp className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                      : <ChevronDown className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                  )}
                 </span>
               </button>
 
+              {/* League rows */}
               {isExpanded && sport.leagues.length > 0 && (
-                <div className="flex flex-col">
+                <div className="flex flex-col mt-0.5 mb-1">
                   {leaguesToShow.map((league) => {
                     const isLeagueActive =
-                      selection?.sport === sport.id &&
-                      selection?.league === league.id;
-                    const lCount =
-                      leagueCounts.get(`${sport.id}:${league.id}`) ?? 0;
+                      selection?.sport === sport.id && selection?.league === league.id;
+                    const lCount = leagueCounts.get(`${sport.id}:${league.id}`) ?? 0;
+
                     return (
                       <button
                         key={league.id}
                         onClick={() => handleLeagueClick(sport.id, league.id)}
-                        className={`flex items-center justify-between pl-9 pr-3 py-2 rounded-md text-sm transition-colors ${
+                        className={`flex items-center justify-between pl-8 pr-2 py-1.5 rounded-md text-sm transition-colors ${
                           isLeagueActive
-                            ? 'text-gray-900 dark:text-white font-medium'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                            ? 'text-gray-900 dark:text-white font-semibold'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
                         }`}
                       >
-                        <span className="flex items-center gap-2 min-w-0">
+                        <span className="flex items-center gap-2 min-w-0 flex-1">
                           {league.iconUrl && (
-                            <img src={league.iconUrl} alt="" className="w-4 h-4 object-contain shrink-0 rounded-sm" />
+                            <img
+                              src={league.iconUrl}
+                              alt=""
+                              className="w-4 h-4 object-contain shrink-0 rounded-sm"
+                            />
                           )}
-                          <span className="truncate">{league.label}</span>
+                          <span className="truncate text-[13px] leading-tight">{league.label}</span>
                         </span>
-                        <span className="text-sm text-gray-400 dark:text-gray-400 ml-2">
-                          {lCount}
-                        </span>
+                        {/* Only show count when > 0 */}
+                        {lCount > 0 && (
+                          <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums ml-2 shrink-0">
+                            {lCount}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -180,14 +212,13 @@ export function MarketsSidebar({
                   {hasMoreLeagues && (
                     <button
                       onClick={() => toggleShowAllLeagues(sport.id)}
-                      className="flex items-center gap-1 pl-9 pr-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                      className="flex items-center gap-1 pl-8 pr-2 py-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                     >
                       <span>{showAll ? 'Show less' : `More ${sport.label.toLowerCase()}`}</span>
-                      {showAll ? (
-                        <ChevronUp className="w-3 h-3" />
-                      ) : (
-                        <ChevronDown className="w-3 h-3" />
-                      )}
+                      {showAll
+                        ? <ChevronUp className="w-3 h-3" />
+                        : <ChevronDown className="w-3 h-3" />
+                      }
                     </button>
                   )}
                 </div>
