@@ -3,13 +3,15 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
-// Same palettes as in utils.ts -- kept in sync
-const PALETTES = [
-  ['#F72585', '#7209B7', '#3A0CA3', '#4361EE', '#4CC9F0'],
-  ['#0B132B', '#1C2541', '#3A506B', '#5BC0BE', '#6FFFE9'],
-  ['#FF416C', '#FF4B2B', '#FF9068', '#FFB75E', '#FDC830'],
-  ['#FFC3E2', '#B8B5FF', '#789BFF', '#86E3CE', '#D0E6A5'],
-];
+// Palettes must match AVATAR_PALETTES in utils.ts exactly (same order)
+const PALETTES: Record<string, string[]> = {
+  neonSynthwave: ['#F72585', '#7209B7', '#3A0CA3', '#4361EE', '#4CC9F0'],
+  distributedGlow: ['#0B132B', '#1C2541', '#3A506B', '#5BC0BE', '#6FFFE9'],
+  marketHeatmap: ['#FF416C', '#FF4B2B', '#FF9068', '#FFB75E', '#FDC830'],
+  iridescentGlass: ['#FFC3E2', '#B8B5FF', '#789BFF', '#86E3CE', '#D0E6A5'],
+};
+
+const PALETTE_KEYS = Object.keys(PALETTES);
 
 function hashSeed(str: string): number {
   let hash = 0;
@@ -20,7 +22,8 @@ function hashSeed(str: string): number {
 }
 
 function getPaletteForSeed(seed: string): string[] {
-  return PALETTES[hashSeed(seed) % PALETTES.length];
+  const key = PALETTE_KEYS[hashSeed(seed) % PALETTE_KEYS.length];
+  return PALETTES[key];
 }
 
 export async function GET(req: NextRequest) {
@@ -125,7 +128,7 @@ function renderProfileCard(params: URLSearchParams) {
               boxShadow: `0 0 40px ${colors[0]}66, 0 0 80px ${colors[1]}33`,
             }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ color: '#ffffff', fontSize: '32px', fontWeight: 700 }}>{name}</span>
+              <span style={{ color: '#ffffff', fontSize: '32px', fontWeight: 700 }}>@{name.toLowerCase()}</span>
               <span style={{ color: pnlColor, fontSize: '28px', fontWeight: 700 }}>{pnl}</span>
             </div>
           </div>
