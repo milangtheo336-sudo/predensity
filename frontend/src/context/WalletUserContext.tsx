@@ -35,7 +35,7 @@ const WalletUserContext = createContext<WalletUserContextType | undefined>(undef
 
 const CACHE_KEY = 'wallet-user-cache';
 
-export function WalletUserProvider({ children }: { children: React.ReactNode }) {
+export function WalletUserProvider({ children }: { children: ReactNode }) {
   const [walletUser, setWalletUserState] = useState<WalletUser | null>(null);
   const [isWalletUserLoading, setIsWalletUserLoading] = useState(true);
 
