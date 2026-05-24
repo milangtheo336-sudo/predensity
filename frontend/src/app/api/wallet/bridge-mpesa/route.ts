@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { rateLimit } from '@/lib/api-auth';
 import {
   Client,
   ContractExecuteTransaction,
   ContractId,
   PrivateKey,
+  AccountId,
 } from '@hashgraph/sdk';
 import { ethers } from 'ethers';
 
 const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || '';
 const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || '';
 const HEDERA_NETWORK = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-const USDC_TOKEN_ID = '0.0.8229951'; // Hedera testnet USDC
+
+// USDC token ID
+const USDC_TOKEN_ID = HEDERA_NETWORK === 'mainnet' ? '0.0.456858' : '0.0.8229951';
 
 function getHederaClient(): Client {
   const client = HEDERA_NETWORK === 'mainnet' ? Client.forMainnet() : Client.forTestnet();
@@ -25,85 +27,74 @@ function getHederaClient(): Client {
 /**
  * POST /api/wallet/bridge-mpesa
  * 
- * Bridge USDC from treasury to user's proxy wallet after M-Pesa deposit.
+ * CUSTODIAL FIAT ON-RAMP: Transfer USDC from operator treasury to user's Magic Link wallet
  * 
- * Flow:
- * 1. User deposits KES via M-Pesa
- * 2. M-Pesa callback triggers this endpoint
- * 3. Treasury transfers USDC to user's proxy wallet (~30 seconds)
- * 4. User's wallet is credited (non-custodial)
+ * This is the ONLY custodial operation in the system - required for M-Pesa fiat deposits.
+ * User cannot sign transactions for fiat deposits, so operator must transfer on their behalf.
  * 
- * This is similar to MoonPay/Ramp - treasury acts as liquidity provider,
- * but user maintains full control of funds once bridged.
+ * After this transfer, user has full non-custodial control of the USDC.
  */
 export async function POST(request: NextRequest) {
   try {
-    const rateLimitResponse = rateLimit(request, { maxRequests: 10, windowMs: 60_000 });
-    if (rateLimitResponse) return rateLimitResponse;
-
     const body = await request.json();
     const { proxyWalletAddress, amountUSDC, mpesaReceiptNumber } = body;
 
     if (!proxyWalletAddress || !amountUSDC) {
-      return NextResponse.json({ 
-        error: 'proxyWalletAddress and amountUSDC are required' 
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: 'proxyWalletAddress and amountUSDC are required' },
+        { status: 400 }
+      );
     }
-
-    // Validate amount
-    const amount = parseFloat(amountUSDC);
-    if (isNaN(amount) || amount <= 0) {
-      return NextResponse.json({ 
-        error: 'Invalid amount' 
-      }, { status: 400 });
-    }
-
-    console.log(`[bridge-mpesa] Bridging ${amountUSDC} USDC to ${proxyWalletAddress}`);
 
     const client = getHederaClient();
     const keyHex = OPERATOR_KEY.startsWith('0x') ? OPERATOR_KEY.slice(2) : OPERATOR_KEY;
     const operatorKey = PrivateKey.fromStringECDSA(keyHex);
 
-    // Transfer USDC from treasury to user's proxy wallet
-    const transferInterface = new ethers.utils.Interface([
-      'function transfer(address to, uint256 amount) external returns (bool)',
+    // Convert USDC amount to smallest unit (6 decimals)
+    const rawAmount = BigInt(Math.floor(parseFloat(amountUSDC) * 1e6));
+
+    // ERC-20 transfer ABI
+    const transferAbi = new ethers.Interface([
+      'function transfer(address to, uint256 amount) returns (bool)',
     ]);
-    
-    const amountWei = ethers.utils.parseUnits(amountUSDC, 6); // USDC has 6 decimals
-    const transferData = transferInterface.encodeFunctionData('transfer', [
+    const transferData = transferAbi.encodeFunctionData('transfer', [
       proxyWalletAddress,
-      amountWei,
+      rawAmount,
     ]);
 
-    const tx = new ContractExecuteTransaction()
+    console.log('[bridge-mpesa] Transferring', amountUSDC, 'USDC to', proxyWalletAddress);
+
+    // Execute transfer from operator to user's Magic Link wallet
+    const transferTx = new ContractExecuteTransaction()
       .setContractId(ContractId.fromString(USDC_TOKEN_ID))
-      .setGas(200000)
-      .setFunctionParameters(Buffer.from(transferData.slice(2), 'hex'))
+      .setGas(100_000)
+      .setFunction('transfer', Buffer.from(transferData.slice(2), 'hex'))
       .freezeWith(client);
 
-    const signedTx = await tx.sign(operatorKey);
+    const signedTx = await transferTx.sign(operatorKey);
     const response = await signedTx.execute(client);
     const receipt = await response.getReceipt(client);
 
-    if (receipt.status.toString() !== 'SUCCESS') {
-      throw new Error('USDC transfer failed');
-    }
-
     client.close();
 
-    console.log(`[bridge-mpesa] Successfully bridged ${amountUSDC} USDC to ${proxyWalletAddress}`);
+    if (receipt.status.toString() !== 'SUCCESS') {
+      throw new Error(`Transfer failed: ${receipt.status.toString()}`);
+    }
+
+    console.log('[bridge-mpesa] Transfer successful:', response.transactionId.toString());
 
     return NextResponse.json({
       success: true,
-      proxyWalletAddress,
-      amountUSDC,
-      mpesaReceiptNumber,
       transactionId: response.transactionId.toString(),
+      amount: amountUSDC,
+      recipient: proxyWalletAddress,
+      mpesaReceiptNumber,
     });
   } catch (error) {
     console.error('[bridge-mpesa] Error:', error);
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Transfer failed' },
+      { status: 500 }
+    );
   }
 }
