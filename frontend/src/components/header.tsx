@@ -313,7 +313,7 @@ const SUPPORTED_TOKENS: SupportedToken[] = IS_TESTNET
     ];
 
 const SUPPORTED_CHAINS: SupportedChain[] = [
-  { id: 'arc', name: 'Arc', icon: '/chains/arc.svg', native: true },
+  { id: 'arc', name: 'Arc', icon: '/arc.jpg', native: true },
   { id: 'ethereum', name: 'Ethereum', icon: '/chains/ethereum.svg' },
   { id: 'base', name: 'Base', icon: '/chains/base.svg' },
   { id: 'arbitrum', name: 'Arbitrum', icon: '/chains/arbitrum.svg' },
@@ -420,6 +420,7 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
       <div className="flex gap-2">
         {/* Token selector */}
         <div className="relative flex-1">
+          <label className="text-[10px] uppercase tracking-wider text-gray-400 mb-1 block">Currency</label>
           <button onClick={() => { setTokenDropdownOpen(!tokenDropdownOpen); setChainDropdownOpen(false); }}
             className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10 text-sm">
             <Image src={selectedToken.icon} alt={selectedToken.name} width={20} height={20} className="rounded-full" />
@@ -444,6 +445,7 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
 
         {/* Chain selector */}
         <div className="relative flex-1">
+          <label className="text-[10px] uppercase tracking-wider text-gray-400 mb-1 block">Network</label>
           <button onClick={() => { setChainDropdownOpen(!chainDropdownOpen); setTokenDropdownOpen(false); }}
             className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10 text-sm">
             <Image src={selectedChain.icon} alt={selectedChain.name} width={20} height={20} className="rounded-full" />
@@ -487,9 +489,11 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
 
           {depositAddress ? (
             <div className="flex justify-center py-3">
-              <div className="bg-white p-3 rounded-xl">
-                <QRCodeSVG value={depositAddress} size={180} level="H" includeMargin={false}
-                  imageSettings={{ src: '/chains/arc.svg', x: undefined, y: undefined, height: 32, width: 32, excavate: true }} />
+              <div className="relative rounded-2xl p-[2px] bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-400 shadow-[0_0_20px_rgba(139,92,246,0.3),0_0_40px_rgba(59,130,246,0.15)]">
+                <div className="bg-white p-3 rounded-[14px]">
+                  <QRCodeSVG value={depositAddress} size={180} level="H" includeMargin={false}
+                    imageSettings={{ src: '/arc.jpg', x: undefined, y: undefined, height: 36, width: 36, excavate: true }} />
+                </div>
               </div>
             </div>
           ) : (
@@ -498,8 +502,12 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
             </div>
           )}
 
+          <p className="text-xs text-gray-400 text-center">Minimum <span className="font-semibold text-white">$1 USD</span></p>
+
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">Deposit Address</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs text-gray-400">Address</label>
+            </div>
             <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10">
               <span className="text-sm text-gray-900 dark:text-white font-mono truncate flex-1">
                 {loadingProxy ? 'Loading...' : (depositAddress || 'Not available')}
