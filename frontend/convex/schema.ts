@@ -244,15 +244,18 @@ export default defineSchema({
     magicEOAAddress: v.optional(v.string()), // User's Magic Link EOA (MPC wallet)
     proxyWalletAddress: v.optional(v.string()), // User's SimpleProxyWallet contract
     evmAddress: v.string(), // Proxy wallet address or legacy address
-    accountId: v.string(), // Legacy field name (kept for data compat) — stores secondary identifier
+    accountId: v.optional(v.string()), // Legacy field — optional for Arc-era rows
     usdcBalance: v.string(), // Cached balance (synced from chain)
-    nativeBalance: v.string(), // Legacy field name (kept for data compat) — stores native gas balance
+    nativeBalance: v.optional(v.string()), // Optional — Arc rows may omit this
     isActive: v.boolean(),
     createdAt: v.number(),
     lastActivity: v.number(),
     lastBalanceSync: v.optional(v.number()), // Optional for backward compatibility
-    // Legacy field (will be removed after migration)
-    encryptedPrivateKey: v.optional(v.string()), // Legacy custodial field
+    // Legacy Hedera fields — optional, kept so old rows pass schema validation
+    hbarBalance: v.optional(v.string()),
+    hederaAccountId: v.optional(v.string()),
+    // Legacy custodial field
+    encryptedPrivateKey: v.optional(v.string()),
   })
     .index("by_user_id", ["userId"])
     .index("by_email", ["email"])
