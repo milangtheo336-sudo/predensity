@@ -1968,7 +1968,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                   onClick={openDeposit}
                   className="px-4 py-1.5 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-medium text-sm transition-colors"
                 >
-                  Deposit
+                  {t.deposit}
                 </button>
 
                 {/* Notification icon */}
