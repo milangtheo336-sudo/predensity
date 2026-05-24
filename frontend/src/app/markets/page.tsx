@@ -215,7 +215,7 @@ export default function MarketsPage() {
       
       <main className={`${activeCategory === Category.SPORTS ? 'w-full md:px-0 px-4' : 'container mx-auto px-4'} py-8 flex-1 flex gap-6`}>
         {activeCategory === Category.SPORTS && (
-          <div className="hidden md:block pl-4">
+          <div className="hidden md:block pl-4 w-64 shrink-0">
             <MarketsSidebar
               markets={markets}
               selection={sidebarSelection}
@@ -244,7 +244,9 @@ export default function MarketsPage() {
                   selection={sidebarSelection}
                   onSelect={(sel) => {
                     setSidebarSelection(sel);
-                    setMobileSidebarOpen(false);
+                    // Only close when picking "All" or a specific league.
+                    // Tapping a top-level sport just expands it inline.
+                    if (!sel || sel.league) setMobileSidebarOpen(false);
                   }}
                 />
               </div>
