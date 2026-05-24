@@ -197,7 +197,7 @@ function EventResolutionSection({ category, contractId }: EventResolutionSection
   }
 
   return (
-    <Card className="bg-dark-slate/50 border-white/10">
+    <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
       <CardContent className="p-6">
         <h3 className="text-lg font-semibold text-white mb-4">Resolve Events</h3>
         <p className="text-sm text-gray-400 mb-4">
@@ -206,13 +206,13 @@ function EventResolutionSection({ category, contractId }: EventResolutionSection
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
               Select Event <span className="text-red-500">*</span>
             </label>
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+              className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
             >
               <option value="">Choose an event...</option>
               {unresolvedEvents.map((event) => (
@@ -224,7 +224,7 @@ function EventResolutionSection({ category, contractId }: EventResolutionSection
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
               Actual Value <span className="text-red-500">*</span>
             </label>
             <input
@@ -233,7 +233,7 @@ function EventResolutionSection({ category, contractId }: EventResolutionSection
               value={resolutionValue}
               onChange={(e) => setResolutionValue(e.target.value)}
               placeholder={getValuePlaceholder(category)}
-              className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+              className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
             />
             <p className="text-xs text-gray-400 mt-1">
               {getValueHint(category)}
@@ -286,7 +286,7 @@ function EventsList({ category }: EventsListProps) {
 
   if (!events) {
     return (
-      <Card className="bg-dark-slate/50 border-white/10">
+      <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
         <CardContent className="p-6">
           <div className="flex items-center justify-center py-8">
             <div className="w-8 h-8 border-2 border-predensity-purple border-t-transparent rounded-full animate-spin" />
@@ -298,7 +298,7 @@ function EventsList({ category }: EventsListProps) {
 
   if (events.length === 0) {
     return (
-      <Card className="bg-dark-slate/50 border-white/10">
+      <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
         <CardContent className="p-6">
           <div className="text-center py-8">
             <p className="text-gray-400">No events created yet</p>
@@ -310,14 +310,14 @@ function EventsList({ category }: EventsListProps) {
   }
 
   return (
-    <Card className="bg-dark-slate/50 border-white/10">
+    <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
       <CardContent className="p-6">
         <h3 className="text-lg font-semibold text-white mb-4">Recent Events</h3>
         <div className="space-y-3">
           {events.slice(0, 5).map((event) => (
             <div
               key={event._id}
-              className="p-4 bg-neutral-800/50 border border-white/10 rounded-lg hover:border-white/20 transition-colors"
+              className="p-4 bg-gray-100 dark:bg-neutral-800/50 border border-gray-200 dark:border-white/10 rounded-lg hover:border-white/20 transition-colors"
             >
               <div className="flex items-start gap-4">
                 {event.imageUrl && (
@@ -331,7 +331,7 @@ function EventsList({ category }: EventsListProps) {
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-white font-medium truncate">{event.eventName}</h4>
+                  <h4 className="text-gray-900 dark:text-white font-medium truncate">{event.eventName}</h4>
                   <p className="text-sm text-gray-400 mt-1 line-clamp-2">{event.description}</p>
                   <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                     <span>
@@ -384,7 +384,7 @@ function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: Event
       {/* Common Fields */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
             Event Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -393,12 +393,12 @@ function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: Event
             value={formData.eventName}
             onChange={(e) => updateField('eventName', e.target.value)}
             placeholder="e.g., 2024 US Presidential Election"
-            className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+            className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
             Event Date & Time <span className="text-red-500">*</span>
           </label>
           <input
@@ -406,12 +406,12 @@ function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: Event
             required
             value={formData.eventTimestamp}
             onChange={(e) => updateField('eventTimestamp', e.target.value)}
-            className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+            className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
             Image URL <span className="text-red-500">*</span>
           </label>
           <input
@@ -420,7 +420,7 @@ function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: Event
             value={formData.imageUrl}
             onChange={(e) => updateField('imageUrl', e.target.value)}
             placeholder="https://example.com/image.jpg"
-            className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+            className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
           />
           <p className="text-xs text-gray-400 mt-1">
             Recommended: 1200x630px, JPEG/PNG, max 2MB
@@ -428,7 +428,7 @@ function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: Event
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
             Description <span className="text-red-500">*</span>
           </label>
           <textarea
@@ -437,7 +437,7 @@ function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: Event
             onChange={(e) => updateField('description', e.target.value)}
             placeholder="Describe the event and what users will be predicting..."
             rows={3}
-            className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple resize-none"
+            className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple resize-none"
           />
         </div>
       </div>
@@ -448,13 +448,13 @@ function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: Event
       {category === Category.TECHNOLOGY && <TechnologyEventFields formData={formData} updateField={updateField} />}
 
       {/* Action Buttons */}
-      <div className="flex gap-3 pt-4 border-t border-white/10">
+      <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-white/10">
         <Button
           type="button"
           variant="outline"
           onClick={onCancel}
           disabled={isSubmitting}
-          className="flex-1 border-white/20 hover:bg-white/5"
+          className="flex-1 border-gray-300 dark:border-white/20 hover:bg-gray-100 dark:hover:bg-white/5"
         >
           Cancel
         </Button>
@@ -474,11 +474,11 @@ function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: Event
 // Politics Event Fields
 function PoliticsEventFields({ formData, updateField }: any) {
   return (
-    <div className="space-y-4 pt-4 border-t border-white/10">
-      <h3 className="text-sm font-semibold text-white">Politics-Specific Fields</h3>
+    <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-white/10">
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Politics-Specific Fields</h3>
       
       <div>
-        <label className="block text-sm font-medium text-white mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
           Candidate/Subject <span className="text-red-500">*</span>
         </label>
         <input
@@ -487,19 +487,19 @@ function PoliticsEventFields({ formData, updateField }: any) {
           value={formData.candidate || ''}
           onChange={(e) => updateField('candidate', e.target.value)}
           placeholder="e.g., Donald Trump"
-          className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+          className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-white mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
           Prediction Type <span className="text-red-500">*</span>
         </label>
         <select
           required
           value={formData.predictionType || ''}
           onChange={(e) => updateField('predictionType', e.target.value)}
-          className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+          className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
         >
           <option value="">Select type...</option>
           <option value="0">Vote Percentage</option>
@@ -518,12 +518,12 @@ function PoliticsEventFields({ formData, updateField }: any) {
 // Sports Event Fields
 function SportsEventFields({ formData, updateField }: any) {
   return (
-    <div className="space-y-4 pt-4 border-t border-white/10">
-      <h3 className="text-sm font-semibold text-white">Sports-Specific Fields</h3>
+    <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-white/10">
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Sports-Specific Fields</h3>
       
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
             Team 1 <span className="text-red-500">*</span>
           </label>
           <input
@@ -532,12 +532,12 @@ function SportsEventFields({ formData, updateField }: any) {
             value={formData.team1 || ''}
             onChange={(e) => updateField('team1', e.target.value)}
             placeholder="e.g., Lakers"
-            className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+            className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
             Team 2 <span className="text-red-500">*</span>
           </label>
           <input
@@ -546,13 +546,13 @@ function SportsEventFields({ formData, updateField }: any) {
             value={formData.team2 || ''}
             onChange={(e) => updateField('team2', e.target.value)}
             placeholder="e.g., Warriors"
-            className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+            className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-white mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
           Player (Optional)
         </label>
         <input
@@ -560,19 +560,19 @@ function SportsEventFields({ formData, updateField }: any) {
           value={formData.player || ''}
           onChange={(e) => updateField('player', e.target.value)}
           placeholder="e.g., LeBron James (leave empty for team predictions)"
-          className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+          className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-white mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
           Sport Type <span className="text-red-500">*</span>
         </label>
         <select
           required
           value={formData.sportType || ''}
           onChange={(e) => updateField('sportType', e.target.value)}
-          className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+          className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
         >
           <option value="">Select sport...</option>
           <option value="0">Basketball</option>
@@ -586,14 +586,14 @@ function SportsEventFields({ formData, updateField }: any) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-white mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
           Prediction Type <span className="text-red-500">*</span>
         </label>
         <select
           required
           value={formData.predictionType || ''}
           onChange={(e) => updateField('predictionType', e.target.value)}
-          className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+          className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
         >
           <option value="">Select type...</option>
           <option value="0">Final Score</option>
@@ -615,11 +615,11 @@ function SportsEventFields({ formData, updateField }: any) {
 // Technology Event Fields
 function TechnologyEventFields({ formData, updateField }: any) {
   return (
-    <div className="space-y-4 pt-4 border-t border-white/10">
-      <h3 className="text-sm font-semibold text-white">Technology-Specific Fields</h3>
+    <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-white/10">
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Technology-Specific Fields</h3>
       
       <div>
-        <label className="block text-sm font-medium text-white mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
           Company <span className="text-red-500">*</span>
         </label>
         <input
@@ -628,19 +628,19 @@ function TechnologyEventFields({ formData, updateField }: any) {
           value={formData.company || ''}
           onChange={(e) => updateField('company', e.target.value)}
           placeholder="e.g., Reddit Inc."
-          className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+          className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-white mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
           Prediction Type <span className="text-red-500">*</span>
         </label>
         <select
           required
           value={formData.predictionType || ''}
           onChange={(e) => updateField('predictionType', e.target.value)}
-          className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+          className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
         >
           <option value="">Select type...</option>
           <option value="0">IPO Valuation</option>
@@ -657,7 +657,7 @@ function TechnologyEventFields({ formData, updateField }: any) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-white mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
           Decimals <span className="text-red-500">*</span>
         </label>
         <input
@@ -667,7 +667,7 @@ function TechnologyEventFields({ formData, updateField }: any) {
           max="18"
           value={formData.decimals || '2'}
           onChange={(e) => updateField('decimals', e.target.value)}
-          className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+          className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
         />
         <p className="text-xs text-gray-400 mt-1">
           Use 2 for currency (USD), 0 for counts, 18 for large numbers
@@ -1931,11 +1931,10 @@ function AdminPage() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-black">
-        <Header />
+      <div className="min-h-screen bg-white dark:bg-black"><Header />
         <div className="flex flex-col items-center justify-center my-12 w-full space-y-2 ">
-          <h1 className="text-2xl font-semibold text-text-high-em">Loading...</h1>
-          <p className="text-text-low-em">Please wait while we check your access permissions.</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Loading...</h1>
+          <p className="text-gray-500 dark:text-gray-400">Please wait while we check your access permissions.</p>
         </div>
       </div>
     );
@@ -1943,13 +1942,12 @@ function AdminPage() {
 
   if (!isSignedIn) {
     return (
-      <div className="min-h-screen bg-black">
-        <Header />
+      <div className="min-h-screen bg-white dark:bg-black"><Header />
         <div className="flex flex-col items-center justify-center my-12 w-full space-y-2 ">
-          <h1 className="text-2xl font-semibold text-text-high-em">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
             You need to sign in to access the admin dashboard.
           </h1>
-          <p className="text-text-low-em">
+          <p className="text-gray-500 dark:text-gray-400">
             Please sign in with an account that has admin privileges.
           </p>
 
@@ -1963,12 +1961,11 @@ function AdminPage() {
 
   if (user && !isAdmin) {
     return (
-      <div className="min-h-screen bg-black">
-        <Header />
+      <div className="min-h-screen bg-white dark:bg-black"><Header />
 
         <div className="flex flex-col items-center justify-center my-12 w-full space-y-2 ">
-          <h1 className="text-2xl font-semibold text-text-high-em">Access Denied</h1>
-          <p className="text-text-low-em">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Access Denied</h1>
+          <p className="text-gray-500 dark:text-gray-400">
             You do not have permission to access the admin dashboard.
           </p>
           <Button variant="predensity" className="w-48" asChild>
@@ -1982,8 +1979,7 @@ function AdminPage() {
   // Check for wallet connection after admin check
   if (!isConnected) {
     return (
-      <div className="min-h-screen bg-black">
-        <Header />
+      <div className="min-h-screen bg-white dark:bg-black"><Header />
         <main className="container mx-auto px-4 py-8">
           <NoWalletConnectedContainer />
         </main>
@@ -1992,15 +1988,14 @@ function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
-      <Header />
+    <div className="min-h-screen bg-white dark:bg-black"><Header />
 
       <main className="container mx-auto px-4 py-8 space-y-6">
         {/* Category Selector */}
-        <Card className="bg-dark-slate/50 border-white/10">
+        <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
           <CardContent className="p-6">
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-white">Select Market Category</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Select Market Category</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Object.values(CATEGORIES)
                   .filter((cat) => cat.enabled && isCategoryDeployed(cat.id))
@@ -2011,7 +2006,7 @@ function AdminPage() {
                       className={`p-4 rounded-lg border-2 transition-all ${
                         selectedCategory === category.id
                           ? 'border-predensity-purple bg-predensity-purple/10'
-                          : 'border-white/10 hover:border-white/30'
+                          : 'border-gray-200 dark:border-white/10 hover:border-white/30'
                       }`}
                     >
                       <div className="flex flex-col items-center gap-2">
@@ -2019,24 +2014,24 @@ function AdminPage() {
                           className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold ${
                             selectedCategory === category.id
                               ? 'bg-predensity-purple text-white'
-                              : 'bg-neutral-800 text-gray-400'
+                              : 'bg-gray-100 dark:bg-neutral-800 text-gray-400'
                           }`}
                         >
                           {category.icon}
                         </div>
                         <div className="text-center">
-                          <p className="text-sm font-medium text-white">{category.name}</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{category.name}</p>
                           <p className="text-xs text-gray-400">{category.description}</p>
                         </div>
                       </div>
                     </button>
                   ))}
               </div>
-              <div className="pt-4 border-t border-white/10">
-                <p className="text-sm text-gray-400">
-                  Selected: <span className="text-white font-medium">{CATEGORIES[selectedCategory].name}</span>
+              <div className="pt-4 border-t border-gray-200 dark:border-white/10">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Selected: <span className="text-gray-900 dark:text-white font-medium">{CATEGORIES[selectedCategory].name}</span>
                   {' | '}
-                  Contract ID: <span className="text-white font-mono text-xs">{currentContractId}</span>
+                  Contract ID: <span className="text-gray-900 dark:text-white font-mono text-xs">{currentContractId}</span>
                 </p>
               </div>
             </div>
@@ -2044,17 +2039,17 @@ function AdminPage() {
         </Card>
 
         {/* Protocol Fees */}
-        <Card className="bg-dark-slate/50 border-white/10">
+        <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-semibold text-white">Protocol Fees</h2>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Protocol Fees</h2>
                 <p className="text-sm text-gray-400 mt-1">Collected entry and exit fees across all contracts</p>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                className="border-white/20 hover:bg-white/5"
+                className="border-gray-300 dark:border-white/20 hover:bg-gray-100 dark:hover:bg-white/5"
                 onClick={fetchFeeData}
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
@@ -2068,12 +2063,12 @@ function AdminPage() {
                   const info = feeData[cat.id];
                   const feesNum = info ? parseFloat(info.fees) : 0;
                   return (
-                    <div key={cat.id} className="p-4 bg-neutral-900 rounded-lg border border-white/[0.06]">
+                    <div key={cat.id} className="p-4 bg-gray-100 dark:bg-neutral-900 rounded-lg border border-white/[0.06]">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="w-8 h-8 rounded-full bg-predensity-purple/20 flex items-center justify-center text-sm font-bold text-predensity-purple">
                           {cat.icon}
                         </div>
-                        <span className="text-sm font-medium text-white">{cat.name}</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">{cat.name}</span>
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
@@ -2101,11 +2096,11 @@ function AdminPage() {
 
         {/* Crypto Market Management - Only for Crypto Category */}
         {selectedCategory === Category.CRYPTO && (
-          <Card className="bg-dark-slate/50 border-white/10">
+          <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Crypto Market Management</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Crypto Market Management</h2>
                   <p className="text-sm text-gray-400 mt-1">
                     Create new crypto token markets (BTC, ETH, SOL, etc.)
                   </p>
@@ -2127,11 +2122,11 @@ function AdminPage() {
 
         {/* Event Creation Section - Only for Politics, Sports, Technology */}
         {selectedCategory !== Category.CRYPTO && (
-          <Card className="bg-dark-slate/50 border-white/10">
+          <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Event Management</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Event Management</h2>
                   <p className="text-sm text-gray-400 mt-1">
                     Create events for users to place bets on
                   </p>
@@ -2162,14 +2157,14 @@ function AdminPage() {
         )}
 
         {/* Controls Card */}
-        <Card className="bg-dark-slate/50 border-white/10">
+        <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               {/* Bucket Navigation */}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-predensity-purple" />
-                  <h2 className="text-lg font-semibold text-white">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                     {CATEGORIES[selectedCategory].name} - Bet Resolution by Bucket
                   </h2>
                 </div>
@@ -2183,7 +2178,7 @@ function AdminPage() {
                     id="bucket-filter"
                     value={selectedBucket}
                     onChange={(e) => setSelectedBucket(e.target.value)}
-                    className="px-3 py-1.5 bg-neutral-800 border border-white/20 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+                    className="px-3 py-1.5 bg-gray-100 dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
                   >
                     <option value="all">All Buckets</option>
                     {availableBuckets.map((bucket: string) => {
@@ -2204,12 +2199,12 @@ function AdminPage() {
                   <div className="flex items-center gap-3 text-sm">
                     <span className="text-gray-400">
                       {selectedBucket === 'all' ? 'Total' : 'Filtered'} bets:
-                      <span className="text-white font-medium ml-1">{filteredBets.length}</span>
+                      <span className="text-gray-900 dark:text-white font-medium ml-1">{filteredBets.length}</span>
                     </span>
                     <div className="w-px h-4 bg-gray-600" />
                     <span className="text-gray-400">
                       Unique times:{' '}
-                      <span className="text-white font-medium">
+                      <span className="text-gray-900 dark:text-white font-medium">
                         {
                           Array.from(new Set(filteredBets.map((b: Bet) => b.targetTimestamp)))
                             .length
@@ -2222,7 +2217,7 @@ function AdminPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-white/20 hover:bg-white/5"
+                  className="border-gray-300 dark:border-white/20 hover:bg-gray-100 dark:hover:bg-white/5"
                   onClick={() => refetch()}
                   disabled={loading}
                 >
@@ -2233,7 +2228,7 @@ function AdminPage() {
             </div>
 
             {/* Selected Bucket Display */}
-            <div className="mt-4 pt-4 border-t border-white/10">
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
               <p className="text-sm text-gray-400">
                 {selectedBucket === 'all'
                   ? 'Showing all incomplete bets across all buckets'
@@ -2290,7 +2285,7 @@ function AdminPage() {
                     <tr>
                       <td colSpan={8} className="text-center py-12">
                         <div className="flex flex-col items-center space-y-3">
-                          <div className="w-16 h-16 bg-neutral-800 rounded-full flex items-center justify-center">
+                          <div className="w-16 h-16 bg-gray-100 dark:bg-neutral-800 rounded-full flex items-center justify-center">
                             <svg
                               className="w-8 h-8 text-medium-gray"
                               fill="none"
@@ -2306,7 +2301,7 @@ function AdminPage() {
                             </svg>
                           </div>
                           <div className="space-y-1">
-                            <p className="text-white font-medium">No bets found</p>
+                            <p className="text-gray-900 dark:text-white font-medium">No bets found</p>
                             <p className="text-medium-gray text-sm">
                               {selectedBucket === 'all'
                                 ? 'No incomplete bets found in any buckets'
@@ -2362,7 +2357,7 @@ function AdminPage() {
                         finalPrice !== null && finalPrice >= rangeMin && finalPrice <= rangeMax;
 
                       return (
-                        <tr key={bet.id} className="border-b border-white/5 hover:bg-dark-slate/50">
+                        <tr key={bet.id} className="border-b border-white/5 hover:bg-white dark:bg-neutral-950/50">
                           <td className="py-3 px-4 text-sm text-light-gray font-mono">{bet.id}</td>
                           <td className="py-3 px-4 text-sm text-light-gray">
                             {formatTinybarsToHbar(bet.stake)} {getStakingCurrency().symbol}
@@ -2448,7 +2443,7 @@ function AdminPage() {
               </div>
             )}
             {filteredBets && filteredBets.length > 0 && selectedCategory !== Category.CRYPTO && (
-              <div className="mt-4 p-3 bg-neutral-800/50 rounded border border-white/10">
+              <div className="mt-4 p-3 bg-gray-100 dark:bg-neutral-800/50 rounded border border-white/10">
                 <p className="text-sm text-gray-400">
                   {CATEGORIES[selectedCategory].name} bets are resolved via the Event Resolution section above.
                   Submit the actual result for the event to trigger bet settlement.
@@ -2462,9 +2457,9 @@ function AdminPage() {
       {/* Event Creation Modal */}
       {showEventModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-slate border border-white/10 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-white/10 flex items-center justify-between sticky top-0 bg-dark-slate">
-              <h2 className="text-xl font-semibold text-white">
+          <div className="bg-white dark:bg-neutral-950 border border-gray-200 dark:border-white/10 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-white/10 flex items-center justify-between sticky top-0 bg-white dark:bg-neutral-950">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Create {CATEGORIES[selectedCategory].name} Event
               </h2>
               <button
@@ -2492,9 +2487,9 @@ function AdminPage() {
       {/* Crypto Market Creation Modal */}
       {showCryptoMarketModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-slate border border-white/10 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-white/10 flex items-center justify-between sticky top-0 bg-dark-slate">
-              <h2 className="text-xl font-semibold text-white">
+          <div className="bg-white dark:bg-neutral-950 border border-gray-200 dark:border-white/10 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-white/10 flex items-center justify-between sticky top-0 bg-white dark:bg-neutral-950">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Create Crypto Market
               </h2>
               <button
@@ -2509,7 +2504,7 @@ function AdminPage() {
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Token Symbol (e.g., BTC, ETH, SOL)
                 </label>
                 <input
@@ -2520,12 +2515,12 @@ function AdminPage() {
                     tokenSymbol: e.target.value.toUpperCase()
                   })}
                   placeholder="BTC"
-                  className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+                  className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Token Name (e.g., Bitcoin, Ethereum)
                 </label>
                 <input
@@ -2536,12 +2531,12 @@ function AdminPage() {
                     tokenName: e.target.value
                   })}
                   placeholder="Bitcoin"
-                  className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+                  className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Price Decimals (usually 8)
                 </label>
                 <input
@@ -2551,7 +2546,7 @@ function AdminPage() {
                     ...cryptoMarketForm,
                     priceDecimals: parseInt(e.target.value) || 8
                   })}
-                  className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+                  className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
                 />
                 <p className="text-xs text-gray-400 mt-1">
                   Number of decimal places for price (8 for most cryptocurrencies)
@@ -2559,7 +2554,7 @@ function AdminPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Image URL (token logo)
                 </label>
                 <input
@@ -2570,7 +2565,7 @@ function AdminPage() {
                     imageUrl: e.target.value
                   })}
                   placeholder="https://i.ibb.co/..."
-                  className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+                  className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
                 />
                 <p className="text-xs text-gray-400 mt-1">
                   Direct image URL (use ImgBB format: https://i.ibb.co/...)
@@ -2578,7 +2573,7 @@ function AdminPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Description
                 </label>
                 <input
@@ -2589,7 +2584,7 @@ function AdminPage() {
                     description: e.target.value
                   })}
                   placeholder="Predict BTC token price in USD"
-                  className="w-full px-4 py-2 bg-neutral-800 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
+                  className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-predensity-purple"
                 />
               </div>
 
