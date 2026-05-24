@@ -281,7 +281,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
         } catch { /* ignore storage errors */ }
       }
 
-      setWalletUser({ publicAddress: normalizedAddress, hederaAccountId: normalizedAddress, walletType, userId });
+      setWalletUser({ publicAddress: normalizedAddress, accountId: normalizedAddress, walletType, userId });
       if (isNewUser) sessionStorage.setItem('predensity-new-user', 'true');
 
       if (isNewUser) router.push('/onboarding');
