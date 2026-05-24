@@ -12,6 +12,7 @@ import { useWallet, useAccountId } from '@buidlerlabs/hashgraph-react-wallets';
 import { User, Shield, Bell, Copy, Check, Trash2, Camera } from 'lucide-react';
 import Avatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
+import { PageSkeleton } from '@/components/page-skeleton';
 
 type Tab = 'profile' | 'account' | 'notifications';
 
@@ -23,14 +24,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
 
   if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container mx-auto px-4 py-12 text-center text-muted-foreground">
-          Loading...
-        </div>
-      </div>
-    );
+    return <PageSkeleton rows={4} />;
   }
 
   if (!isSignedIn) {
