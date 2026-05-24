@@ -19,14 +19,16 @@ import {
   ContractFunctionParameters,
   ContractId,
 } from '@hashgraph/sdk';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../../../convex/_generated/api';
 
 const PROXY_WALLET_ABI = [
-  'function executeBetWithSignature(address predictionContract, uint256 betAmount, bytes calldata betData, bytes32 messageHash, bytes calldata signature) external returns (bytes memory)',
+  'function executeBetWithSignature(address predictionContract, uint256 betAmount, bytes calldata betData, string calldata message, bytes calldata signature) external returns (bytes memory)',
   'function owner() external view returns (address)',
 ];
 
 const PREDICTION_MARKET_ABI = [
-  'function placeBetWithToken(uint256 targetTimestamp, uint256 priceMin, uint256 priceMax, uint256 tokenAmount) external returns (uint256)',
+  'function placeBetWithPreTransferredToken(address bettor, uint256 targetTimestamp, uint256 priceMin, uint256 priceMax, uint256 tokenAmount) external returns (uint256)',
 ];
 
 export async function POST(request: NextRequest) {
@@ -128,13 +130,14 @@ export async function POST(request: NextRequest) {
 
     console.log('[proxy-place-bet] Using contract:', predictionContract);
 
-    // 5. Encode bet transaction
+    // 5. Encode bet transaction using placeBetWithPreTransferredToken
     const tokenAmount = ethers.utils.parseUnits(stakeUsdc, 6); // 6 decimals for USDC
     const priceMinBN = ethers.utils.parseUnits(priceMin, 8); // 8 decimals for crypto prices
     const priceMaxBN = ethers.utils.parseUnits(priceMax, 8);
 
     const predictionMarketInterface = new ethers.utils.Interface(PREDICTION_MARKET_ABI);
-    const betData = predictionMarketInterface.encodeFunctionData('placeBetWithToken', [
+    const betData = predictionMarketInterface.encodeFunctionData('placeBetWithPreTransferredToken', [
+      proxyWalletAddress, // bettor address (proxy wallet)
       targetTimestamp,
       priceMinBN,
       priceMaxBN,
@@ -149,21 +152,25 @@ export async function POST(request: NextRequest) {
     
     const client = Client.forTestnet();
     client.setOperator(operatorId, operatorKey);
-
-    // Create message hash for signature verification
-    const messageHash = ethers.utils.id(message);
     
-    // Encode executeBetWithSignature call
+    // Encode executeBetWithSignature call using Hedera SDK format
     const proxyWalletInterface = new ethers.utils.Interface(PROXY_WALLET_ABI);
     const executeBetData = proxyWalletInterface.encodeFunctionData('executeBetWithSignature', [
       predictionContract,
       tokenAmount,
       betData,
-      messageHash,
+      message, // Pass original message string, not hash
       signature,
     ]);
 
     console.log('[proxy-place-bet] Encoded function call with signature verification');
+    console.log('[proxy-place-bet] Bet parameters:', {
+      predictionContract,
+      tokenAmount: tokenAmount.toString(),
+      betDataLength: betData.length,
+      message,
+      signatureLength: signature.length,
+    });
 
     // Get contract ID from EVM address (query mirror node)
     console.log('[proxy-place-bet] Querying mirror node for proxy wallet contract ID...');
@@ -228,8 +235,32 @@ export async function POST(request: NextRequest) {
 
     client.close();
 
-    // 7. Record bet in database
-    // TODO: Add database recording logic here
+    // 7. Record bet in Convex database
+    try {
+      const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+      
+      // Generate unique bet ID
+      const betId = `${proxyWalletAddress}-${Date.now()}`;
+      
+      await convex.mutation(api.sync.createBet, {
+        betId,
+        marketId: predictionContract.toLowerCase(),
+        userAddress: `managed:${userId}`.toLowerCase(), // Use managed: prefix for Magic Link users
+        category,
+        stake: tokenAmount.toString(),
+        priceMin,
+        priceMax,
+        targetTimestamp,
+        asset,
+        transactionHash: tx.transactionId.toString(),
+      });
+      
+      console.log('[proxy-place-bet] Bet recorded in Convex:', betId);
+    } catch (convexError: any) {
+      console.error('[proxy-place-bet] Failed to record bet in Convex:', convexError);
+      // Don't fail the whole request if Convex recording fails
+      // The bet is already on-chain, sync will pick it up later
+    }
 
     return NextResponse.json({
       success: true,
@@ -239,8 +270,29 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('[proxy-place-bet] Error:', error);
+    
+    // Sanitize error message for user
+    let userMessage = 'Failed to place trade. Please try again.';
+    
+    if (error.message) {
+      if (error.message.includes('Invalid signature')) {
+        userMessage = 'Signature verification failed. Please try signing again.';
+      } else if (error.message.includes('Insufficient')) {
+        userMessage = error.message; // Keep balance errors as-is
+      } else if (error.message.includes('not owner')) {
+        userMessage = 'Wallet verification failed. Please try again.';
+      } else if (error.message.includes('User denied')) {
+        userMessage = 'You cancelled the signature request.';
+      } else if (error.message.includes('CONTRACT_REVERT')) {
+        userMessage = 'Transaction failed. Please check your balance and try again.';
+      } else if (error.message.length < 200 && !error.message.includes('at ') && !error.message.includes('stack')) {
+        // Use original message if it's short and doesn't contain stack traces
+        userMessage = error.message;
+      }
+    }
+    
     return NextResponse.json(
-      { error: error.message || 'Failed to place bet' },
+      { error: userMessage },
       { status: 500 }
     );
   }
