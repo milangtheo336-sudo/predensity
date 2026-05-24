@@ -237,8 +237,46 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       // We'll handle this when user first tries to deposit
       console.log('[auth] Wallet created successfully. Token will be associated on first deposit.');
 
+      // Step 7: CRITICAL - Create proxy wallet BEFORE allowing user to proceed
+      // User deposits to proxy wallet, so it MUST exist before they can deposit
+      console.log('[auth] CRITICAL: Creating proxy wallet (required for deposits)...');
+      
+      const proxyResponse = await fetch('/api/proxy-wallet/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userAddress: currentUser.publicAddress }),
+      });
+
+      const proxyData = await proxyResponse.json();
+
+      if (!proxyResponse.ok) {
+        throw new Error(`Failed to create proxy wallet: ${proxyData.error || 'Unknown error'}`);
+      }
+
+      if (proxyData.alreadyExists) {
+        console.log('[auth] Proxy wallet already exists:', proxyData.proxyWalletAddress);
+      } else {
+        console.log('[auth] Proxy wallet created successfully:', proxyData.proxyWalletAddress);
+        
+        // If address not immediately available, wait for it
+        if (!proxyData.proxyWalletAddress) {
+          console.log('[auth] Waiting for proxy wallet address to be available...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          // Verify it was created
+          const verifyResponse = await fetch(`/api/proxy-wallet/create?userAddress=${currentUser.publicAddress}`);
+          const verifyData = await verifyResponse.json();
+          
+          if (!verifyData.exists || !verifyData.proxyWalletAddress) {
+            throw new Error('Proxy wallet created but address not available. Please try logging in again.');
+          }
+          
+          console.log('[auth] Proxy wallet address confirmed:', verifyData.proxyWalletAddress);
+        }
+      }
+
       // Success - close modal
-      console.log('[auth] Login successful, closing modal');
+      console.log('[auth] Login successful with proxy wallet ready, closing modal');
       onClose();
     } catch (err) {
       console.error('[auth] Error:', err);
