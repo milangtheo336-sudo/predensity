@@ -591,6 +591,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
             require(prices[i] > 0, "Price must be positive");
             require(bytes(assets[i]).length > 0, "Asset required");
             pricesAtTimestamp[assets[i]][timestamps[i]] = prices[i];
+            priceSetAt[assets[i]][timestamps[i]] = block.timestamp;
             emit BucketPriceSet(timestamps[i], prices[i]);
             emit AssetPriceResolved(assets[i], timestamps[i], prices[i]);
         }
