@@ -78,7 +78,7 @@ function buildMarkets(
         return true;
       })
       .map((match) => ({
-        id: match._id,
+        id: match.matchId,
         category: Category.SPORTS,
         question: match.gameTitle || `${match.playerA} vs ${match.playerB}`,
         description: match.gameTagline || `${match.gameMode || ''} on ${match.platform || ''}`,
