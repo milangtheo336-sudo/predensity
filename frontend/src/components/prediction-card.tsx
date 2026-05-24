@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Image from 'next/image';
-import { Minus, Plus, AlertTriangle, Clock, ArrowLeft, ChevronDown, ChevronUp, ExternalLink, Share2, Twitter, Link2, Check as CheckIcon } from 'lucide-react';
+import { Minus, Plus, AlertTriangle, Clock, ArrowLeft, ChevronDown, ChevronUp, ExternalLink, Share2, Twitter, Link2, Check as CheckIcon, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KDEChart } from '@/components/kde-chart';
 import { PriceRangeSelector } from '@/components/price-range-selector';
@@ -21,9 +21,11 @@ import {
   useWallet,
 } from '@buidlerlabs/hashgraph-react-wallets';
 
-import { useQuery as useConvexQuery } from 'convex/react';
+import { useQuery as useConvexQuery, useMutation } from 'convex/react';
 import { useUser } from '@clerk/nextjs';
 import { api } from '../../convex/_generated/api';
+import BoringAvatar from 'boring-avatars';
+import { getAvatarPalette } from '@/lib/utils';
 
 interface PredictionCardProps {
   className?: string;
@@ -158,26 +160,12 @@ function addrToGradient(addr: string): string {
   return `linear-gradient(135deg, hsl(${h1},70%,55%), hsl(${h2},60%,45%))`;
 }
 
-function UserAvatar({ addr, avatar, size = 28 }: { addr: string; avatar?: string; size?: number }) {
-  const initials = addr.startsWith('managed:')
-    ? addr.slice(8, 10).toUpperCase()
-    : addr.slice(2, 4).toUpperCase();
-  if (avatar) {
-    return (
-      <img
-        src={avatar}
-        alt=""
-        className="rounded-full object-cover flex-shrink-0"
-        style={{ width: size, height: size }}
-      />
-    );
-  }
+function UserAvatar({ addr, size = 28 }: { addr: string; avatar?: string; size?: number }) {
+  // Normalize seed: strip "managed:" prefix so it matches the Clerk userId used elsewhere
+  const seed = addr.startsWith('managed:') ? addr.slice(8) : addr;
   return (
-    <div
-      className="rounded-full flex items-center justify-center flex-shrink-0 text-white font-semibold"
-      style={{ width: size, height: size, background: addrToGradient(addr), fontSize: size * 0.36 }}
-    >
-      {initials}
+    <div className="rounded-full overflow-hidden flex-shrink-0 bg-[#0a0a0c]" style={{ width: size, height: size }}>
+      <BoringAvatar size={size} name={seed} variant="marble" colors={getAvatarPalette(seed)} square={false} />
     </div>
   );
 }
@@ -191,9 +179,35 @@ function CryptoActivitySection({
   contractAddress: string;
   tokenSymbol: string;
 }) {
-  const [activeTab, setActiveTab] = useState<'activity' | 'positions'>('activity');
+  const [activeTab, setActiveTab] = useState<'ideas' | 'positions' | 'activity'>('ideas');
   const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
   const hashscanBase = hederaNetwork === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
+
+  const { user, isSignedIn } = useUser();
+
+  // Ideas (comments)
+  const marketIdForComments = `crypto-${tokenSymbol.toLowerCase()}`;
+  const comments = useConvexQuery(api.social.getMarketComments, { marketId: marketIdForComments });
+  const addCommentMutation = useMutation(api.social.addComment);
+  const likeCommentMutation = useMutation(api.social.likeComment);
+  const [newComment, setNewComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+
+  const handleSubmitComment = async () => {
+    if (!newComment.trim() || !isSignedIn || !user) return;
+    setSubmittingComment(true);
+    try {
+      await addCommentMutation({
+        marketId: marketIdForComments,
+        userAddress: `managed:${user.id}`.toLowerCase(),
+        content: newComment.trim(),
+      });
+      setNewComment('');
+    } catch { /* ignore */ }
+    setSubmittingComment(false);
+  };
 
   // Convex bets for this contract
   const convexBets = useConvexQuery(api.sync.getBetsByMarket, { marketId: contractAddress.toLowerCase() });
@@ -235,15 +249,27 @@ function CryptoActivitySection({
 
   const formatTimeAgo = (ts: number) => {
     const diff = Date.now() - ts;
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'just now';
+    const secs = Math.floor(diff / 1000);
+    if (secs < 5) return 'just now';
+    if (secs < 60) return `${secs}s ago`;
+    const mins = Math.floor(secs / 60);
     if (mins < 60) return `${mins}m ago`;
     const hours = Math.floor(mins / 60);
     if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    const months = Math.floor(days / 30);
+    return `${months}mo ago`;
   };
 
-  const truncateAddr = (addr: string) => addr.length <= 12 ? addr : addr.slice(0, 6) + '...' + addr.slice(-4);
+  const truncateAddr = (addr: string) => {
+    if (addr.startsWith('managed:')) {
+      // For managed users, show a cleaner format
+      const id = addr.slice(8);
+      return id.length <= 12 ? id : id.slice(0, 8) + '...';
+    }
+    return addr.length <= 12 ? addr : addr.slice(0, 6) + '...' + addr.slice(-4);
+  };
 
   const positions = useMemo(() => {
     const map = new Map<string, { totalStake: number; betCount: number; active: number }>();
@@ -260,7 +286,8 @@ function CryptoActivitySection({
       .sort((a, b) => b.totalStake - a.totalStake);
   }, [allBets]);
 
-  const tabs: Array<{ key: 'activity' | 'positions'; label: string; count?: number }> = [
+  const tabs: Array<{ key: 'ideas' | 'positions' | 'activity'; label: string; count?: number }> = [
+    { key: 'ideas', label: 'Ideas', count: comments?.length },
     { key: 'positions', label: 'Positions', count: positions.length },
     { key: 'activity', label: 'Activity' },
   ];
@@ -278,13 +305,165 @@ function CryptoActivitySection({
                 : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
             }`}
           >
-            {tab.label}{tab.count !== undefined ? ` (${tab.count})` : ''}
+            {tab.label}{tab.count !== undefined && tab.count > 0 ? ` (${tab.count})` : ''}
             {activeTab === tab.key && (
               <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 dark:bg-white rounded-full" />
             )}
           </button>
         ))}
       </div>
+
+      {/* Ideas tab */}
+      {activeTab === 'ideas' && (
+        <div className="pt-4">
+          {/* Comment input */}
+          <div className="mb-4">
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmitComment()}
+                placeholder="What's your prediction?"
+                className="flex-1 bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.06] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+                disabled={!isSignedIn || submittingComment}
+              />
+              <button
+                onClick={handleSubmitComment}
+                disabled={!newComment.trim() || !isSignedIn || submittingComment}
+                className="px-4 py-2 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white text-sm font-medium disabled:opacity-40 transition-colors"
+              >
+                Post
+              </button>
+            </div>
+            {!isSignedIn && (
+              <p className="text-xs text-gray-400 mt-1.5">Sign in to share your prediction</p>
+            )}
+          </div>
+
+          {/* Comments list */}
+          {!comments || comments.length === 0 ? (
+            <div className="py-8 text-center text-sm text-gray-500">No ideas yet. Be the first one to comment.</div>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-white/[0.04]">
+              {comments.filter((c: any) => !c.parentId).map((comment: any) => {
+                const prof = profiles[comment.userAddress];
+                const displayName = prof?.displayName || truncateAddr(comment.userAddress);
+                const userPos = positions.find(p => p.addr === comment.userAddress);
+                const replies = comments.filter((c: any) => c.parentId === comment._id);
+                return (
+                  <div key={comment._id} className="py-3">
+                    <div className="flex items-start gap-3">
+                      <UserAvatar addr={comment.userAddress} size={28} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm text-gray-900 dark:text-white" style={{ fontWeight: 521 }}>{displayName}</span>
+                          <span className="text-xs text-gray-400">{formatTimeAgo(comment.timestamp)}</span>
+                          {userPos && userPos.active > 0 ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 font-medium">
+                              {userPos.totalStake.toFixed(2)} {getStakingCurrency().symbol}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-500/10 text-gray-400 font-medium">
+                              No Position
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-neutral-300 mt-1" style={{ fontWeight: 300 }}>
+                          {comment.content.split(/(@\S+)/g).map((part: string, i: number) =>
+                            part.startsWith('@') ? (
+                              <span key={i} className="text-vibrant-purple font-medium">{part}</span>
+                            ) : (
+                              <span key={i}>{part}</span>
+                            )
+                          )}
+                        </p>
+                        <div className="flex items-center gap-4 mt-1.5">
+                          {(() => {
+                            const currentAddr = isSignedIn && user ? `managed:${user.id}`.toLowerCase() : '';
+                            const hasLiked = (comment.likedBy || []).includes(currentAddr);
+                            return (
+                              <button
+                                onClick={() => {
+                                  if (!isSignedIn || !user) return;
+                                  likeCommentMutation({ commentId: comment._id, userAddress: currentAddr });
+                                }}
+                                className={`flex items-center gap-1 transition-colors ${hasLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                              >
+                                <Heart className={`w-3.5 h-3.5 ${hasLiked ? 'fill-red-500' : ''}`} />
+                                {comment.likes > 0 && <span className="text-xs">{comment.likes}</span>}
+                              </button>
+                            );
+                          })()}
+                          <button
+                            onClick={() => setReplyingTo(replyingTo === comment._id ? null : comment._id)}
+                            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                          >
+                            Reply
+                          </button>
+                        </div>
+
+                        {/* Reply input */}
+                        {replyingTo === comment._id && (
+                          <div className="flex gap-2 mt-2">
+                            <input
+                              type="text"
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && replyText.trim()) {
+                                  addCommentMutation({
+                                    marketId: marketIdForComments,
+                                    userAddress: `managed:${user?.id}`.toLowerCase(),
+                                    content: replyText.trim(),
+                                    parentId: comment._id,
+                                  }).then(() => { setReplyText(''); setReplyingTo(null); });
+                                }
+                              }}
+                              placeholder="Write a reply..."
+                              className="flex-1 bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.06] rounded-lg px-3 py-1.5 text-xs text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+                            />
+                          </div>
+                        )}
+
+                        {/* Replies */}
+                        {replies.length > 0 && (
+                          <div className="mt-2 ml-2 pl-3 border-l border-gray-200 dark:border-white/[0.06] space-y-2">
+                            {replies.map((reply: any) => {
+                              const rProf = profiles[reply.userAddress];
+                              const rName = rProf?.displayName || truncateAddr(reply.userAddress);
+                              return (
+                                <div key={reply._id} className="flex items-start gap-2">
+                                  <UserAvatar addr={reply.userAddress} size={20} />
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs text-gray-900 dark:text-white" style={{ fontWeight: 521 }}>{rName}</span>
+                                      <span className="text-[10px] text-gray-400">{formatTimeAgo(reply.timestamp)}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-600 dark:text-neutral-400" style={{ fontWeight: 300 }}>
+                                      {reply.content.split(/(@\S+)/g).map((part: string, i: number) =>
+                                        part.startsWith('@') ? (
+                                          <span key={i} className="text-vibrant-purple font-medium">{part}</span>
+                                        ) : (
+                                          <span key={i}>{part}</span>
+                                        )
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {activeTab === 'activity' && (
         <div className="pt-2">
@@ -304,7 +483,7 @@ function CryptoActivitySection({
                     <div key={bet.id} className="py-3 flex items-center justify-between text-sm">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="relative flex-shrink-0">
-                          <UserAvatar addr={bet.userAddress} avatar={prof?.avatar} size={28} />
+                          <UserAvatar addr={bet.userAddress} size={28} />
                           <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-neutral-950 ${bet.finalized ? 'bg-gray-400' : 'bg-bright-green'}`} />
                         </div>
                         <div className="min-w-0">
@@ -312,7 +491,7 @@ function CryptoActivitySection({
                             <span className="text-gray-900 dark:text-light-gray font-medium">{stakeFormatted} {getStakingCurrency().symbol}</span>
                             <span className="text-gray-400 text-xs">{bet.finalized ? 'Settled' : 'Active'}</span>
                           </div>
-                          <span className="text-xs text-gray-500 truncate block">{prof?.displayName || truncateAddr(bet.userAddress)}</span>
+                          <span className="text-xs text-gray-500 truncate block" style={{ fontWeight: 521 }}>{prof?.displayName || truncateAddr(bet.userAddress)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -348,9 +527,9 @@ function CryptoActivitySection({
                 return (
                   <div key={pos.addr} className="py-3 flex items-center justify-between text-sm">
                     <div className="flex items-center gap-3 min-w-0">
-                      <UserAvatar addr={pos.addr} avatar={prof?.avatar} size={28} />
+                      <UserAvatar addr={pos.addr} size={28} />
                       <div className="min-w-0">
-                        <span className="text-gray-900 dark:text-light-gray font-medium block truncate">{prof?.displayName || truncateAddr(pos.addr)}</span>
+                        <span className="text-gray-900 dark:text-light-gray block truncate" style={{ fontWeight: 521 }}>{prof?.displayName || truncateAddr(pos.addr)}</span>
                         <span className="text-xs text-gray-500">{pos.betCount} bet{pos.betCount !== 1 ? 's' : ''} -- {pos.active} active</span>
                       </div>
                     </div>
