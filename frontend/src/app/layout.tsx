@@ -8,6 +8,7 @@ import { SupportChat } from '@/components/support-chat';
 import ContextProvider from '../../context';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { MagicProvider } from '@/context/MagicContext';
+import { WalletUserProvider } from '@/context/WalletUserContext';
 import { Analytics } from '@vercel/analytics/react';
 import { useEffect } from 'react';
 
@@ -100,6 +101,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <MagicProvider>
+          <WalletUserProvider>
           <ConvexProvider client={convex}>
               <ContextProvider>
                 <ThemeProvider
@@ -115,6 +117,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </ThemeProvider>
               </ContextProvider>
           </ConvexProvider>
+          </WalletUserProvider>
         </MagicProvider>
       </body>
     </html>
