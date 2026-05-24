@@ -286,6 +286,8 @@ async function matchOrders(ctx: any, marketId: string, outcomeIndex: number) {
       quantity: fillQty,
       usdcAmount,
       settledOnChain: false,
+      settlementStatus: "pending",
+      settlementRetries: 0,
       createdAt: Date.now(),
     });
 
@@ -665,6 +667,167 @@ export const markTradeSettled = mutation({
     await ctx.db.patch(trade._id, {
       settledOnChain: true,
       settlementTxHash: args.txHash,
+      settlementStatus: "settled",
     });
+  },
+});
+
+// Mark a trade as failed after exhausting retries
+export const markTradeSettlementFailed = mutation({
+  args: {
+    tradeId: v.string(),
+    retries: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const trade = await ctx.db
+      .query("clobTrades")
+      .filter((q) => q.eq(q.field("tradeId"), args.tradeId))
+      .first();
+    if (!trade) throw new Error("Trade not found");
+    await ctx.db.patch(trade._id, {
+      settlementStatus: "settlement_failed",
+      settlementRetries: args.retries,
+      lastRetryAt: Date.now(),
+    });
+  },
+});
+
+// Increment retry count on a trade
+export const incrementTradeRetry = mutation({
+  args: { tradeId: v.string() },
+  handler: async (ctx, args) => {
+    const trade = await ctx.db
+      .query("clobTrades")
+      .filter((q) => q.eq(q.field("tradeId"), args.tradeId))
+      .first();
+    if (!trade) throw new Error("Trade not found");
+    await ctx.db.patch(trade._id, {
+      settlementRetries: (trade.settlementRetries ?? 0) + 1,
+      lastRetryAt: Date.now(),
+    });
+  },
+});
+
+// Get settlement status for trades involving a user in a market
+export const getUserTradeSettlementStatus = query({
+  args: { userId: v.string(), marketId: v.string() },
+  handler: async (ctx, args) => {
+    const buyTrades = await ctx.db
+      .query("clobTrades")
+      .withIndex("by_buyer", (q) => q.eq("buyerUserId", args.userId))
+      .collect();
+    const sellTrades = await ctx.db
+      .query("clobTrades")
+      .withIndex("by_seller", (q) => q.eq("sellerUserId", args.userId))
+      .collect();
+    const all = [...buyTrades, ...sellTrades].filter((t) => t.marketId === args.marketId);
+    return all.map((t) => ({
+      tradeId: t.tradeId,
+      settlementStatus: t.settlementStatus ?? (t.settledOnChain ? "settled" : "pending"),
+      settlementTxHash: t.settlementTxHash,
+      settlementRetries: t.settlementRetries ?? 0,
+      createdAt: t.createdAt,
+    }));
+  },
+});
+
+// =========================================================================
+// PROGRESSIVE RESOLUTION (Eliminate outcomes while market stays open)
+// =========================================================================
+
+/**
+ * Eliminate a specific outcome (e.g., Italy knocked out of World Cup).
+ * Market stays open for remaining outcomes.
+ */
+export const eliminateOutcome = mutation({
+  args: {
+    marketId: v.string(),
+    outcomeIndex: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const market = await ctx.db
+      .query("clobMarkets")
+      .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
+      .first();
+
+    if (!market) throw new Error("Market not found");
+    if (market.resolved) throw new Error("Market already fully resolved");
+    if (args.outcomeIndex >= market.numOutcomes) throw new Error("Invalid outcome index");
+
+    const eliminated = market.eliminatedOutcomes || [];
+    if (eliminated.includes(args.outcomeIndex)) {
+      throw new Error("Outcome already eliminated");
+    }
+
+    // Add to eliminated list
+    eliminated.push(args.outcomeIndex);
+
+    await ctx.db.patch(market._id, {
+      eliminatedOutcomes: eliminated,
+    });
+
+    return { success: true, eliminatedCount: eliminated.length };
+  },
+});
+
+/**
+ * Fully resolve the market by declaring the final winner.
+ * This should be called after all eliminations are done.
+ */
+export const resolveClobMarket = mutation({
+  args: {
+    marketId: v.string(),
+    winningOutcome: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const market = await ctx.db
+      .query("clobMarkets")
+      .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
+      .first();
+
+    if (!market) throw new Error("Market not found");
+    if (market.resolved) throw new Error("Market already resolved");
+    if (args.winningOutcome >= market.numOutcomes) throw new Error("Invalid outcome index");
+
+    // Check if winning outcome was eliminated
+    const eliminated = market.eliminatedOutcomes || [];
+    if (eliminated.includes(args.winningOutcome)) {
+      throw new Error("Cannot set an eliminated outcome as winner");
+    }
+
+    await ctx.db.patch(market._id, {
+      resolved: true,
+      winningOutcome: args.winningOutcome,
+      status: "resolved",
+    });
+
+    return { success: true };
+  },
+});
+
+/**
+ * Un-eliminate an outcome (admin correction).
+ */
+export const unEliminateOutcome = mutation({
+  args: {
+    marketId: v.string(),
+    outcomeIndex: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const market = await ctx.db
+      .query("clobMarkets")
+      .withIndex("by_market_id", (q) => q.eq("marketId", args.marketId))
+      .first();
+
+    if (!market) throw new Error("Market not found");
+
+    const eliminated = market.eliminatedOutcomes || [];
+    const filtered = eliminated.filter((idx) => idx !== args.outcomeIndex);
+
+    await ctx.db.patch(market._id, {
+      eliminatedOutcomes: filtered,
+    });
+
+    return { success: true };
   },
 });
