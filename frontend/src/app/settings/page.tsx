@@ -163,7 +163,13 @@ function WalletProfileTab({ walletUser }: { walletUser: NonNullable<ReturnType<t
       <Card>
         <CardContent className="p-6">
           <h3 className="text-sm font-medium text-muted-foreground mb-2">Auth Method</h3>
-          <p className="text-sm capitalize">{walletUser.walletType} wallet</p>
+          <p className="text-sm capitalize">{
+            walletUser.walletType === 'hashpack' ? 'HashPack' :
+            walletUser.walletType === 'metamask' ? 'MetaMask' :
+            walletUser.walletType === 'blade' ? 'Blade' :
+            walletUser.walletType === 'kabila' ? 'Kabila' :
+            walletUser.walletType
+          } Wallet</p>
         </CardContent>
       </Card>
 
