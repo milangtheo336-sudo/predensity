@@ -17,7 +17,6 @@ import {
   Loader2,
   Settings,
   LogOut,
-  Phone,
   ArrowRightLeft,
   Shield,
   FileText,
@@ -26,6 +25,7 @@ import {
   HelpCircle,
   Eye,
   EyeOff,
+  Phone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatAddress, cn, getAvatarPalette } from '@/lib/utils';
@@ -597,17 +597,6 @@ function CashMenuView() {
         </div>
       </div>
 
-      {/* M-Pesa */}
-      <div className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-white/10 opacity-60 cursor-default">
-        <Image src="/mpesa.png" alt="M-Pesa" width={36} height={36} className="rounded-lg flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-gray-900 dark:text-white">M-Pesa</div>
-          <div className="text-xs text-gray-400">Mobile money (KES)</div>
-        </div>
-        <span className="px-2 py-0.5 rounded-full bg-vibrant-purple/10 text-vibrant-purple text-[10px] font-medium flex-shrink-0">
-          Coming Soon
-        </span>
-      </div>
     </div>
   );
 }
@@ -753,134 +742,6 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// M-Pesa Deposit View -- green themed
-// ---------------------------------------------------------------------------
-
-function MpesaDepositView({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
-  const { user } = useMagic();
-  const [phone, setPhone] = useState('');
-  const [amount, setAmount] = useState('');
-  const [rate, setRate] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
-
-  useEffect(() => {
-    fetch('/api/exchange-rate')
-      .then((r) => r.json())
-      .then((d) => setRate(d.rate))
-      .catch(() => setRate(130));
-  }, []);
-
-  const kesAmount = rate && amount ? (parseFloat(amount) * rate).toFixed(0) : '0';
-
-  const handleDeposit = async () => {
-    if (!phone || !amount) return;
-    setLoading(true);
-    setStatus('idle');
-    setErrorMsg('');
-    try {
-      const res = await fetch('/api/mpesa/deposit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: phone.startsWith('254') ? phone : `254${phone.replace(/^0/, '')}`,
-          amount: parseFloat(kesAmount),
-          userId: user?.issuer,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Deposit failed');
-      setStatus('pending');
-      setTimeout(() => setStatus('success'), 8000);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Something went wrong');
-      setStatus('error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back
-      </button>
-
-      {/* M-Pesa branding header */}
-      <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-500/20">
-        <Image src="/mpesa.png" alt="M-Pesa" width={36} height={36} className="rounded-lg flex-shrink-0" />
-        <div>
-          <div className="text-sm font-medium text-green-400">M-Pesa Deposit</div>
-          <div className="text-xs text-gray-400">STK push to your phone</div>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs text-gray-400 mb-1">Phone Number</label>
-        <input
-          type="tel"
-          placeholder="0712345678"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-        />
-      </div>
-
-      <div>
-        <label className="block text-xs text-gray-400 mb-1">Amount (USD)</label>
-        <input
-          type="number"
-          placeholder="10.00"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-        />
-      </div>
-
-      {rate && amount && parseFloat(amount) > 0 && (
-        <div className="text-xs bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-500/10 rounded-lg p-3">
-          <div className="flex justify-between text-gray-400">
-            <span>Exchange rate</span>
-            <span className="text-white">1 USD = {rate.toFixed(2)} KES</span>
-          </div>
-          <div className="flex justify-between mt-1 text-gray-400">
-            <span>You pay</span>
-            <span className="text-green-400 font-medium">KES {parseInt(kesAmount).toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between mt-1 text-gray-400">
-            <span>You receive</span>
-            <span className="text-white font-medium">{parseFloat(amount).toFixed(2)} USDC</span>
-          </div>
-        </div>
-      )}
-
-      {status === 'pending' && (
-        <div className="flex items-center gap-2 text-sm text-green-400">
-          <Loader2 className="w-4 h-4 animate-spin" /> Check your phone for the STK push...
-        </div>
-      )}
-      {status === 'success' && (
-        <div className="flex items-center gap-2 text-sm text-green-400">
-          <Check className="w-4 h-4" /> Deposit successful. Balance will update shortly.
-        </div>
-      )}
-      {status === 'error' && (
-        <div className="text-sm text-red-400">{errorMsg}</div>
-      )}
-
-      <button
-        onClick={handleDeposit}
-        disabled={loading || !phone || !amount}
-        className="w-full py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
-        {loading ? 'Processing...' : 'Pay with M-Pesa'}
-      </button>
     </div>
   );
 }
@@ -1299,14 +1160,12 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
   );
   const defaultAddress = evmAddress || managedWallet?.evmAddress || '';
 
-  const [method, setMethod] = useState<'crypto' | 'mpesa' | null>(null);
-  const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
+  const [method, setMethod] = useState<'crypto' | null>('crypto');
+  const [address, setAddress] = useState(defaultAddress);
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  const [rate, setRate] = useState<number | null>(null);
   const [useCustomAddress, setUseCustomAddress] = useState(false);
 
   // Set default address when method is selected
@@ -1317,13 +1176,6 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
 
   const currency = getStakingCurrency();
 
-  useEffect(() => {
-    fetch('/api/exchange-rate')
-      .then((r) => r.json())
-      .then((d) => setRate(d.rate))
-      .catch(() => setRate(130));
-  }, []);
-
   const handleWithdraw = async () => {
     if (!amount) return;
     setLoading(true);
@@ -1331,41 +1183,22 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
     setErrorMsg('');
 
     try {
-      if (method === 'crypto') {
-        if (!address) throw new Error('Enter a wallet address');
-        // NON-CUSTODIAL: User signs withdrawal transaction via Magic Link
-        const res = await fetch('/api/wallet/withdraw-non-custodial', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user?.issuer, destinationAddress: address, amountUsdc: amount }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Withdrawal failed');
-      } else {
-        if (!phone) throw new Error('Enter a phone number');
-        const res = await fetch('/api/mpesa/withdraw', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user?.issuer,
-            phoneNumber: phone.startsWith('254') ? phone : `254${phone.replace(/^0/, '')}`,
-            amountUSDC: amount,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Withdrawal failed');
-      }
-      
-      // Immediately update balance optimistically (subtract withdrawal amount)
+      if (!address) throw new Error('Enter a wallet address');
+      const res = await fetch('/api/wallet/withdraw-non-custodial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.issuer, destinationAddress: address, amountUsdc: amount }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Withdrawal failed');
+
       if (typeof window !== 'undefined' && (window as any).adjustBalance) {
-        console.log('[WithdrawView] Updating balance immediately (optimistic)');
         (window as any).adjustBalance(-parseFloat(amount));
       }
-      
+
       setStatus('success');
     } catch (err: any) {
       let errorMessage = 'Something went wrong. Please try again.';
-      
       if (err.message) {
         if (err.message.includes('User denied') || err.message.includes('cancelled')) {
           errorMessage = 'You cancelled the transaction.';
@@ -1377,7 +1210,6 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
           errorMessage = err.message;
         }
       }
-      
       setErrorMsg(errorMessage);
       setStatus('error');
     } finally {
@@ -1404,16 +1236,6 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
             </div>
           </button>
 
-          <button
-            onClick={() => setMethod('mpesa')}
-            className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-green-500/50 hover:bg-green-500/[0.03] transition-colors text-left"
-          >
-            <Image src="/mpesa.png" alt="M-Pesa" width={40} height={40} className="rounded-lg flex-shrink-0" />
-            <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-white">Withdraw to M-Pesa</div>
-              <div className="text-xs text-gray-400">Receive KES on your phone</div>
-            </div>
-          </button>
         </>
       )}
 
@@ -1469,46 +1291,6 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
         </>
       )}
 
-      {method === 'mpesa' && status === 'idle' && (
-        <>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Phone Number</label>
-            <input
-              type="tel"
-              placeholder="0712345678"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Amount (USD)</label>
-            <input
-              type="number"
-              placeholder="10.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-            />
-          </div>
-          {rate && amount && parseFloat(amount) > 0 && (
-            <div className="text-xs bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-500/10 rounded-lg p-3">
-              <div className="flex justify-between text-gray-400">
-                <span>You receive</span>
-                <span className="text-green-400 font-medium">KES {(parseFloat(amount) * rate).toFixed(0)}</span>
-              </div>
-            </div>
-          )}
-          <button
-            onClick={handleWithdraw}
-            disabled={loading || !phone || !amount}
-            className="w-full py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
-            {loading ? 'Processing...' : 'Withdraw to M-Pesa'}
-          </button>
-        </>
-      )}
 
       {status === 'success' && (
         <div className="text-center py-8">
