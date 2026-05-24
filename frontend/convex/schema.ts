@@ -244,9 +244,9 @@ export default defineSchema({
     magicEOAAddress: v.optional(v.string()), // User's Magic Link EOA (MPC wallet)
     proxyWalletAddress: v.optional(v.string()), // User's SimpleProxyWallet contract
     evmAddress: v.string(), // Proxy wallet address or legacy address
-    hederaAccountId: v.string(), // Legacy field name (kept for data compat) — stores secondary identifier
+    accountId: v.string(), // Legacy field name (kept for data compat) — stores secondary identifier
     usdcBalance: v.string(), // Cached balance (synced from chain)
-    hbarBalance: v.string(), // Legacy field name (kept for data compat) — stores native gas balance
+    nativeBalance: v.string(), // Legacy field name (kept for data compat) — stores native gas balance
     isActive: v.boolean(),
     createdAt: v.number(),
     lastActivity: v.number(),
@@ -259,7 +259,7 @@ export default defineSchema({
     .index("by_phone", ["phoneNumber"])
     .index("by_magic_eoa", ["magicEOAAddress"])
     .index("by_proxy_wallet", ["proxyWalletAddress"])
-    .index("by_hedera_id", ["hederaAccountId"])
+    .index("by_account_id", ["accountId"])
     .index("by_evm_address", ["evmAddress"]),
 
   // Idempotency log for M-Pesa -> USDC bridging. One row per Safaricom
