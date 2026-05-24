@@ -23,13 +23,11 @@ import {
 interface Props {
   initialEvents: any[];
   initialCryptoMarkets: any[];
-  initialClobMarkets: any[];
 }
 
 function buildMarkets(
   convexEvents: any[] | undefined,
   cryptoMarkets: any[] | undefined,
-  clobMarkets: any[] | undefined,
   activeCategory: Category | 'all',
   status: MarketStatus,
 ): MarketCard[] {
@@ -86,49 +84,10 @@ function buildMarkets(
     markets.unshift(...cryptoCards);
   }
 
-  if (false && clobMarkets) { // CLOB markets hidden — requires liquidity bootstrapping before launch
-    const clobCards: MarketCard[] = clobMarkets!
-      .filter((cm) => {
-        const mc = cm.category.toLowerCase();
-        const fc = activeCategory === 'all' ? 'all' : activeCategory.toLowerCase();
-        if (fc !== 'all' && mc !== fc) return false;
-        if (status === MarketStatus.OPEN && cm.status !== 'open') return false;
-        if (status === MarketStatus.CLOSED && cm.status !== 'closed') return false;
-        if (status === MarketStatus.RESOLVED && !cm.resolved) return false;
-        return true;
-      })
-      .map((cm) => {
-        const catIcon = cm.category === 'politics' ? 'P'
-          : cm.category === 'sports' ? 'S'
-          : cm.category === 'technology' ? 'T'
-          : cm.category === 'finance' ? 'F' : '?';
-        const defaultPrice = Math.round(100 / cm.numOutcomes);
-        const outcomes = cm.outcomeNames.map((name: string) => ({ name, price: defaultPrice }));
-        return {
-          id: cm.marketId,
-          category: cm.category as Category,
-          question: cm.question,
-          description: cm.description,
-          icon: catIcon,
-          targetTimestamp: cm.resolutionTimestamp,
-          totalVolume: cm.totalVolume.toFixed(2),
-          totalBets: 0,
-          status: (cm.resolved ? 'resolved' : cm.status === 'open' ? 'open' : 'closed') as 'open' | 'closed' | 'resolved',
-          imageUrl: cm.imageUrl,
-          isClob: true,
-          outcomes,
-          numOutcomes: cm.numOutcomes,
-          sport: (cm as any).sport,
-          league: (cm as any).league,
-        };
-      });
-    markets.push(...clobCards);
-  }
-
   return markets;
 }
 
-export default function MarketsClient({ initialEvents, initialCryptoMarkets, initialClobMarkets }: Props) {
+export default function MarketsClient({ initialEvents, initialCryptoMarkets }: Props) {
   const router = useRouter();
   const { t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
@@ -142,16 +101,14 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets, ini
   // Live queries — undefined means still loading, null means loaded but empty
   const liveEvents = useQuery(api.events.getEvents, {});
   const liveCrypto = useQuery(api.events.getCryptoMarkets, {});
-  const liveClob = useQuery(api.clob.getClobMarkets, {});
 
   // Show skeletons while Convex hasn't responded yet
-  const isLoading = liveEvents === undefined || liveCrypto === undefined || liveClob === undefined;
+  const isLoading = liveEvents === undefined || liveCrypto === undefined;
 
   const convexEvents = liveEvents ?? initialEvents;
   const cryptoMarkets = liveCrypto ?? initialCryptoMarkets;
-  const clobMarkets = liveClob ?? initialClobMarkets;
 
-  const markets = buildMarkets(convexEvents, cryptoMarkets, clobMarkets, activeCategory, status);
+  const markets = buildMarkets(convexEvents, cryptoMarkets, activeCategory, status);
 
   const handleMarketClick = (market: MarketCard) => router.push(`/markets/${market.id}`);
 
