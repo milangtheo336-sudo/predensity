@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Backend endpoint to execute token approval on behalf of user
  * User signs a message proving intent, backend executes the approval
  * Backend pays gas, but user's tokens are being approved (not transferred)
@@ -74,3 +74,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
