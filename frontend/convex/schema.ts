@@ -272,4 +272,102 @@ export default defineSchema({
     .index("by_conversation", ["conversationId"])
     .index("by_status", ["status"])
     .index("by_phone_status", ["phoneNumber", "status"]),
+
+  // =========================================================================
+  // CLOB PREDICTION MARKETS (Politics, Sports, Technology)
+  // =========================================================================
+
+  // Multi-outcome prediction markets (CLOB system)
+  clobMarkets: defineTable({
+    marketId: v.string(),           // Unique market identifier
+    onChainMarketId: v.optional(v.number()), // On-chain market ID in MarketManager contract
+    question: v.string(),           // "Who will win the 2026 World Cup?"
+    category: v.string(),           // "politics", "sports", "technology"
+    outcomeNames: v.array(v.string()), // ["Spain", "England", "France", ...]
+    outcomeTokenAddresses: v.optional(v.array(v.string())), // HTS token addresses
+    numOutcomes: v.number(),
+    imageUrl: v.string(),
+    description: v.string(),
+    resolutionTimestamp: v.number(), // When the market resolves
+    resolved: v.boolean(),
+    winningOutcome: v.optional(v.number()), // Index of winning outcome
+    totalVolume: v.number(),        // Total USDC traded
+    status: v.string(),             // "open", "closed", "resolved"
+    createdAt: v.number(),
+    // Category-specific metadata
+    team1: v.optional(v.string()),
+    team2: v.optional(v.string()),
+    candidate: v.optional(v.string()),
+    sportType: v.optional(v.string()),
+  })
+    .index("by_category", ["category"])
+    .index("by_status", ["status"])
+    .index("by_market_id", ["marketId"])
+    .index("by_resolution", ["resolutionTimestamp"]),
+
+  // Order book: limit orders for buying/selling outcome tokens
+  clobOrders: defineTable({
+    orderId: v.string(),
+    marketId: v.string(),           // References clobMarkets.marketId
+    userId: v.string(),             // Clerk user ID (managed:{userId})
+    outcomeIndex: v.number(),       // Which outcome (0, 1, 2, ...)
+    side: v.string(),               // "buy" or "sell"
+    price: v.number(),              // Price in cents (0-100, represents probability)
+    quantity: v.number(),           // Number of shares
+    filledQuantity: v.number(),     // How many shares have been filled
+    status: v.string(),             // "open", "partial", "filled", "cancelled"
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_market", ["marketId"])
+    .index("by_market_outcome", ["marketId", "outcomeIndex"])
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_market_outcome_side_price", ["marketId", "outcomeIndex", "side"]),
+
+  // Matched trades (filled orders)
+  clobTrades: defineTable({
+    tradeId: v.string(),
+    marketId: v.string(),
+    outcomeIndex: v.number(),
+    buyOrderId: v.string(),         // The buy order that was matched
+    sellOrderId: v.string(),        // The sell order that was matched
+    buyerUserId: v.string(),
+    sellerUserId: v.string(),
+    price: v.number(),              // Execution price in cents
+    quantity: v.number(),           // Number of shares traded
+    usdcAmount: v.number(),         // Total USDC exchanged (price * quantity / 100)
+    settledOnChain: v.boolean(),    // Whether operator bot has settled this on-chain
+    settlementTxHash: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_market", ["marketId"])
+    .index("by_buyer", ["buyerUserId"])
+    .index("by_seller", ["sellerUserId"])
+    .index("by_settled", ["settledOnChain"]),
+
+  // User positions: how many outcome tokens each user holds per market
+  clobPositions: defineTable({
+    userId: v.string(),             // Clerk user ID
+    marketId: v.string(),
+    outcomeIndex: v.number(),
+    shares: v.number(),             // Number of shares held
+    costBasis: v.number(),          // Total USDC spent to acquire these shares
+    averagePrice: v.number(),       // Average price per share in cents
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_market", ["userId", "marketId"])
+    .index("by_market", ["marketId"])
+    .index("by_user_market_outcome", ["userId", "marketId", "outcomeIndex"]),
+
+  // Price history for outcome tokens (for charting)
+  clobPriceHistory: defineTable({
+    marketId: v.string(),
+    outcomeIndex: v.number(),
+    price: v.number(),              // Last trade price in cents
+    timestamp: v.number(),
+  })
+    .index("by_market_outcome", ["marketId", "outcomeIndex"])
+    .index("by_market_outcome_time", ["marketId", "outcomeIndex", "timestamp"]),
 });
