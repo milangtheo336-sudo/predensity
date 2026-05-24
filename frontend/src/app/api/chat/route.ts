@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿
+export const dynamic = 'force-dynamic';
 import { rateLimit } from '@/lib/api-auth';
 
 // Server-only key -- do NOT prefix with NEXT_PUBLIC_ (exposes to client bundle)
@@ -220,3 +221,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
