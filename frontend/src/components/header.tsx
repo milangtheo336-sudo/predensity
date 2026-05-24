@@ -907,7 +907,8 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
     return () => { cancelled = true; };
   }, [accountId, tokenId, currency.decimals, step]);
 
-  // Fetch USDC balance via eth_call for EIP-6963 wallets (MetaMask, Rabby, etc.)
+  // Fetch USDC balance via Hedera mirror node for EIP-6963 wallets (MetaMask, Rabby, etc.)
+  // The mirror node accepts EVM addresses (0x...) as the account identifier.
   useEffect(() => {
     if (!eip6963Provider || !tokenId) return;
     let cancelled = false;
@@ -915,22 +916,24 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
       try {
         const accounts: string[] = await eip6963Provider.request({ method: 'eth_accounts' });
         if (!accounts.length || cancelled) return;
-        const tokenParts = tokenId.split('.');
-        const tokenEvmAddr = '0x' + parseInt(tokenParts[tokenParts.length - 1]).toString(16).padStart(40, '0');
-        // balanceOf(address) selector = 0x70a08231
-        const data = '0x70a08231' + accounts[0].slice(2).padStart(64, '0');
-        const result: string = await eip6963Provider.request({
-          method: 'eth_call',
-          params: [{ to: tokenEvmAddr, data }, 'latest'],
-        });
-        if (!cancelled && result && result !== '0x') {
-          const bal = Number(BigInt(result)) / Math.pow(10, currency.decimals);
+        const evmAddr = accounts[0]; // e.g. 0xa2f8...
+        const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+        const base = network === 'mainnet'
+          ? 'https://mainnet.mirrornode.hedera.com'
+          : 'https://testnet.mirrornode.hedera.com';
+        // Query token balance by EVM address — mirror node resolves it to the Hedera account
+        const res = await fetch(`${base}/api/v1/tokens/${tokenId}/balances?account.id=${evmAddr}&limit=1`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const entry = data?.balances?.[0];
+        if (entry && !cancelled) {
+          const bal = Number(entry.balance) / Math.pow(10, currency.decimals);
           setWalletUsdcBalance(bal.toFixed(2));
         } else if (!cancelled) {
           setWalletUsdcBalance('0.00');
         }
       } catch (e) {
-        console.error('[WalletTransferView] EIP-6963 balance fetch error:', e);
+        console.error('[WalletTransferView] EIP-6963 mirror-node balance fetch error:', e);
       }
     };
     fetchEip6963Balance();
