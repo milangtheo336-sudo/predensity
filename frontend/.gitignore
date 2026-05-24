@@ -60,3 +60,6 @@ jest.setup.js
 **/*.test.tsx
 **/*.spec.ts
 **/*.spec.tsx 
+/gitbook
+*.zip
+ts_errors.txt
