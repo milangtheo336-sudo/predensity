@@ -225,6 +225,9 @@ export interface MarketCard {
   isClob?: boolean;
   outcomes?: Array<{ name: string; price: number }>;
   numOutcomes?: number;
+  // Sidebar taxonomy
+  sport?: string;
+  league?: string;
 }
 
 // Filter and sort options
