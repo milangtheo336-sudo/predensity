@@ -35,11 +35,20 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     uint256 public constant SECONDS_PER_DAY = 24 * 60 * 60;
     uint256 public constant FEE_BPS = 100;        // 1% entry fee in basis points
     uint256 public constant BPS_DENOM = 10000;   // denominator for basis points (100% = 10000)
-    uint256 public constant MIN_STAKE = 0.01 ether;
-    uint256 public constant MAX_STAKE = 100 ether;
     uint256 public constant MAX_DAYS_AHEAD = 30;
     uint256 public constant MIN_DAYS_AHEAD = 1;     // Minimum days ahead for bet placement
     uint256 public constant BATCH_SIZE = 50;
+    // Time between a price being set and that price becoming usable for resolution.
+    // Gives the owner a window to overwrite a bad oracle push with a correct one.
+    uint256 public constant RESOLUTION_DELAY = 1 hours;
+    // Per-call cap on `arePricesSetForBucket` iterations to keep the view bounded.
+    uint256 public constant MAX_BUCKET_SCAN = 200;
+
+    // Stake bounds: set per-deployment so they match the staking token's decimals.
+    // For native HBAR (18 decimals): 0.01 ether / 100 ether are sensible defaults.
+    // For USDC (6 decimals): 10_000 (= 0.01 USDC) / 100_000_000 (= 100 USDC).
+    uint256 public immutable minStake;
+    uint256 public immutable maxStake;
     // ==============================================================
     // |                    State Variables                         |
     // ==============================================================
@@ -106,6 +115,10 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     // (asset symbol => targetTimestamp => price). Per-asset keyed so HBAR/BTC/ETH
     // resolutions cannot collide on the same bucket day.
     mapping(string => mapping(uint256 => uint256)) public pricesAtTimestamp;
+    // (asset symbol => targetTimestamp => block.timestamp at which the price was last set).
+    // Resolution requires `block.timestamp >= priceSetAt + RESOLUTION_DELAY`.
+    // Each setPrice* call resets the clock, allowing the owner to correct bad pushes.
+    mapping(string => mapping(uint256 => uint256)) public priceSetAt;
 
     // ==============================================================
     // |                    Events                                  |
@@ -134,6 +147,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     );
     
     event FeeCollected(uint256 amount);
+    event FeesWithdrawn(address indexed to, uint256 amount);
     event BucketPriceSet(uint256 indexed bucket, uint256 price);
     event BatchProcessed(uint256 indexed bucket, uint256 processedCount, uint256 winningWeight);
     event AggregationCompleted(uint256 indexed bucket, uint256 totalWinningWeight);
