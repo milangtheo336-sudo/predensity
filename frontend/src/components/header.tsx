@@ -943,7 +943,7 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
         console.log('[WalletTransferView] Balance URL:', balUrl);
         const balRes = await fetch(balUrl);
         const balData = await balRes.json();
-        console.log('[WalletTransferView] Balance response:', balData);
+        console.log('[WalletTransferView] Balance response:', JSON.stringify(balData));
         if (!balRes.ok || cancelled) return;
         const entry = balData?.balances?.[0];
         if (entry && !cancelled) {
@@ -951,7 +951,10 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
           console.log('[WalletTransferView] USDC balance:', bal);
           setWalletUsdcBalance(bal.toFixed(2));
         }
-        // If no entry — leave walletUsdcBalance as null (don't show 0.00, it may just mean no token association)
+        else if (!cancelled) {
+          // No token entry = 0 balance (account exists but hasn't associated this token)
+          setWalletUsdcBalance('0.00');
+        }
       } catch (e) {
         console.error('[WalletTransferView] EIP-6963 mirror-node balance fetch error:', e);
       }
@@ -1058,13 +1061,25 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
                 {evmAddress ? formatAddress(evmAddress, 6) : effectiveAddress ? formatAddress(effectiveAddress, 6) : 'Connected'}
               </div>
             </div>
-            {walletUsdcBalance !== null && (
-              <div className="ml-auto text-right flex-shrink-0">
-                <div className="text-sm font-semibold text-gray-900 dark:text-white">{walletUsdcBalance}</div>
-                <div className="text-[10px] text-gray-500">{currency.symbol}</div>
-              </div>
-            )}
+            <div className="ml-auto text-right flex-shrink-0">
+              {walletUsdcBalance !== null ? (
+                <>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white">{walletUsdcBalance}</div>
+                  <div className="text-[10px] text-gray-500">{currency.symbol}</div>
+                </>
+              ) : (
+                <div className="text-[10px] text-gray-500">Loading…</div>
+              )}
+            </div>
           </div>
+
+          {/* Warn if wallet has no USDC */}
+          {walletUsdcBalance === '0.00' && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-400">
+              <span className="mt-0.5">⚠️</span>
+              <span>This wallet has no {currency.symbol} on Hedera testnet. Your {currency.symbol} may be in a different wallet (e.g. HashPack). Switch wallets or fund this address first.</span>
+            </div>
+          )}
 
           {/* Show destination (proxy wallet) */}
           {proxyWalletAddress && (
