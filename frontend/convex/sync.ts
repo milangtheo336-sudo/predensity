@@ -1,24 +1,6 @@
 import { action, internalAction, internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { requireServerToken } from "./_lib/auth";
-
-// Immutable startTimestamp for each deployed contract.
-// Must match CONTRACT_START_TIMESTAMPS in contract-config.ts.
-// On-chain bucket = Math.floor((targetTs - startTimestamp) / 86400)
-// Reads from Convex env vars (set in dashboard for prod), defaults to testnet
-const CONTRACT_START_TIMESTAMPS: Record<string, number> = {
-  crypto: Number(process.env.CRYPTO_START_TIMESTAMP) || 1773940168,
-  politics: Number(process.env.POLITICS_START_TIMESTAMP) || 1773586860,
-  esports: Number(process.env.SPORTS_START_TIMESTAMP) || 1773586872,
-  technology: Number(process.env.TECH_START_TIMESTAMP) || 1773586888,
-};
-
-function getOnChainBucket(targetTimestamp: number, category: string): number {
-  const start = CONTRACT_START_TIMESTAMPS[category.toLowerCase()] || 0;
-  if (start === 0 || targetTimestamp < start) return 0;
-  return Math.floor((targetTimestamp - start) / 86400);
-}
 
 // ============================================
 // BET WRITE PATH (called immediately on bet placement)
@@ -39,10 +21,8 @@ export const createBet = mutation({
     asset: v.optional(v.string()),
     transactionHash: v.optional(v.string()),
     onChainBetId: v.optional(v.number()),
-    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     return await ctx.db.insert("bets", {
       betId: args.betId,
       marketId: args.marketId,
@@ -53,7 +33,6 @@ export const createBet = mutation({
       priceMax: args.priceMax,
       weight: "0",
       targetTimestamp: args.targetTimestamp,
-      bucket: getOnChainBucket(args.targetTimestamp, args.category),
       finalized: false,
       won: false,
       claimed: false,
@@ -77,10 +56,8 @@ export const updateBetOnChainId = mutation({
   args: {
     betId: v.string(),
     onChainBetId: v.number(),
-    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     const bet = await ctx.db
       .query("bets")
       .withIndex("by_bet_id", (q) => q.eq("betId", args.betId))
@@ -96,10 +73,8 @@ export const updateBetOnChainId = mutation({
 export const clearOnChainIds = mutation({
   args: {
     marketId: v.string(),
-    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     const bets = await ctx.db
       .query("bets")
       .withIndex("by_market", (q) => q.eq("marketId", args.marketId.toLowerCase()))
@@ -127,10 +102,8 @@ export const clearOnChainIds = mutation({
 export const deleteAllManagedBets = mutation({
   args: {
     marketId: v.string(),
-    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     const bets = await ctx.db
       .query("bets")
       .withIndex("by_market", (q) => q.eq("marketId", args.marketId.toLowerCase()))
@@ -254,27 +227,31 @@ export const getUnfinalizedBetsByMarket = query({
 });
 
 // ============================================
-// RECONCILIATION (Arc RPC -> Convex sync)
+// RECONCILIATION (Hedera Mirror Node -> Convex sync)
 // ============================================
 
-// Contract addresses and their categories for event log polling.
-// Reads from Convex env vars (set in dashboard for prod), defaults to testnet.
-const CRYPTO_CONTRACT_ADDRESS = process.env.CRYPTO_CONTRACT_ADDRESS || "0x00000000000000000000000000000000007e8166";
-const POLITICS_CONTRACT_ADDRESS = process.env.POLITICS_CONTRACT_ADDRESS || "0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8";
-const SPORTS_CONTRACT_ADDRESS = process.env.SPORTS_CONTRACT_ADDRESS || "0x8f62C698a26888424b5170a11610Fa5Fd7DF540b";
-const TECH_CONTRACT_ADDRESS = process.env.TECH_CONTRACT_ADDRESS || "0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8";
-
+// Contract addresses and their categories for mirror node polling
 const CONTRACTS: { address: string; category: string; type: "crypto" | "base" }[] = [
-  { address: CRYPTO_CONTRACT_ADDRESS, category: "crypto", type: "crypto" },
-  { address: POLITICS_CONTRACT_ADDRESS, category: "politics", type: "base" },
-  { address: SPORTS_CONTRACT_ADDRESS, category: "esports", type: "base" },
-  { address: TECH_CONTRACT_ADDRESS, category: "technology", type: "base" },
+  { address: "0x00000000000000000000000000000000007e8166", category: "crypto", type: "crypto" },
+  { address: "0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8", category: "politics", type: "base" },
+  { address: "0x8f62C698a26888424b5170a11610Fa5Fd7DF540b", category: "sports", type: "base" },
+  { address: "0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8", category: "technology", type: "base" },
 ];
 
-// Arc RPC URL for event log fetching
-const ARC_RPC_URL = process.env.ARC_RPC_URL || "https://rpc-arc-testnet.arcplatform.io";
+// Hedera contract IDs (0.0.X format) for mirror node API
+const CONTRACT_IDS: Record<string, string> = {
+  "0x00000000000000000000000000000000007e8166": "0.0.8290662",
+  "0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8": "0.0.8232724",
+  "0x8f62C698a26888424b5170a11610Fa5Fd7DF540b": "0.0.8232726",
+  "0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8": "0.0.8232727",
+};
 
-// Event signatures (matched by data chunk count heuristic rather than topic hash)
+// BetPlaced topic hashes
+// Crypto: BetPlaced(uint256 indexed betId, address indexed bettor, uint256 stake, uint256 priceMin, uint256 priceMax, uint256 targetTimestamp, string asset)
+const CRYPTO_BET_PLACED_TOPIC = "0x" + "a3e6f9e0"; // Will compute properly below
+// Base: BetPlaced(uint256 indexed betId, address indexed bettor, uint256 bucket, uint256 stake, uint256 rangeMin, uint256 rangeMax, uint256 targetTimestamp)
+
+// BetClaimed topic: BetClaimed(uint256 indexed betId, address indexed bettor, uint256 payout)
 
 // Upsert a single bet from on-chain data. Called by the sync job.
 export const reconcileBet = internalMutation({
@@ -299,7 +276,6 @@ export const reconcileBet = internalMutation({
     blockTimestamp: v.number(),
     entryBandWeight: v.optional(v.string()),
     exited: v.optional(v.boolean()),
-    transactionHash: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -327,24 +303,17 @@ export const reconcileBet = internalMutation({
       asset: inferAssetFromPrice(args),
       entryBandWeight: args.entryBandWeight,
       exited: args.exited,
-      transactionHash: args.transactionHash,
       status: "confirmed" as const,
       timestamp: args.blockTimestamp * 1000,
     };
 
     if (existing) {
-      // If the existing bet is already finalized, preserve finalization state.
-      // The sync only has BetPlaced event data which doesn't include finalization info.
+      // If the existing bet is a managed bet, preserve its userAddress
+      // so the portfolio page can still find it via managed:userId
       const preserveAddress = existing.userAddress.startsWith("managed:");
-      const preserveFinalization = existing.finalized;
       await ctx.db.patch(existing._id, {
         ...betData,
         userAddress: preserveAddress ? existing.userAddress : betData.userAddress,
-        finalized: preserveFinalization ? existing.finalized : betData.finalized,
-        won: preserveFinalization ? existing.won : betData.won,
-        claimed: preserveFinalization ? existing.claimed : betData.claimed,
-        payout: preserveFinalization ? existing.payout : betData.payout,
-        expectedPayout: preserveFinalization ? existing.expectedPayout : betData.expectedPayout,
       });
       return existing._id;
     }
@@ -495,43 +464,42 @@ function decodeString(dataChunks: string[], offsetChunkIndex: number): string {
   return String.fromCharCode(...bytes);
 }
 
-// Fetch contract logs from Arc RPC using eth_getLogs
-async function fetchContractLogs(
-  contractAddress: string,
-  fromBlock: string = "0x0"
+// Fetch contract logs from Hedera Mirror Node for a given contract
+async function fetchMirrorNodeLogs(
+  contractId: string,
+  afterTimestamp?: string
 ): Promise<any[]> {
-  try {
-    const response = await fetch(ARC_RPC_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "eth_getLogs",
-        params: [{
-          address: contractAddress,
-          fromBlock,
-          toBlock: "latest",
-        }],
-      }),
-    });
+  const network = process.env.HEDERA_NETWORK || "testnet";
+  const baseUrl = network === "mainnet"
+    ? "https://mainnet.mirrornode.hedera.com"
+    : "https://testnet.mirrornode.hedera.com";
 
-    if (!response.ok) {
-      console.error(`[ArcSync] Failed to fetch logs for ${contractAddress}: ${response.status}`);
-      return [];
-    }
-
-    const json = await response.json();
-    if (json.error) {
-      console.error(`[ArcSync] RPC error:`, json.error);
-      return [];
-    }
-
-    return json.result || [];
-  } catch (err) {
-    console.error(`[ArcSync] Fetch error for ${contractAddress}:`, err);
-    return [];
+  let allLogs: any[] = [];
+  let nextUrl = `${baseUrl}/api/v1/contracts/${contractId}/results/logs?order=asc&limit=100`;
+  if (afterTimestamp) {
+    nextUrl += `&timestamp=gt:${afterTimestamp}`;
   }
+
+  // Paginate through all results
+  while (nextUrl) {
+    const response = await fetch(nextUrl);
+    if (!response.ok) {
+      console.error(`[MirrorSync] Failed to fetch logs for ${contractId}: ${response.status}`);
+      break;
+    }
+    const json = await response.json();
+    if (json.logs && json.logs.length > 0) {
+      allLogs = allLogs.concat(json.logs);
+    }
+    // Follow pagination link
+    if (json.links?.next) {
+      nextUrl = `${baseUrl}${json.links.next}`;
+    } else {
+      nextUrl = "";
+    }
+  }
+
+  return allLogs;
 }
 
 // Parse a BetPlaced log for the Crypto contract
@@ -567,10 +535,9 @@ function parseCryptoBetPlaced(log: any, contractAddress: string) {
     priceMin,
     priceMax,
     targetTimestamp,
-    bucket: getOnChainBucket(targetTimestamp, "crypto"),
     asset,
-    timestamp: log.blockNumber ? Number(BigInt(log.blockNumber)) : Date.now() / 1000,
-    transactionHash: log.transactionHash || "",
+    timestamp: log.timestamp ? parseFloat(log.timestamp) : Date.now() / 1000,
+    transactionHash: log.transaction_hash || "",
   };
 }
 
@@ -608,8 +575,8 @@ function parseBaseBetPlaced(log: any, contractAddress: string, category: string)
     targetTimestamp,
     bucket,
     asset: undefined,
-    timestamp: log.blockNumber ? Number(BigInt(log.blockNumber)) : Date.now() / 1000,
-    transactionHash: log.transactionHash || "",
+    timestamp: log.timestamp ? parseFloat(log.timestamp) : Date.now() / 1000,
+    transactionHash: log.transaction_hash || "",
   };
 }
 
@@ -628,15 +595,16 @@ function parseBetClaimed(log: any, contractAddress: string) {
   };
 }
 
-// The main sync action: fetches events from Arc RPC and reconciles with Convex.
-// We match event type by the number of data chunks (same heuristic as before).
+// Keccak-256 topic hashes for event matching
+// BetPlaced(uint256,address,uint256,uint256,uint256,uint256,string) -- crypto
+const CRYPTO_BET_PLACED = "0xb075e5b7e9b8e0e1e0e5b7e9b8e0e1e0"; // placeholder, matched by position
+// We match by topic[0] which is the event signature hash.
+// Rather than hardcoding, we match by the number of data chunks to distinguish.
+
+// The main sync action: fetches events from Hedera Mirror Node and reconciles with Convex.
 export const syncFromMirrorNode = internalAction({
   args: {},
   handler: async (ctx): Promise<{ success: boolean; reconciled?: number; expired?: number; claimed?: number; error?: string }> => {
-    // Skip sync if disabled via env var (set DISABLE_SYNC=true on dev to save costs)
-    if (process.env.DISABLE_SYNC === 'true') {
-      return { success: true, reconciled: 0, expired: 0, claimed: 0 };
-    }
     try {
       // Step 1: Expire stale pending bets
       const expireResult: { expired: number } = await ctx.runMutation(internal.sync.expireStalePendingBets);
@@ -644,9 +612,12 @@ export const syncFromMirrorNode = internalAction({
       let totalReconciled = 0;
       let totalClaimed = 0;
 
-      // Step 2: For each contract, fetch logs from Arc RPC
+      // Step 2: For each contract, fetch logs from mirror node
       for (const contract of CONTRACTS) {
-        const logs = await fetchContractLogs(contract.address);
+        const contractId = CONTRACT_IDS[contract.address];
+        if (!contractId) continue;
+
+        const logs = await fetchMirrorNodeLogs(contractId);
 
         for (const log of logs) {
           const topics = log.topics || [];
@@ -681,10 +652,9 @@ export const syncFromMirrorNode = internalAction({
                   claimed: false,
                   payout: "0",
                   expectedPayout: "0",
-                  bucket: parsed.bucket,
+                  bucket: undefined,
                   asset: parsed.asset,
                   blockTimestamp: Math.floor(parsed.timestamp),
-                  transactionHash: parsed.transactionHash,
                 });
                 totalReconciled++;
               }
@@ -709,7 +679,6 @@ export const syncFromMirrorNode = internalAction({
                   bucket: parsed.bucket,
                   asset: parsed.asset,
                   blockTimestamp: Math.floor(parsed.timestamp),
-                  transactionHash: parsed.transactionHash,
                 });
                 totalReconciled++;
               }
@@ -736,7 +705,6 @@ export const syncFromMirrorNode = internalAction({
                 bucket: parsed.bucket,
                 asset: undefined,
                 blockTimestamp: Math.floor(parsed.timestamp),
-                transactionHash: parsed.transactionHash,
               });
               totalReconciled++;
             }
@@ -802,19 +770,18 @@ export const finalizeBetsForBucket = mutation({
       })
     ),
     category: v.string(),
-    // Optional pool data for parimutuel payout calculation
+    // Optional DPM pool data for payout calculation
     poolData: v.optional(
       v.object({
         totalStaked: v.string(),
+        totalExited: v.string(),
         totalWinningWeight: v.string(),
       })
     ),
     // Optional per-bet weights from the contract (betId -> weight)
     betWeights: v.optional(v.array(v.object({ betId: v.string(), weight: v.string() }))),
-    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     const priceLookup = new Map<number, number>();
     for (const p of args.prices) {
       priceLookup.set(p.targetTimestamp, p.price);
@@ -833,15 +800,15 @@ export const finalizeBetsForBucket = mutation({
       .withIndex("by_market", (q) => q.eq("marketId", args.marketId.toLowerCase()))
       .collect();
 
-    const bucketBets = bets.filter((b) => {
-      // Compute effective bucket: use stored value, or derive using on-chain formula
-      const effectiveBucket = b.bucket ?? getOnChainBucket(b.targetTimestamp, args.category);
-      return effectiveBucket === args.bucket && (!b.finalized || (b.finalized && b.payout === "0"));
-    });
+    const bucketBets = bets.filter(
+      (b) => (b.bucket ?? 0) === args.bucket && (!b.finalized || (b.finalized && b.payout === "0"))
+    );
 
-    // Parse pool data for payout calculation (classic parimutuel: winners split totalStaked)
+    // Parse pool data for payout calculation
     const totalStaked = args.poolData ? BigInt(args.poolData.totalStaked) : BigInt(0);
+    const totalExited = args.poolData ? BigInt(args.poolData.totalExited) : BigInt(0);
     const totalWinningWeight = args.poolData ? BigInt(args.poolData.totalWinningWeight) : BigInt(0);
+    const remainingPool = totalStaked - totalExited;
 
     let updated = 0;
     for (const bet of bucketBets) {
@@ -858,7 +825,7 @@ export const finalizeBetsForBucket = mutation({
       if (won && totalWinningWeight > BigInt(0)) {
         const betWeight = BigInt(weightLookup.get(bet.betId) || bet.weight || "0");
         if (betWeight > BigInt(0)) {
-          const payoutBig = (betWeight * totalStaked) / totalWinningWeight;
+          const payoutBig = (betWeight * remainingPool) / totalWinningWeight;
           payout = payoutBig.toString();
           expectedPayout = payoutBig.toString();
         } else {
@@ -875,20 +842,14 @@ export const finalizeBetsForBucket = mutation({
       // Update weight if we got it from the contract
       const weight = weightLookup.get(bet.betId) || bet.weight;
 
-      // Also fix bucket if it was missing
-      const patchData: Record<string, any> = {
+      await ctx.db.patch(bet._id, {
         finalized: true,
         won,
         payout,
         expectedPayout,
         weight,
         status: "confirmed",
-      };
-      if (bet.bucket === undefined || bet.bucket === null || bet.bucket === 0) {
-        patchData.bucket = args.bucket;
-      }
-
-      await ctx.db.patch(bet._id, patchData);
+      });
       updated++;
     }
 
@@ -899,9 +860,8 @@ export const finalizeBetsForBucket = mutation({
 
 // Mark a bet as claimed (after claimBet succeeds on-chain)
 export const markBetClaimed = mutation({
-  args: { betId: v.string(), _serverToken: v.optional(v.string()) },
+  args: { betId: v.string() },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     const bet = await ctx.db
       .query("bets")
       .withIndex("by_bet_id", (q) => q.eq("betId", args.betId))
@@ -938,9 +898,8 @@ export const getAllBetsByMarket = query({
 // sync may have created a separate bet with the operator's EVM address.
 // This mutation finds those duplicates and merges them, preserving the managed address.
 export const repairManagedBets = mutation({
-  args: { _serverToken: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
+  args: {},
+  handler: async (ctx) => {
     // Find all managed bets (both pending and failed)
     const allBets = await ctx.db.query("bets").collect();
     const managedBets = allBets.filter((b) => b.userAddress.startsWith("managed:"));
@@ -1003,7 +962,7 @@ function inferAssetFromPrice(bet: any, fallbackBet?: any): string | undefined {
   if (category !== "crypto") return asset;
 
   // If asset looks correct (not a default/unknown), keep it
-  if (asset && asset !== "HBAR" && asset !== "UNKNOWN" && asset !== "USDC ") {
+  if (asset && asset !== "HBAR" && asset !== "UNKNOWN" && asset !== "hbar") {
     return asset;
   }
 
@@ -1024,10 +983,8 @@ export const reassignOperatorBets = mutation({
   args: {
     operatorAddress: v.string(),
     userId: v.string(),
-    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     const operatorAddr = args.operatorAddress.toLowerCase();
     const managedAddr = `managed:${args.userId}`.toLowerCase();
 
@@ -1128,46 +1085,9 @@ export const reassignOperatorBets = mutation({
   },
 });
 
-// Fix the bucket field on crypto bets that have undefined/missing/wrong bucket values.
-// Uses the on-chain formula: (targetTimestamp - startTimestamp) / 86400
-// Called from the portfolio page auto-repair or can be triggered manually.
-// Note: user-scoped data repair; callable from client for auto-repair UX.
-// Only patches `bucket` field on existing bets -- no privilege escalation.
-export const fixBetBuckets = mutation({
-  args: {
-    userAddress: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    let bets;
-    if (args.userAddress) {
-      bets = await ctx.db
-        .query("bets")
-        .withIndex("by_user", (q) => q.eq("userAddress", args.userAddress!.toLowerCase()))
-        .collect();
-    } else {
-      bets = await ctx.db
-        .query("bets")
-        .filter((q) => q.eq(q.field("category"), "crypto"))
-        .collect();
-    }
-
-    let fixed = 0;
-    for (const bet of bets) {
-      const correctBucket = getOnChainBucket(bet.targetTimestamp, bet.category || "crypto");
-      if (correctBucket > 0 && bet.bucket !== correctBucket) {
-        await ctx.db.patch(bet._id, { bucket: correctBucket });
-        fixed++;
-      }
-    }
-    return { fixed, total: bets.length };
-  },
-});
-
 // Fix the asset field on all crypto bets that have wrong/missing asset values.
 // This corrects bets stored with "HBAR" or "UNKNOWN" when they should be "BTC" etc.
 // Called from the portfolio page auto-repair or can be triggered manually.
-// Note: user-scoped data repair; callable from client for auto-repair UX.
-// Only patches `asset` field on existing bets -- no privilege escalation.
 export const fixBetAssets = mutation({
   args: {
     userAddress: v.optional(v.string()),
@@ -1196,256 +1116,5 @@ export const fixBetAssets = mutation({
       }
     }
     return { fixed, total: bets.length };
-  },
-});
-
-
-// ============================================
-// DEPOSIT AUTO-DETECTION (Arc RPC -> Convex)
-// ============================================
-
-// USDC contract address on Arc
-const USDC_CONTRACT_ADDRESS = process.env.USDC_CONTRACT_ADDRESS || "0x29219dd400f2Bf60E5a23d13Be72B486D4038894";
-
-// Store processed deposit transaction IDs to avoid double-crediting
-export const recordProcessedDeposit = internalMutation({
-  args: {
-    transactionId: v.string(),
-    senderAccount: v.string(),
-    amount: v.string(),
-    userId: v.optional(v.string()),
-    timestamp: v.number(),
-  },
-  handler: async (ctx, args) => {
-    // Check if already processed
-    const existing = await ctx.db
-      .query("mpesaTransactions")
-      .filter((q) => q.eq(q.field("merchantRequestId"), args.transactionId))
-      .first();
-    if (existing) return { credited: false, reason: "already_processed" };
-
-    // Find the managed wallet by EVM address
-    const senderLower = args.senderAccount.toLowerCase();
-
-    // Try matching by evmAddress
-    let wallet = await ctx.db
-      .query("managedWallets")
-      .withIndex("by_evm_address", (q) => q.eq("evmAddress", senderLower))
-      .first();
-
-    // Try matching by proxyWalletAddress
-    if (!wallet) {
-      wallet = await ctx.db
-        .query("managedWallets")
-        .withIndex("by_proxy_wallet", (q) => q.eq("proxyWalletAddress", senderLower))
-        .first();
-    }
-
-    if (!wallet) {
-      // Unknown sender -- store as unmatched deposit for manual review
-      await ctx.db.insert("mpesaTransactions", {
-        phoneNumber: "deposit:" + args.senderAccount,
-        type: "deposit",
-        amountKES: 0,
-        amountUSDC: args.amount,
-        merchantRequestId: args.transactionId,
-        status: "unmatched",
-        createdAt: args.timestamp,
-      });
-      return { credited: false, reason: "unknown_sender" };
-    }
-
-    // Credit the wallet
-    const currentBalance = parseFloat(wallet.usdcBalance || "0");
-    const depositAmount = parseFloat(args.amount);
-    const newBalance = (currentBalance + depositAmount).toFixed(6);
-
-    await ctx.db.patch(wallet._id, {
-      usdcBalance: newBalance,
-      lastActivity: Date.now(),
-    });
-
-    // Record the deposit
-    await ctx.db.insert("mpesaTransactions", {
-      phoneNumber: "deposit:" + args.senderAccount,
-      type: "deposit",
-      amountKES: 0,
-      amountUSDC: args.amount,
-      merchantRequestId: args.transactionId,
-      status: "completed",
-      completedAt: Date.now(),
-      createdAt: args.timestamp,
-    });
-
-    // Create notification
-    if (wallet.userId) {
-      await ctx.db.insert("notifications", {
-        userId: wallet.userId,
-        type: "deposit",
-        message: `${args.amount} USDC deposited to your account`,
-        read: false,
-        timestamp: Date.now(),
-      });
-    }
-
-    return { credited: true, amount: args.amount, userId: wallet.userId };
-  },
-});
-
-// Poll Arc RPC for USDC balances on managed wallets and credit any new deposits
-export const detectDeposits = internalAction({
-  args: {},
-  handler: async (ctx) => {
-    if (process.env.DISABLE_SYNC === "true") return { detected: 0 };
-
-    try {
-      // Get all active managed wallets
-      const wallets: any[] = await ctx.runQuery(internal.sync.getActiveManagedWallets);
-      if (!wallets || wallets.length === 0) return { detected: 0 };
-
-      let detected = 0;
-
-      for (const wallet of wallets) {
-        try {
-          // Query USDC ERC-20 balanceOf via eth_call
-          const evmAddress = wallet.evmAddress || wallet.proxyWalletAddress;
-          if (!evmAddress) continue;
-
-          // balanceOf(address) selector = 0x70a08231
-          const paddedAddr = evmAddress.replace("0x", "").padStart(64, "0");
-          const callData = "0x70a08231" + paddedAddr;
-
-          const res = await fetch(ARC_RPC_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              jsonrpc: "2.0",
-              id: 1,
-              method: "eth_call",
-              params: [{ to: USDC_CONTRACT_ADDRESS, data: callData }, "latest"],
-            }),
-          });
-
-          if (!res.ok) continue;
-          const json = await res.json();
-          if (json.error || !json.result) continue;
-
-          const rawBalance = BigInt(json.result);
-          const onChainBalance = (Number(rawBalance) / 1e6).toFixed(6);
-          const storedBalance = wallet.usdcBalance || "0";
-
-          const onChainNum = parseFloat(onChainBalance);
-          const storedNum = parseFloat(storedBalance);
-
-          if (onChainNum > storedNum + 0.000001) {
-            const depositAmount = (onChainNum - storedNum).toFixed(6);
-            await ctx.runMutation(internal.sync.creditDetectedDeposit, {
-              walletId: wallet._id,
-              newBalance: onChainBalance,
-              depositAmount,
-              userId: wallet.userId,
-            });
-            detected++;
-          }
-        } catch {
-          continue;
-        }
-      }
-
-      return { detected };
-    } catch (error) {
-      console.error("[DepositDetect] Error:", error);
-      return { detected: 0, error: String(error) };
-    }
-  },
-});
-
-// Credit a deposit manually (for CEX deposits where sender can't be auto-matched)
-export const creditManualDeposit = mutation({
-  args: {
-    userId: v.string(),
-    transactionId: v.string(),
-    amount: v.string(),
-    _serverToken: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
-    // Check if already processed
-    const existing = await ctx.db
-      .query("mpesaTransactions")
-      .filter((q) => q.eq(q.field("merchantRequestId"), args.transactionId))
-      .first();
-    if (existing) {
-      throw new Error("This transaction has already been processed");
-    }
-
-    const wallet = await ctx.db
-      .query("managedWallets")
-      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
-      .first();
-    if (!wallet) throw new Error("No managed wallet found");
-
-    const currentBalance = parseFloat(wallet.usdcBalance || "0");
-    const depositAmount = parseFloat(args.amount);
-    const newBalance = (currentBalance + depositAmount).toFixed(6);
-
-    await ctx.db.patch(wallet._id, {
-      usdcBalance: newBalance,
-      lastActivity: Date.now(),
-    });
-
-    await ctx.db.insert("mpesaTransactions", {
-      phoneNumber: "manual:" + args.userId,
-      type: "deposit",
-      amountKES: 0,
-      amountUSDC: args.amount,
-      merchantRequestId: args.transactionId,
-      status: "completed",
-      completedAt: Date.now(),
-      createdAt: Date.now(),
-    });
-
-    return { credited: true, newBalance };
-  },
-});
-
-
-// Internal query to get all active managed wallets for deposit detection
-import { internalQuery } from "./_generated/server";
-
-export const getActiveManagedWallets = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("managedWallets")
-      .filter((q) => q.eq(q.field("isActive"), true))
-      .collect();
-  },
-});
-
-// Credit a detected deposit (called by detectDeposits cron)
-export const creditDetectedDeposit = internalMutation({
-  args: {
-    walletId: v.id("managedWallets"),
-    newBalance: v.string(),
-    depositAmount: v.string(),
-    userId: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.walletId, {
-      usdcBalance: args.newBalance,
-      lastActivity: Date.now(),
-    });
-
-    // Create notification
-    if (args.userId) {
-      await ctx.db.insert("notifications", {
-        userId: args.userId,
-        type: "deposit",
-        message: `${args.depositAmount} USDC deposited to your account`,
-        read: false,
-        timestamp: Date.now(),
-      });
-    }
   },
 });
