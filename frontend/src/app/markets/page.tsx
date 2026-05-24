@@ -24,6 +24,7 @@ export default function MarketsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [hiddenCategories, setHiddenCategories] = useState<Set<Category>>(new Set());
   const [sidebarSelection, setSidebarSelection] = useState<SidebarSelection | null>(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const convexEvents = useQuery(api.events.getEvents, {});
   const cryptoMarkets = useQuery(api.events.getCryptoMarkets, {});
@@ -212,20 +213,67 @@ export default function MarketsPage() {
     <div className="min-h-screen bg-white dark:bg-black flex flex-col">
       <Header />
       
-      <main className="container mx-auto px-4 py-8 flex-1 flex gap-6">
-        <MarketsSidebar
-          markets={markets}
-          selection={sidebarSelection}
-          onSelect={setSidebarSelection}
-        />
+      <main className={`${activeCategory === Category.SPORTS ? 'w-full md:px-0 px-4' : 'container mx-auto px-4'} py-8 flex-1 flex gap-6`}>
+        {activeCategory === Category.SPORTS && (
+          <div className="hidden md:block pl-4">
+            <MarketsSidebar
+              markets={markets}
+              selection={sidebarSelection}
+              onSelect={setSidebarSelection}
+            />
+          </div>
+        )}
 
-        <div className="flex-1 flex flex-col min-w-0">
+        {activeCategory === Category.SPORTS && mobileSidebarOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40 md:hidden bg-black/40"
+              onClick={() => setMobileSidebarOpen(false)}
+            />
+            <div className="fixed left-0 right-0 bottom-0 top-20 z-50 md:hidden bg-white dark:bg-black flex flex-col rounded-t-2xl overflow-hidden">
+              <button
+                onClick={() => setMobileSidebarOpen(false)}
+                aria-label="Close categories"
+                className="w-full pt-3 pb-2 flex justify-center"
+              >
+                <span className="block w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-700" />
+              </button>
+              <div className="flex-1 overflow-y-auto px-4 pb-6">
+                <MarketsSidebar
+                  markets={markets}
+                  selection={sidebarSelection}
+                  onSelect={(sel) => {
+                    setSidebarSelection(sel);
+                    setMobileSidebarOpen(false);
+                  }}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className={`flex-1 flex flex-col min-w-0 ${activeCategory === Category.SPORTS ? 'pr-4' : ''}`}>
           <div className="mb-6">
             <CategoryTabs
               activeCategory={activeCategory}
-              onCategoryChange={setActiveCategory}
+              onCategoryChange={(cat) => {
+                setActiveCategory(cat);
+                if (cat !== Category.SPORTS) setSidebarSelection(null);
+              }}
             />
           </div>
+
+          {activeCategory === Category.SPORTS && (
+            <div className="md:hidden mb-4">
+              <button
+                onClick={() => setMobileSidebarOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 text-sm text-gray-900 dark:text-white"
+              >
+                <span>Categories</span>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+            </div>
+          )}
 
           <div className="mb-6">
             <MarketFilters
