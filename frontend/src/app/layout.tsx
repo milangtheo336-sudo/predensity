@@ -57,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Inline splash screen visible before JS hydrates */}
         <div
           id="splash"
+          suppressHydrationWarning
           style={{
             position: 'fixed',
             inset: 0,
