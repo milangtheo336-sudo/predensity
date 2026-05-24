@@ -110,8 +110,8 @@ export async function POST(request: NextRequest) {
           userId: trade.sellerUserId,
         });
 
-        const isTurnkeyBuyer = buyerWallet?.encryptedPrivateKey?.startsWith('turnkey:');
-        const isTurnkeySeller = sellerWallet?.encryptedPrivateKey?.startsWith('turnkey:');
+        const isTurnkeyBuyer = (buyerWallet as any)?.encryptedPrivateKey?.startsWith('turnkey:') ?? false;
+        const isTurnkeySeller = (sellerWallet as any)?.encryptedPrivateKey?.startsWith('turnkey:') ?? false;
 
         // For now, use operator mode for all trades (both custodial and Turnkey users)
         // In Phase 2, Turnkey users will use Mode 2 (signed trades) on ExchangeSettlement
