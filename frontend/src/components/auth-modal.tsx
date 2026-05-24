@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMagic } from '@/context/MagicContext';
 import { getDIDToken, getMagic } from '@/lib/magic';
@@ -8,25 +8,34 @@ import { getDIDToken, getMagic } from '@/lib/magic';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  triggerRef?: React.RefObject<HTMLButtonElement>;
 }
 
-export function AuthModal({ isOpen, onClose }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { login, refreshUser } = useMagic();
 
   useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
     if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
     }
+    
     return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -35,14 +44,33 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setIsLoading(true);
 
     try {
+      console.log('[auth-modal] Starting Google OAuth...');
       const magic = getMagic();
       
-      await magic.oauth.loginWithRedirect({
+      console.log('[auth-modal] Magic instance:', !!magic);
+      console.log('[auth-modal] OAuth2 extension:', !!magic.oauth2);
+      
+      // Check if OAuth extension is available
+      if (!magic.oauth2) {
+        throw new Error('OAuth extension not initialized. Please refresh the page.');
+      }
+      
+      // Store a flag to indicate we initiated OAuth from this page
+      sessionStorage.setItem('magic-oauth-initiated', 'true');
+      sessionStorage.setItem('magic-oauth-return-url', window.location.pathname);
+      
+      console.log('[auth-modal] Initiating OAuth redirect...');
+      console.log('[auth-modal] Redirect URI:', `${window.location.origin}/auth/callback`);
+      
+      await magic.oauth2.loginWithRedirect({
         provider: 'google',
         redirectURI: `${window.location.origin}/auth/callback`,
       });
+      
+      // This line won't execute because loginWithRedirect redirects the page
+      console.log('[auth-modal] After loginWithRedirect (should not see this)');
     } catch (err) {
-      console.error('[auth] Google login error:', err);
+      console.error('[auth-modal] Google login error:', err);
       setError(err instanceof Error ? err.message : 'Google login failed');
       setIsLoading(false);
     }
@@ -78,7 +106,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         if (response.status === 409) {
           await refreshUser();
           onClose();
-          router.refresh();
+          window.location.reload();
           return;
         }
         
@@ -87,7 +115,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
       await refreshUser();
       onClose();
-      router.refresh();
+      window.location.reload();
     } catch (err) {
       console.error('[auth] Error:', err);
       setError(err instanceof Error ? err.message : 'Authentication failed');
@@ -97,42 +125,44 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <>
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-md mx-4">
-        <div className="bg-[#1a1a1a] rounded-2xl p-8 shadow-2xl border border-white/10">
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+      <div 
+        ref={dropdownRef}
+        className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[90vw] bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors z-10"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
 
+        <div className="p-10">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-white mb-2">Sign up</h2>
-            <p className="text-gray-400 text-sm">
-              By continuing, you acknowledge and agree to Predensity's{' '}
-              <a href="/terms" className="text-[#1a73e8] hover:underline">legal terms</a>
-              , which we recommend reviewing.
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">Create your account</h2>
+            <p className="text-gray-500 dark:text-gray-400 text-base leading-relaxed">
+              Welcome! Please fill in the details to get started.
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <button
               onClick={handleGoogleLogin}
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white hover:bg-gray-100 text-black rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white dark:bg-[#0a0a0a] hover:bg-gray-50 dark:hover:bg-[#0f0f0f] text-gray-900 dark:text-white border border-gray-200 dark:border-white/10 rounded-xl text-base font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -155,26 +185,31 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/10"></div>
+                <div className="w-full border-t border-gray-200 dark:border-white/10"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-[#1a1a1a] text-gray-400">or</span>
+                <span className="px-3 bg-white dark:bg-[#1a1a1a] text-gray-500 dark:text-gray-400">or</span>
               </div>
             </div>
 
-            <form onSubmit={handleEmailSubmit} className="space-y-3">
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-[#0a0a0a] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:border-transparent"
-                placeholder="Continue with Email"
-                disabled={isLoading}
-              />
+            <form onSubmit={handleEmailSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Email address
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3.5 bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:border-transparent"
+                  placeholder="Enter your email address"
+                  disabled={isLoading}
+                />
+              </div>
 
               {error && (
-                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                   {error}
                 </div>
               )}
@@ -182,21 +217,28 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 px-4 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-4 px-6 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-xl text-base font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Signing in...' : 'Continue'}
               </button>
             </form>
           </div>
 
-          <div className="mt-6 text-center text-sm text-gray-400">
+          <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
             Already have an account?{' '}
             <button className="text-[#1a73e8] hover:underline font-medium">
               Sign in
             </button>
           </div>
+
+          <div className="mt-8 pt-8 border-t border-gray-200 dark:border-white/10 text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+              By continuing, you acknowledge and agree to Predensity's{' '}
+              <a href="/terms" className="text-[#1a73e8] hover:underline">terms of service</a>.
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
