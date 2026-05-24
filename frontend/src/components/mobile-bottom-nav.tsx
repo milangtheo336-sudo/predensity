@@ -19,37 +19,37 @@ export function MobileBottomNav() {
     <>
       {/* Mobile Bottom Navigation — floating island */}
       <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 md:hidden z-40 w-[calc(100%-32px)] max-w-sm">
-        <div className="flex items-center justify-around h-16 px-4 bg-[#1a1a1a] dark:bg-[#1a1a1a] rounded-[28px] shadow-2xl border border-white/[0.08]">
-          <Link href="/markets" className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-white transition-colors">
-            <Image src="/home.svg" alt="Home" width={20} height={20} className="brightness-0 invert opacity-60" />
-            <span className="text-[10px] font-medium">{t.home}</span>
+        <div className="flex items-center justify-around h-16 px-4 bg-black/60 backdrop-blur-xl rounded-[28px] shadow-2xl border border-white/[0.12]">
+          <Link href="/markets" className="flex flex-col items-center justify-center gap-1.5 py-2 text-white/50 hover:text-white transition-colors">
+            <Image src="/home.svg" alt="Home" width={20} height={20} className="brightness-0 invert opacity-50" />
+            <span className="text-[11.5px] font-medium">{t.home}</span>
           </Link>
-          <button className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-white transition-colors">
-            <Image src="/search.svg" alt="Search" width={20} height={20} className="brightness-0 invert opacity-60" />
-            <span className="text-[10px] font-medium">{t.search}</span>
+          <button className="flex flex-col items-center justify-center gap-1.5 py-2 text-white/50 hover:text-white transition-colors">
+            <Image src="/search.svg" alt="Search" width={20} height={20} className="brightness-0 invert opacity-50" />
+            <span className="text-[11.5px] font-medium">{t.search}</span>
           </button>
-          <button className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-white transition-colors">
-            <Image src="/breaking.svg" alt="Breaking" width={20} height={20} className="brightness-0 invert opacity-60" />
-            <span className="text-[10px] font-medium">{t.breaking}</span>
+          <button className="flex flex-col items-center justify-center gap-1.5 py-2 text-white/50 hover:text-white transition-colors">
+            <Image src="/breaking.svg" alt="Breaking" width={20} height={20} className="brightness-0 invert opacity-50" />
+            <span className="text-[11.5px] font-medium">{t.breaking}</span>
           </button>
 
           {/* Logged in: Portfolio icon linking to /my-bets */}
           {isSignedIn ? (
-            <Link href="/my-bets" className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-white transition-colors">
-              <Image src="/portfolio icon.svg" alt="Portfolio" width={20} height={20} className="brightness-0 invert opacity-60" />
-              <span className="text-[10px] font-medium">{t.portfolio}</span>
+            <Link href="/my-bets" className="flex flex-col items-center justify-center gap-1.5 py-2 text-white/50 hover:text-white transition-colors">
+              <Image src="/portfolio icon.svg" alt="Portfolio" width={20} height={20} className="brightness-0 invert opacity-50" />
+              <span className="text-[11.5px] font-medium">{t.portfolio}</span>
             </Link>
           ) : (
             <button
               onClick={() => setMoreOpen(true)}
-              className="flex flex-col items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-white transition-colors relative"
+              className="flex flex-col items-center justify-center gap-1.5 py-2 text-white/50 hover:text-white transition-colors relative"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="4" y1="6" x2="20" y2="6"/>
                 <line x1="4" y1="12" x2="20" y2="12"/>
                 <line x1="4" y1="18" x2="20" y2="18"/>
               </svg>
-              <span className="text-[10px] font-medium">{t.more}</span>
+              <span className="text-[11.5px] font-medium">{t.more}</span>
             </button>
           )}
         </div>
