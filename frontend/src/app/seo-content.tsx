@@ -3,9 +3,10 @@
  * Renders directly into the HTML stream before any client JS runs.
  * This is what crawlers and scrapers see.
  */
-export default function SeoContent({ events, cryptoMarkets }: {
+export default function SeoContent({ events, cryptoMarkets, clobMarkets }: {
   events: any[];
   cryptoMarkets: any[];
+  clobMarkets: any[];
 }) {
   const allMarkets = [
     ...cryptoMarkets.map((m: any) => ({
@@ -18,6 +19,11 @@ export default function SeoContent({ events, cryptoMarkets }: {
       question: e.eventName,
       category: e.category,
     })),
+    ...clobMarkets.map((m: any) => ({
+      id: m.marketId,
+      question: m.question,
+      category: m.category,
+    })),
   ].slice(0, 50);
 
   const jsonLd = {
@@ -25,7 +31,7 @@ export default function SeoContent({ events, cryptoMarkets }: {
     '@type': 'WebSite',
     name: 'Predensity',
     url: 'https://www.predensity.com',
-    description: 'Profit from bold, early, and accurate price forecasts. Predensity rewards boldness and sharpness of predictions — trade on crypto, politics, sports, and technology outcomes on Arc.',
+    description: 'Profit from bold, early, and accurate price forecasts. Predensity rewards boldness and sharpness of predictions — trade on crypto, politics, sports, and technology outcomes on Hedera.',
     potentialAction: {
       '@type': 'SearchAction',
       target: { '@type': 'EntryPoint', urlTemplate: 'https://www.predensity.com/?q={search_term_string}' },
@@ -70,7 +76,7 @@ export default function SeoContent({ events, cryptoMarkets }: {
           zIndex: -9999,
         }}
       >
-        <h1>Predensity — Decentralized Prediction Market on Arc</h1>
+        <h1>Predensity — Decentralized Prediction Market on Hedera</h1>
         <p>
           Profit from bold, early, and accurate price forecasts.
           The platform rewards boldness and sharpness of predictions.
