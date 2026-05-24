@@ -448,6 +448,7 @@ export default function OnboardingPage() {
             <WinnerPage
               match={MATCH}
               selectedOutcome={currentOutcome.name}
+              selectedSide={selectedSide}
               selectedAmount={selectedAmount}
               winnings={gameWinnings}
               onContinue={handleContinue}
