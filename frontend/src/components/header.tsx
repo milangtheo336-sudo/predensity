@@ -2358,7 +2358,17 @@ function ProfileDropdownPortal({
           </button>
         )}
         <button
-          onClick={() => { logout(); clearWalletUser(); onClose(); }}
+          onClick={async () => {
+            // Always disconnect wallet library too — covers the case where
+            // user connected a wallet for deposits and then logs out without
+            // explicitly disconnecting first
+            if (isConnected) {
+              try { await disconnect(); } catch { /* ignore */ }
+            }
+            clearWalletUser();
+            logout();
+            onClose();
+          }}
           className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
         >
           <LogOut className="w-4 h-4" />
