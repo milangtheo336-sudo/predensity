@@ -8,13 +8,11 @@ import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/useToast';
-import { Toaster } from '@/components/ui/toaster';
 import { useContractWriteCompat, useReadContractCompat } from '@/hooks/useContractWrite';
 import { ChallengeMarketABI } from '@/lib/contracts/challenge-market-abi';
 import { getChallengeMarketAddress, getStakingCurrency, getStakingTokenAddress } from '@/lib/contracts/contract-config';
 import { formatAddress, formatNumber } from '@/lib/utils';
 import { useMagic } from '@/context/MagicContext';
-import { useWalletUser } from '@/context/WalletUserContext';
 import { getDIDToken } from '@/lib/magic';
 import { SPORT_TAXONOMY } from '@/lib/types/sports';
 import { parseUnits } from 'viem';
@@ -40,9 +38,6 @@ export default function ChallengesPage() {
   const { toast } = useToast();
   const { isConnected, address } = useAccount();
   const { user } = useMagic();
-  const { walletUser } = useWalletUser();
-  const effectiveIssuer = user?.issuer || walletUser?.userId;
-
   const { writeContract, watch } = useContractWriteCompat();
   const { readContract } = useReadContractCompat();
 
@@ -53,12 +48,12 @@ export default function ChallengesPage() {
   // Get user's proxy wallet and following list (friends)
   const userProxy = useQuery(
     api.social.getProxyWalletByUserId,
-    effectiveIssuer ? { userId: effectiveIssuer } : 'skip'
+    user?.issuer ? { userId: user.issuer } : 'skip'
   );
 
   const friends = useQuery(
     api.social.getFriendsWithProfiles,
-    effectiveIssuer ? { userAddress: `managed:${effectiveIssuer}`.toLowerCase() } : 'skip'
+    userProxy ? { userAddress: userProxy } : 'skip'
   );
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -69,9 +64,7 @@ export default function ChallengesPage() {
     platform: '',
     stakeFree: false,
     playerA: userProxy || '',
-    playerAName: '',
     playerB: '',
-    playerBName: '',
     startTime: '',
     expiryTime: '',
     baseCutBps: 200,
@@ -167,7 +160,7 @@ export default function ChallengesPage() {
         toast({ title: 'Connect wallet', description: 'Connect a wallet to create a match.' });
         return;
       }
-      if (!effectiveIssuer) {
+      if (!user?.issuer) {
         toast({ title: 'Sign in required', description: 'Sign in to create a match.' });
         return;
       }
@@ -184,24 +177,10 @@ export default function ChallengesPage() {
         return;
       }
 
-      if (!createForm.playerA || !createForm.playerA.startsWith('0x')) {
-        toast({ title: 'Invalid Host', description: 'Your address is not ready yet.' });
-        return;
-      }
-      if (!createForm.playerB || !createForm.playerB.startsWith('0x')) {
-        toast({ title: 'Invalid Friend', description: 'The selected friend does not have a valid on-chain address.' });
-        return;
-      }
-
       const start = Math.floor(new Date(createForm.startTime).getTime() / 1000);
       const expiry = Math.floor(new Date(createForm.expiryTime).getTime() / 1000);
       if (!Number.isFinite(start) || !Number.isFinite(expiry)) {
         toast({ title: 'Invalid time', description: 'Please select valid start and expiry times.' });
-        return;
-      }
-
-      if (expiry < start + 86400) {
-        toast({ title: 'Invalid Expiry', description: 'Match expiry must be at least 24 hours after the start time.' });
         return;
       }
 
@@ -233,11 +212,9 @@ export default function ChallengesPage() {
                 Authorization: `Bearer ${didToken}`,
               },
               body: JSON.stringify({
-                userId: effectiveIssuer,
+                userId: user.issuer,
                 playerA: createForm.playerA,
-                playerAName: createForm.playerAName.trim() || undefined,
                 playerB: createForm.playerB,
-                playerBName: createForm.playerBName.trim() || undefined,
                 startTime: start,
                 expiryTime: expiry,
                 baseCutBps: createForm.baseCutBps,
@@ -283,7 +260,7 @@ export default function ChallengesPage() {
         toast({ title: 'Connect wallet', description: 'Connect a wallet to place a bet.' });
         return;
       }
-      if (!effectiveIssuer) {
+      if (!user?.issuer) {
         toast({ title: 'Sign in required', description: 'Sign in to place a bet.' });
         return;
       }
@@ -351,7 +328,7 @@ export default function ChallengesPage() {
                 Authorization: `Bearer ${didToken}`,
               },
               body: JSON.stringify({
-                userId: effectiveIssuer,
+                userId: user.issuer,
                 matchId: betMatch.matchId,
                 side: betSide,
                 amount: amountNum,
@@ -392,7 +369,7 @@ export default function ChallengesPage() {
         toast({ title: 'Connect wallet', description: 'Connect a wallet to submit a result.' });
         return;
       }
-      if (!effectiveIssuer) {
+      if (!user?.issuer) {
         toast({ title: 'Sign in required', description: 'Sign in to submit a result.' });
         return;
       }
@@ -426,7 +403,7 @@ export default function ChallengesPage() {
                 Authorization: `Bearer ${didToken}`,
               },
               body: JSON.stringify({
-                userId: effectiveIssuer,
+                userId: user.issuer,
                 matchId: resultMatch.matchId,
                 winner: resultWinner,
                 transactionHash: txHash,
@@ -463,7 +440,7 @@ export default function ChallengesPage() {
         toast({ title: 'Connect wallet', description: 'Connect a wallet to claim.' });
         return;
       }
-      if (!effectiveIssuer) {
+      if (!user?.issuer) {
         toast({ title: 'Sign in required', description: 'Sign in to claim.' });
         return;
       }
@@ -495,7 +472,7 @@ export default function ChallengesPage() {
                 Authorization: `Bearer ${didToken}`,
               },
               body: JSON.stringify({
-                userId: effectiveIssuer,
+                userId: user.issuer,
                 betId: bet.betId,
                 onChainBetId: bet.onChainBetId,
                 transactionHash: txHash,
@@ -577,24 +554,7 @@ export default function ChallengesPage() {
                 </select>
               </div>
 
-              <select 
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white"
-                value={createForm.gameTitle} 
-                onChange={(e) => setCreateForm({ ...createForm, gameTitle: e.target.value })}
-              >
-                <option value="" disabled>Select a Game</option>
-                <option value="Call of Duty">Call of Duty</option>
-                <option value="Mortal Kombat">Mortal Kombat</option>
-                <option value="FIFA">FIFA / FC24</option>
-                <option value="NBA">NBA 2K</option>
-                <option value="Fortnite">Fortnite</option>
-                <option value="Free Fire">Free Fire</option>
-                <option value="Chess">Chess</option>
-                <option value="Snooker">Snooker</option>
-                <option value="eFootball">eFootball</option>
-                <option value="Madden">Madden / NFL</option>
-                <option value="Other">Other</option>
-              </select>
+              <input className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white" placeholder="Game title (e.g., Free Fire)" value={createForm.gameTitle} onChange={(e) => setCreateForm({ ...createForm, gameTitle: e.target.value })} />
               <input className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white" placeholder="Tagline (e.g., Let's see the best player)" value={createForm.gameTagline} onChange={(e) => setCreateForm({ ...createForm, gameTagline: e.target.value })} />
               <div className="grid grid-cols-2 gap-2">
                 <input className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white" placeholder="Winner mode (e.g., Most Kills)" value={createForm.gameMode} onChange={(e) => setCreateForm({ ...createForm, gameMode: e.target.value })} />
@@ -611,17 +571,9 @@ export default function ChallengesPage() {
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Players</h2>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Your Address (Player A)</label>
-                <div className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white text-sm truncate mb-2">
+                <div className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white text-sm truncate">
                   {createForm.playerA || 'Loading...'}
                 </div>
-                <label className="text-xs text-gray-500 mb-1 mt-2 flex items-center gap-1">Your Team Name <span className="text-red-500">*</span></label>
-                <input 
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white" 
-                  placeholder="Your Team Name *" 
-                  required
-                  value={createForm.playerAName} 
-                  onChange={(e) => setCreateForm({ ...createForm, playerAName: e.target.value })} 
-                />
               </div>
               
               <div>
@@ -633,21 +585,11 @@ export default function ChallengesPage() {
                 >
                   <option value="">-- Select a friend --</option>
                   {friends && friends.length > 0 ? friends.map((friend) => (
-                    friend.proxyWalletAddress && (
-                      <option key={friend.address} value={friend.proxyWalletAddress}>
-                        {friend.displayName}
-                      </option>
-                    )
+                    <option key={friend.address} value={friend.address}>
+                      {friend.displayName}
+                    </option>
                   )) : <option disabled>No friends yet. Follow players to invite them!</option>}
                 </select>
-                <label className="text-xs text-gray-500 mb-1 mt-3 flex items-center gap-1">Opponent Team Name <span className="text-red-500">*</span></label>
-                <input 
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-white" 
-                  placeholder="Opponent Team Name *" 
-                  required
-                  value={createForm.playerBName} 
-                  onChange={(e) => setCreateForm({ ...createForm, playerBName: e.target.value })} 
-                />
               </div>
             </div>
 
@@ -762,7 +704,6 @@ export default function ChallengesPage() {
           </div>
         </DialogContent>
       </Dialog>
-      <Toaster />
     </div>
   );
 }
