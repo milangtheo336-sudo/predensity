@@ -287,7 +287,7 @@ export default function OnboardingPage() {
                   onClick={handlePlaceTrade}
                   className="w-full bg-[#0d1b2a] text-white font-bold py-4 rounded-2xl hover:bg-[#1a2f45] transition-colors text-sm"
                 >
-                  Predict
+                  Trade
                 </button>
               </div>
             </div>
