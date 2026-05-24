@@ -8,17 +8,17 @@ import GamePlay from '@/components/game-play';
 import WinnerPage from '@/components/winner-page';
 
 const CATEGORIES = [
-  { id: 'crypto',        name: 'Crypto',          icon: '\u20BF' },
-  { id: 'sports',        name: 'Sports',           icon: '\u26BD' },
-  { id: 'politics',      name: 'Politics',         icon: '\uD83D\uDDF3\uFE0F' },
-  { id: 'finance',       name: 'Finance',          icon: '\uD83D\uDCC8' },
-  { id: 'tech',          name: 'Tech & Science',   icon: '\uD83D\uDD2C' },
-  { id: 'elections',     name: 'Elections',        icon: '\uD83C\uDFF7\uFE0F' },
-  { id: 'entertainment', name: 'Entertainment',    icon: '\uD83C\uDFAC' },
-  { id: 'culture',       name: 'Culture',          icon: '\uD83C\uDFAD' },
-  { id: 'climate',       name: 'Climate',          icon: '\uD83C\uDF0D' },
-  { id: 'commodities',   name: 'Commodities',      icon: '\uD83D\uDEE2\uFE0F' },
-  { id: 'companies',     name: 'Companies',        icon: '\uD83C\uDFE2' },
+  { id: 'crypto',        name: 'Crypto',        image: '/onboarding images/crypto-removebg-preview.avif' },
+  { id: 'sports',        name: 'Sports',        image: '/onboarding images/sports-removebg-preview.avif' },
+  { id: 'politics',      name: 'Politics',      image: '/onboarding images/politics-removebg-preview.avif' },
+  { id: 'finance',       name: 'Finance',       image: '/onboarding images/finance-removebg-preview.avif' },
+  { id: 'tech',          name: 'Tech & Science',image: '/onboarding images/tech-removebg-preview.avif' },
+  { id: 'elections',     name: 'Elections',     image: '/onboarding images/elections-removebg-preview.avif' },
+  { id: 'entertainment', name: 'Entertainment', image: '/onboarding images/entertainment-removebg-preview.avif' },
+  { id: 'culture',       name: 'Culture',       image: '/onboarding images/culture-removebg-preview.avif' },
+  { id: 'climate',       name: 'Climate',       image: '/onboarding images/climate-removebg-preview.avif' },
+  { id: 'commodities',   name: 'Commodities',   image: '/onboarding images/commodites-removebg-preview.avif' },
+  { id: 'companies',     name: 'Companies',     image: '/onboarding images/companies-removebg-preview.avif' },
 ];
 
 const MATCH = {
