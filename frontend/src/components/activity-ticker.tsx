@@ -37,7 +37,7 @@ export function ActivityTicker() {
   const items = [...bets, ...bets];
 
   return (
-    <div className="relative z-[60] w-full bg-gray-100 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-white/[0.06] overflow-hidden h-7 flex items-center">
+    <div className="w-full bg-[#0a0a0a] border-b border-white/[0.06] overflow-hidden h-9 flex items-center">
       <div
         className="flex items-center gap-0 whitespace-nowrap animate-ticker"
         style={{ willChange: 'transform' }}
@@ -49,15 +49,15 @@ export function ActivityTicker() {
           const stakeLabel = !isNaN(stake) ? ` · $${stake.toFixed(0)}` : '';
 
           return (
-            <span key={`${bet.betId}-${i}`} className="flex items-center gap-1.5 px-3 text-[11px] text-gray-500 dark:text-gray-400 leading-none">
+            <span key={`${bet.betId}-${i}`} className="flex items-center gap-2 px-4 text-[12px] text-gray-400">
               {/* Avatar — profile pic if set, otherwise generated from address */}
-              <span className="flex-shrink-0 w-4 h-4 rounded-full overflow-hidden">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full overflow-hidden">
                 {bet.avatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={bet.avatar} alt={label} className="w-4 h-4 rounded-full object-cover" />
+                  <img src={bet.avatar} alt={label} className="w-5 h-5 rounded-full object-cover" />
                 ) : (
                   <Avatar
-                    size={16}
+                    size={20}
                     name={bet.userAddress}
                     variant="beam"
                     colors={['#6d28d9', '#7c3aed', '#4f46e5', '#2563eb', '#0ea5e9']}
@@ -65,12 +65,12 @@ export function ActivityTicker() {
                 )}
               </span>
 
-              <span className="text-gray-800 dark:text-gray-200 font-medium">{label}</span>
-              <span className="text-gray-400 dark:text-gray-600">·</span>
-              <span className="text-gray-500 dark:text-gray-500">{timeAgo(bet.timestamp)}</span>
-              <span className="text-gray-400 dark:text-gray-600">·</span>
-              <span className="text-gray-700 dark:text-gray-300">Predicted {range}{stakeLabel}</span>
-              <span className="text-gray-300 dark:text-gray-700 mx-3">|</span>
+              <span className="text-gray-200 font-medium">{label}</span>
+              <span className="text-gray-600">·</span>
+              <span className="text-gray-500">{timeAgo(bet.timestamp)}</span>
+              <span className="text-gray-600">·</span>
+              <span className="text-gray-300">Predicted {range}{stakeLabel}</span>
+              <span className="text-gray-700 mx-3">|</span>
             </span>
           );
         })}
