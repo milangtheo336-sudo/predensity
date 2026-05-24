@@ -91,7 +91,7 @@ function CrawlerSnapshot({ events, cryptoMarkets, clobMarkets }: {
     '@type': 'WebSite',
     name: 'Predensity',
     url: 'https://predensity.com',
-    description: 'Decentralized prediction market on Hedera. Trade on crypto, politics, sports, and technology outcomes.',
+    description: 'Profit from bold, early, and accurate price forecasts. Predensity rewards boldness and sharpness of predictions — trade on crypto, politics, sports, and technology outcomes on Hedera.',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
