@@ -154,26 +154,25 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return; // prevent double submission
-    setError(''); setIsLoading(true);
+    setError('');
     try {
       localStorage.setItem('lastUsedAuthMethod', 'email');
 
-      // login() sets isAuthenticating=true → shows "Redirecting..." modal
-      // and triggers the Magic OTP popup. After OTP is verified, refreshUser()
-      // inside login() would normally clear isAuthenticating — but we keep it
-      // alive manually so there's no blank gap before "Setting up..." appears.
+      // Don't show the loading overlay yet — let the Magic OTP popup
+      // appear cleanly without our overlay layered on top of it.
       await login(email);
 
-      // Keep "Redirecting..." modal visible while we fetch user info
+      // OTP is verified. Now show the loading overlay while we finish setup.
+      setIsLoading(true);
       setIsAuthenticating(true);
 
-      let attempts = 0; let currentUser = user;
-      while ((!currentUser?.issuer || !currentUser?.publicAddress) && attempts < 20) {
+      // login() already called refreshUser() internally, so getUserInfo()
+      // returns the data immediately — no polling needed.
+      let currentUser = await getUserInfo();
+      if (!currentUser?.issuer || !currentUser?.publicAddress) {
+        // One retry in case of a brief timing gap
         await new Promise(r => setTimeout(r, 500));
-        await refreshUser();
-        const info = await getUserInfo();
-        if (info?.issuer && info?.publicAddress) { currentUser = info; break; }
-        attempts++;
+        currentUser = await getUserInfo();
       }
       if (!currentUser?.issuer || !currentUser?.publicAddress) throw new Error('Failed to get user information. Please try again.');
 
