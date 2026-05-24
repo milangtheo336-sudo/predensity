@@ -30,7 +30,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const backdropClickEnabledRef = useRef(false);
   const router = useRouter();
   const { login, refreshUser, user } = useMagic();
-  const { setWalletUser, setIsWalletAuthenticating } = useWalletUser();
+  const { setWalletUser, setIsWalletAuthenticating, setSigningWallet } = useWalletUser();
   const { isConnected } = useWallet();
 
   // HashPack connector hooks (Hedera-native, not EIP-6963)
