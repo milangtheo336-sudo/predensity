@@ -2,14 +2,16 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useParams, redirect } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
+import { useMagic } from '@/context/MagicContext';
 import { Loader2 } from 'lucide-react';
 import { Header } from '@/components/header';
 
 export default function PublicProfilePage() {
   const params = useParams();
   const profileUserId = params.id as string;
-  const { user, isSignedIn, isLoaded } = useUser();
+  const { user, isLoading } = useMagic();
+  const isSignedIn = !!user;
+  const isLoaded = !isLoading;
 
   if (!isLoaded) {
     return (
