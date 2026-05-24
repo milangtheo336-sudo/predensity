@@ -1,4 +1,4 @@
-/**
+﻿/**
  * POST /api/wallet/create-wallet-user
  *
  * Creates (or retrieves) a user record for someone who signed in with an
@@ -6,7 +6,7 @@
  *
  * Auth: the caller must prove ownership of the address by providing a
  * signature over a deterministic challenge message.  We verify the signature
- * server-side with ethers.js — no DID token needed.
+ * server-side with ethers.js â€” no DID token needed.
  *
  * The user record stored in Convex is identical in shape to a Magic user
  * record so the rest of the backend (bets, proxy wallet, etc.) works without
@@ -54,8 +54,8 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Verify signature ---------------------------------------------------
-    // For EVM wallets (MetaMask, Blade, Kabila): standard personal_sign — verify with ethers
-    // For HashPack (Hedera native): signature is raw bytes from SignerSignature — we verify
+    // For EVM wallets (MetaMask, Blade, Kabila): standard personal_sign â€” verify with ethers
+    // For HashPack (Hedera native): signature is raw bytes from SignerSignature â€” we verify
     // the address matches what the wallet reported (address was fetched from the wallet SDK
     // directly, not user-supplied, so it's trustworthy as long as the signature step completed)
     const message = buildSignInMessage(address.toLowerCase(), nonce);
@@ -69,12 +69,12 @@ export async function POST(request: NextRequest) {
         signatureVerified = true;
       }
     } catch {
-      // Not an EVM signature — fall through to Hedera verification
+      // Not an EVM signature â€” fall through to Hedera verification
     }
 
     // For Hedera-native wallets (HashPack), the signature is raw bytes from the Hedera SDK.
     // We verify it's a non-empty hex string (proves the wallet popup was shown and approved).
-    // The address itself came from the wallet SDK's useEvmAddress hook — not user-supplied.
+    // The address itself came from the wallet SDK's useEvmAddress hook â€” not user-supplied.
     if (!signatureVerified && walletType === 'hashpack') {
       const sigHex = signature.startsWith('0x') ? signature.slice(2) : signature;
       if (sigHex.length >= 64 && /^[0-9a-fA-F]+$/.test(sigHex)) {
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     // --- Check if user already exists ---------------------------------------
     const existing = await convex.query(api.users.getManagedWalletByUserId, { userId });
     if (existing) {
-      // Returning user — just return their record
+      // Returning user â€” just return their record
       return NextResponse.json({
         success: true,
         isNewUser: false,
@@ -118,13 +118,13 @@ export async function POST(request: NextRequest) {
         if (data.account) hederaAccountId = data.account;
       }
     } catch {
-      // Non-fatal — fall back to EVM address
+      // Non-fatal â€” fall back to EVM address
     }
 
     // --- Create user record in Convex ---------------------------------------
     await convex.adminMutation(api.users.createManagedWallet, {
       userId,
-      email: `${normalizedAddress}@wallet.predensity`, // placeholder — no email for wallet users
+      email: `${normalizedAddress}@wallet.predensity`, // placeholder â€” no email for wallet users
       magicEOAAddress: normalizedAddress,
       proxyWalletAddress: normalizedAddress, // will be updated after proxy wallet creation
       evmAddress: normalizedAddress,
@@ -151,3 +151,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
