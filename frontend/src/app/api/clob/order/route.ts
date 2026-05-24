@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { requireAuthMatchingUser, rateLimit, validateNumericRange } from '@/lib/api-auth';
-import { anyApi } from 'convex/server';
+import { api } from '../../../../../convex/_generated/api';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
 
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const qtyError = validateNumericRange(quantity, 'Quantity', 1, 100000);
     if (qtyError) return NextResponse.json({ error: qtyError }, { status: 400 });
 
-    const orderId = await convex.mutation(anyApi.clob.placeOrder, {
+    const orderId = await convex.mutation(api.clob.placeOrder, {
       marketId, userId, outcomeIndex: Number(outcomeIndex),
       side, price: Number(price), quantity: Number(quantity),
     });
@@ -54,7 +54,7 @@ export async function DELETE(request: NextRequest) {
     const authResult = await requireAuthMatchingUser(userId);
     if (authResult instanceof NextResponse) return authResult;
 
-    await convex.mutation(anyApi.clob.cancelOrder, { orderId, userId });
+    await convex.mutation(api.clob.cancelOrder, { orderId, userId });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[clob/order] Cancel error:', error);
