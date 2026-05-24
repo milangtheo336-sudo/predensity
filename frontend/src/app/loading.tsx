@@ -8,7 +8,7 @@ export default function Loading() {
         height={64}
         className="mb-5 animate-pulse"
       />
-      <span className="text-purple-500 text-2xl font-semibold tracking-wide">
+      <span className="text-white text-2xl font-semibold tracking-wide">
         predensity
       </span>
     </div>
