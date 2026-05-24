@@ -66,29 +66,37 @@ function CommunitySentiment({
   const formatVotes = (n: number) =>
     n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`;
 
-  // SVG donut params
-  const r = 7;
-  const circ = 2 * Math.PI * r;
-  const bullDash = (bullPct / 100) * circ;
+  // Gauge needle: rotates from -90deg (0% bull) to +90deg (100% bull), 0deg = 50%
+  const needleRotation = (bullPct / 100) * 180 - 90;
 
   return (
     <div className="flex flex-col gap-2 px-1" onClick={(e) => e.stopPropagation()}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          {/* Donut chart — updates live with bullPct */}
-          <svg width="18" height="18" viewBox="0 0 18 18" className="flex-shrink-0 -rotate-90">
-            {/* background track */}
-            <circle cx="9" cy="9" r={r} fill="none" stroke="#ef4444" strokeWidth="3.5" />
-            {/* bullish arc */}
-            <circle
-              cx="9" cy="9" r={r}
-              fill="none"
-              stroke="#22c55e"
-              strokeWidth="3.5"
-              strokeDasharray={`${bullDash} ${circ - bullDash}`}
-              strokeLinecap="butt"
-              style={{ transition: 'stroke-dasharray 0.5s ease' }}
+          {/* Gauge icon with animated needle */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18" height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="flex-shrink-0 text-gray-400 dark:text-neutral-500"
+          >
+            {/* gauge arc */}
+            <path d="M3.34 19a10 10 0 1 1 17.32 0" />
+            {/* needle — rotates around pivot (12,14) */}
+            <path
+              d="m12 14 4-4"
+              style={{
+                transformOrigin: '12px 14px',
+                transform: `rotate(${needleRotation}deg)`,
+                transition: 'transform 0.5s ease',
+                stroke: bullPct >= 50 ? '#22c55e' : '#ef4444',
+              }}
             />
           </svg>
           <span className="text-[11px] font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
