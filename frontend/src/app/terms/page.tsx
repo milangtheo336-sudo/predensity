@@ -43,7 +43,7 @@ export default function TermsPage() {
               <h3 className="text-base font-medium mb-2">Description of the Site and Features</h3>
               <p className="mb-3">
                 The Site contains different functionality -- one part provides information about global news and events, while
-                another part contains a feature that allows users to send messages to the Hedera Hashgraph network in an entirely
+                another part contains a feature that allows users to send messages to the Arc network in an entirely
                 self-directed manner in order to engage in trades for certain event-based contracts (the "Contracts").
               </p>
               <p className="mb-3">
@@ -58,11 +58,11 @@ export default function TermsPage() {
                 the Site before making any decisions.
               </p>
 
-              <h3 className="text-base font-medium mb-2 mt-4">Hedera Network Interaction</h3>
+              <h3 className="text-base font-medium mb-2 mt-4">Arc Network Interaction</h3>
               <p className="mb-3">
-                Predensity is deployed on the Hedera Hashgraph network. We are not responsible for the operation, functionality,
-                or security of the underlying Hedera network. All transactions broadcast to the network via your Wallet may require
-                the payment of non-refundable network transaction fees (HBAR or other gas fees), which shall be borne entirely by you.
+                Predensity is deployed on the Arc network. We are not responsible for the operation, functionality,
+                or security of the underlying Arc network. All transactions broadcast to the network via your Wallet may require
+                the payment of non-refundable network transaction fees (USDC gas fees), which shall be borne entirely by you.
                 If you click the "Connect Wallet" feature on the Site, you note that the Company (i) is not involved in transmitting
                 information to networks, (ii) cannot assist in any transaction, (iii) never has access to your private keys, and
                 (iv) has no authority over your cryptoassets.
@@ -76,7 +76,7 @@ export default function TermsPage() {
               <ul className="list-disc list-inside space-y-1 ml-2 mb-3">
                 <li><span className="font-medium">Of Age:</span> You are 18 years of age or older and have the legal capacity to enter into these Terms.</li>
                 <li><span className="font-medium">Sanctions:</span> You are not the subject of economic or trade sanctions administered or enforced by any governmental authority (e.g., OFAC, EU, UK).</li>
-                <li><span className="font-medium">Sophistication:</span> You possess sufficient knowledge, market sophistication, and experience to engage with blockchain technology, Hedera Hashgraph, and smart contracts.</li>
+                <li><span className="font-medium">Sophistication:</span> You possess sufficient knowledge, market sophistication, and experience to engage with blockchain technology, the Arc network, and smart contracts.</li>
                 <li><span className="font-medium">Wallet Configuration:</span> You are solely responsible for securing your private keys, passwords, and data.</li>
                 <li><span className="font-medium">Financial Risks:</span> You acknowledge that entering into Contracts on the Platform carries substantial risk. Contracts are highly experimental and volatile. BY USING PREDENSITY TO TRADE, YOU CAN LOSE UP TO THE ENTIRE AMOUNT OF THE CRYPTOASSETS SUPPLIED.</li>
                 <li><span className="font-medium">Taxes:</span> You are solely responsible for determining any tax consequences from your transactions using the Site and ensuring compliance with applicable tax laws in your jurisdiction.</li>
