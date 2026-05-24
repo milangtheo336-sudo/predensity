@@ -169,14 +169,21 @@ export default defineSchema({
     sportType: v.optional(v.string()),
     company: v.optional(v.string()),
     decimals: v.optional(v.number()),
-    
+
+    // Sidebar taxonomy (sport = top-level, league = sub-category).
+    // See frontend/src/lib/types/sports.ts for allowed values.
+    sport: v.optional(v.string()),
+    league: v.optional(v.string()),
+
     createdAt: v.number(),
   })
     .index("by_category", ["category"])
     .index("by_timestamp", ["eventTimestamp"])
     .index("by_resolved", ["resolved"])
     .index("by_category_timestamp", ["category", "eventTimestamp"])
-    .index("by_event_id", ["eventId"]),
+    .index("by_event_id", ["eventId"])
+    .index("by_sport", ["sport"])
+    .index("by_sport_league", ["sport", "league"]),
 
   cryptoMarkets: defineTable({
     marketId: v.string(),
@@ -322,11 +329,16 @@ export default defineSchema({
     team2: v.optional(v.string()),
     candidate: v.optional(v.string()),
     sportType: v.optional(v.string()),
+    // Sidebar taxonomy (sport = top-level, league = sub-category).
+    sport: v.optional(v.string()),
+    league: v.optional(v.string()),
   })
     .index("by_category", ["category"])
     .index("by_status", ["status"])
     .index("by_market_id", ["marketId"])
-    .index("by_resolution", ["resolutionTimestamp"]),
+    .index("by_resolution", ["resolutionTimestamp"])
+    .index("by_sport", ["sport"])
+    .index("by_sport_league", ["sport", "league"]),
 
   // Order book: limit orders for buying/selling outcome tokens
   clobOrders: defineTable({
