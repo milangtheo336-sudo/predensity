@@ -37,7 +37,7 @@ const ABI = new ethers.utils.Interface([
 export async function POST(request: NextRequest) {
   try {
     // Admin auth check
-    const adminResult = await requireAdmin();
+    const adminResult = await requireAdmin(request);
     if (adminResult instanceof NextResponse) return adminResult;
 
     // Rate limit: 10 requests per minute
