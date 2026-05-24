@@ -70,9 +70,6 @@ export interface CryptoBet {
   actualValue?: string;
   won?: boolean;
   asset?: string;
-  // DPM fields
-  entryBandWeight?: string;
-  exited?: boolean;
 }
 
 // Politics-specific types
@@ -108,8 +105,6 @@ export interface PoliticsBet {
   finalized: boolean;
   claimed: boolean;
   won?: boolean;
-  entryBandWeight?: string;
-  exited?: boolean;
 }
 
 // Sports-specific types
@@ -161,8 +156,6 @@ export interface SportsBet {
   finalized: boolean;
   claimed: boolean;
   won?: boolean;
-  entryBandWeight?: string;
-  exited?: boolean;
 }
 
 // Technology-specific types
@@ -202,8 +195,6 @@ export interface TechBet {
   finalized: boolean;
   claimed: boolean;
   won?: boolean;
-  entryBandWeight?: string;
-  exited?: boolean;
 }
 
 // Generic market card data
