@@ -1,6 +1,5 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { requireServerToken } from "./_lib/auth";
 
 export const getUserBetHistory = query({
   args: {
@@ -34,29 +33,29 @@ export const getUserStats = query({
   handler: async (ctx, args) => {
     const stats = await ctx.db
       .query("userStats")
-      .withIndex("by_user_id", (q) => q.eq("userId", args.userAddress))
+      .withIndex("by_address", (q) => q.eq("userAddress", args.userAddress))
       .first();
 
     if (!stats) {
       return {
         userAddress: args.userAddress,
-        pointsThisWeek: 0,
-        pointsThisMonth: 0,
-        pointsAllTime: 0,
-        totalMatchesCreated: 0,
-        totalMatchesWon: 0,
-        followers: 0,
+        totalBets: 0,
+        totalWon: 0,
+        totalStaked: 0,
+        totalPayout: 0,
+        winRate: 0,
+        netProfit: 0,
       };
     }
 
     return {
-      userAddress: stats.userId,
-      pointsThisWeek: stats.pointsThisWeek,
-      pointsThisMonth: stats.pointsThisMonth,
-      pointsAllTime: stats.pointsAllTime,
-      totalMatchesCreated: stats.totalMatchesCreated,
-      totalMatchesWon: stats.totalMatchesWon,
-      followers: stats.followers,
+      userAddress: stats.userAddress,
+      totalBets: stats.totalBets,
+      totalWon: stats.totalWon,
+      totalStaked: stats.totalStaked,
+      totalPayout: stats.totalPayout,
+      winRate: stats.winRate,
+      netProfit: stats.totalPayout - stats.totalStaked,
     };
   },
 });
@@ -65,40 +64,25 @@ export const getUserStats = query({
 // MANAGED WALLETS (M-Pesa / phone-based users)
 // ============================================
 
-// Store a newly created non-custodial wallet. Server-gated: only the
-// Next.js server (which has already verified the user's Magic DID) may call
-// this. Without the token, an attacker could pre-register wallets for any
-// email/phone and intercept future M-Pesa deposits.
+// Store a newly created managed wallet
 export const createManagedWallet = mutation({
   args: {
-    userId: v.string(),
-    email: v.string(),
+    userId: v.optional(v.string()),
+    email: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
-    magicEOAAddress: v.optional(v.string()),
-    proxyWalletAddress: v.optional(v.string()),
+    hederaAccountId: v.string(),
     evmAddress: v.string(),
-    accountId: v.optional(v.string()),
-    usdcBalance: v.string(),
-    nativeBalance: v.optional(v.string()),
-    isActive: v.boolean(),
-    createdAt: v.number(),
-    lastActivity: v.number(),
-    lastBalanceSync: v.optional(v.number()),
-    _serverToken: v.optional(v.string()),
-    // Legacy Hedera fields — accepted but ignored
-    hbarBalance: v.optional(v.string()),
-    hederaAccountId: v.optional(v.string()),
+    encryptedPrivateKey: v.string(),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
-    // Check for duplicates
+    // Check for duplicates by userId or phoneNumber
     if (args.userId) {
       const existingByUser = await ctx.db
         .query("managedWallets")
-        .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+        .withIndex("by_user_id", (q) => q.eq("userId", args.userId!))
         .first();
       if (existingByUser) {
-        return existingByUser._id;
+        throw new Error("Wallet already exists for this user");
       }
     }
 
@@ -108,50 +92,23 @@ export const createManagedWallet = mutation({
         .withIndex("by_phone", (q) => q.eq("phoneNumber", args.phoneNumber!))
         .first();
       if (existingByPhone) {
-        return existingByPhone._id;
+        throw new Error("Wallet already exists for this phone number");
       }
     }
 
-    const walletId = await ctx.db.insert("managedWallets", {
+    return await ctx.db.insert("managedWallets", {
       userId: args.userId,
       email: args.email,
       phoneNumber: args.phoneNumber,
-      magicEOAAddress: args.magicEOAAddress,
-      proxyWalletAddress: args.proxyWalletAddress,
+      hederaAccountId: args.hederaAccountId,
       evmAddress: args.evmAddress,
-      accountId: args.accountId,
-      usdcBalance: args.usdcBalance,
-      nativeBalance: args.nativeBalance ?? '0',
-      isActive: args.isActive,
-      createdAt: args.createdAt,
-      lastActivity: args.lastActivity,
-      lastBalanceSync: args.lastBalanceSync,
+      encryptedPrivateKey: args.encryptedPrivateKey,
+      usdcBalance: "0",
+      hbarBalance: "0",
+      isActive: true,
+      createdAt: Date.now(),
+      lastActivity: Date.now(),
     });
-
-    // Initialize user stats for leaderboard
-    const existingStats = await ctx.db
-      .query("userStats")
-      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
-      .first();
-
-    if (!existingStats) {
-      await ctx.db.insert("userStats", {
-        userId: args.userId,
-        pointsThisWeek: 0,
-        pointsThisMonth: 0,
-        pointsAllTime: 0,
-        totalMatchesCreated: 0,
-        totalMatchesPlayed: 0,
-        totalMatchesWon: 0,
-        currentWinStreak: 0,
-        followers: 0,
-        totalComments: 0,
-        lastPointsUpdate: args.createdAt,
-        createdAt: args.createdAt,
-      });
-    }
-
-    return walletId;
   },
 });
 
@@ -171,10 +128,10 @@ export const getManagedWallet = query({
       userId: wallet.userId,
       email: wallet.email,
       phoneNumber: wallet.phoneNumber,
-      accountId: wallet.accountId,
+      hederaAccountId: wallet.hederaAccountId,
       evmAddress: wallet.evmAddress,
       usdcBalance: wallet.usdcBalance,
-      nativeBalance: wallet.nativeBalance,
+      hbarBalance: wallet.hbarBalance,
       isActive: wallet.isActive,
       createdAt: wallet.createdAt,
       lastActivity: wallet.lastActivity,
@@ -182,7 +139,7 @@ export const getManagedWallet = query({
   },
 });
 
-// Look up a managed wallet by Magic Link user ID
+// Look up a managed wallet by Clerk user ID
 export const getManagedWalletByUserId = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
@@ -197,12 +154,10 @@ export const getManagedWalletByUserId = query({
       userId: wallet.userId,
       email: wallet.email,
       phoneNumber: wallet.phoneNumber,
-      magicEOAAddress: wallet.magicEOAAddress,
-      proxyWalletAddress: wallet.proxyWalletAddress,
-      accountId: wallet.accountId,
+      hederaAccountId: wallet.hederaAccountId,
       evmAddress: wallet.evmAddress,
       usdcBalance: wallet.usdcBalance,
-      nativeBalance: wallet.nativeBalance,
+      hbarBalance: wallet.hbarBalance,
       isActive: wallet.isActive,
       createdAt: wallet.createdAt,
       lastActivity: wallet.lastActivity,
@@ -223,28 +178,24 @@ export const getManagedWalletByAddress = query({
 
     return {
       phoneNumber: wallet.phoneNumber,
-      accountId: wallet.accountId,
+      hederaAccountId: wallet.hederaAccountId,
       evmAddress: wallet.evmAddress,
       usdcBalance: wallet.usdcBalance,
-      nativeBalance: wallet.nativeBalance,
+      hbarBalance: wallet.hbarBalance,
       isActive: wallet.isActive,
     };
   },
 });
 
-// DEPRECATED: Only used for M-Pesa fiat on-ramp (custodial by nature)
-// For crypto deposits/withdrawals, balance is read from blockchain.
-// Server-gated: prevents arbitrary balance mutation by browser callers.
+// Update wallet balances (called by backend after deposits/withdrawals)
 export const updateWalletBalance = mutation({
   args: {
     phoneNumber: v.optional(v.string()),
     userId: v.optional(v.string()),
     usdcBalance: v.optional(v.string()),
-    nativeBalance: v.optional(v.string()),
-    _serverToken: v.optional(v.string()),
+    hbarBalance: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     let wallet = null;
 
     if (args.userId) {
@@ -265,24 +216,19 @@ export const updateWalletBalance = mutation({
 
     const updates: Record<string, string | number> = { lastActivity: Date.now() };
     if (args.usdcBalance !== undefined) updates.usdcBalance = args.usdcBalance;
-    if (args.nativeBalance !== undefined) updates.nativeBalance = args.nativeBalance;
+    if (args.hbarBalance !== undefined) updates.hbarBalance = args.hbarBalance;
 
     await ctx.db.patch(wallet._id, updates);
   },
 });
 
-// Link a phone number to an existing wallet (for M-Pesa deposits).
-// Server-gated: unauthenticated phone-to-wallet linking is an account-
-// takeover vector (attacker links their wallet to victim's phone, then
-// receives the victim's future M-Pesa deposits).
+// Link a phone number to an existing wallet (for M-Pesa deposits)
 export const linkPhoneToWallet = mutation({
   args: {
     userId: v.string(),
     phoneNumber: v.string(),
-    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     const wallet = await ctx.db
       .query("managedWallets")
       .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
@@ -307,16 +253,10 @@ export const linkPhoneToWallet = mutation({
   },
 });
 
-// Internal: get wallet with private key (only for server-side API routes).
-// Server-gated: this returns the full managedWallets row including legacy
-// `encryptedPrivateKey`. Never call from the browser.
+// Internal: get wallet with private key (only for server-side API routes)
 export const getWalletWithKey = query({
-  args: {
-    phoneNumber: v.string(),
-    _serverToken: v.optional(v.string()),
-  },
+  args: { phoneNumber: v.string() },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     return await ctx.db
       .query("managedWallets")
       .withIndex("by_phone", (q) => q.eq("phoneNumber", args.phoneNumber))
@@ -329,17 +269,15 @@ export const getWalletWithKey = query({
 // M-PESA TRANSACTIONS
 // ============================================
 
-// Create a pending M-Pesa deposit (STK Push initiated). Server-gated.
+// Create a pending M-Pesa deposit (STK Push initiated)
 export const createMpesaDeposit = mutation({
   args: {
     phoneNumber: v.string(),
     amountKES: v.number(),
     merchantRequestId: v.string(),
     checkoutRequestId: v.string(),
-    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     return await ctx.db.insert("mpesaTransactions", {
       phoneNumber: args.phoneNumber,
       type: "deposit",
@@ -352,7 +290,7 @@ export const createMpesaDeposit = mutation({
   },
 });
 
-// Create a pending M-Pesa withdrawal (B2C initiated). Server-gated.
+// Create a pending M-Pesa withdrawal (B2C initiated)
 export const createMpesaWithdrawal = mutation({
   args: {
     phoneNumber: v.string(),
@@ -360,10 +298,8 @@ export const createMpesaWithdrawal = mutation({
     amountUSDC: v.string(),
     conversationId: v.string(),
     originatorConversationId: v.string(),
-    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     return await ctx.db.insert("mpesaTransactions", {
       phoneNumber: args.phoneNumber,
       type: "withdraw",
@@ -377,7 +313,7 @@ export const createMpesaWithdrawal = mutation({
   },
 });
 
-// Update deposit status after Safaricom callback. Server-gated.
+// Update deposit status after Safaricom callback
 export const completeMpesaDeposit = mutation({
   args: {
     checkoutRequestId: v.string(),
@@ -385,10 +321,8 @@ export const completeMpesaDeposit = mutation({
     resultDesc: v.string(),
     mpesaReceiptNumber: v.optional(v.string()),
     amountUSDC: v.optional(v.string()),
-    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     const tx = await ctx.db
       .query("mpesaTransactions")
       .withIndex("by_checkout_request", (q) => q.eq("checkoutRequestId", args.checkoutRequestId))
@@ -411,16 +345,14 @@ export const completeMpesaDeposit = mutation({
   },
 });
 
-// Update withdrawal status after B2C callback. Server-gated.
+// Update withdrawal status after B2C callback
 export const completeMpesaWithdrawal = mutation({
   args: {
     conversationId: v.string(),
     resultCode: v.number(),
     resultDesc: v.string(),
-    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
     const tx = await ctx.db
       .query("mpesaTransactions")
       .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
@@ -468,7 +400,6 @@ export const getUserActivity = query({
     userAddress: v.string(),
     phoneNumber: v.optional(v.string()),
     managedEvmAddress: v.optional(v.string()),
-    managedEoaAddress: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -502,19 +433,10 @@ export const getUserActivity = query({
           .take(limit)
       : [];
 
-    const eoaAddr = args.managedEoaAddress?.toLowerCase();
-    const eoaBets = eoaAddr
-      ? await ctx.db
-          .query("bets")
-          .withIndex("by_user", (q) => q.eq("userAddress", eoaAddr))
-          .order("desc")
-          .take(limit)
-      : [];
-
     // Deduplicate bets
     const seenBetIds = new Set<string>();
     const allBets = [];
-    for (const b of [...managedBets, ...walletBets, ...evmBets, ...eoaBets]) {
+    for (const b of [...managedBets, ...walletBets, ...evmBets]) {
       if (!seenBetIds.has(b.betId)) {
         seenBetIds.add(b.betId);
         allBets.push(b);
@@ -531,23 +453,6 @@ export const getUserActivity = query({
         .take(limit);
     }
 
-    // Build event image lookup for non-crypto bets (politics, sports, technology)
-    // Match events by category + targetTimestamp
-    const nonCryptoCategories = new Set<string>();
-    for (const b of allBets) {
-      if (b.category && b.category !== "crypto") nonCryptoCategories.add(b.category);
-    }
-    const eventImageMap = new Map<string, { imageUrl: string; eventName: string }>();
-    for (const cat of Array.from(nonCryptoCategories)) {
-      const events = await ctx.db
-        .query("events")
-        .withIndex("by_category", (q) => q.eq("category", cat))
-        .collect();
-      for (const ev of events) {
-        eventImageMap.set(`${cat}-${ev.eventTimestamp}`, { imageUrl: ev.imageUrl, eventName: ev.eventName });
-      }
-    }
-
     // Build unified activity items
     type ActivityItem = {
       type: "bet_placed" | "bet_won" | "bet_lost" | "deposit" | "withdrawal";
@@ -559,10 +464,6 @@ export const getUserActivity = query({
       details?: string;
       betId?: string;
       txHash?: string;
-      priceMin?: string;
-      priceMax?: string;
-      eventImageUrl?: string;
-      eventName?: string;
     };
 
     const activities: ActivityItem[] = [];
@@ -570,43 +471,38 @@ export const getUserActivity = query({
     for (const bet of allBets) {
       if (bet.status === "failed") continue;
 
-      const evKey = `${bet.category}-${bet.targetTimestamp}`;
-      const eventInfo = eventImageMap.get(evKey);
-
-      const base = {
-        category: bet.category,
-        asset: bet.asset,
-        betId: bet.betId,
-        txHash: bet.transactionHash,
-        priceMin: bet.priceMin,
-        priceMax: bet.priceMax,
-        eventImageUrl: eventInfo?.imageUrl,
-        eventName: eventInfo?.eventName,
-      };
-
       if (bet.finalized && bet.won) {
         activities.push({
-          ...base,
           type: "bet_won",
           timestamp: bet.timestamp,
           amount: bet.payout || bet.expectedPayout || bet.stake,
+          category: bet.category,
+          asset: bet.asset,
           status: "completed",
+          betId: bet.betId,
+          txHash: bet.transactionHash,
         });
       } else if (bet.finalized && !bet.won) {
         activities.push({
-          ...base,
           type: "bet_lost",
           timestamp: bet.timestamp,
           amount: bet.stake,
+          category: bet.category,
+          asset: bet.asset,
           status: "completed",
+          betId: bet.betId,
+          txHash: bet.transactionHash,
         });
       } else {
         activities.push({
-          ...base,
           type: "bet_placed",
           timestamp: bet.timestamp,
           amount: bet.stake,
+          category: bet.category,
+          asset: bet.asset,
           status: bet.status || "pending",
+          betId: bet.betId,
+          txHash: bet.transactionHash,
         });
       }
     }
@@ -628,57 +524,5 @@ export const getUserActivity = query({
     activities.sort((a, b) => b.timestamp - a.timestamp);
 
     return activities.slice(0, limit);
-  },
-});
-
-// ============================================
-// M-PESA BRIDGE IDEMPOTENCY
-// ============================================
-// These are intentionally public mutations/queries but they are "safe" in the
-// sense that they only record idempotency keys and don't move money. The real
-// authorisation for the bridge happens via HMAC on the Next.js route.
-
-// Check whether a bridge/refund has already been recorded for a given key.
-export const getMpesaBridgeByKey = query({
-  args: { idempotencyKey: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("mpesaBridges")
-      .withIndex("by_key", (q) => q.eq("idempotencyKey", args.idempotencyKey))
-      .first();
-  },
-});
-
-// Record a completed bridge/refund. Returns null if a row already exists
-// (race-safe idempotency: second caller gets null and should not re-run).
-// Server-gated: without this gate, an attacker could pre-register a receipt
-// to DoS a legitimate bridge call.
-export const recordMpesaBridge = mutation({
-  args: {
-    idempotencyKey: v.string(),
-    kind: v.string(),
-    proxyWalletAddress: v.optional(v.string()),
-    phoneNumber: v.optional(v.string()),
-    amountUSDC: v.string(),
-    transactionId: v.optional(v.string()),
-    _serverToken: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    requireServerToken(args._serverToken);
-    const existing = await ctx.db
-      .query("mpesaBridges")
-      .withIndex("by_key", (q) => q.eq("idempotencyKey", args.idempotencyKey))
-      .first();
-    if (existing) return null;
-
-    return await ctx.db.insert("mpesaBridges", {
-      idempotencyKey: args.idempotencyKey,
-      kind: args.kind,
-      proxyWalletAddress: args.proxyWalletAddress,
-      phoneNumber: args.phoneNumber,
-      amountUSDC: args.amountUSDC,
-      transactionId: args.transactionId,
-      createdAt: Date.now(),
-    });
   },
 });
