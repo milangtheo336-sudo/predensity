@@ -39,12 +39,13 @@ import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'co
 import { api } from '../../convex/_generated/api';
 import { getStakingCurrency, getStakingTokenId } from '@/lib/contracts/contract-config';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { QRCodeSVG } from 'qrcode.react';
 
 // ---------------------------------------------------------------------------
 // Deposit Modal Context
 // ---------------------------------------------------------------------------
 
-type DepositView = 'menu' | 'mpesa' | 'wallet-connect' | 'wallet-transfer' | 'withdraw';
+type DepositView = 'crypto' | 'cash' | 'crypto-transfer' | 'wallet-connect' | 'wallet-transfer' | 'withdraw';
 
 interface DepositModalContextType {
   openDeposit: () => void;
@@ -67,11 +68,13 @@ export function useDepositModal() {
 export function DepositModal({
   isOpen,
   onClose,
-  initialView = 'menu',
+  initialView = 'crypto',
+  platformBalance = 0,
 }: {
   isOpen: boolean;
   onClose: () => void;
   initialView?: DepositView;
+  platformBalance?: number;
 }) {
   const [view, setView] = useState<DepositView>(initialView);
   const [mounted, setMounted] = useState(false);
@@ -83,6 +86,11 @@ export function DepositModal({
 
   if (!mounted || !isOpen) return null;
 
+  const isWithdraw = view === 'withdraw';
+  // Determine which top-level tab is active
+  const isCryptoSide = view === 'crypto' || view === 'crypto-transfer' || view === 'wallet-connect' || view === 'wallet-transfer';
+  const isCashSide = view === 'cash';
+
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
@@ -91,24 +99,56 @@ export function DepositModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3">
-          <h2 className="text-lg font-semibold text-white">
-            {view === 'menu' && 'Deposit'}
-            {view === 'mpesa' && 'M-Pesa Deposit'}
-            {view === 'wallet-connect' && 'Connect Wallet'}
-            {view === 'wallet-transfer' && 'Transfer from Wallet'}
-            {view === 'withdraw' && 'Withdraw'}
-          </h2>
+          <div>
+            <h2 className="text-lg font-semibold text-white">
+              {isWithdraw ? 'Withdraw' : 'Deposit'}
+            </h2>
+            <p className="text-sm text-gray-400 mt-0.5">
+              Balance: <span className="text-white font-medium">${platformBalance.toFixed(2)}</span>
+            </p>
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        {/* Two-tab toggle -- only for deposit */}
+        {!isWithdraw && (view === 'crypto' || view === 'cash') && (
+          <div className="px-6 pb-4">
+            <div className="flex rounded-xl border border-white/10 overflow-hidden">
+              <button
+                onClick={() => setView('crypto')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${
+                  isCryptoSide
+                    ? 'bg-white/[0.08] text-white'
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                <Image src="/hedera.svg" alt="" width={18} height={18} />
+                Use Crypto
+              </button>
+              <button
+                onClick={() => setView('cash')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${
+                  isCashSide
+                    ? 'bg-white/[0.08] text-white'
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                <Image src="/fiat.svg" alt="" width={18} height={18} className="brightness-0 invert" />
+                Use Fiat
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="px-6 pb-6">
-          {view === 'menu' && <DepositMenuView onSelect={setView} />}
-          {view === 'mpesa' && <MpesaDepositView onBack={() => setView('menu')} onClose={onClose} />}
-          {view === 'wallet-connect' && <WalletConnectView onBack={() => setView('menu')} onConnected={() => setView('wallet-transfer')} />}
-          {view === 'wallet-transfer' && <WalletTransferView onBack={() => setView('menu')} onClose={onClose} />}
-          {view === 'withdraw' && <WithdrawView onBack={() => setView('menu')} onClose={onClose} />}
+          {view === 'crypto' && <CryptoMenuView onSelect={setView} />}
+          {view === 'crypto-transfer' && <CryptoDepositView onBack={() => setView('crypto')} />}
+          {view === 'wallet-connect' && <WalletConnectView onBack={() => setView('crypto')} onConnected={() => setView('wallet-transfer')} />}
+          {view === 'wallet-transfer' && <WalletTransferView onBack={() => setView('wallet-connect')} onClose={onClose} />}
+          {view === 'cash' && <CashMenuView />}
+          {view === 'withdraw' && <WithdrawView onBack={() => setView('crypto')} onClose={onClose} />}
         </div>
       </div>
     </div>,
@@ -117,46 +157,173 @@ export function DepositModal({
 }
 
 // ---------------------------------------------------------------------------
-// Deposit Menu View -- wallet logos + M-Pesa
+// Crypto Menu View -- card selection (Transfer Crypto / Connect Wallet)
 // ---------------------------------------------------------------------------
 
-function DepositMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
+function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
   const { isConnected } = useWallet();
 
   return (
-    <div className="space-y-4">
-      {/* Connect Wallet / Transfer Crypto -- shows wallet icons */}
+    <div className="space-y-3">
+      {/* Transfer Crypto -- QR code flow */}
+      <button
+        onClick={() => onSelect('crypto-transfer')}
+        className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-vibrant-purple/50 hover:bg-white/[0.03] transition-colors text-left"
+      >
+        <div className="w-10 h-10 rounded-lg bg-white/[0.05] flex items-center justify-center flex-shrink-0">
+          <QRCodeSVG value="deposit" size={22} level="L" bgColor="transparent" fgColor="#a78bfa" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-white">Transfer Crypto</div>
+          <div className="text-xs text-gray-400">No limit - Instant</div>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Image src="/hedera.svg" alt="Hedera" width={20} height={20} />
+        </div>
+      </button>
+
+      {/* Connect Wallet -- direct wallet transfer */}
       <button
         onClick={() => onSelect(isConnected ? 'wallet-transfer' : 'wallet-connect')}
         className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-vibrant-purple/50 hover:bg-white/[0.03] transition-colors text-left"
       >
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Image src="/hashpack.jpg" alt="HashPack" width={32} height={32} className="rounded-full" />
-          <Image src="/metamask.png" alt="MetaMask" width={32} height={32} className="rounded-full" />
-          <Image src="/blade.png" alt="Blade" width={32} height={32} className="rounded-full" />
-          <Image src="/kabila.jpg" alt="Kabila" width={32} height={32} className="rounded-full" />
+        <div className="w-10 h-10 rounded-lg bg-white/[0.05] flex items-center justify-center flex-shrink-0">
+          <Wallet className="w-5 h-5 text-gray-400" />
         </div>
-        <div className="min-w-0">
+        <div className="flex-1 min-w-0">
           <div className="text-sm font-medium text-white">
-            {isConnected ? 'Transfer Crypto' : 'Connect Wallet'}
+            {isConnected ? 'Transfer from Wallet' : 'Connect Wallet'}
           </div>
           <div className="text-xs text-gray-400">
-            {isConnected ? 'Send USDC from your wallet' : 'No limit -- Instant'}
+            {isConnected ? 'Send USDC directly' : 'No limit - Instant'}
           </div>
         </div>
-      </button>
-
-      {/* M-Pesa option with logo */}
-      <button
-        onClick={() => onSelect('mpesa')}
-        className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-green-500/50 hover:bg-green-500/[0.03] transition-colors text-left"
-      >
-        <Image src="/mpesa.png" alt="M-Pesa" width={40} height={40} className="rounded-lg flex-shrink-0" />
-        <div>
-          <div className="text-sm font-medium text-white">M-Pesa</div>
-          <div className="text-xs text-gray-400">Deposit via mobile money (KES)</div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Image src="/hashpack.jpg" alt="" width={20} height={20} className="rounded-full" />
+          <Image src="/metamask.png" alt="" width={20} height={20} className="rounded-full" />
+          <Image src="/blade.png" alt="" width={20} height={20} className="rounded-full" />
+          <Image src="/kabila.jpg" alt="" width={20} height={20} className="rounded-full" />
         </div>
       </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Crypto Deposit View -- QR code + treasury address
+// ---------------------------------------------------------------------------
+
+function CryptoDepositView({ onBack }: { onBack: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_EVM_ADDRESS || '';
+  const currency = getStakingCurrency();
+
+  const handleCopy = async () => {
+    if (treasuryAddress) {
+      await navigator.clipboard.writeText(treasuryAddress);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Back button */}
+      <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">
+        &larr; Back
+      </button>
+
+      {/* Chain + token info */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Image src="/hedera.svg" alt="Hedera" width={20} height={20} />
+          <span className="text-sm text-white font-medium">Hedera</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/10">
+          <span className="text-xs text-gray-300">{currency.symbol}</span>
+        </div>
+      </div>
+
+      {/* QR Code with HBAR logo in center */}
+      {treasuryAddress ? (
+        <div className="flex justify-center py-3">
+          <div className="bg-white p-3 rounded-xl">
+            <QRCodeSVG
+              value={treasuryAddress}
+              size={180}
+              level="H"
+              includeMargin={false}
+              imageSettings={{
+                src: '/hedera.svg',
+                x: undefined,
+                y: undefined,
+                height: 32,
+                width: 32,
+                excavate: true,
+              }}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-8 text-gray-500 text-sm">
+          Treasury address not configured
+        </div>
+      )}
+
+      {/* Address display */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-xs text-gray-400">Your deposit address</label>
+          <Link href="/terms" className="text-xs text-gray-400 underline hover:text-white transition-colors">
+            Terms apply
+          </Link>
+        </div>
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-neutral-800 border border-white/10">
+          <span className="text-sm text-white font-mono truncate flex-1">
+            {treasuryAddress || 'Not available'}
+          </span>
+        </div>
+        <button
+          onClick={handleCopy}
+          disabled={!treasuryAddress}
+          className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-white/10 text-sm text-gray-300 hover:text-white hover:bg-white/[0.03] transition-colors disabled:opacity-50"
+        >
+          {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+          {copied ? 'Copied' : 'Copy address'}
+        </button>
+      </div>
+
+      <p className="text-[11px] text-gray-500 text-center leading-relaxed">
+        Send only {currency.symbol} on the Hedera network to this address. Deposits are detected automatically.
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Cash Menu View -- fiat deposit options (Coming Soon)
+// ---------------------------------------------------------------------------
+
+function CashMenuView() {
+  return (
+    <div className="space-y-4">
+      <span className="text-xs text-gray-500 font-medium">Available methods</span>
+
+      {/* M-Pesa */}
+      <div className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 opacity-60 cursor-default">
+        <Image src="/mpesa.png" alt="M-Pesa" width={36} height={36} className="rounded-lg flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-white">M-Pesa</div>
+          <div className="text-xs text-gray-400">Mobile money (KES)</div>
+        </div>
+        <span className="px-2 py-0.5 rounded-full bg-vibrant-purple/10 text-vibrant-purple text-[10px] font-medium flex-shrink-0">
+          Coming Soon
+        </span>
+      </div>
+
+      <p className="text-[11px] text-gray-500 text-center leading-relaxed pt-2">
+        More fiat on-ramp methods will be available soon.
+      </p>
     </div>
   );
 }
@@ -218,10 +385,6 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">
-        &larr; Back
-      </button>
-
       <p className="text-sm text-gray-400 text-center">Select a wallet to connect</p>
 
       <div className="grid grid-cols-2 gap-3">
@@ -860,7 +1023,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const { signOut } = useClerk();
 
   const [depositOpen, setDepositOpen] = useState(false);
-  const [depositInitialView, setDepositInitialView] = useState<DepositView>('menu');
+  const [depositInitialView, setDepositInitialView] = useState<DepositView>('crypto');
   const [guestMenuOpen, setGuestMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -928,7 +1091,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
   }, [balanceData]);
 
   const openDeposit = useCallback(() => {
-    setDepositInitialView('menu');
+    setDepositInitialView('crypto');
     setDepositOpen(true);
   }, []);
 
@@ -1223,7 +1386,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
         disconnect={disconnect}
         signOut={signOut}
       />
-      <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} />
+      <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} platformBalance={platformBalance} />
     </DepositModalContext.Provider>
   );
 }
@@ -1320,7 +1483,7 @@ function ProfileDropdownPortal({
       className="w-64 bg-white dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-0 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden"
     >
       {/* Top section: address + settings */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-neutral-800">
+      <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2.5 min-w-0">
           {user?.imageUrl ? (
             <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
@@ -1365,8 +1528,6 @@ function ProfileDropdownPortal({
         </div>
       </div>
 
-      <div className="h-px bg-gray-200 dark:bg-neutral-800" />
-
       {/* Secondary links */}
       <div className="py-1.5">
         <button
@@ -1392,8 +1553,6 @@ function ProfileDropdownPortal({
           Terms of Use
         </Link>
       </div>
-
-      <div className="h-px bg-gray-200 dark:bg-neutral-800" />
 
       {/* Bottom actions */}
       <div className="py-1.5">
