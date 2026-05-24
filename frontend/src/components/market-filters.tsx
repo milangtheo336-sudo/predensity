@@ -5,34 +5,6 @@ import { createPortal } from 'react-dom';
 import { MarketStatus, SortOption, MarketCard, Category } from '@/lib/types/categories';
 import { cn } from '@/lib/utils';
 import { TrendingUp, Flame, Sparkles, Clock } from 'lucide-react';
-import { useLanguage } from '@/context/LanguageContext';
-
-function AnimatedSearchPlaceholder({ hints }: { hints: string[] }) {
-  const [index, setIndex] = useState(0);
-  const [animClass, setAnimClass] = useState('hint-visible');
-
-  useEffect(() => {
-    const cycle = setInterval(() => {
-      // slide up & fade out
-      setAnimClass('hint-exit');
-      setTimeout(() => {
-        setIndex(i => (i + 1) % hints.length);
-        // instantly place new text below, then animate up
-        setAnimClass('hint-enter');
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => setAnimClass('hint-visible'));
-        });
-      }, 400);
-    }, 5000);
-    return () => clearInterval(cycle);
-  }, []);
-
-  return (
-    <span className={`search-hint ${animClass} pointer-events-none absolute left-10 top-1/2 text-sm font-bold text-gray-500 dark:text-gray-400 select-none whitespace-nowrap`}>
-      {hints[index]}
-    </span>
-  );
-}
 
 interface MarketFiltersProps {
   status: MarketStatus;
@@ -45,40 +17,45 @@ interface MarketFiltersProps {
   onClearFilters: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
-  showEsportsCategories?: boolean;
-  esportsCategories?: any[];
-  sidebarSelection?: any;
-  onSidebarSelectionChange?: (selection: any) => void;
 }
 
 export function MarketFilters({
   status, sortBy, onStatusChange, onSortChange,
   markets = [], hiddenCategories, onToggleCategory, onClearFilters,
   searchQuery, onSearchChange,
-  showEsportsCategories = false,
-  esportsCategories = [],
-  sidebarSelection = null,
-  onSidebarSelectionChange = () => {},
 }: MarketFiltersProps) {
-  const { t } = useLanguage();
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
-  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [sortPos, setSortPos] = useState({ top: 0, left: 0 });
-  const [categoriesPos, setCategoriesPos] = useState({ top: 0, left: 0 });
+  const [statusPos, setStatusPos] = useState({ top: 0, left: 0 });
+  const statusBtnRef = useRef<HTMLButtonElement>(null);
   const sortBtnRef = useRef<HTMLButtonElement>(null);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
-  const categoriesBtnRef = useRef<HTMLButtonElement>(null);
-  const categoriesDropdownRef = useRef<HTMLDivElement>(null);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
 
-  const hasActiveFilters = sortBy !== SortOption.MOST_ACTIVE_24H;
+  const hasActiveFilters = hiddenCategories.size > 0 || status !== MarketStatus.OPEN || sortBy !== SortOption.MOST_ACTIVE_24H;
+
+  const statusOptions = [
+    { value: MarketStatus.ALL, label: 'All' },
+    { value: MarketStatus.OPEN, label: 'Open' },
+    { value: MarketStatus.CLOSED, label: 'Closed' },
+    { value: MarketStatus.RESOLVED, label: 'Resolved' },
+  ];
 
   const sortOptions = [
-    { value: SortOption.NEWEST, label: t.newest, icon: Sparkles },
-    { value: SortOption.MOST_ACTIVE_24H, label: t.mostActive, icon: TrendingUp },
-    { value: SortOption.HIGH_VOLUME, label: t.highVolume, icon: Flame },
-    { value: SortOption.CLOSING_SOON, label: t.closingSoon, icon: Clock },
+    { value: SortOption.NEWEST, label: 'Newest', icon: Sparkles },
+    { value: SortOption.MOST_ACTIVE_24H, label: '24h Volume', icon: TrendingUp },
+    { value: SortOption.HIGH_VOLUME, label: 'High volume', icon: Flame },
+    { value: SortOption.CLOSING_SOON, label: 'Ending soon', icon: Clock },
+  ];
+
+  const categoryToggles: { value: Category; label: string }[] = [
+    { value: Category.CRYPTO, label: 'Hide crypto' },
+    { value: Category.POLITICS, label: 'Hide politics' },
+    { value: Category.SPORTS, label: 'Hide sports' },
+    { value: Category.TECHNOLOGY, label: 'Hide technology' },
   ];
 
   useEffect(() => { setMounted(true); }, []);
@@ -90,33 +67,33 @@ export function MarketFilters({
     }
   }, []);
 
-  const updateCategoriesPos = useCallback(() => {
-    if (categoriesBtnRef.current) {
-      const rect = categoriesBtnRef.current.getBoundingClientRect();
-      setCategoriesPos({ top: rect.bottom + 4, left: rect.left });
+  const updateStatusPos = useCallback(() => {
+    if (statusBtnRef.current) {
+      const rect = statusBtnRef.current.getBoundingClientRect();
+      setStatusPos({ top: rect.bottom + 4, left: rect.left });
     }
   }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
+      if (isStatusOpen && statusBtnRef.current && !statusBtnRef.current.contains(target) && statusDropdownRef.current && !statusDropdownRef.current.contains(target)) {
+        setIsStatusOpen(false);
+      }
       if (isSortOpen && sortBtnRef.current && !sortBtnRef.current.contains(target) && sortDropdownRef.current && !sortDropdownRef.current.contains(target)) {
         setIsSortOpen(false);
-      }
-      if (isCategoriesOpen && categoriesBtnRef.current && !categoriesBtnRef.current.contains(target) && categoriesDropdownRef.current && !categoriesDropdownRef.current.contains(target)) {
-        setIsCategoriesOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isSortOpen, isCategoriesOpen]);
+  }, [isStatusOpen, isSortOpen]);
 
   // Recalculate positions on scroll/resize while open
   useEffect(() => {
-    if (!isSortOpen && !isCategoriesOpen) return;
+    if (!isSortOpen && !isStatusOpen) return;
     const handleUpdate = () => {
       if (isSortOpen) updateSortPos();
-      if (isCategoriesOpen) updateCategoriesPos();
+      if (isStatusOpen) updateStatusPos();
     };
     window.addEventListener('scroll', handleUpdate, true);
     window.addEventListener('resize', handleUpdate);
@@ -124,8 +101,9 @@ export function MarketFilters({
       window.removeEventListener('scroll', handleUpdate, true);
       window.removeEventListener('resize', handleUpdate);
     };
-  }, [isSortOpen, isCategoriesOpen, updateSortPos, updateCategoriesPos]);
+  }, [isSortOpen, isStatusOpen, updateSortPos, updateStatusPos]);
 
+  const selectedStatusLabel = statusOptions.find(opt => opt.value === status)?.label || 'All';
   const selectedSort = sortOptions.find(opt => opt.value === sortBy) || sortOptions[0];
   const selectedSortLabel = selectedSort.label;
   const SortIcon = selectedSort.icon;
@@ -133,11 +111,13 @@ export function MarketFilters({
   const handleSortToggle = () => {
     if (!isSortOpen) updateSortPos();
     setIsSortOpen(!isSortOpen);
+    setIsStatusOpen(false);
   };
 
-  const handleCategoriesToggle = () => {
-    if (!isCategoriesOpen) updateCategoriesPos();
-    setIsCategoriesOpen(!isCategoriesOpen);
+  const handleStatusToggle = () => {
+    if (!isStatusOpen) updateStatusPos();
+    setIsStatusOpen(!isStatusOpen);
+    setIsSortOpen(false);
   };
 
   return (
@@ -147,16 +127,14 @@ export function MarketFilters({
         <div className="flex-1 relative">
           <input
             type="text"
-            placeholder=""
+            placeholder="Search markets..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full bg-transparent text-gray-900 dark:text-white px-4 py-2.5 pl-10 border-b border-gray-200 dark:border-white/[0.08] focus:border-gray-400 dark:focus:border-white/20 focus:outline-none text-sm"
+            className="w-full bg-transparent text-gray-900 dark:text-white px-4 py-2.5 pl-10 border-b border-gray-200 dark:border-white/[0.08] focus:border-gray-400 dark:focus:border-white/20 focus:outline-none text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600"
           />
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          {/* Animated placeholder — only shows when input is empty */}
-          {!searchQuery && <AnimatedSearchPlaceholder hints={t.searchHints} />}
         </div>
 
         <button
@@ -208,26 +186,44 @@ export function MarketFilters({
             </svg>
           </button>
 
-          {/* Categories dropdown trigger - only show for Esports */}
-          {showEsportsCategories && esportsCategories.length > 0 && (
+          {/* Status dropdown trigger */}
+          <button
+            ref={statusBtnRef}
+            onClick={handleStatusToggle}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/[0.1] text-sm text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20 transition-colors whitespace-nowrap flex-shrink-0"
+          >
+            {selectedStatusLabel}
+            <svg className={cn('w-3.5 h-3.5 text-gray-400 transition-transform', isStatusOpen && 'rotate-180')} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Category hide toggles -- minimal checkbox style */}
+          {categoryToggles.map((cat) => (
             <button
-              ref={categoriesBtnRef}
-              onClick={handleCategoriesToggle}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/[0.1] text-sm text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20 transition-colors whitespace-nowrap flex-shrink-0"
+              key={cat.value}
+              onClick={() => onToggleCategory(cat.value)}
+              className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors whitespace-nowrap flex-shrink-0"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-              </svg>
-              Games
-              <svg className={cn('w-3.5 h-3.5 text-gray-400 transition-transform', isCategoriesOpen && 'rotate-180')} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              <span className={cn(
+                'w-3.5 h-3.5 rounded-sm border flex items-center justify-center flex-shrink-0',
+                hiddenCategories.has(cat.value)
+                  ? 'bg-blue-500 border-blue-500'
+                  : 'border-gray-400 dark:border-gray-600'
+              )}>
+                {hiddenCategories.has(cat.value) && (
+                  <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </span>
+              {cat.label}
             </button>
-          )}
+          ))}
 
           {hasActiveFilters && (
             <button onClick={onClearFilters} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors whitespace-nowrap flex-shrink-0 ml-2">
-              {t.clearFilters}
+              Clear filters
             </button>
           )}
         </div>
@@ -256,36 +252,24 @@ export function MarketFilters({
         document.body
       )}
 
-      {/* Portal-based Categories dropdown */}
-      {mounted && isCategoriesOpen && createPortal(
+      {/* Portal-based Status dropdown */}
+      {mounted && isStatusOpen && createPortal(
         <div
-          ref={categoriesDropdownRef}
-          className="fixed bg-white dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.08] rounded-xl overflow-hidden z-[9999] shadow-xl py-1"
-          style={{ top: categoriesPos.top, left: categoriesPos.left, minWidth: '250px', maxHeight: '400px', overflowY: 'auto' }}
+          ref={statusDropdownRef}
+          className="fixed min-w-[140px] bg-white dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.08] rounded-xl overflow-hidden z-[9999] shadow-xl py-1"
+          style={{ top: statusPos.top, left: statusPos.left }}
         >
-          {esportsCategories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => {
-                onSidebarSelectionChange(category.id === sidebarSelection ? null : category.id);
-                setIsCategoriesOpen(false);
-              }}
-              className={cn(
-                'w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors',
-                sidebarSelection === category.id ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
-              )}
-            >
-              {category.iconUrl && (
-                <img src={category.iconUrl} alt={category.label} className="w-4 h-4 flex-shrink-0" />
-              )}
-              <span className="flex-1">{category.label}</span>
-              {sidebarSelection === category.id && <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />}
+          {statusOptions.map((option) => (
+            <button key={option.value} onClick={() => { onStatusChange(option.value); setIsStatusOpen(false); }}
+              className={cn('w-full px-4 py-2.5 text-left text-sm flex items-center justify-between hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors',
+                status === option.value ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400')}>
+              <span>{option.label}</span>
+              {status === option.value && <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />}
             </button>
           ))}
         </div>,
         document.body
       )}
-
     </div>
   );
 }
