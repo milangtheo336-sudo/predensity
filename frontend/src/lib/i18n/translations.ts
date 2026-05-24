@@ -114,6 +114,32 @@ export interface Translations {
   // Market detail page
   marketNotFound: string;
 
+  // Trade multipliers (prediction card expanded)
+  sharpness: string;
+  leadTime: string;
+  totalQuality: string;
+  estFee: string;
+  estProfit: string;
+
+  // My bets / portfolio page
+  availableToTrade: string;
+  positionsValue: string;
+  biggestWin: string;
+  predictions: string;
+  profitLoss: string;
+  positions: string;
+  activity: string;
+  active: string;
+  closedPositions: string;
+  searchPositions: string;
+  result: string;
+  totalTraded: string;
+  amount: string;
+  staked: string;
+  noActivePositions: string;
+  joined: string;
+  total: string;
+
   // Prediction card
   backToMarkets: string;
   resolvesIn: string;
@@ -194,6 +220,11 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: 'Price Range (USD)', tradeMultipliers: 'Trade Multipliers & Fees', minLeadRequired: 'Min 24h lead required', minimum24hLead: 'Minimum 24h lead time required',
     balance: 'Balance', rules: 'Rules', marketContext: 'Market Context', showMore: 'Show more', showLess: 'Show less', max: 'MAX', approvingUSDC: 'Approving USDC...',
     marketNotFound: 'Market Not Found',
+    sharpness: 'Sharpness', leadTime: 'Lead Time', totalQuality: 'Total Quality', estFee: 'Est. Fee', estProfit: 'Est. Profit',
+    availableToTrade: 'Available to trade', positionsValue: 'Positions Value', biggestWin: 'Biggest Win', predictions: 'Predictions',
+    profitLoss: 'Profit/Loss', positions: 'Positions', activity: 'Activity', active: 'Active', closedPositions: 'Closed',
+    searchPositions: 'Search positions', result: 'Result', totalTraded: 'Total Traded', amount: 'Amount',
+    staked: 'staked', noActivePositions: 'No active positions.', joined: 'Joined', total: 'total',
   },
   ko: {
     portfolio: '포트폴리오', balance: '잔액', deposit: '입금', withdraw: '출금',
@@ -231,6 +262,11 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: '가격 범위 (USD)', tradeMultipliers: '거래 배수 및 수수료', minLeadRequired: '최소 24시간 선행 필요', minimum24hLead: '최소 24시간 선행 시간 필요',
     balance: '잔액', rules: '규칙', marketContext: '마켓 컨텍스트', showMore: '더 보기', showLess: '접기', max: '최대', approvingUSDC: 'USDC 승인 중...',
     marketNotFound: '마켓을 찾을 수 없습니다',
+    sharpness: '정확도', leadTime: '리드 타임', totalQuality: '총 품질', estFee: '예상 수수료', estProfit: '예상 수익',
+    availableToTrade: '거래 가능', positionsValue: '포지션 가치', biggestWin: '최대 수익', predictions: '예측',
+    profitLoss: '수익/손실', positions: '포지션', activity: '활동', active: '활성', closedPositions: '종료됨',
+    searchPositions: '포지션 검색', result: '결과', totalTraded: '총 거래량', amount: '금액',
+    staked: '스테이킹됨', noActivePositions: '활성 포지션이 없습니다.', joined: '가입', total: '합계',
   },
   zh: {
     portfolio: '投资组合', balance: '余额', deposit: '充值', withdraw: '提现',
@@ -268,6 +304,11 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: '价格范围 (USD)', tradeMultipliers: '交易倍数与费用', minLeadRequired: '需至少24小时提前', minimum24hLead: '最少需要24小时提前时间',
     balance: '余额', rules: '规则', marketContext: '市场背景', showMore: '显示更多', showLess: '收起', max: '最大', approvingUSDC: '正在授权 USDC...',
     marketNotFound: '市场未找到',
+    sharpness: '精准度', leadTime: '提前量', totalQuality: '综合质量', estFee: '预估费用', estProfit: '预估收益',
+    availableToTrade: '可交易余额', positionsValue: '持仓价值', biggestWin: '最大盈利', predictions: '预测',
+    profitLoss: '盈亏', positions: '持仓', activity: '活动', active: '活跃', closedPositions: '已关闭',
+    searchPositions: '搜索持仓', result: '结果', totalTraded: '总交易额', amount: '金额',
+    staked: '已质押', noActivePositions: '暂无活跃持仓。', joined: '加入于', total: '合计',
   },
   ru: {
     portfolio: 'Портфель', balance: 'Баланс', deposit: 'Пополнить', withdraw: 'Вывести',
@@ -305,6 +346,11 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: 'Диапазон цен (USD)', tradeMultipliers: 'Множители и комиссии', minLeadRequired: 'Мин. 24ч упреждения', minimum24hLead: 'Требуется минимум 24ч упреждения',
     balance: 'Баланс', rules: 'Правила', marketContext: 'Контекст рынка', showMore: 'Подробнее', showLess: 'Свернуть', max: 'МАКС', approvingUSDC: 'Одобрение USDC...',
     marketNotFound: 'Рынок не найден',
+    sharpness: 'Точность', leadTime: 'Упреждение', totalQuality: 'Общее качество', estFee: 'Комиссия', estProfit: 'Ожид. прибыль',
+    availableToTrade: 'Доступно для торговли', positionsValue: 'Стоимость позиций', biggestWin: 'Лучший выигрыш', predictions: 'Прогнозы',
+    profitLoss: 'Прибыль/Убыток', positions: 'Позиции', activity: 'Активность', active: 'Активные', closedPositions: 'Закрытые',
+    searchPositions: 'Поиск позиций', result: 'Результат', totalTraded: 'Всего торговано', amount: 'Сумма',
+    staked: 'поставлено', noActivePositions: 'Нет активных позиций.', joined: 'Зарегистрирован', total: 'итого',
   },
   es: {
     portfolio: 'Portafolio', balance: 'Saldo', deposit: 'Depositar', withdraw: 'Retirar',
@@ -342,6 +388,11 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: 'Rango de precio (USD)', tradeMultipliers: 'Multiplicadores y comisiones', minLeadRequired: 'Mín. 24h de anticipación', minimum24hLead: 'Se requiere mínimo 24h de anticipación',
     balance: 'Saldo', rules: 'Reglas', marketContext: 'Contexto del mercado', showMore: 'Ver más', showLess: 'Ver menos', max: 'MÁX', approvingUSDC: 'Aprobando USDC...',
     marketNotFound: 'Mercado no encontrado',
+    sharpness: 'Precisión', leadTime: 'Tiempo de anticipación', totalQuality: 'Calidad total', estFee: 'Tarifa est.', estProfit: 'Ganancia est.',
+    availableToTrade: 'Disponible para operar', positionsValue: 'Valor de posiciones', biggestWin: 'Mayor ganancia', predictions: 'Predicciones',
+    profitLoss: 'Ganancia/Pérdida', positions: 'Posiciones', activity: 'Actividad', active: 'Activo', closedPositions: 'Cerradas',
+    searchPositions: 'Buscar posiciones', result: 'Resultado', totalTraded: 'Total operado', amount: 'Cantidad',
+    staked: 'apostado', noActivePositions: 'Sin posiciones activas.', joined: 'Unido', total: 'total',
   },
   fr: {
     portfolio: 'Portefeuille', balance: 'Solde', deposit: 'Déposer', withdraw: 'Retirer',
@@ -379,6 +430,11 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: 'Plage de prix (USD)', tradeMultipliers: 'Multiplicateurs & frais', minLeadRequired: 'Min. 24h d\'avance requis', minimum24hLead: 'Délai minimum de 24h requis',
     balance: 'Solde', rules: 'Règles', marketContext: 'Contexte du marché', showMore: 'Afficher plus', showLess: 'Afficher moins', max: 'MAX', approvingUSDC: 'Approbation USDC...',
     marketNotFound: 'Marché introuvable',
+    sharpness: 'Précision', leadTime: 'Délai', totalQuality: 'Qualité totale', estFee: 'Frais est.', estProfit: 'Profit est.',
+    availableToTrade: 'Disponible pour trader', positionsValue: 'Valeur des positions', biggestWin: 'Meilleur gain', predictions: 'Prédictions',
+    profitLoss: 'Profit/Perte', positions: 'Positions', activity: 'Activité', active: 'Actif', closedPositions: 'Fermées',
+    searchPositions: 'Rechercher positions', result: 'Résultat', totalTraded: 'Total tradé', amount: 'Montant',
+    staked: 'misé', noActivePositions: 'Aucune position active.', joined: 'Inscrit', total: 'total',
   },
   hi: {
     portfolio: 'पोर्टफोलियो', balance: 'शेष', deposit: 'जमा करें', withdraw: 'निकालें',
@@ -416,6 +472,11 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: 'मूल्य सीमा (USD)', tradeMultipliers: 'ट्रेड गुणक और शुल्क', minLeadRequired: 'न्यूनतम 24 घंटे आवश्यक', minimum24hLead: 'न्यूनतम 24 घंटे की अग्रिम समय आवश्यक',
     balance: 'शेष', rules: 'नियम', marketContext: 'बाज़ार संदर्भ', showMore: 'अधिक दिखाएं', showLess: 'कम दिखाएं', max: 'अधिकतम', approvingUSDC: 'USDC स्वीकृत हो रहा है...',
     marketNotFound: 'बाज़ार नहीं मिला',
+    sharpness: 'सटीकता', leadTime: 'लीड टाइम', totalQuality: 'कुल गुणवत्ता', estFee: 'अनुमानित शुल्क', estProfit: 'अनुमानित लाभ',
+    availableToTrade: 'ट्रेड के लिए उपलब्ध', positionsValue: 'पोजीशन मूल्य', biggestWin: 'सबसे बड़ी जीत', predictions: 'पूर्वानुमान',
+    profitLoss: 'लाभ/हानि', positions: 'पोजीशन', activity: 'गतिविधि', active: 'सक्रिय', closedPositions: 'बंद',
+    searchPositions: 'पोजीशन खोजें', result: 'परिणाम', totalTraded: 'कुल ट्रेड', amount: 'राशि',
+    staked: 'स्टेक किया', noActivePositions: 'कोई सक्रिय पोजीशन नहीं।', joined: 'जुड़े', total: 'कुल',
   },
 };
 
