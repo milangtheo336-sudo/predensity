@@ -120,20 +120,20 @@ export function DepositModal({
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
-        className="bg-neutral-900/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl w-[420px] max-w-[92vw] relative shadow-2xl"
+        className="bg-white dark:bg-neutral-900/80 backdrop-blur-xl border border-gray-200 dark:border-white/[0.08] rounded-2xl w-[420px] max-w-[92vw] relative shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3">
           <div>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               {isWithdraw ? 'Withdraw' : 'Deposit'}
             </h2>
-            <p className="text-sm text-gray-400 mt-0.5">
-              Portfolio Balance: <span className="text-white font-medium">{balancesHidden ? '****' : `$${platformBalance.toFixed(2)}`}</span>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              Portfolio Balance: <span className="text-gray-900 dark:text-white font-medium">{balancesHidden ? '****' : `$${platformBalance.toFixed(2)}`}</span>
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -141,13 +141,13 @@ export function DepositModal({
         {/* Two-tab toggle -- only for deposit */}
         {!isWithdraw && (view === 'crypto' || view === 'cash') && (
           <div className="px-6 pb-4">
-            <div className="flex rounded-xl border border-white/10 overflow-hidden">
+            <div className="flex rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden">
               <button
                 onClick={() => setView('crypto')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${
                   isCryptoSide
-                    ? 'bg-white/[0.08] text-white'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
                 <Image src="/hedera.svg" alt="" width={18} height={18} />
@@ -157,8 +157,8 @@ export function DepositModal({
                 onClick={() => setView('cash')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${
                   isCashSide
-                    ? 'bg-white/[0.08] text-white'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
                 <Image src="/fiat.svg" alt="" width={18} height={18} className="brightness-0 invert" />
@@ -195,13 +195,13 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
       {/* Transfer Crypto -- QR code flow */}
       <button
         onClick={() => onSelect('crypto-transfer')}
-        className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-vibrant-purple/50 hover:bg-white/[0.03] transition-colors text-left"
+        className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors text-left"
       >
-        <div className="w-10 h-10 rounded-lg bg-white/[0.05] flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/[0.05] flex items-center justify-center flex-shrink-0">
           <QRCodeSVG value="deposit" size={22} level="L" bgColor="transparent" fgColor="#a78bfa" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white">Transfer Crypto</div>
+          <div className="text-sm font-medium text-gray-900 dark:text-white">Transfer Crypto</div>
           <div className="text-xs text-gray-400">No limit - Instant</div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
@@ -212,13 +212,13 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
       {/* Connect Wallet -- direct wallet transfer */}
       <button
         onClick={() => onSelect(isConnected ? 'wallet-transfer' : 'wallet-connect')}
-        className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-vibrant-purple/50 hover:bg-white/[0.03] transition-colors text-left"
+        className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors text-left"
       >
-        <div className="w-10 h-10 rounded-lg bg-white/[0.05] flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/[0.05] flex items-center justify-center flex-shrink-0">
           <Wallet className="w-5 h-5 text-gray-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white">
+          <div className="text-sm font-medium text-gray-900 dark:text-white">
             {isConnected ? 'Transfer from Wallet' : 'Connect Wallet'}
           </div>
           <div className="text-xs text-gray-400">
@@ -236,13 +236,13 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
       {/* CEX Deposit -- Binance, Coinbase */}
       <button
         onClick={() => onSelect('cex-deposit')}
-        className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-vibrant-purple/50 hover:bg-white/[0.03] transition-colors text-left"
+        className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors text-left"
       >
-        <div className="w-10 h-10 rounded-lg bg-white/[0.05] flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/[0.05] flex items-center justify-center flex-shrink-0">
           <ArrowUpRight className="w-5 h-5 text-gray-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white">From Exchange</div>
+          <div className="text-sm font-medium text-gray-900 dark:text-white">From Exchange</div>
           <div className="text-xs text-gray-400">Withdraw USDC from CEX</div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
@@ -332,17 +332,16 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">
-        &larr; Back
+      <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back
       </button>
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Image src="/hedera.svg" alt="Hedera" width={20} height={20} />
-          <span className="text-sm text-white font-medium">Hedera</span>
+          <span className="text-sm text-gray-900 dark:text-white font-medium">Hedera</span>
           <div className="relative group">
             <HelpCircle className="w-3.5 h-3.5 text-gray-500 cursor-help" />
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 p-2.5 rounded-lg bg-neutral-800 border border-white/10 text-[11px] text-gray-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 p-2.5 rounded-lg bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-[11px] text-gray-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
               Send {currency.symbol} on the Hedera network to this address. Your balance updates automatically.
               {evmAddr && (
                 <div className="mt-1.5 pt-1.5 border-t border-white/10 text-[10px] text-gray-500 break-all">
@@ -352,7 +351,7 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/10">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10">
           <span className="text-xs text-gray-300">{currency.symbol}</span>
         </div>
       </div>
@@ -397,15 +396,15 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
                 Terms apply
               </Link>
             </div>
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-neutral-800 border border-white/10">
-              <span className="text-sm text-white font-mono truncate flex-1">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10">
+              <span className="text-sm text-gray-900 dark:text-white font-mono truncate flex-1">
                 {depositAddress || 'Not available'}
               </span>
             </div>
             <button
               onClick={handleCopy}
               disabled={!depositAddress}
-              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-white/10 text-sm text-gray-300 hover:text-white hover:bg-white/[0.03] transition-colors disabled:opacity-50"
+              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-gray-200 dark:border-white/10 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50"
             >
               {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
               {copied ? 'Copied' : 'Copy address'}
@@ -436,17 +435,17 @@ function CashMenuView() {
         <span className="text-xs text-gray-500 font-medium">Available methods</span>
         <div className="relative group">
           <HelpCircle className="w-3.5 h-3.5 text-gray-500 cursor-help" />
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 rounded-lg bg-neutral-800 border border-white/10 text-[11px] text-gray-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 rounded-lg bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-[11px] text-gray-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
             More fiat on-ramp methods will be available soon.
           </div>
         </div>
       </div>
 
       {/* M-Pesa */}
-      <div className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 opacity-60 cursor-default">
+      <div className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-white/10 opacity-60 cursor-default">
         <Image src="/mpesa.png" alt="M-Pesa" width={36} height={36} className="rounded-lg flex-shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white">M-Pesa</div>
+          <div className="text-sm font-medium text-gray-900 dark:text-white">M-Pesa</div>
           <div className="text-xs text-gray-400">Mobile money (KES)</div>
         </div>
         <span className="px-2 py-0.5 rounded-full bg-vibrant-purple/10 text-vibrant-purple text-[10px] font-medium flex-shrink-0">
@@ -464,28 +463,28 @@ function CashMenuView() {
 function CexDepositView({ onBack }: { onBack: () => void }) {
   return (
     <div>
-      <button onClick={onBack} className="text-sm text-gray-400 hover:text-white mb-4 flex items-center gap-1">
+      <button onClick={onBack} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 flex items-center gap-1">
         <ArrowLeft className="w-3.5 h-3.5" /> Back
       </button>
 
       <div className="space-y-3">
         {/* Binance -- coming soon */}
-        <div className="p-4 rounded-xl border border-white/10 opacity-50">
+        <div className="p-4 rounded-xl border border-gray-200 dark:border-white/10 opacity-50">
           <div className="flex items-center gap-3">
             <Image src="/binance logo.png" alt="Binance" width={40} height={40} className="rounded-lg" />
             <div>
-              <div className="text-sm font-medium text-white">Binance</div>
+              <div className="text-sm font-medium text-gray-900 dark:text-white">Binance</div>
               <div className="text-xs text-gray-400">Coming soon</div>
             </div>
           </div>
         </div>
 
         {/* Coinbase -- coming soon */}
-        <div className="p-4 rounded-xl border border-white/10 opacity-50">
+        <div className="p-4 rounded-xl border border-gray-200 dark:border-white/10 opacity-50">
           <div className="flex items-center gap-3">
             <Image src="/coinbase.svg" alt="Coinbase" width={40} height={40} className="rounded-lg" />
             <div>
-              <div className="text-sm font-medium text-white">Coinbase</div>
+              <div className="text-sm font-medium text-gray-900 dark:text-white">Coinbase</div>
               <div className="text-xs text-gray-400">Coming soon</div>
             </div>
           </div>
@@ -563,7 +562,7 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
             key={w.type}
             onClick={() => handleConnect(w.type)}
             disabled={connecting !== null}
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border border-white/10 hover:border-vibrant-purple/50 hover:bg-white/[0.03] transition-colors disabled:opacity-50"
+            className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50"
           >
             <Image src={w.img} alt={w.name} width={48} height={48} className="rounded-full" />
             <span className="text-xs text-gray-300 font-medium">{w.name}</span>
@@ -626,12 +625,11 @@ function MpesaDepositView({ onBack, onClose }: { onBack: () => void; onClose: ()
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">
-        &larr; Back
+      <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back
       </button>
 
       {/* M-Pesa branding header */}
-      <div className="flex items-center gap-3 p-3 rounded-xl bg-green-900/20 border border-green-500/20">
+      <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-500/20">
         <Image src="/mpesa.png" alt="M-Pesa" width={36} height={36} className="rounded-lg flex-shrink-0" />
         <div>
           <div className="text-sm font-medium text-green-400">M-Pesa Deposit</div>
@@ -646,7 +644,7 @@ function MpesaDepositView({ onBack, onClose }: { onBack: () => void; onClose: ()
           placeholder="0712345678"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+          className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
         />
       </div>
 
@@ -657,12 +655,12 @@ function MpesaDepositView({ onBack, onClose }: { onBack: () => void; onClose: ()
           placeholder="10.00"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+          className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
         />
       </div>
 
       {rate && amount && parseFloat(amount) > 0 && (
-        <div className="text-xs bg-green-900/10 border border-green-500/10 rounded-lg p-3">
+        <div className="text-xs bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-500/10 rounded-lg p-3">
           <div className="flex justify-between text-gray-400">
             <span>Exchange rate</span>
             <span className="text-white">1 USD = {rate.toFixed(2)} KES</span>
@@ -798,7 +796,7 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
   if (!isConnected) {
     return (
       <div className="space-y-4">
-        <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">&larr; Back</button>
+        <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back</button>
         <div className="text-center py-6">
           <Wallet className="w-8 h-8 text-gray-500 mx-auto mb-3" />
           <p className="text-sm text-gray-400 mb-4">Connect a wallet to transfer crypto</p>
@@ -810,14 +808,14 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">&larr; Back</button>
+      <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back</button>
 
       {step === 'input' && (
         <>
           <div className="flex items-center gap-3 p-3 rounded-xl bg-vibrant-purple/10 border border-vibrant-purple/20">
             <ArrowRightLeft className="w-5 h-5 text-vibrant-purple flex-shrink-0" />
             <div>
-              <div className="text-sm font-medium text-white">Transfer from Wallet</div>
+              <div className="text-sm font-medium text-gray-900 dark:text-white">Transfer from Wallet</div>
               <div className="text-xs text-gray-400">
                 {evmAddress ? formatAddress(evmAddress, 6) : 'Connected'}
               </div>
@@ -837,7 +835,7 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
               placeholder="100.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+              className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
             />
           </div>
 
@@ -970,19 +968,19 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">&larr; Back</button>
+      <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back</button>
 
       {!method && (
         <>
           <button
             onClick={handleSelectCrypto}
-            className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-vibrant-purple/50 hover:bg-white/[0.03] transition-colors text-left"
+            className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors text-left"
           >
             <div className="w-10 h-10 rounded-lg bg-vibrant-purple/20 text-vibrant-purple flex items-center justify-center flex-shrink-0">
               <ArrowUpRight className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-sm font-medium text-white">Withdraw to Wallet</div>
+              <div className="text-sm font-medium text-gray-900 dark:text-white">Withdraw to Wallet</div>
               <div className="text-xs text-gray-400">Send {currency.symbol} to any EVM address</div>
             </div>
           </button>
@@ -993,7 +991,7 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
           >
             <Image src="/mpesa.png" alt="M-Pesa" width={40} height={40} className="rounded-lg flex-shrink-0" />
             <div>
-              <div className="text-sm font-medium text-white">Withdraw to M-Pesa</div>
+              <div className="text-sm font-medium text-gray-900 dark:text-white">Withdraw to M-Pesa</div>
               <div className="text-xs text-gray-400">Receive KES on your phone</div>
             </div>
           </button>
@@ -1027,7 +1025,7 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
                 placeholder="0x..."
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm font-mono placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+                className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm font-mono placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
               />
             )}
           </div>
@@ -1038,7 +1036,7 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
               placeholder="50.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+              className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
             />
           </div>
           <button
@@ -1061,7 +1059,7 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
               placeholder="0712345678"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+              className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
             />
           </div>
           <div>
@@ -1071,11 +1069,11 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
               placeholder="10.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+              className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
             />
           </div>
           {rate && amount && parseFloat(amount) > 0 && (
-            <div className="text-xs bg-green-900/10 border border-green-500/10 rounded-lg p-3">
+            <div className="text-xs bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-500/10 rounded-lg p-3">
               <div className="flex justify-between text-gray-400">
                 <span>You receive</span>
                 <span className="text-green-400 font-medium">KES {(parseFloat(amount) * rate).toFixed(0)}</span>
