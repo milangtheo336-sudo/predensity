@@ -236,6 +236,12 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
 
 function CryptoDepositView({ onBack }: { onBack: () => void }) {
   const [copied, setCopied] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [txId, setTxId] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [confirmError, setConfirmError] = useState('');
+  const { user } = useUser();
   const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_EVM_ADDRESS || '';
   const currency = getStakingCurrency();
 
@@ -247,14 +253,34 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const handleConfirmDeposit = async () => {
+    if (!txId.trim() || !user) return;
+    setConfirming(true);
+    setConfirmError('');
+    try {
+      const res = await fetch('/api/wallet/deposit-crypto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, transactionId: txId.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setConfirmError(data.error || 'Could not verify the deposit. Please try again in a minute.');
+      } else {
+        setConfirmed(true);
+      }
+    } catch {
+      setConfirmError('Network error. Please try again.');
+    }
+    setConfirming(false);
+  };
+
   return (
     <div className="space-y-4">
-      {/* Back button */}
       <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">
         &larr; Back
       </button>
 
-      {/* Chain + token info */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Image src="/hedera.svg" alt="Hedera" width={20} height={20} />
@@ -265,7 +291,6 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
-      {/* QR Code with HBAR logo in center */}
       {treasuryAddress ? (
         <div className="flex justify-center py-3">
           <div className="bg-white p-3 rounded-xl">
@@ -291,7 +316,6 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* Address display */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <label className="text-xs text-gray-400">Your deposit address</label>
@@ -314,9 +338,53 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
         </button>
       </div>
 
-      <p className="text-[11px] text-gray-500 text-center leading-relaxed">
-        Send only {currency.symbol} on the Hedera network to this address. Deposits are detected automatically.
-      </p>
+      {/* Confirm deposit section */}
+      {!showConfirm && !confirmed && (
+        <button
+          onClick={() => setShowConfirm(true)}
+          className="w-full py-2.5 rounded-xl bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-semibold text-sm transition-colors"
+        >
+          I've sent {currency.symbol}
+        </button>
+      )}
+
+      {showConfirm && !confirmed && (
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={txId}
+            onChange={(e) => setTxId(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleConfirmDeposit()}
+            placeholder="Paste transaction ID (0.0.xxx-xxx-xxx)"
+            className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+          />
+          {confirmError && <p className="text-xs text-red-400">{confirmError}</p>}
+          <button
+            onClick={handleConfirmDeposit}
+            disabled={!txId.trim() || confirming}
+            className="w-full py-2.5 rounded-xl bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-semibold text-sm transition-colors disabled:opacity-40"
+          >
+            {confirming ? 'Verifying...' : 'Confirm deposit'}
+          </button>
+          <p className="text-[10px] text-gray-500 text-center">
+            Find your transaction ID on HashScan or in your wallet's transaction history
+          </p>
+        </div>
+      )}
+
+      {confirmed && (
+        <div className="text-center py-3">
+          <Check className="w-6 h-6 text-green-500 mx-auto mb-1" />
+          <p className="text-sm text-green-400 font-medium">Deposit confirmed</p>
+          <p className="text-xs text-gray-400 mt-1">Your balance has been updated</p>
+        </div>
+      )}
+
+      {!showConfirm && !confirmed && (
+        <p className="text-[11px] text-gray-500 text-center leading-relaxed">
+          Send only {currency.symbol} on the Hedera network to this address.
+        </p>
+      )}
     </div>
   );
 }
