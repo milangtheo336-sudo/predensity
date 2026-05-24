@@ -291,6 +291,7 @@ export default defineSchema({
     resolutionTimestamp: v.number(), // When the market resolves
     resolved: v.boolean(),
     winningOutcome: v.optional(v.number()), // Index of winning outcome
+    eliminatedOutcomes: v.optional(v.array(v.number())), // Indices of eliminated outcomes (progressive resolution)
     totalVolume: v.number(),        // Total USDC traded
     status: v.string(),             // "open", "closed", "resolved"
     createdAt: v.number(),
@@ -339,12 +340,17 @@ export default defineSchema({
     usdcAmount: v.number(),         // Total USDC exchanged (price * quantity / 100)
     settledOnChain: v.boolean(),    // Whether operator bot has settled this on-chain
     settlementTxHash: v.optional(v.string()),
+    // "pending" | "settled" | "settlement_failed"
+    settlementStatus: v.optional(v.string()),
+    settlementRetries: v.optional(v.number()),
+    lastRetryAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_market", ["marketId"])
     .index("by_buyer", ["buyerUserId"])
     .index("by_seller", ["sellerUserId"])
-    .index("by_settled", ["settledOnChain"]),
+    .index("by_settled", ["settledOnChain"])
+    .index("by_settlement_status", ["settlementStatus"]),
 
   // User positions: how many outcome tokens each user holds per market
   clobPositions: defineTable({
