@@ -205,7 +205,7 @@ function CryptoActivitySection({
     try {
       await addCommentMutation({
         marketId: marketIdForComments,
-        userAddress: `managed:${user.id}`.toLowerCase(),
+        userAddress: `managed:${user.issuer}`.toLowerCase(),
         content: newComment.trim(),
       });
       setNewComment('');
@@ -394,7 +394,7 @@ function CryptoActivitySection({
                         </p>
                         <div className="flex items-center gap-4 mt-1.5">
                           {(() => {
-                            const currentAddr = isSignedIn && user ? `managed:${user.id}`.toLowerCase() : '';
+                            const currentAddr = isSignedIn && user ? `managed:${user.issuer}`.toLowerCase() : '';
                             const hasLiked = (comment.likedBy || []).includes(currentAddr);
                             return (
                               <button
@@ -428,7 +428,7 @@ function CryptoActivitySection({
                                 if (e.key === 'Enter' && replyText.trim()) {
                                   addCommentMutation({
                                     marketId: marketIdForComments,
-                                    userAddress: `managed:${user?.id}`.toLowerCase(),
+                                    userAddress: `managed:${user?.issuer}`.toLowerCase(),
                                     content: replyText.trim(),
                                     parentId: comment._id,
                                   }).then(() => { setReplyText(''); setReplyingTo(null); });
@@ -869,7 +869,7 @@ export function PredictionCard({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
+          userId: user.issuer,
           category: 'crypto',
           targetTimestamp: startUnix,
           priceMin: minStr,
@@ -1248,7 +1248,7 @@ export function PredictionCard({
               contractIdString={cryptoContractIdString}
               contractAddress={contractAddress}
               tokenSymbol={tokenSymbol}
-              currentUser={isSignedIn && user ? { id: user.id, name: user.firstName || user.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Trader', imageUrl: user.imageUrl } : undefined}
+              currentUser={isSignedIn && user ? { id: user.issuer, name: user.email?.split('@')[0] || 'Trader', imageUrl: undefined } : undefined}
             />
           </div>
 
