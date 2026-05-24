@@ -127,7 +127,7 @@ export interface Translations {
   useFiat: string;
   transferCrypto: string;
   noLimitInstant: string;
-  hedera: string;
+  arc: string;
   transferFromWallet: string;
   connectWallet: string;
   sendUSDCDirectly: string;
@@ -250,7 +250,7 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: 'Price Range (USD)', tradeMultipliers: 'Trade Multipliers & Fees', minLeadRequired: 'Min 24h lead required', minimum24hLead: 'Minimum 24h lead time required',
     balance: 'Balance', rules: 'Rules', marketContext: 'Market Context', showMore: 'Show more', showLess: 'Show less', max: 'MAX', approvingUSDC: 'Approving USDC...',
     portfolioBalance: 'Portfolio Balance', useCrypto: 'Use Crypto', useFiat: 'Use Fiat',
-    transferCrypto: 'Transfer Crypto', noLimitInstant: 'No limit - Instant', hedera: 'Arc',
+    transferCrypto: 'Transfer Crypto', noLimitInstant: 'No limit - Instant', arc: 'Arc',
     transferFromWallet: 'Transfer from Wallet', connectWallet: 'Connect Wallet', sendUSDCDirectly: 'Send USDC directly',
     fromExchange: 'From Exchange', withdrawUSDCFromCEX: 'Withdraw USDC from CEX',
     marketNotFound: 'Market Not Found',
@@ -298,7 +298,7 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: '가격 범위 (USD)', tradeMultipliers: '거래 배수 및 수수료', minLeadRequired: '최소 24시간 선행 필요', minimum24hLead: '최소 24시간 선행 시간 필요',
     balance: '잔액', rules: '규칙', marketContext: '마켓 컨텍스트', showMore: '더 보기', showLess: '접기', max: '최대', approvingUSDC: 'USDC 승인 중...',
     portfolioBalance: '포트폴리오 잔액', useCrypto: '크립토 사용', useFiat: '법정화폐 사용',
-    transferCrypto: '크립토 전송', noLimitInstant: '한도 없음 - 즉시', hedera: 'Arc',
+    transferCrypto: '크립토 전송', noLimitInstant: '한도 없음 - 즉시', arc: 'Arc',
     transferFromWallet: '지갑에서 전송', connectWallet: '지갑 연결', sendUSDCDirectly: 'USDC 직접 전송',
     fromExchange: '거래소에서', withdrawUSDCFromCEX: 'CEX에서 USDC 출금',
     marketNotFound: '마켓을 찾을 수 없습니다',
@@ -346,7 +346,7 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: '价格范围 (USD)', tradeMultipliers: '交易倍数与费用', minLeadRequired: '需至少24小时提前', minimum24hLead: '最少需要24小时提前时间',
     balance: '余额', rules: '规则', marketContext: '市场背景', showMore: '显示更多', showLess: '收起', max: '最大', approvingUSDC: '正在授权 USDC...',
     portfolioBalance: '投资组合余额', useCrypto: '使用加密货币', useFiat: '使用法币',
-    transferCrypto: '转账加密货币', noLimitInstant: '无限额 - 即时', hedera: 'Arc',
+    transferCrypto: '转账加密货币', noLimitInstant: '无限额 - 即时', arc: 'Arc',
     transferFromWallet: '从钱包转账', connectWallet: '连接钱包', sendUSDCDirectly: '直接发送USDC',
     fromExchange: '从交易所', withdrawUSDCFromCEX: '从CEX提取USDC',
     marketNotFound: '市场未找到',
@@ -394,7 +394,7 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: 'Диапазон цен (USD)', tradeMultipliers: 'Множители и комиссии', minLeadRequired: 'Мин. 24ч упреждения', minimum24hLead: 'Требуется минимум 24ч упреждения',
     balance: 'Баланс', rules: 'Правила', marketContext: 'Контекст рынка', showMore: 'Подробнее', showLess: 'Свернуть', max: 'МАКС', approvingUSDC: 'Одобрение USDC...',
     portfolioBalance: 'Баланс портфеля', useCrypto: 'Использовать крипто', useFiat: 'Использовать фиат',
-    transferCrypto: 'Перевод крипто', noLimitInstant: 'Без лимита - Мгновенно', hedera: 'Arc',
+    transferCrypto: 'Перевод крипто', noLimitInstant: 'Без лимита - Мгновенно', arc: 'Arc',
     transferFromWallet: 'Перевод с кошелька', connectWallet: 'Подключить кошелёк', sendUSDCDirectly: 'Отправить USDC напрямую',
     fromExchange: 'С биржи', withdrawUSDCFromCEX: 'Вывести USDC с CEX',
     marketNotFound: 'Рынок не найден',
@@ -442,7 +442,7 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: 'Rango de precio (USD)', tradeMultipliers: 'Multiplicadores y comisiones', minLeadRequired: 'Mín. 24h de anticipación', minimum24hLead: 'Se requiere mínimo 24h de anticipación',
     balance: 'Saldo', rules: 'Reglas', marketContext: 'Contexto del mercado', showMore: 'Ver más', showLess: 'Ver menos', max: 'MÁX', approvingUSDC: 'Aprobando USDC...',
     portfolioBalance: 'Saldo del portafolio', useCrypto: 'Usar Cripto', useFiat: 'Usar Fiat',
-    transferCrypto: 'Transferir Cripto', noLimitInstant: 'Sin límite - Instantáneo', hedera: 'Arc',
+    transferCrypto: 'Transferir Cripto', noLimitInstant: 'Sin límite - Instantáneo', arc: 'Arc',
     transferFromWallet: 'Transferir desde Cartera', connectWallet: 'Conectar Cartera', sendUSDCDirectly: 'Enviar USDC directo',
     fromExchange: 'Desde Exchange', withdrawUSDCFromCEX: 'Retirar USDC del CEX',
     marketNotFound: 'Mercado no encontrado',
@@ -490,7 +490,7 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: 'Plage de prix (USD)', tradeMultipliers: 'Multiplicateurs & frais', minLeadRequired: 'Min. 24h d\'avance requis', minimum24hLead: 'Délai minimum de 24h requis',
     balance: 'Solde', rules: 'Règles', marketContext: 'Contexte du marché', showMore: 'Afficher plus', showLess: 'Afficher moins', max: 'MAX', approvingUSDC: 'Approbation USDC...',
     portfolioBalance: 'Solde du portefeuille', useCrypto: 'Utiliser Crypto', useFiat: 'Utiliser Fiat',
-    transferCrypto: 'Transférer Crypto', noLimitInstant: 'Sans limite - Instantané', hedera: 'Arc',
+    transferCrypto: 'Transférer Crypto', noLimitInstant: 'Sans limite - Instantané', arc: 'Arc',
     transferFromWallet: 'Transférer depuis Portefeuille', connectWallet: 'Connecter Portefeuille', sendUSDCDirectly: 'Envoyer USDC directement',
     fromExchange: 'Depuis Exchange', withdrawUSDCFromCEX: 'Retirer USDC du CEX',
     marketNotFound: 'Marché introuvable',
@@ -538,7 +538,7 @@ const T: Record<LangCode, Translations> = {
     priceRangeUSD: 'मूल्य सीमा (USD)', tradeMultipliers: 'ट्रेड गुणक और शुल्क', minLeadRequired: 'न्यूनतम 24 घंटे आवश्यक', minimum24hLead: 'न्यूनतम 24 घंटे की अग्रिम समय आवश्यक',
     balance: 'शेष', rules: 'नियम', marketContext: 'बाज़ार संदर्भ', showMore: 'अधिक दिखाएं', showLess: 'कम दिखाएं', max: 'अधिकतम', approvingUSDC: 'USDC स्वीकृत हो रहा है...',
     portfolioBalance: 'पोर्टफोलियो बैलेंस', useCrypto: 'क्रिप्टो उपयोग करें', useFiat: 'फिएट उपयोग करें',
-    transferCrypto: 'क्रिप्टो ट्रांसफर करें', noLimitInstant: 'कोई सीमा नहीं - तुरंत', hedera: 'Arc',
+    transferCrypto: 'क्रिप्टो ट्रांसफर करें', noLimitInstant: 'कोई सीमा नहीं - तुरंत', arc: 'Arc',
     transferFromWallet: 'वॉलेट से ट्रांसफर', connectWallet: 'वॉलेट जोड़ें', sendUSDCDirectly: 'USDC सीधे भेजें',
     fromExchange: 'एक्सचेंज से', withdrawUSDCFromCEX: 'CEX से USDC निकालें',
     marketNotFound: 'बाज़ार नहीं मिला',
