@@ -1,31 +1,40 @@
-﻿
+
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { Client, ContractCallQuery, ContractId, PrivateKey } from '@hashgraph/sdk';
-import { ethers } from 'ethers';
-import { CONTRACT_IDS } from '@/lib/contracts/contract-config';
+import { CONTRACT_ADDRESSES } from '@/lib/contracts/contract-config';
 import { rateLimit } from '@/lib/api-auth';
+import { publicClient } from '@/lib/arc-server';
+import { parseUnits } from 'viem';
 
-const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || process.env.NEXT_PUBLIC_OPERATOR_ID || '';
-const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || process.env.OPERATOR_PRIVATE_KEY || '';
-const HEDERA_NETWORK = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-
-const SIMULATE_ABI = new ethers.utils.Interface([
-  'function simulatePlaceBet(uint256 targetTimestamp, uint256 priceMin, uint256 priceMax, uint256 stakeAmount) view returns (tuple(uint256 fee, uint256 stakeNet, uint256 sharpnessBps, uint256 timeBps, uint256 qualityBps, uint256 weight, uint256 bucket, bool isValid, string errorMessage))',
-]);
-
-function getHederaClient(): Client {
-  const client = HEDERA_NETWORK === 'mainnet' ? Client.forMainnet() : Client.forTestnet();
-  if (OPERATOR_ID && OPERATOR_KEY) {
-    const keyHex = OPERATOR_KEY.startsWith('0x') ? OPERATOR_KEY.slice(2) : OPERATOR_KEY;
-    client.setOperator(OPERATOR_ID, PrivateKey.fromStringECDSA(keyHex));
-  }
-  return client;
-}
+const SIMULATE_ABI = [{
+  name: 'simulatePlaceBet',
+  type: 'function',
+  stateMutability: 'view',
+  inputs: [
+    { name: 'targetTimestamp', type: 'uint256' },
+    { name: 'priceMin', type: 'uint256' },
+    { name: 'priceMax', type: 'uint256' },
+    { name: 'stakeAmount', type: 'uint256' },
+  ],
+  outputs: [{
+    name: '',
+    type: 'tuple',
+    components: [
+      { name: 'fee', type: 'uint256' },
+      { name: 'stakeNet', type: 'uint256' },
+      { name: 'sharpnessBps', type: 'uint256' },
+      { name: 'timeBps', type: 'uint256' },
+      { name: 'qualityBps', type: 'uint256' },
+      { name: 'weight', type: 'uint256' },
+      { name: 'bucket', type: 'uint256' },
+      { name: 'isValid', type: 'bool' },
+      { name: 'errorMessage', type: 'string' },
+    ],
+  }],
+}] as const;
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limit: 30 simulations per minute per IP (read-only but costs gas)
     const rateLimitResponse = rateLimit(request, { maxRequests: 30, windowMs: 60_000 });
     if (rateLimitResponse) return rateLimitResponse;
 
@@ -35,71 +44,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const contractId = CONTRACT_IDS[category as keyof typeof CONTRACT_IDS];
-    if (!contractId) {
+    const contractAddress = CONTRACT_ADDRESSES[category as keyof typeof CONTRACT_ADDRESSES] as `0x${string}`;
+    if (!contractAddress) {
       return NextResponse.json({ error: `Unknown category: ${category}` }, { status: 400 });
     }
 
     const stake = stakeUsdc && parseFloat(stakeUsdc) > 0 ? stakeUsdc : '1';
-    // Truncate to N decimal places to avoid ethers parseUnits underflow
     const truncate = (val: number | string, decimals: number) => {
       const s = val.toString();
       const dot = s.indexOf('.');
       if (dot === -1) return s;
       return s.slice(0, dot + 1 + decimals);
     };
-    const stakeWei = ethers.utils.parseUnits(truncate(stake, 6), 6);
+    const stakeWei = parseUnits(truncate(stake, 6) as `${number}`, 6);
 
-    let priceMinBN: ethers.BigNumber;
-    let priceMaxBN: ethers.BigNumber;
+    let priceMinBN: bigint;
+    let priceMaxBN: bigint;
     if (category === 'crypto') {
-      priceMinBN = ethers.utils.parseUnits(truncate(priceMin, 8), 8);
-      priceMaxBN = ethers.utils.parseUnits(truncate(priceMax, 8), 8);
+      priceMinBN = parseUnits(truncate(priceMin, 8) as `${number}`, 8);
+      priceMaxBN = parseUnits(truncate(priceMax, 8) as `${number}`, 8);
     } else {
-      priceMinBN = ethers.BigNumber.from(Math.round(priceMin).toString());
-      priceMaxBN = ethers.BigNumber.from(Math.round(priceMax).toString());
+      priceMinBN = BigInt(Math.round(priceMin));
+      priceMaxBN = BigInt(Math.round(priceMax));
     }
 
-    const callData = SIMULATE_ABI.encodeFunctionData('simulatePlaceBet', [
-      targetTimestamp.toString(),
-      priceMinBN,
-      priceMaxBN,
-      stakeWei,
-    ]);
+    const sim = await publicClient.readContract({
+      address: contractAddress,
+      abi: SIMULATE_ABI,
+      functionName: 'simulatePlaceBet',
+      args: [BigInt(targetTimestamp), priceMinBN, priceMaxBN, stakeWei],
+    });
 
-    const client = getHederaClient();
-    try {
-      const query = new ContractCallQuery()
-        .setContractId(ContractId.fromString(contractId))
-        .setGas(200000)
-        .setFunctionParameters(Buffer.from(callData.slice(2), 'hex'));
-
-      const result = await query.execute(client);
-      client.close();
-
-      const bytes = result.bytes;
-      const decoded = SIMULATE_ABI.decodeFunctionResult('simulatePlaceBet', bytes);
-      const sim = decoded[0];
-
-      return NextResponse.json({
-        fee: sim.fee.toString(),
-        stakeNet: sim.stakeNet.toString(),
-        sharpnessBps: sim.sharpnessBps.toString(),
-        timeBps: sim.timeBps.toString(),
-        qualityBps: sim.qualityBps.toString(),
-        weight: sim.weight.toString(),
-        bucket: sim.bucket.toString(),
-        isValid: sim.isValid,
-        errorMessage: sim.errorMessage,
-      });
-    } catch (err) {
-      client.close();
-      throw err;
-    }
+    return NextResponse.json({
+      fee: sim.fee.toString(),
+      stakeNet: sim.stakeNet.toString(),
+      sharpnessBps: sim.sharpnessBps.toString(),
+      timeBps: sim.timeBps.toString(),
+      qualityBps: sim.qualityBps.toString(),
+      weight: sim.weight.toString(),
+      bucket: sim.bucket.toString(),
+      isValid: sim.isValid,
+      errorMessage: sim.errorMessage,
+    });
   } catch (error) {
     console.error('[bet/simulate] Error:', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Simulation failed' }, { status: 500 });
   }
 }
-
-
