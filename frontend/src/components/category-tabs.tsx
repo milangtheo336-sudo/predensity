@@ -92,7 +92,7 @@ function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
           {isLast && (
             <button 
               onClick={() => {
-                setHowItWorksOpen(false);
+                onClose();
                 // Scroll to top where the sign up button is visible
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }} 
@@ -199,7 +199,7 @@ export function CategoryTabs({ activeCategory, onCategoryChange }: CategoryTabsP
   const isSignedIn = !!user;
   const isLoaded = !isLoading;
 
-  // Only show when Clerk has loaded AND user is not signed in
+  // Only show when Auth has loaded AND user is not signed in
   const showHowItWorks = isLoaded && !isSignedIn && !dismissed;
 
   const tabs = [
