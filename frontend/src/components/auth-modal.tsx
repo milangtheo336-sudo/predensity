@@ -375,7 +375,15 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
         }
         throw new Error('Failed to sign message. Please try again.');
       }
-      await finishWalletSignIn(normalizedAddress, signature, nonce, 'metamask');
+      // Derive walletType from the provider's rdns / name
+      const rdns = (providerDetail.info.rdns ?? '').toLowerCase();
+      const wname = (providerDetail.info.name ?? '').toLowerCase();
+      let walletType: 'hashpack' | 'metamask' | 'blade' | 'kabila' = 'metamask';
+      if (rdns.includes('hashpack') || wname.includes('hashpack')) walletType = 'hashpack';
+      else if (rdns.includes('blade') || wname.includes('blade')) walletType = 'blade';
+      else if (rdns.includes('kabila') || wname.includes('kabila')) walletType = 'kabila';
+
+      await finishWalletSignIn(normalizedAddress, signature, nonce, walletType);
     } catch (err) {
       console.error(`[auth-modal] EIP-6963 (${providerDetail.info.name}) error:`, err);
       setError(err instanceof Error ? err.message : `Failed to connect ${providerDetail.info.name}`);
