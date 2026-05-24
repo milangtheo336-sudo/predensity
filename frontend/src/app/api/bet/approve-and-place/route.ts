@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Backend-relayed token approval and bet placement
  * 
  * Flow:
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     console.log('[approve-and-place] Signature verified');
 
     // 2. Parse message to extract bet details and verify they match.
-    //    Wrap JSON.parse — an attacker could craft `message` that lacks the
+    //    Wrap JSON.parse â€” an attacker could craft `message` that lacks the
     //    "Bet Details: " marker or contains invalid JSON, which would throw
     //    and surface through the generic 500 path. Fail cleanly with 400.
     const marker = 'Bet Details: ';
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     const MAX_SKEW_MS = 60 * 1000;
     if (signedAt > now + MAX_SKEW_MS || now - signedAt > MAX_AGE_MS) {
       return NextResponse.json(
-        { error: 'Signature expired — please sign again' },
+        { error: 'Signature expired â€” please sign again' },
         { status: 401 }
       );
     }
@@ -247,3 +247,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
