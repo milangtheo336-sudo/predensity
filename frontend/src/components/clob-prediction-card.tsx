@@ -478,9 +478,14 @@ function formatTimeRemaining(targetMs: number): string {
 // ---------------------------------------------------------------------------
 // Price Chart (multi-outcome probability over time)
 // ---------------------------------------------------------------------------
-const OUTCOME_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899'];
+// Price Chart (multi-outcome probability over time) - Polymarket style
+// ---------------------------------------------------------------------------
+const OUTCOME_COLORS = ['#4a9eff', '#ff7043', '#66bb6a', '#9c6cff', '#ffa726', '#ec4899'];
 
 function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: OutcomePrice[] }) {
+  const [timeRange, setTimeRange] = useState<'1H' | '6H' | '1D' | '1W' | '1M' | 'ALL'>('1W');
+  const [showAllOutcomes, setShowAllOutcomes] = useState(false);
+  
   // Get price history for all outcomes
   const histories = outcomes.map((o: OutcomePrice) => {
     const history = useConvexQuery(api.clob.getPriceHistory, {
@@ -491,43 +496,136 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
   });
 
   const allPoints = histories.flatMap((h) => h.history);
-  if (allPoints.length === 0) {
-    return (
-      <div className="w-full h-40 bg-gray-100 dark:bg-neutral-900/50 rounded-lg flex items-center justify-center">
-        <span className="text-xs text-gray-400 dark:text-neutral-600">No trading activity yet</span>
-      </div>
-    );
-  }
+  
+  const minTime = allPoints.length > 0 ? Math.min(...allPoints.map((p: { timestamp: number }) => p.timestamp)) : Date.now();
+  const maxTime = allPoints.length > 0 ? Math.max(...allPoints.map((p: { timestamp: number }) => p.timestamp)) : Date.now();
+  const timeRangeMs = maxTime - minTime || 1;
+  const W = 700;
+  const H = 180;
 
-  const minTime = Math.min(...allPoints.map((p: { timestamp: number }) => p.timestamp));
-  const maxTime = Math.max(...allPoints.map((p: { timestamp: number }) => p.timestamp));
-  const timeRange = maxTime - minTime || 1;
-  const W = 500;
-  const H = 160;
+  // Generate x-axis labels
+  const generateXAxisLabels = () => {
+    const labels = [];
+    const now = Date.now();
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now - i * 24 * 60 * 60 * 1000);
+      labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    }
+    return labels;
+  };
+
+  // Display top 4 outcomes or all
+  const displayOutcomes = showAllOutcomes ? outcomes : outcomes.slice(0, 4);
 
   return (
-    <div className="relative w-full">
-      {/* Legend */}
-      <div className="flex flex-wrap gap-3 mb-2 text-xs">
-        {outcomes.map((o, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full" style={{ background: OUTCOME_COLORS[i % OUTCOME_COLORS.length] }} />
-            <span className="text-gray-600 dark:text-gray-400">{o.name} {o.price}%</span>
-          </div>
-        ))}
+    <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-4 mb-5">
+      {/* Chart header */}
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex gap-0.5">
+          {(['1H', '6H', '1D', '1W', '1M', 'ALL'] as const).map((range) => (
+            <button
+              key={range}
+              onClick={() => setTimeRange(range)}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                timeRange === range
+                  ? 'bg-[#1c1c1c] text-white border border-[#2a2a2a]'
+                  : 'text-[#888888] hover:text-white'
+              }`}
+            >
+              {range}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 text-[11px] text-[#888888]">
+          Powered by
+          <svg viewBox="0 0 12 12" fill="#888" className="w-2.5 h-2.5">
+            <path d="M6 0l1.5 4.5H12L8.25 7.5l1.5 4.5L6 9.75 2.25 12l1.5-4.5L0 4.5h4.5z"/>
+          </svg>
+          Limitless
+        </div>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 160 }} preserveAspectRatio="none">
-        {histories.map((h, i) => {
-          if (h.history.length < 2) return null;
-          const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
-          const points = h.history.map((p: { timestamp: number; price: number }) => {
-            const x = ((p.timestamp - minTime) / timeRange) * W;
-            const y = H - (p.price / 100) * (H - 10) - 5;
-            return `${x},${y}`;
-          }).join(' ');
-          return <polyline key={i} points={points} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />;
-        })}
-      </svg>
+
+      {/* Outcomes list on the right side of chart */}
+      <div className="flex gap-4">
+        {/* Chart area */}
+        <div className="flex-1">
+          {/* Legend */}
+          <div className="flex flex-wrap gap-3.5 mb-3 text-xs items-center">
+            {displayOutcomes.map((o, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <span className="w-[9px] h-[9px] rounded-full flex-shrink-0" style={{ background: OUTCOME_COLORS[i % OUTCOME_COLORS.length] }} />
+                <span className="text-white">{o.name} {o.price}%</span>
+              </div>
+            ))}
+            {outcomes.length > 4 && (
+              <button onClick={() => setShowAllOutcomes(!showAllOutcomes)} className="text-[#888888] hover:text-white cursor-pointer text-xs">
+                {showAllOutcomes ? 'Show less' : '··· More'}
+              </button>
+            )}
+          </div>
+
+          {/* Chart with grid */}
+          <div className="relative h-[180px] border-b border-[#2a2a2a]">
+            {/* Grid lines */}
+            <div className="absolute inset-0 pr-10">
+              {[100, 75, 50, 25, 0].map((pct, i) => (
+                <div
+                  key={pct}
+                  className="absolute left-0 right-10 border-t border-dashed border-[#2a2a2a]"
+                  style={{ top: `${i * 25}%` }}
+                >
+                  <span className="absolute right-0 -translate-y-1/2 text-[10px] text-[#888888]">
+                    {pct}%
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Chart lines */}
+            {allPoints.length > 0 && (
+              <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 w-[calc(100%-40px)] h-full" preserveAspectRatio="none">
+                {histories.map((h, i) => {
+                  if (h.history.length < 2) return null;
+                  const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
+                  const points = h.history.map((p: { timestamp: number; price: number }) => {
+                    const x = ((p.timestamp - minTime) / timeRangeMs) * W;
+                    const y = H - (p.price / 100) * H;
+                    return `${x},${y}`;
+                  }).join(' ');
+                  return <polyline key={i} points={points} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />;
+                })}
+              </svg>
+            )}
+          </div>
+
+          {/* X-axis labels */}
+          <div className="flex justify-between pt-2 pr-10 text-[11px] text-[#888888]">
+            {generateXAxisLabels().map((label, i) => (
+              <span key={i}>{label}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Outcomes list on right */}
+        <div className="w-48 space-y-1 text-xs">
+          <div className="text-[#888888] text-[10px] mb-2">Switch to 4 options</div>
+          {outcomes.map((o, i) => (
+            <div key={i} className="flex items-center justify-between py-1 hover:bg-[#1c1c1c] px-2 rounded cursor-pointer">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: OUTCOME_COLORS[i % OUTCOME_COLORS.length] }} />
+                <span className="text-white truncate text-[11px]">{o.name}</span>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-white font-semibold">{o.price}%</span>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5 text-[#888888]">
+                  <path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z"/>
+                  <circle cx="8" cy="8" r="2"/>
+                </svg>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -538,7 +636,7 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
 function OrderBookView({ marketId, outcomeIndex }: { marketId: string; outcomeIndex: number }) {
   const orderBook = useConvexQuery(api.clob.getOrderBook, { marketId, outcomeIndex });
 
-  if (!orderBook) return <div className="py-4 text-center text-sm text-gray-400"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>;
+  if (!orderBook) return <div className="py-4 text-center text-xs text-[#888888]"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>;
 
   type OrderLevel = { price: number; quantity: number };
 
@@ -548,42 +646,54 @@ function OrderBookView({ marketId, outcomeIndex }: { marketId: string; outcomeIn
     1
   );
 
+  // Calculate total USDC for each level
+  const calculateTotal = (price: number, qty: number) => ((price * qty) / 100).toFixed(2);
+
   return (
-    <div className="grid grid-cols-2 gap-2 text-xs" style={{ fontFamily: 'Arial, sans-serif' }}>
-      {/* Bids (buy orders) */}
-      <div>
-        <div className="flex justify-between text-gray-500 dark:text-neutral-500 mb-1 px-1">
-          <span>Price</span><span>Qty</span>
+    <div className="space-y-1">
+      {/* Ask rows (sell orders) - red background */}
+      {orderBook.asks.length === 0 ? (
+        <div className="text-center text-[#888888] py-2 text-xs">No asks</div>
+      ) : (
+        orderBook.asks.slice(0, 4).map((a: OrderLevel, i: number) => (
+          <div key={i} className="grid grid-cols-3 items-center py-1.5 px-1.5 rounded bg-[#2a1010] relative">
+            {i === orderBook.asks.length - 1 && (
+              <div className="absolute left-[-2px] top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-[#e8520a] text-white text-[10px] font-bold">
+                Asks
+              </div>
+            )}
+            <span className={`text-[#ff6b35] font-medium ${i === orderBook.asks.length - 1 ? 'pl-12' : ''}`}>{a.price}¢</span>
+            <span className="text-white text-center">{a.quantity.toLocaleString()}</span>
+            <span className="text-[#888888] text-right">{calculateTotal(a.price, a.quantity)} USDC</span>
+          </div>
+        ))
+      )}
+
+      {/* Separator with last price and spread */}
+      {orderBook.asks.length > 0 && orderBook.bids.length > 0 && (
+        <div className="flex justify-between items-center py-1.5 px-1.5 text-[11px] border-t border-b border-[#2a2a2a] my-1">
+          <span className="text-[#ff6b35]">Last: NO {orderBook.asks[orderBook.asks.length - 1].price}¢</span>
+          <span className="text-[#888888]">Spread {Math.abs(orderBook.bids[0]?.price - orderBook.asks[orderBook.asks.length - 1]?.price).toFixed(1)}¢</span>
         </div>
-        {orderBook.bids.length === 0 ? (
-          <div className="text-center text-gray-400 py-2">No bids</div>
-        ) : (
-          orderBook.bids.slice(0, 8).map((b: OrderLevel, i: number) => (
-            <div key={i} className="flex justify-between items-center px-1 py-0.5 relative">
-              <div className="absolute inset-0 bg-green-500/10 rounded" style={{ width: `${(b.quantity / maxQty) * 100}%` }} />
-              <span className="text-green-600 dark:text-green-400 font-mono relative z-10">{b.price}c</span>
-              <span className="text-gray-700 dark:text-gray-300 font-mono relative z-10">{b.quantity}</span>
-            </div>
-          ))
-        )}
-      </div>
-      {/* Asks (sell orders) */}
-      <div>
-        <div className="flex justify-between text-gray-500 dark:text-neutral-500 mb-1 px-1">
-          <span>Price</span><span>Qty</span>
-        </div>
-        {orderBook.asks.length === 0 ? (
-          <div className="text-center text-gray-400 py-2">No asks</div>
-        ) : (
-          orderBook.asks.slice(0, 8).map((a: OrderLevel, i: number) => (
-            <div key={i} className="flex justify-between items-center px-1 py-0.5 relative">
-              <div className="absolute inset-0 right-0 bg-red-500/10 rounded" style={{ width: `${(a.quantity / maxQty) * 100}%`, marginLeft: 'auto' }} />
-              <span className="text-red-600 dark:text-red-400 font-mono relative z-10">{a.price}c</span>
-              <span className="text-gray-700 dark:text-gray-300 font-mono relative z-10">{a.quantity}</span>
-            </div>
-          ))
-        )}
-      </div>
+      )}
+
+      {/* Bid rows (buy orders) - green background */}
+      {orderBook.bids.length === 0 ? (
+        <div className="text-center text-[#888888] py-2 text-xs">No bids</div>
+      ) : (
+        orderBook.bids.slice(0, 3).map((b: OrderLevel, i: number) => (
+          <div key={i} className="grid grid-cols-3 items-center py-1.5 px-1.5 rounded bg-[#0e2218] relative">
+            {i === 0 && (
+              <div className="absolute left-[-2px] top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-[#1a6b3c] text-white text-[10px] font-bold">
+                Bids
+              </div>
+            )}
+            <span className={`text-[#3fdc8c] font-medium ${i === 0 ? 'pl-12' : ''}`}>{b.price}¢</span>
+            <span className="text-white text-center">{b.quantity.toLocaleString()}</span>
+            <span className="text-[#888888] text-right">{calculateTotal(b.price, b.quantity)} USDC</span>
+          </div>
+        ))
+      )}
     </div>
   );
 }
@@ -869,8 +979,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               </div>
             </div>
 
-            {/* Outcome buttons -- Polymarket style with collapsible details */}
-            <div className="space-y-2">
+            {/* Outcome cards -- Polymarket style matching guidance exactly */}
+            <div className="space-y-3">
               {outcomes
                 .filter((o, i) => {
                   const isEliminated = market.eliminatedOutcomes?.includes(i);
@@ -880,26 +990,27 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                 })
                 .map((o, i) => {
                   const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
-                  const isSelected = selectedOutcome === i;
                   const isExpanded = expandedOutcome === i;
                   const isEliminated = market.eliminatedOutcomes?.includes(i);
                   const isWinner = market.resolved && market.winningOutcome === i;
                   const isLoser = market.resolved && market.winningOutcome !== i;
                   
-                  // Calculate volume for this outcome (mock for now - you can add real data later)
+                  // Calculate volume for this outcome
                   const outcomeVolume = (market.totalVolume || 0) * (o.price / 100);
                   
+                  // Get outcome image if available
+                  const outcomeData = market.outcomesData?.[i];
+                  const outcomeImage = outcomeData?.imageUrl;
+                  
                   return (
-                    <div key={i} className={`border rounded-xl transition-all ${
+                    <div key={i} className={`bg-[#141414] rounded-2xl border overflow-hidden ${
                       isEliminated || isLoser
-                        ? 'opacity-50 bg-gray-50 dark:bg-neutral-900/30 border-gray-200 dark:border-neutral-800'
+                        ? 'opacity-50 border-[#2a2a2a]'
                         : isWinner
-                        ? 'border-green-500 bg-green-50 dark:bg-green-500/10'
-                        : isExpanded
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
-                        : 'border-gray-200 dark:border-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700'
+                        ? 'border-green-500'
+                        : 'border-[#2a2a2a]'
                     }`}>
-                      {/* Outcome header - always visible */}
+                      {/* Outcome header */}
                       <button
                         onClick={() => {
                           if (!isEliminated && !market.resolved) {
@@ -908,35 +1019,36 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                           }
                         }}
                         disabled={isEliminated || market.resolved}
-                        className="w-full flex items-center justify-between p-3"
+                        className="w-full flex items-center gap-3 p-3.5"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: isEliminated || isLoser ? '#6b7280' : isWinner ? '#22c55e' : color }} />
-                          <span className={`text-sm font-medium ${isEliminated || isLoser ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>
-                            {o.name}
-                          </span>
-                          {isEliminated && (
-                            <span className="ml-2 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
-                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </span>
-                          )}
-                          {isWinner && (
-                            <span className="ml-2 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                              <CheckIcon className="w-3 h-3 text-white" strokeWidth="3" />
-                            </span>
+                        {/* Icon */}
+                        <div className="w-[34px] h-[34px] bg-[#1a1a2e] rounded-lg flex items-center justify-center flex-shrink-0 text-base">
+                          {outcomeImage ? (
+                            <img src={outcomeImage} alt={o.name} className="w-full h-full object-cover rounded-lg" />
+                          ) : (
+                            <span>🏆</span>
                           )}
                         </div>
+                        
+                        {/* Name and volume */}
+                        <div className="flex-1 text-left">
+                          <div className={`text-sm font-semibold ${isEliminated || isLoser ? 'line-through text-gray-400' : 'text-white'}`}>
+                            {o.name}
+                          </div>
+                          <div className="flex items-center gap-1 text-[11px] text-[#888888] mt-0.5">
+                            <svg viewBox="0 0 12 12" fill="none" stroke="#4a9eff" strokeWidth="1.5" className="w-[11px] h-[11px]">
+                              <path d="M1 9l3-3 2 2 4-5"/>
+                            </svg>
+                            Volume {outcomeVolume.toFixed(2)} USDC
+                          </div>
+                        </div>
+                        
+                        {/* Percentage and arrow */}
                         {!isEliminated && !isLoser && (
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <div className="text-xs text-gray-500 dark:text-gray-400">Volume</div>
-                              <div className="text-sm font-semibold text-gray-900 dark:text-white">{outcomeVolume.toFixed(2)} USDC</div>
-                            </div>
-                            <div className="text-lg font-bold text-gray-900 dark:text-white">{o.price}%</div>
-                            {!isEliminated && !market.resolved && (
-                              isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-base font-bold text-white">{o.price}%</span>
+                            {!market.resolved && (
+                              <span className="text-sm text-white">{isExpanded ? '∧' : '∨'}</span>
                             )}
                           </div>
                         )}
@@ -948,107 +1060,176 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                         )}
                       </button>
 
-                      {/* Expanded outcome details */}
+                      {/* YES/NO buttons */}
+                      {!isEliminated && !isLoser && (
+                        <div className="grid grid-cols-2 border-t border-[#2a2a2a]">
+                          <button
+                            onClick={() => {
+                              setSelectedOutcome(i);
+                              setOrderSide('buy');
+                            }}
+                            className="py-2.5 text-center text-[13px] font-semibold text-[#3fdc8c] hover:bg-[#0e2218] transition-colors border-r border-[#2a2a2a]"
+                          >
+                            Yes {o.price}¢
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedOutcome(i);
+                              setOrderSide('sell');
+                            }}
+                            className="py-2.5 text-center text-[13px] font-semibold bg-[#e8520a] text-white hover:bg-[#d14808] transition-colors"
+                          >
+                            No {(100 - o.price).toFixed(1)}¢
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Expanded content */}
                       {isExpanded && !isEliminated && !market.resolved && (
-                        <div className="border-t border-gray-200 dark:border-neutral-800 p-4 space-y-4">
-                          {/* Tabs for outcome details */}
-                          <div className="flex items-center gap-4 border-b border-gray-200 dark:border-neutral-800">
+                        <>
+                          {/* Tabs */}
+                          <div className="flex gap-0 border-t border-b border-[#2a2a2a]">
                             <button
                               onClick={() => setOutcomeTab('orderbook')}
-                              className={`pb-2 text-xs font-semibold transition-colors ${
+                              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
                                 outcomeTab === 'orderbook'
-                                  ? 'text-gray-900 dark:text-white border-b-2 border-blue-500'
-                                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                                  ? 'text-white border-white'
+                                  : 'text-[#888888] border-transparent hover:text-[#cccccc]'
                               }`}
                             >
+                              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
+                                <rect x="1" y="1" width="10" height="10" rx="1"/>
+                                <path d="M3 4h6M3 6h6M3 8h4"/>
+                              </svg>
                               Order book
                             </button>
                             <button
                               onClick={() => setOutcomeTab('probability')}
-                              className={`pb-2 text-xs font-semibold transition-colors ${
+                              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
                                 outcomeTab === 'probability'
-                                  ? 'text-gray-900 dark:text-white border-b-2 border-blue-500'
-                                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                                  ? 'text-white border-white'
+                                  : 'text-[#888888] border-transparent hover:text-[#cccccc]'
                               }`}
                             >
+                              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
+                                <path d="M2 10 L2 6 L5 6 L5 10 M5 10 L5 4 L8 4 L8 10 M8 10 L8 2 L11 2 L11 10"/>
+                              </svg>
                               Probability
                             </button>
                             <button
                               onClick={() => setOutcomeTab('orders')}
-                              className={`pb-2 text-xs font-semibold transition-colors ${
+                              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
                                 outcomeTab === 'orders'
-                                  ? 'text-gray-900 dark:text-white border-b-2 border-blue-500'
-                                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                                  ? 'text-white border-white'
+                                  : 'text-[#888888] border-transparent hover:text-[#cccccc]'
                               }`}
                             >
+                              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
+                                <circle cx="6" cy="6" r="5"/>
+                                <path d="M6 3v3l2 2"/>
+                              </svg>
                               Open Orders
                             </button>
                             <button
                               onClick={() => setOutcomeTab('positions')}
-                              className={`pb-2 text-xs font-semibold transition-colors ${
+                              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
                                 outcomeTab === 'positions'
-                                  ? 'text-gray-900 dark:text-white border-b-2 border-blue-500'
-                                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                                  ? 'text-white border-white'
+                                  : 'text-[#888888] border-transparent hover:text-[#cccccc]'
                               }`}
                             >
+                              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
+                                <rect x="1" y="2" width="10" height="8" rx="1"/>
+                                <path d="M4 5h4M4 7h2"/>
+                              </svg>
                               Positions
                             </button>
                           </div>
 
                           {/* Tab content */}
-                          {outcomeTab === 'orderbook' && (
-                            <OrderBookView marketId={marketId} outcomeIndex={i} />
-                          )}
-                          {outcomeTab === 'probability' && (
-                            <div className="h-40">
-                              <PriceChart marketId={marketId} outcomes={[o]} />
-                            </div>
-                          )}
-                          {outcomeTab === 'orders' && (
-                            <div className="text-xs text-gray-500 text-center py-4">
-                              {userOrders && userOrders.filter((ord: any) => ord.outcomeIndex === i && ord.status === 'open').length > 0 ? (
-                                <div className="space-y-2">
-                                  {userOrders.filter((ord: any) => ord.outcomeIndex === i && ord.status === 'open').map((ord: any) => (
-                                    <div key={ord._id} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-neutral-900 p-2 rounded">
-                                      <span className={ord.side === 'buy' ? 'text-green-500' : 'text-red-500'}>{ord.side.toUpperCase()}</span>
-                                      <span>{ord.price}c × {ord.quantity}</span>
-                                      <button onClick={() => handleCancelOrder(ord._id)} className="text-red-500 hover:text-red-600">Cancel</button>
-                                    </div>
-                                  ))}
+                          <div className="p-3.5">
+                            {outcomeTab === 'orderbook' && (
+                              <div>
+                                {/* Order book header */}
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="text-sm font-bold text-white">Order Book</span>
+                                  <span className="flex items-center gap-1 text-xs text-[#4a9eff]">
+                                    <span className="text-[13px]">💎</span> MM Rewards
+                                    <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-[#888888] text-[9px] text-[#888888]">i</span>
+                                  </span>
                                 </div>
-                              ) : (
-                                'No open orders'
-                              )}
-                            </div>
-                          )}
-                          {outcomeTab === 'positions' && (
-                            <div className="text-xs text-gray-500 text-center py-4">
-                              {marketPositions && marketPositions.filter((pos: any) => pos.outcomeIndex === i).length > 0 ? (
-                                <div className="space-y-2">
-                                  {marketPositions.filter((pos: any) => pos.outcomeIndex === i).map((pos: any) => (
-                                    <div key={pos._id} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-neutral-900 p-2 rounded">
-                                      <span>Shares: {pos.shares}</span>
-                                      <span>Avg: {pos.averagePrice}c</span>
-                                      <span>Cost: ${pos.costBasis.toFixed(2)}</span>
-                                    </div>
-                                  ))}
+
+                                {/* YES/NO toggle */}
+                                <div className="flex w-fit mb-3 bg-[#1c1c1c] rounded-lg overflow-hidden">
+                                  <button className="px-5 py-1.5 text-xs font-semibold bg-white text-black rounded-md">YES</button>
+                                  <button className="px-5 py-1.5 text-xs font-semibold text-[#888888]">NO</button>
                                 </div>
-                              ) : (
-                                'No positions'
-                              )}
-                            </div>
-                          )}
-                        </div>
+
+                                {/* Order book table */}
+                                <div className="text-xs">
+                                  {/* Column headers */}
+                                  <div className="grid grid-cols-3 text-[11px] font-semibold text-[#888888] pb-1.5 border-b border-[#2a2a2a] mb-1">
+                                    <span>Price</span>
+                                    <span className="text-center">Contracts</span>
+                                    <span className="text-right">Total</span>
+                                  </div>
+
+                                  {/* Order book rows */}
+                                  <OrderBookView marketId={marketId} outcomeIndex={i} />
+                                </div>
+                              </div>
+                            )}
+                            {outcomeTab === 'probability' && (
+                              <div className="h-40">
+                                <PriceChart marketId={marketId} outcomes={[o]} />
+                              </div>
+                            )}
+                            {outcomeTab === 'orders' && (
+                              <div className="text-xs text-[#888888] text-center py-4">
+                                {userOrders && userOrders.filter((ord: any) => ord.outcomeIndex === i && ord.status === 'open').length > 0 ? (
+                                  <div className="space-y-2">
+                                    {userOrders.filter((ord: any) => ord.outcomeIndex === i && ord.status === 'open').map((ord: any) => (
+                                      <div key={ord._id} className="flex items-center justify-between text-xs bg-[#1c1c1c] p-2 rounded">
+                                        <span className={ord.side === 'buy' ? 'text-[#3fdc8c]' : 'text-[#ff6b35]'}>{ord.side.toUpperCase()}</span>
+                                        <span className="text-white">{ord.price}c × {ord.quantity}</span>
+                                        <button onClick={() => handleCancelOrder(ord._id)} className="text-[#ff6b35] hover:text-[#ff8555]">Cancel</button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  'No open orders'
+                                )}
+                              </div>
+                            )}
+                            {outcomeTab === 'positions' && (
+                              <div className="text-xs text-[#888888] text-center py-4">
+                                {marketPositions && marketPositions.filter((pos: any) => pos.outcomeIndex === i).length > 0 ? (
+                                  <div className="space-y-2">
+                                    {marketPositions.filter((pos: any) => pos.outcomeIndex === i).map((pos: any) => (
+                                      <div key={pos._id} className="flex items-center justify-between text-xs bg-[#1c1c1c] p-2 rounded">
+                                        <span className="text-white">Shares: {pos.shares}</span>
+                                        <span className="text-white">Avg: {pos.averagePrice}c</span>
+                                        <span className="text-white">Cost: ${pos.costBasis.toFixed(2)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  'No positions'
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </>
                       )}
                     </div>
                   );
                 })}
               
-              {/* Hide resolved toggle - at bottom of outcomes list */}
+              {/* Hide resolved toggle */}
               {((market.eliminatedOutcomes && market.eliminatedOutcomes.length > 0) || market.resolved) && (
                 <button
                   onClick={() => setHideEliminated(!hideEliminated)}
-                  className="w-full p-2 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex items-center justify-center gap-1"
+                  className="w-full p-2 text-xs text-[#888888] hover:text-[#cccccc] transition-colors flex items-center justify-center gap-1"
                 >
                   {hideEliminated ? (
                     <>
@@ -1065,20 +1246,21 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               )}
             </div>
 
-            {/* Chart / Order Book tabs */}
-            <div className="flex items-center gap-6 pb-2">
-              <button onClick={() => setActiveTab('chart')} className={`text-sm font-semibold transition-colors ${activeTab === 'chart' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}>
-                Graph
-              </button>
-              <button onClick={() => setActiveTab('orderbook')} className={`flex items-center gap-2 text-sm font-semibold transition-colors ${activeTab === 'orderbook' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}>
-                <ActivityIcon className="w-4 h-4" /> Order Book
-              </button>
+            {/* Main Chart - Always visible at top */}
+            <PriceChart marketId={marketId} outcomes={outcomes} />
+
+            {/* Volume row */}
+            <div className="flex items-center gap-1.5 text-[13px] text-[#888888] mb-5">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
+                <path d="M2 12l4-4 3 3 5-7"/>
+              </svg>
+              Volume <span className="text-white font-medium">{(market.totalVolume || 0).toLocaleString()} USDC</span>
             </div>
 
-            {activeTab === 'chart' && <PriceChart marketId={marketId} outcomes={outcomes} />}
-            {activeTab === 'orderbook' && <OrderBookView marketId={marketId} outcomeIndex={selectedOutcome} />}
+            {/* Outcomes header */}
+            <h2 className="text-xl font-bold text-white mb-3.5">Outcomes</h2>
 
-            {/* Market Info (Rules/Context) - Collapsible */}
+            {/* Outcome cards -- Polymarket style matching guidance exactly */}
             <div className="border-t border-gray-200 dark:border-white/[0.06] pt-4 mt-4">
               <button
                 onClick={() => setInfoExpanded(!infoExpanded)}
@@ -1106,11 +1288,11 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
           {/* RIGHT COLUMN -- Trading Panel */}
           <div className="order-2 lg:order-none lg:col-span-4">
-            <div className="lg:sticky lg:top-20 z-10 bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-white/[0.06] rounded-lg p-5">
+            <div className="lg:sticky lg:top-20 z-10 bg-[#141414] border border-[#2a2a2a] rounded-2xl overflow-hidden">
 
               {/* Settlement Status Banners */}
               {pendingSettlements > 0 && (
-                <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-lg">
+                <div className="m-3 flex items-center gap-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-lg">
                   <Loader2 className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400 animate-spin flex-shrink-0" />
                   <span className="text-xs text-yellow-700 dark:text-yellow-300">
                     {pendingSettlements} trade{pendingSettlements !== 1 ? 's' : ''} settling on-chain...
@@ -1118,7 +1300,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                 </div>
               )}
               {failedSettlements > 0 && (
-                <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg">
+                <div className="m-3 flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg">
                   <AlertTriangle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
                   <span className="text-xs text-red-700 dark:text-red-300">
                     {failedSettlements} trade{failedSettlements !== 1 ? 's' : ''} failed settlement
@@ -1126,146 +1308,188 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                 </div>
               )}
 
-              {/* Selected outcome header */}
-              <div className="flex items-center gap-2 mb-4">
-                <span className="w-3 h-3 rounded-full" style={{ background: OUTCOME_COLORS[selectedOutcome % OUTCOME_COLORS.length] }} />
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">{selectedOutcomeData?.name}</span>
-                <span className="text-sm text-gray-500 ml-auto">
-                  {pricesAreEstimated && <span className="text-gray-400 text-[10px] mr-1">est.</span>}
-                  {selectedOutcomeData?.price}%
-                </span>
-              </div>
-
-              {/* Buy / Sell toggle */}
-              <div className="flex gap-1 mb-4 bg-gray-200 dark:bg-neutral-900 rounded-lg p-1">
-                <button
-                  onClick={() => setOrderSide('buy')}
-                  className={`flex-1 py-2 rounded-md text-sm font-semibold transition-colors ${
-                    orderSide === 'buy'
-                      ? 'bg-green-500 text-white'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                  }`}
-                >
-                  Buy Yes
-                </button>
-                <button
-                  onClick={() => setOrderSide('sell')}
-                  className={`flex-1 py-2 rounded-md text-sm font-semibold transition-colors ${
-                    orderSide === 'sell'
-                      ? 'bg-red-500 text-white'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                  }`}
-                >
-                  Sell Yes
-                </button>
-              </div>
-
-              {/* Market Order Toggle */}
-              <div className="flex items-center justify-between mb-3 px-1">
-                <span className="text-xs text-gray-600 dark:text-gray-400">Market Order</span>
-                <button
-                  onClick={() => setIsMarketOrder(!isMarketOrder)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${
-                    isMarketOrder ? 'bg-blue-500' : 'bg-gray-300 dark:bg-neutral-700'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                      isMarketOrder ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Slippage slider (only for market orders) */}
-              {isMarketOrder && (
-                <div className="mb-3 px-1">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs text-gray-600 dark:text-gray-400">Slippage Cap</label>
-                    <span className="text-xs text-gray-900 dark:text-white font-medium">{slippagePct.toFixed(1)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="10"
-                    step="0.5"
-                    value={slippagePct}
-                    onChange={(e) => setSlippagePct(parseFloat(e.target.value))}
-                    className="w-full h-1.5 bg-gray-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                  />
-                  <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
-                    <span>0.5%</span>
-                    <span>10%</span>
-                  </div>
+              {/* Panel header with icon and title */}
+              <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-[#2a2a2a]">
+                <div className="w-8 h-8 bg-[#1a1a2e] rounded-lg flex items-center justify-center flex-shrink-0 text-base">
+                  {market.imageUrl ? (
+                    <img src={market.imageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <span>🏆</span>
+                  )}
                 </div>
-              )}
-
-              {/* Price input */}
-              <div className="mb-3">
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  Price (cents) {isMarketOrder && <span className="text-blue-500">- Auto (Market)</span>}
-                </label>
-                <input
-                  type="number"
-                  min="1" max="99"
-                  value={isMarketOrder ? effectivePrice : orderPrice}
-                  onChange={(e) => setOrderPrice(e.target.value)}
-                  placeholder={`${selectedOutcomeData?.price || 50}`}
-                  disabled={isMarketOrder}
-                  className="w-full px-3 py-2.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                />
-                {isMarketOrder && (
-                  <p className="text-[10px] text-gray-400 mt-1">
-                    Price will be {orderSide === 'buy' ? 'up to' : 'down to'} {effectivePrice}c based on current market price with {slippagePct}% slippage cap
-                  </p>
-                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-white leading-tight line-clamp-2">{market.question}</div>
+                </div>
               </div>
 
-              {/* Quantity input with Dollars/Contracts toggle */}
-              <div className="mb-3">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs text-gray-500 dark:text-gray-400">
-                    {inputMode === 'contracts' ? 'Shares' : 'Amount'}
-                  </label>
+              {/* Outcome dropdown */}
+              <div className="px-4 py-2">
+                <button className="flex items-center gap-1 bg-[#1c1c1c] border border-[#2a2a2a] rounded-full px-2.5 py-1 text-[13px] font-semibold text-white w-fit">
+                  {selectedOutcomeData?.name}
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
+                    <path d="M3 4.5l3 3 3-3"/>
+                  </svg>
+                </button>
+              </div>
+
+              {/* Trading panel tabs */}
+              <div className="flex justify-between items-center px-4 py-3 border-b border-[#2a2a2a]">
+                <div className="flex gap-0">
                   <button
-                    onClick={() => setInputMode(inputMode === 'contracts' ? 'dollars' : 'contracts')}
-                    className="text-xs text-blue-500 hover:text-blue-600 transition-colors"
+                    onClick={() => setOrderSide('buy')}
+                    className={`px-3 py-1.5 text-[13px] font-semibold border-b-2 transition-colors ${
+                      orderSide === 'buy'
+                        ? 'text-white border-white'
+                        : 'text-[#888888] border-transparent hover:text-white'
+                    }`}
                   >
-                    {inputMode === 'contracts' ? '$ Dollars' : '# Contracts'}
+                    Buy
+                  </button>
+                  <button
+                    onClick={() => setOrderSide('sell')}
+                    className={`px-3 py-1.5 text-[13px] font-semibold border-b-2 transition-colors ${
+                      orderSide === 'sell'
+                        ? 'text-white border-white'
+                        : 'text-[#888888] border-transparent hover:text-white'
+                    }`}
+                  >
+                    Sell
                   </button>
                 </div>
-                <input
-                  type="number"
-                  min="1"
-                  value={orderQuantity}
-                  onChange={(e) => {
-                    if (inputMode === 'dollars') {
-                      // Convert dollars to contracts
-                      const dollars = parseFloat(e.target.value) || 0;
-                      const price = isMarketOrder ? effectivePrice : (parseInt(orderPrice) || 50);
-                      const contracts = Math.floor((dollars * 100) / price);
-                      setOrderQuantity(contracts.toString());
-                    } else {
-                      setOrderQuantity(e.target.value);
-                    }
-                  }}
-                  placeholder={inputMode === 'contracts' ? '10' : '5.00'}
-                  className="w-full px-3 py-2.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                {inputMode === 'dollars' && (
-                  <p className="text-[10px] text-gray-400 mt-1">
-                    ~{orderQuantity || 0} contracts at {isMarketOrder ? effectivePrice : (parseInt(orderPrice) || 50)}c
-                  </p>
-                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsMarketOrder(!isMarketOrder)}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-[#1c1c1c] border border-[#2a2a2a] rounded-lg text-xs font-semibold text-white"
+                  >
+                    {isMarketOrder ? 'Market' : 'Limit'}
+                    <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" className="w-2.5 h-2.5">
+                      <path d="M2 3.5l3 3 3-3"/>
+                    </svg>
+                  </button>
+                  <button className="px-2 py-1 bg-[#1c1c1c] border border-[#2a2a2a] rounded-lg text-base leading-none text-white">
+                    ⋮
+                  </button>
+                </div>
               </div>
 
-              {/* Cost estimate */}
-              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-4">
-                <span>Est. cost</span>
-                <span className="text-gray-900 dark:text-white font-medium">${costEstimate} USDC</span>
+              {/* YES/NO buttons */}
+              <div className="grid grid-cols-2 gap-2 px-4 py-3.5">
+                <button className="py-3 rounded-xl bg-[#1f4d32] border border-[#3fdc8c] text-[#3fdc8c] text-sm font-bold">
+                  YES {selectedOutcomeData?.price}¢
+                </button>
+                <button className="py-3 rounded-xl bg-[#e8520a] text-white text-sm font-bold">
+                  NO {selectedOutcomeData ? (100 - selectedOutcomeData.price).toFixed(1) : 84}¢
+                </button>
               </div>
 
-              {/* Balance */}
+              {/* Market Order Format */}
+              {isMarketOrder && (
+                <>
+                  {/* Amount section */}
+                  <div className="px-4 pb-2.5">
+                    <div className="text-xs text-[#888888] mb-1">Amount:</div>
+                    <div className="flex items-baseline justify-between mb-2">
+                      <span className="text-[26px] font-bold text-white">{orderQuantity || 84}</span>
+                      {balanceError && <span className="text-xs font-medium text-[#ff6b35]">Insufficient Balance</span>}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mb-2.5">
+                      <button onClick={() => setOrderQuantity('1')} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-white hover:border-[#555]">+1 USDC</button>
+                      <button onClick={() => setOrderQuantity('5')} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-white hover:border-[#555]">+5 USDC</button>
+                      <button onClick={() => setOrderQuantity('10')} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-white hover:border-[#555]">+10 USDC</button>
+                      <button onClick={() => setOrderQuantity('100')} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-white hover:border-[#555]">+100 USDC</button>
+                      <button onClick={() => setOrderQuantity(platformBalance.toString())} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-white hover:border-[#555]">MAX</button>
+                    </div>
+                    <div className="text-right text-[11px] text-[#888888]">
+                      Available Balance: <span className="text-white font-semibold">{balancesHidden ? '****' : `${platformBalance.toFixed(2)}`} USDC</span>
+                    </div>
+                  </div>
+
+                  <hr className="border-t border-[#2a2a2a] my-2.5" />
+
+                  {/* To Win section */}
+                  <div className="px-4 pb-3.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="flex items-center gap-1 text-[13px] text-[#888888]">
+                        To Win:
+                        <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-[#888888] text-[9px]">i</span>
+                      </span>
+                      <span className="text-[22px] font-extrabold text-[#3fdc8c]">
+                        {(parseFloat(orderQuantity || '0') * 1.18).toFixed(1)} <span className="text-[15px] font-semibold">USDC</span>
+                      </span>
+                    </div>
+                    <div className="text-right text-[11px] text-[#888888]">
+                      Avg. Price: <span className="text-white">{selectedOutcomeData?.price}¢</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Limit Order Format */}
+              {!isMarketOrder && (
+                <>
+                  {/* Limit Price */}
+                  <div className="flex items-center justify-between px-4 pb-2.5">
+                    <span className="text-[13px] text-[#888888]">Limit Price:</span>
+                    <div className="flex items-center gap-2 bg-[#1c1c1c] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-sm font-semibold text-white">
+                      <button onClick={() => setOrderPrice((parseInt(orderPrice || '50') - 1).toString())} className="text-[#888888] hover:text-white text-base">−</button>
+                      <span className="text-[#2a2a2a]">|</span>
+                      <input
+                        type="number"
+                        value={orderPrice}
+                        onChange={(e) => setOrderPrice(e.target.value)}
+                        className="w-12 bg-transparent text-center outline-none"
+                        placeholder={selectedOutcomeData?.price.toString()}
+                      />
+                      ¢
+                      <span className="text-[#2a2a2a]">|</span>
+                      <button onClick={() => setOrderPrice((parseInt(orderPrice || '50') + 1).toString())} className="text-[#888888] hover:text-white text-base">+</button>
+                    </div>
+                  </div>
+
+                  {/* Contracts */}
+                  <div className="px-4 pb-2.5">
+                    <div className="text-[13px] text-[#888888] mb-1.5">Contracts:</div>
+                    <div className="bg-[#1c1c1c] border border-[#2a2a2a] rounded-lg px-3 py-2 text-base font-semibold text-white mb-1.5">
+                      <input
+                        type="number"
+                        value={orderQuantity}
+                        onChange={(e) => setOrderQuantity(e.target.value)}
+                        className="w-full bg-transparent outline-none"
+                        placeholder="84"
+                      />
+                    </div>
+                    <div className="flex gap-1.5 mb-2.5">
+                      <button onClick={() => setOrderQuantity((parseInt(orderQuantity || '0') - 100).toString())} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-[#888888] hover:text-white">-100</button>
+                      <button onClick={() => setOrderQuantity((parseInt(orderQuantity || '0') - 10).toString())} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-[#888888] hover:text-white">-10</button>
+                      <button onClick={() => setOrderQuantity((parseInt(orderQuantity || '0') + 10).toString())} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-[#888888] hover:text-white">+10</button>
+                      <button onClick={() => setOrderQuantity((parseInt(orderQuantity || '0') + 100).toString())} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-[#888888] hover:text-white">+100</button>
+                    </div>
+                    <div className="text-right text-[11px] text-[#888888]">
+                      Available Balance: <span className="text-white font-semibold">{balancesHidden ? '****' : `${platformBalance.toFixed(2)}`} USDC</span>
+                    </div>
+                  </div>
+
+                  <hr className="border-t border-[#2a2a2a] my-2.5" />
+
+                  {/* Order Total + To Win */}
+                  <div className="px-4 pb-3.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[13px] text-[#888888]">Order Total:</span>
+                      <span className="text-base font-bold text-white">{costEstimate} USDC</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] text-[#888888]">To Win:</span>
+                      <span className="text-2xl font-extrabold text-[#3fdc8c]">{orderQuantity || 84} USDC</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Error / Success messages */}
+              {orderError && <div className="px-4 pb-2 text-xs text-[#ff6b35] text-center">{orderError}</div>}
+              {orderSuccess && <div className="px-4 pb-2 text-xs text-[#3fdc8c] text-center">Order placed</div>}
+
+              {/* CTA Button */}
               <div className="text-xs text-gray-400 mb-4 text-center">
                 Balance: {balancesHidden ? '****' : `$${platformBalance.toFixed(2)} USDC`}
               </div>
@@ -1280,23 +1504,21 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                 </div>
               )}
 
-              {/* Place order button */}
-              <Button
+              {/* CTA Button */}
+              <button
                 onClick={handlePlaceOrder}
                 disabled={!isSignedIn || !orderPrice || !orderQuantity || isPlacing || isResolved || market.eliminatedOutcomes?.includes(selectedOutcome)}
-                className={`w-full h-12 text-base font-bold rounded-lg transition-all disabled:opacity-40 ${
-                  orderSide === 'buy'
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'bg-red-600 hover:bg-red-700 text-white'
-                }`}
+                className="block w-[calc(100%-32px)] mx-4 mb-4 py-3.5 bg-white hover:bg-[#e8e8e8] text-black rounded-xl text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {isPlacing ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                {isPlacing ? (
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                ) : (
                   market.eliminatedOutcomes?.includes(selectedOutcome) ? 'Outcome Eliminated' :
                   isResolved ? 'Market Resolved' :
-                  !isSignedIn ? 'Sign in to trade' :
-                  `${orderSide === 'buy' ? 'Buy' : 'Sell'} ${selectedOutcomeData?.name} at ${isMarketOrder ? effectivePrice : (orderPrice || '--')}c`
+                  !isSignedIn ? 'Log in / Sign up to Trade' :
+                  `${orderSide === 'buy' ? 'Buy' : 'Sell'} ${selectedOutcomeData?.name}`
                 )}
-              </Button>
+              </button>
 
               {/* User positions */}
               {marketPositions.length > 0 && (
