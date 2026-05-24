@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Place a bet using proxy wallet (gasless for user)
  * 
  * Flow:
@@ -32,7 +32,7 @@ const PREDICTION_MARKET_ABI = [
 ];
 
 export async function POST(request: NextRequest) {
-  // Per-request local — previously this lived on `global`, which meant two
+  // Per-request local â€” previously this lived on `global`, which meant two
   // concurrent `/api/proxy-wallet/place-bet` calls would stomp on each
   // other's pre-bet balance and the response could echo the wrong wallet's
   // computed `exactNewBalance`. Keep it local so each request's state is
@@ -314,3 +314,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
