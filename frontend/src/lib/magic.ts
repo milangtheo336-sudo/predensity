@@ -51,7 +51,10 @@ export function getMagic(): any {
       
       const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
       
-      // Initialize Magic with OAuth2 and Hedera extensions
+      // Detect system theme
+      const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      // Initialize Magic with OAuth2 and Hedera extensions + theme
       magicInstance = new Magic(publishableKey, {
         extensions: [
           new OAuthExtension(),
@@ -59,6 +62,8 @@ export function getMagic(): any {
             network: network === 'mainnet' ? 'mainnet' : 'testnet'
           })
         ],
+        locale: 'en_US',
+        theme: isDarkMode ? 'dark' : 'light',
       });
       
       if (!magicInstance.oauth2) {
