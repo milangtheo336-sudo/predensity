@@ -594,7 +594,6 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
 
   const wallets = [
     { name: 'HashPack', img: '/hashpack.jpg', type: 'hashpack' },
-    { name: 'MetaMask', img: '/metamask.png', type: 'metamask' },
     { name: 'Blade', img: '/blade.png', type: 'blade' },
     { name: 'Kabila', img: '/kabila.jpg', type: 'kabila' },
   ];
