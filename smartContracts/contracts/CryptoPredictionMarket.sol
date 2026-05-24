@@ -388,8 +388,7 @@ contract CryptoPredictionMarket is Ownable {
             Bet storage bet = bets[betId];
             
             if (!bet.finalized && !bet.exited) {
-                string memory asset = bytes(betAssets[betId]).length > 0 ? betAssets[betId] : assetSymbol;
-                uint256 price = pricesAtTimestamp[asset][bet.targetTimestamp];
+                uint256 price = _priceForBet(betId);
                 require(price > 0, "Price not set for asset+timestamp");
 
                 bet.finalized = true;
@@ -586,6 +585,18 @@ contract CryptoPredictionMarket is Ownable {
             (bool success, ) = payable(to).call{value: amount}("");
             require(success, "Transfer failed");
         }
+    }
+
+    /**
+     * @notice Resolve the price for a bet using its asset + targetTimestamp.
+     *         Falls back to the contract's primary `assetSymbol` if the bet was
+     *         placed before per-bet asset tracking. Extracted as a helper to
+     *         keep `processBatch`'s stack frame within EVM limits.
+     */
+    function _priceForBet(uint256 betId) internal view returns (uint256) {
+        Bet storage bet = bets[betId];
+        string memory asset = bytes(betAssets[betId]).length > 0 ? betAssets[betId] : assetSymbol;
+        return pricesAtTimestamp[asset][bet.targetTimestamp];
     }
 
     /**
@@ -1024,10 +1035,7 @@ contract CryptoPredictionMarket is Ownable {
     function arePricesSetForBucket(uint256 bucket) external view returns (bool) {
         BucketInfo storage bucketInfo = buckets[bucket];
         for (uint256 i = 0; i < bucketInfo.betIds.length; i++) {
-            uint256 betId = bucketInfo.betIds[i];
-            Bet storage bet = bets[betId];
-            string memory asset = bytes(betAssets[betId]).length > 0 ? betAssets[betId] : assetSymbol;
-            if (pricesAtTimestamp[asset][bet.targetTimestamp] == 0) {
+            if (_priceForBet(bucketInfo.betIds[i]) == 0) {
                 return false;
             }
         }
