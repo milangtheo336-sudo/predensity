@@ -29,10 +29,10 @@ export function BetPlacedModal({ isOpen, onClose, onViewExplorer }: BetPlacedMod
           </div>
         </div>
 
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-3">Trade placed</h3>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-3">Bet placed</h3>
 
         <div className="text-center text-gray-500 dark:text-gray-400 space-y-1">
-          <p>Your trade has been placed successfully.</p>
+          <p>Your bet has been placed successfully.</p>
           <p className="text-sm text-gray-400 dark:text-gray-500">Check the Activity tab for transaction details.</p>
         </div>
       </div>
