@@ -8,34 +8,15 @@ async function fetchMarkets() {
   const base = convexUrl.endsWith('/') ? convexUrl.slice(0, -1) : convexUrl;
 
   try {
-    const [eventsRes, clobRes] = await Promise.allSettled([
-      fetch(`${base}/api/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: 'events:getEvents', args: {} }),
-        next: { revalidate: 3600 },
-      }),
-      fetch(`${base}/api/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: 'clob:getClobMarkets', args: {} }),
-        next: { revalidate: 3600 },
-      }),
-    ]);
+    const eventsRes = await fetch(`${base}/api/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'events:getEvents', args: {} }),
+      next: { revalidate: 3600 },
+    });
 
-    const events =
-      eventsRes.status === 'fulfilled' && eventsRes.value.ok
-        ? (await eventsRes.value.json()).value ?? []
-        : [];
-    const clobMarkets =
-      clobRes.status === 'fulfilled' && clobRes.value.ok
-        ? (await clobRes.value.json()).value ?? []
-        : [];
-
-    return [
-      ...events.map((e: any) => e.eventId),
-      ...clobMarkets.map((m: any) => m.marketId),
-    ];
+    const events = eventsRes.ok ? (await eventsRes.json()).value ?? [] : [];
+    return events.map((e: any) => e.eventId);
   } catch {
     return [];
   }
