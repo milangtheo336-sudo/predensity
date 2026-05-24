@@ -2,6 +2,22 @@ import { action, internalAction, internalMutation, mutation, query } from "./_ge
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
+// Immutable startTimestamp for each deployed contract.
+// Must match CONTRACT_START_TIMESTAMPS in contract-config.ts.
+// On-chain bucket = Math.floor((targetTs - startTimestamp) / 86400)
+const CONTRACT_START_TIMESTAMPS: Record<string, number> = {
+  crypto: 1773940168,
+  politics: 1773586860,
+  sports: 1773586872,
+  technology: 1773586888,
+};
+
+function getOnChainBucket(targetTimestamp: number, category: string): number {
+  const start = CONTRACT_START_TIMESTAMPS[category.toLowerCase()] || 0;
+  if (start === 0 || targetTimestamp < start) return 0;
+  return Math.floor((targetTimestamp - start) / 86400);
+}
+
 // ============================================
 // BET WRITE PATH (called immediately on bet placement)
 // ============================================
@@ -33,6 +49,7 @@ export const createBet = mutation({
       priceMax: args.priceMax,
       weight: "0",
       targetTimestamp: args.targetTimestamp,
+      bucket: getOnChainBucket(args.targetTimestamp, args.category),
       finalized: false,
       won: false,
       claimed: false,
@@ -310,12 +327,18 @@ export const reconcileBet = internalMutation({
     };
 
     if (existing) {
-      // If the existing bet is a managed bet, preserve its userAddress
-      // so the portfolio page can still find it via managed:userId
+      // If the existing bet is already finalized, preserve finalization state.
+      // The sync only has BetPlaced event data which doesn't include finalization info.
       const preserveAddress = existing.userAddress.startsWith("managed:");
+      const preserveFinalization = existing.finalized;
       await ctx.db.patch(existing._id, {
         ...betData,
         userAddress: preserveAddress ? existing.userAddress : betData.userAddress,
+        finalized: preserveFinalization ? existing.finalized : betData.finalized,
+        won: preserveFinalization ? existing.won : betData.won,
+        claimed: preserveFinalization ? existing.claimed : betData.claimed,
+        payout: preserveFinalization ? existing.payout : betData.payout,
+        expectedPayout: preserveFinalization ? existing.expectedPayout : betData.expectedPayout,
       });
       return existing._id;
     }
@@ -537,6 +560,9 @@ function parseCryptoBetPlaced(log: any, contractAddress: string) {
     priceMin,
     priceMax,
     targetTimestamp,
+    // Crypto BetPlaced event doesn't emit bucket, so derive it from targetTimestamp.
+    // Uses the same formula as the contract: (targetTs - startTimestamp) / SECONDS_PER_DAY
+    bucket: getOnChainBucket(targetTimestamp, "crypto"),
     asset,
     timestamp: log.timestamp ? parseFloat(log.timestamp) : Date.now() / 1000,
     transactionHash: log.transaction_hash || "",
@@ -654,7 +680,7 @@ export const syncFromMirrorNode = internalAction({
                   claimed: false,
                   payout: "0",
                   expectedPayout: "0",
-                  bucket: undefined,
+                  bucket: parsed.bucket,
                   asset: parsed.asset,
                   blockTimestamp: Math.floor(parsed.timestamp),
                   transactionHash: parsed.transactionHash,
@@ -805,9 +831,11 @@ export const finalizeBetsForBucket = mutation({
       .withIndex("by_market", (q) => q.eq("marketId", args.marketId.toLowerCase()))
       .collect();
 
-    const bucketBets = bets.filter(
-      (b) => (b.bucket ?? 0) === args.bucket && (!b.finalized || (b.finalized && b.payout === "0"))
-    );
+    const bucketBets = bets.filter((b) => {
+      // Compute effective bucket: use stored value, or derive using on-chain formula
+      const effectiveBucket = b.bucket ?? getOnChainBucket(b.targetTimestamp, args.category);
+      return effectiveBucket === args.bucket && (!b.finalized || (b.finalized && b.payout === "0"));
+    });
 
     // Parse pool data for payout calculation
     const totalStaked = args.poolData ? BigInt(args.poolData.totalStaked) : BigInt(0);
@@ -847,14 +875,20 @@ export const finalizeBetsForBucket = mutation({
       // Update weight if we got it from the contract
       const weight = weightLookup.get(bet.betId) || bet.weight;
 
-      await ctx.db.patch(bet._id, {
+      // Also fix bucket if it was missing
+      const patchData: Record<string, any> = {
         finalized: true,
         won,
         payout,
         expectedPayout,
         weight,
         status: "confirmed",
-      });
+      };
+      if (bet.bucket === undefined || bet.bucket === null || bet.bucket === 0) {
+        patchData.bucket = args.bucket;
+      }
+
+      await ctx.db.patch(bet._id, patchData);
       updated++;
     }
 
@@ -1087,6 +1121,39 @@ export const reassignOperatorBets = mutation({
       merged,
       failedCleaned,
     };
+  },
+});
+
+// Fix the bucket field on crypto bets that have undefined/missing/wrong bucket values.
+// Uses the on-chain formula: (targetTimestamp - startTimestamp) / 86400
+// Called from the portfolio page auto-repair or can be triggered manually.
+export const fixBetBuckets = mutation({
+  args: {
+    userAddress: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let bets;
+    if (args.userAddress) {
+      bets = await ctx.db
+        .query("bets")
+        .withIndex("by_user", (q) => q.eq("userAddress", args.userAddress!.toLowerCase()))
+        .collect();
+    } else {
+      bets = await ctx.db
+        .query("bets")
+        .filter((q) => q.eq(q.field("category"), "crypto"))
+        .collect();
+    }
+
+    let fixed = 0;
+    for (const bet of bets) {
+      const correctBucket = getOnChainBucket(bet.targetTimestamp, bet.category || "crypto");
+      if (correctBucket > 0 && bet.bucket !== correctBucket) {
+        await ctx.db.patch(bet._id, { bucket: correctBucket });
+        fixed++;
+      }
+    }
+    return { fixed, total: bets.length };
   },
 });
 
