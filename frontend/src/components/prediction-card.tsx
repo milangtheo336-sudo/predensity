@@ -32,6 +32,7 @@ import BoringAvatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
 import { useBalanceVisibility } from '@/components/header';
 import { useEIP6963Wallets } from '@/hooks/useEIP6963Wallets';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface PredictionCardProps {
   className?: string;
@@ -84,6 +85,7 @@ function CryptoMarketInfoSection({
   contractIdString: string;
   contractAddress: string;
 }) {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'rules' | 'context'>('rules');
   const [expanded, setExpanded] = useState(false);
 
@@ -113,7 +115,7 @@ function CryptoMarketInfoSection({
               : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
           }`}
         >
-          Rules
+          {t.rules}
         </button>
         <button
           onClick={() => { setActiveTab('context'); setExpanded(false); }}
@@ -123,7 +125,7 @@ function CryptoMarketInfoSection({
               : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
           }`}
         >
-          Market Context
+          {t.marketContext}
         </button>
       </div>
       <div className="pt-4 pb-3">
@@ -131,7 +133,7 @@ function CryptoMarketInfoSection({
           {truncatedText}
           {isLong && !expanded && (
             <button onClick={() => setExpanded(true)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 ml-1 text-sm">
-              Show more
+              {t.showMore}
             </button>
           )}
         </p>
@@ -142,7 +144,7 @@ function CryptoMarketInfoSection({
         )}
         {expanded && (
           <button onClick={() => setExpanded(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm mt-2 block">
-            Show less
+            {t.showLess}
           </button>
         )}
       </div>
@@ -689,6 +691,7 @@ export function PredictionCard({
     return <PredictionCardSkeleton />;
   }
 
+  const { t } = useLanguage();
   const cryptoContractIdString = contractId || getContractId(Category.CRYPTO);
   const contractAddress = getContractAddress(Category.CRYPTO);
 
@@ -840,13 +843,13 @@ export function PredictionCard({
   const canPlaceBet = hasValidAmount && isSignedIn && !isPlacingBet && !isPlacing && !isApproving && hasValidLeadPeriod;
 
   const getButtonText = () => {
-    if (isApproving) return 'Approving USDC...';
-    if (isPlacingBet || isPlacing) return 'Signing Transaction...';
-    if (!isSignedIn) return 'Sign In to Trade';
-    if (platformBalance === 0) return 'Deposit to Start';
-    if (!hasValidLeadPeriod) return `Min 24h lead required (${leadPeriodHours < 1 ? Math.round(leadPeriodHours * 60) + 'min' : leadPeriodHours.toFixed(1) + 'h'})`;
-    if (!hasValidAmount) return 'Enter Amount';
-    return 'Place Trade';
+    if (isApproving) return t.approvingUSDC;
+    if (isPlacingBet || isPlacing) return t.authenticating;
+    if (!isSignedIn) return t.signIn;
+    if (platformBalance === 0) return t.deposit;
+    if (!hasValidLeadPeriod) return `${t.minLeadRequired} (${leadPeriodHours < 1 ? Math.round(leadPeriodHours * 60) + 'min' : leadPeriodHours.toFixed(1) + 'h'})`;
+    if (!hasValidAmount) return t.priceRangeUSD;
+    return t.deposit;
   };
 
   // Time remaining display
@@ -1273,7 +1276,7 @@ export function PredictionCard({
           onClick={() => window.history.back()}
           className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex items-center text-sm font-medium mb-6 transition-colors"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Markets
+          <ArrowLeft className="w-4 h-4 mr-2" /> {t.backToMarkets}
         </button>
 
         <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-10">
@@ -1292,7 +1295,7 @@ export function PredictionCard({
                       Crypto
                     </span>
                     <span className="text-gray-500 dark:text-gray-400 text-xs flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Resolves in {timeRemaining}
+                      <Clock className="w-3 h-3" /> {t.resolvesIn} {timeRemaining}
                     </span>
                   </div>
                   <h1 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 dark:text-white leading-tight truncate">
@@ -1355,7 +1358,7 @@ export function PredictionCard({
               {/* Live price bar */}
               <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-gray-500">Current Price</span>
+                  <span className="text-gray-500">{t.currentPrice}</span>
                   <span className="text-lg font-bold text-gray-900 dark:text-white">
                     ${currentPrice > 0 ? currentPrice.toFixed(priceDecimals > 4 ? 4 : priceDecimals) : '...'}
                   </span>
@@ -1495,13 +1498,13 @@ export function PredictionCard({
                     </span>
                   </div>
                 ) : (
-                  <p className="text-[10px] text-red-400 mt-1.5">Minimum 24h lead time required</p>
+                  <p className="text-[10px] text-red-400 mt-1.5">{t.minimum24hLead}</p>
                 )}
               </div>
 
               {/* Price Range -- inline with PriceRangeSelector */}
               <div className="mb-5">
-                <span className="text-xs text-gray-500 font-medium block mb-2">Price Range (USD)</span>
+                <span className="text-xs text-gray-500 font-medium block mb-2">{t.priceRangeUSD}</span>
                 {priceLoading || !currentPrice ? (
                   <div className="h-32 bg-gray-100 dark:bg-neutral-900 rounded-lg animate-pulse" />
                 ) : (
@@ -1540,7 +1543,7 @@ export function PredictionCard({
                       onClick={() => setDepositAmount(platformBalance.toString())}
                       className="text-[11px] font-bold text-vibrant-purple bg-vibrant-purple/10 hover:bg-vibrant-purple/20 px-2 py-1 rounded transition-colors"
                     >
-                      MAX
+                      {t.max}
                     </button>
                   </div>
                 </div>
@@ -1552,7 +1555,7 @@ export function PredictionCard({
                   onClick={() => setShowDetails(!showDetails)}
                   className="w-full flex justify-between items-center py-2 text-sm text-gray-500 hover:text-gray-300 transition-colors"
                 >
-                  <span>Trade Multipliers & Fees</span>
+                  <span>{t.tradeMultipliers}</span>
                   {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
 
@@ -1621,7 +1624,7 @@ export function PredictionCard({
               </Button>
 
               <div className="text-center mt-3">
-                <span className="text-xs text-gray-500">Balance: {balancesHidden ? '****' : `${platformBalance.toFixed(2)} ${getStakingCurrency().symbol}`}</span>
+                <span className="text-xs text-gray-500">{t.balance}: {balancesHidden ? '****' : `${platformBalance.toFixed(2)} ${getStakingCurrency().symbol}`}</span>
               </div>
 
               {/* Market Details removed for mainnet -- internal info not user-facing */}
