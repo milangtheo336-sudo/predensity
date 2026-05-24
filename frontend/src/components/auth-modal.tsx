@@ -8,6 +8,7 @@ import { getDIDToken, getMagic, getUserInfo } from '@/lib/magic';
 import { useWallet, useEvmAddress, useAuthSignature } from '@buidlerlabs/hashgraph-react-wallets';
 import { HashpackConnector, HWCConnector } from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { useEIP6963Wallets, EIP6963ProviderDetail } from '@/hooks/useEIP6963Wallets';
+import { getWalletConnectModal } from '@/lib/walletconnect-modal';
 import Image from 'next/image';
 
 interface AuthModalProps {
