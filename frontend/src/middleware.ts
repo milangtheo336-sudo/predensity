@@ -1,56 +1,56 @@
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
-/**
- * Waitlist gate: redirect all pages to "/" except allowed paths.
- * Remove this middleware (or set NEXT_PUBLIC_WAITLIST_ENABLED=false) when you launch.
- */
+// Admin route protection
+const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 
-const ALLOWED_PATHS = [
-  '/',
-  '/privacy',
-  '/terms',
-  '/cookies',
-];
+// Admin email(s) allowed to access /admin -- set in env var, comma-separated
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
-const ALLOWED_PREFIXES = [
-  '/api/',
-  '/_next/',
-  '/favicon',
-  '/manifest',
-  '/robots',
-  '/sitemap',
-];
+// Allowed IP addresses for admin access -- set in env var, comma-separated
+// Leave empty to skip IP check
+const ADMIN_ALLOWED_IPS = (process.env.ADMIN_ALLOWED_IPS || '').split(',').map(ip => ip.trim()).filter(Boolean);
 
-export function middleware(request: NextRequest) {
-  // Disable gate if waitlist is turned off
-  if (process.env.NEXT_PUBLIC_WAITLIST_ENABLED === 'false') {
-    return NextResponse.next();
+export default clerkMiddleware(async (auth, req) => {
+  if (isAdminRoute(req)) {
+    // IP allowlist check (if configured)
+    if (ADMIN_ALLOWED_IPS.length > 0) {
+      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        || req.headers.get('x-real-ip')
+        || 'unknown';
+      if (!ADMIN_ALLOWED_IPS.includes(clientIp)) {
+        // Return 404 so the page appears to not exist
+        return NextResponse.rewrite(new URL('/not-found', req.url));
+      }
+    }
+
+    // Auth check
+    const { userId, sessionClaims } = await auth();
+    if (!userId) {
+      return NextResponse.rewrite(new URL('/not-found', req.url));
+    }
+
+    // Email check (if ADMIN_EMAILS is configured)
+    if (ADMIN_EMAILS.length > 0) {
+      const userEmail = (sessionClaims?.email as string || '').toLowerCase();
+      const primaryEmail = (sessionClaims?.primary_email as string || '').toLowerCase();
+      const hasAdminEmail = ADMIN_EMAILS.includes(userEmail) || ADMIN_EMAILS.includes(primaryEmail);
+      if (!hasAdminEmail) {
+        return NextResponse.rewrite(new URL('/not-found', req.url));
+      }
+    }
+
+    // Role check from Clerk publicMetadata
+    const role = (sessionClaims?.metadata as any)?.role;
+    if (role !== 'admin') {
+      return NextResponse.rewrite(new URL('/not-found', req.url));
+    }
   }
-
-  const { pathname } = request.nextUrl;
-
-  // Allow exact paths
-  if (ALLOWED_PATHS.includes(pathname)) {
-    return NextResponse.next();
-  }
-
-  // Allow prefixed paths (API, static assets)
-  if (ALLOWED_PREFIXES.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next();
-  }
-
-  // Allow static files (images, fonts, etc.)
-  if (pathname.match(/\.\w+$/)) {
-    return NextResponse.next();
-  }
-
-  // Redirect everything else to waitlist
-  const url = request.nextUrl.clone();
-  url.pathname = '/';
-  return NextResponse.redirect(url);
-}
+});
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image).*)'],
+  matcher: [
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
+  ],
 };
