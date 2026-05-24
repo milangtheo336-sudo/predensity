@@ -101,6 +101,36 @@ export interface Translations {
   disconnectAndLogOut: string;
   logout: string;
 
+  // Search hints
+  searchHints: string[];
+
+  // Market filters
+  hideCrypto: string;
+  hidePolitics: string;
+  hideSports: string;
+  hideTechnology: string;
+  clearFilters: string;
+
+  // Market detail page
+  marketNotFound: string;
+
+  // Prediction card
+  backToMarkets: string;
+  resolvesIn: string;
+  currentPrice: string;
+  communityForecast: string;
+  noPredictionsYet: string;
+  priceRangeUSD: string;
+  tradeMultipliers: string;
+  minLeadRequired: string;
+  minimum24hLead: string;
+  rules: string;
+  marketContext: string;
+  showMore: string;
+  showLess: string;
+  max: string;
+  approvingUSDC: string;
+
   // Time remaining (fully localized, no English prefix)
   hoursRemaining: string;
   minutesRemaining: string;
@@ -157,6 +187,13 @@ const T: Record<LangCode, Translations> = {
     home: 'Home', search: 'Search', breaking: 'Breaking', more: 'More', support: 'Support', termsOfUse: 'Terms of Use', close: 'Close',
     darkMode: 'Dark Mode', helpCenter: 'Help Center', disconnectWallet: 'Disconnect Wallet', disconnectAndLogOut: 'Disconnect & Log Out', logout: 'Logout',
     hoursRemaining: '{n}h remaining', minutesRemaining: '{n}m remaining', oneDayLeft: '1 day left', oneMonthLeft: '1 month left',
+    searchHints: ['Where Will HBAR Price Land?', 'Will BTC hit $150K?', 'Where will ETH price land?', 'World Cup winner?', 'Fed interest rates?', 'Tesla stock price?', 'FIFA World Cup 2026?'],
+    hideCrypto: 'Hide crypto', hidePolitics: 'Hide politics', hideSports: 'Hide sports', hideTechnology: 'Hide technology', clearFilters: 'Clear filters',
+    backToMarkets: 'Back to Markets', resolvesIn: 'Resolves in', currentPrice: 'Current Price', communityForecast: 'Community Forecast',
+    noPredictionsYet: 'No predictions yet. Place a bet to see the community forecast.',
+    priceRangeUSD: 'Price Range (USD)', tradeMultipliers: 'Trade Multipliers & Fees', minLeadRequired: 'Min 24h lead required', minimum24hLead: 'Minimum 24h lead time required',
+    balance: 'Balance', rules: 'Rules', marketContext: 'Market Context', showMore: 'Show more', showLess: 'Show less', max: 'MAX', approvingUSDC: 'Approving USDC...',
+    marketNotFound: 'Market Not Found',
   },
   ko: {
     portfolio: '포트폴리오', balance: '잔액', deposit: '입금', withdraw: '출금',
@@ -187,6 +224,13 @@ const T: Record<LangCode, Translations> = {
     home: '홈', search: '검색', breaking: '속보', more: '더보기', support: '지원', termsOfUse: '이용약관', close: '닫기',
     darkMode: '다크 모드', helpCenter: '도움말 센터', disconnectWallet: '지갑 연결 해제', disconnectAndLogOut: '연결 해제 및 로그아웃', logout: '로그아웃',
     hoursRemaining: '{n}시간 남음', minutesRemaining: '{n}분 남음', oneDayLeft: '1일 남음', oneMonthLeft: '1개월 남음',
+    searchHints: ['HBAR 가격은 어디에 착지할까요?', 'BTC가 $150K에 도달할까요?', 'ETH 가격은 어디에 착지할까요?', '월드컵 우승팀은?', '연준 금리는?', '테슬라 주가는?', 'FIFA 월드컵 2026?'],
+    hideCrypto: '크립토 숨기기', hidePolitics: '정치 숨기기', hideSports: '스포츠 숨기기', hideTechnology: '기술 숨기기', clearFilters: '필터 초기화',
+    backToMarkets: '마켓으로 돌아가기', resolvesIn: '종료까지', currentPrice: '현재 가격', communityForecast: '커뮤니티 예측',
+    noPredictionsYet: '아직 예측이 없습니다. 베팅하여 커뮤니티 예측을 확인하세요.',
+    priceRangeUSD: '가격 범위 (USD)', tradeMultipliers: '거래 배수 및 수수료', minLeadRequired: '최소 24시간 선행 필요', minimum24hLead: '최소 24시간 선행 시간 필요',
+    balance: '잔액', rules: '규칙', marketContext: '마켓 컨텍스트', showMore: '더 보기', showLess: '접기', max: '최대', approvingUSDC: 'USDC 승인 중...',
+    marketNotFound: '마켓을 찾을 수 없습니다',
   },
   zh: {
     portfolio: '投资组合', balance: '余额', deposit: '充值', withdraw: '提现',
@@ -217,6 +261,13 @@ const T: Record<LangCode, Translations> = {
     home: '首页', search: '搜索', breaking: '突发', more: '更多', support: '支持', termsOfUse: '使用条款', close: '关闭',
     darkMode: '深色模式', helpCenter: '帮助中心', disconnectWallet: '断开钱包', disconnectAndLogOut: '断开并退出', logout: '退出登录',
     hoursRemaining: '{n}小时后', minutesRemaining: '{n}分钟后', oneDayLeft: '1天后结束', oneMonthLeft: '1个月后结束',
+    searchHints: ['HBAR价格会落在哪里？', 'BTC会突破$150K吗？', 'ETH价格走向何方？', '世界杯冠军？', '美联储利率？', '特斯拉股价？', 'FIFA世界杯2026？'],
+    hideCrypto: '隐藏加密', hidePolitics: '隐藏政治', hideSports: '隐藏体育', hideTechnology: '隐藏科技', clearFilters: '清除筛选',
+    backToMarkets: '返回市场', resolvesIn: '结束于', currentPrice: '当前价格', communityForecast: '社区预测',
+    noPredictionsYet: '暂无预测。下注以查看社区预测。',
+    priceRangeUSD: '价格范围 (USD)', tradeMultipliers: '交易倍数与费用', minLeadRequired: '需至少24小时提前', minimum24hLead: '最少需要24小时提前时间',
+    balance: '余额', rules: '规则', marketContext: '市场背景', showMore: '显示更多', showLess: '收起', max: '最大', approvingUSDC: '正在授权 USDC...',
+    marketNotFound: '市场未找到',
   },
   ru: {
     portfolio: 'Портфель', balance: 'Баланс', deposit: 'Пополнить', withdraw: 'Вывести',
@@ -247,6 +298,13 @@ const T: Record<LangCode, Translations> = {
     home: 'Главная', search: 'Поиск', breaking: 'Срочно', more: 'Ещё', support: 'Поддержка', termsOfUse: 'Условия', close: 'Закрыть',
     darkMode: 'Тёмный режим', helpCenter: 'Центр помощи', disconnectWallet: 'Отключить кошелёк', disconnectAndLogOut: 'Отключить и выйти', logout: 'Выйти',
     hoursRemaining: 'осталось {n}ч', minutesRemaining: 'осталось {n}мин', oneDayLeft: '1 день осталось', oneMonthLeft: '1 мес. осталось',
+    searchHints: ['Куда пойдёт цена HBAR?', 'BTC достигнет $150K?', 'Куда пойдёт цена ETH?', 'Победитель Кубка мира?', 'Ставки ФРС?', 'Акции Tesla?', 'ЧМ FIFA 2026?'],
+    hideCrypto: 'Скрыть крипто', hidePolitics: 'Скрыть политику', hideSports: 'Скрыть спорт', hideTechnology: 'Скрыть технологии', clearFilters: 'Сбросить фильтры',
+    backToMarkets: 'Назад к рынкам', resolvesIn: 'Завершится через', currentPrice: 'Текущая цена', communityForecast: 'Прогноз сообщества',
+    noPredictionsYet: 'Прогнозов пока нет. Сделайте ставку, чтобы увидеть прогноз.',
+    priceRangeUSD: 'Диапазон цен (USD)', tradeMultipliers: 'Множители и комиссии', minLeadRequired: 'Мин. 24ч упреждения', minimum24hLead: 'Требуется минимум 24ч упреждения',
+    balance: 'Баланс', rules: 'Правила', marketContext: 'Контекст рынка', showMore: 'Подробнее', showLess: 'Свернуть', max: 'МАКС', approvingUSDC: 'Одобрение USDC...',
+    marketNotFound: 'Рынок не найден',
   },
   es: {
     portfolio: 'Portafolio', balance: 'Saldo', deposit: 'Depositar', withdraw: 'Retirar',
@@ -277,6 +335,13 @@ const T: Record<LangCode, Translations> = {
     home: 'Inicio', search: 'Buscar', breaking: 'Urgente', more: 'Más', support: 'Soporte', termsOfUse: 'Términos de uso', close: 'Cerrar',
     darkMode: 'Modo oscuro', helpCenter: 'Centro de ayuda', disconnectWallet: 'Desconectar cartera', disconnectAndLogOut: 'Desconectar y salir', logout: 'Cerrar sesión',
     hoursRemaining: '{n}h restantes', minutesRemaining: '{n}min restantes', oneDayLeft: '1 día restante', oneMonthLeft: '1 mes restante',
+    searchHints: ['¿Dónde llegará el precio del HBAR?', '¿BTC llegará a $150K?', '¿Dónde irá el precio de ETH?', '¿Ganador del Mundial?', '¿Tasas de la Fed?', '¿Precio acción Tesla?', '¿Copa Mundial FIFA 2026?'],
+    hideCrypto: 'Ocultar cripto', hidePolitics: 'Ocultar política', hideSports: 'Ocultar deportes', hideTechnology: 'Ocultar tecnología', clearFilters: 'Borrar filtros',
+    backToMarkets: 'Volver a mercados', resolvesIn: 'Resuelve en', currentPrice: 'Precio actual', communityForecast: 'Pronóstico comunitario',
+    noPredictionsYet: 'Sin predicciones aún. Haz una apuesta para ver el pronóstico.',
+    priceRangeUSD: 'Rango de precio (USD)', tradeMultipliers: 'Multiplicadores y comisiones', minLeadRequired: 'Mín. 24h de anticipación', minimum24hLead: 'Se requiere mínimo 24h de anticipación',
+    balance: 'Saldo', rules: 'Reglas', marketContext: 'Contexto del mercado', showMore: 'Ver más', showLess: 'Ver menos', max: 'MÁX', approvingUSDC: 'Aprobando USDC...',
+    marketNotFound: 'Mercado no encontrado',
   },
   fr: {
     portfolio: 'Portefeuille', balance: 'Solde', deposit: 'Déposer', withdraw: 'Retirer',
@@ -307,6 +372,13 @@ const T: Record<LangCode, Translations> = {
     home: 'Accueil', search: 'Rechercher', breaking: 'Urgent', more: 'Plus', support: 'Assistance', termsOfUse: "Conditions d'utilisation", close: 'Fermer',
     darkMode: 'Mode sombre', helpCenter: "Centre d'aide", disconnectWallet: 'Déconnecter le portefeuille', disconnectAndLogOut: 'Déconnecter et quitter', logout: 'Se déconnecter',
     hoursRemaining: '{n}h restantes', minutesRemaining: '{n}min restantes', oneDayLeft: '1 jour restant', oneMonthLeft: '1 mois restant',
+    searchHints: ['Où ira le prix du HBAR?', 'BTC atteindra $150K?', 'Où ira le prix de l\'ETH?', 'Vainqueur de la Coupe du monde?', 'Taux de la Fed?', 'Cours Tesla?', 'FIFA Coupe du monde 2026?'],
+    hideCrypto: 'Masquer crypto', hidePolitics: 'Masquer politique', hideSports: 'Masquer sports', hideTechnology: 'Masquer technologie', clearFilters: 'Effacer les filtres',
+    backToMarkets: 'Retour aux marchés', resolvesIn: 'Se résout dans', currentPrice: 'Prix actuel', communityForecast: 'Prévision communautaire',
+    noPredictionsYet: "Pas encore de prédictions. Placez un pari pour voir la prévision.",
+    priceRangeUSD: 'Plage de prix (USD)', tradeMultipliers: 'Multiplicateurs & frais', minLeadRequired: 'Min. 24h d\'avance requis', minimum24hLead: 'Délai minimum de 24h requis',
+    balance: 'Solde', rules: 'Règles', marketContext: 'Contexte du marché', showMore: 'Afficher plus', showLess: 'Afficher moins', max: 'MAX', approvingUSDC: 'Approbation USDC...',
+    marketNotFound: 'Marché introuvable',
   },
   hi: {
     portfolio: 'पोर्टफोलियो', balance: 'शेष', deposit: 'जमा करें', withdraw: 'निकालें',
@@ -337,6 +409,13 @@ const T: Record<LangCode, Translations> = {
     home: 'होम', search: 'खोजें', breaking: 'ब्रेकिंग', more: 'और', support: 'सहायता', termsOfUse: 'उपयोग की शर्तें', close: 'बंद करें',
     darkMode: 'डार्क मोड', helpCenter: 'सहायता केंद्र', disconnectWallet: 'वॉलेट डिस्कनेक्ट करें', disconnectAndLogOut: 'डिस्कनेक्ट करें और बाहर निकलें', logout: 'लॉग आउट',
     hoursRemaining: '{n}घं. शेष', minutesRemaining: '{n}मि. शेष', oneDayLeft: '1 दिन बाकी', oneMonthLeft: '1 महीना बाकी',
+    searchHints: ['HBAR की कीमत कहां जाएगी?', 'क्या BTC $150K तक पहुंचेगा?', 'ETH की कीमत कहां जाएगी?', 'विश्व कप विजेता?', 'Fed ब्याज दरें?', 'Tesla शेयर मूल्य?', 'FIFA विश्व कप 2026?'],
+    hideCrypto: 'क्रिप्टो छुपाएं', hidePolitics: 'राजनीति छुपाएं', hideSports: 'खेल छुपाएं', hideTechnology: 'तकनीक छुपाएं', clearFilters: 'फ़िल्टर हटाएं',
+    backToMarkets: 'बाज़ार पर वापस', resolvesIn: 'समाप्त होगा', currentPrice: 'वर्तमान मूल्य', communityForecast: 'समुदाय पूर्वानुमान',
+    noPredictionsYet: 'अभी तक कोई भविष्यवाणी नहीं। समुदाय पूर्वानुमान देखने के लिए दांव लगाएं।',
+    priceRangeUSD: 'मूल्य सीमा (USD)', tradeMultipliers: 'ट्रेड गुणक और शुल्क', minLeadRequired: 'न्यूनतम 24 घंटे आवश्यक', minimum24hLead: 'न्यूनतम 24 घंटे की अग्रिम समय आवश्यक',
+    balance: 'शेष', rules: 'नियम', marketContext: 'बाज़ार संदर्भ', showMore: 'अधिक दिखाएं', showLess: 'कम दिखाएं', max: 'अधिकतम', approvingUSDC: 'USDC स्वीकृत हो रहा है...',
+    marketNotFound: 'बाज़ार नहीं मिला',
   },
 };
 
