@@ -11,47 +11,25 @@ import { CategoryHeroVideo, CategoryHeroText } from '@/components/category-hero'
 import { CategoryTabs } from '@/components/category-tabs';
 import { MarketFilters } from '@/components/market-filters';
 import { GenericMarketCard } from '@/components/generic-market-card';
-import { ChallengeCard } from '@/components/challenge-card';
 import { MarketsSidebar, SidebarSelection } from '@/components/markets-sidebar';
 import { FINANCE_TAXONOMY } from '@/lib/types/finance';
-import { Search, ListFilter, SlidersHorizontal } from 'lucide-react';
-import { MarketCard, Category, MarketStatus, CATEGORIES, SortOption } from '@/lib/types/categories';
-import { SPORT_TAXONOMY } from '@/lib/types/sports';
-
-const truncateAddrLocal = (addr: string) => {
-  if (!addr) return '';
-  if (addr.startsWith('managed:')) {
-    const rest = addr.slice(8);
-    return `${rest.slice(0, 6)}...${rest.slice(-4)}`;
-  }
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-};
-
-function getGameImageUrl(title: string | undefined): string {
-  if (!title) return '/sports category/esport.avif';
-  const t = title.toLowerCase();
-  if (t.includes('mortal kombat') || t.includes('mortal combat')) return '/sports category/mortal kombat.jpg';
-  if (t.includes('fifa') || t.includes('fc24')) return '/sports category/fifa.png';
-  if (t.includes('nba')) return '/sports category/NBA2k.jpg';
-  if (t.includes('call of duty') || t.includes('cod')) return '/sports category/call of duty.jpg';
-  if (t.includes('fortnite')) return '/sports category/fortnite.jpg';
-  if (t.includes('free fire')) return '/sports category/free fire.jpg';
-  if (t.includes('chess')) return '/sports category/chess.jpg';
-  if (t.includes('snooker')) return '/sports category/snookers.jpg';
-  if (t.includes('efootball')) return '/sports category/efootball.png';
-  if (t.includes('madden') || t.includes('nfl')) return '/sports category/nflmaiden.png';
-  return '/sports category/esport.avif';
-}
+import {
+  Category,
+  MarketStatus,
+  SortOption,
+  MarketCard,
+} from '@/lib/types/categories';
 
 interface Props {
   initialEvents: any[];
   initialCryptoMarkets: any[];
+  initialClobMarkets: any[];
 }
 
 function buildMarkets(
   convexEvents: any[] | undefined,
   cryptoMarkets: any[] | undefined,
-  challengeMatches: any[] | undefined,
+  clobMarkets: any[] | undefined,
   activeCategory: Category | 'all',
   status: MarketStatus,
 ): MarketCard[] {
@@ -90,35 +68,6 @@ function buildMarkets(
         })
     : [];
 
-  // Add challenge matches as sports category markets
-  if (challengeMatches) {
-    const challengeCards: MarketCard[] = challengeMatches
-      .filter((match) => {
-        if (activeCategory !== 'all' && activeCategory !== Category.SPORTS) return false;
-        if (status === MarketStatus.OPEN && match.status !== 'open') return false;
-        if (status === MarketStatus.CLOSED && match.status === 'open') return false;
-        return true;
-      })
-      .map((match) => ({
-        id: match.matchId,
-        category: Category.SPORTS,
-        question: match.gameTitle || '1v1 Challenge',
-        description: `${truncateAddrLocal(match.playerA)} vs ${truncateAddrLocal(match.playerB)}`,
-        icon: 'S',
-        targetTimestamp: match.startTime,
-        totalVolume: String(match.totalPool || 0),
-        totalBets: 0,
-        priceMin: '',
-        priceMax: '',
-        status: match.status === 'open' ? 'open' : 'closed',
-        imageUrl: getGameImageUrl(match.gameTitle),
-        sport: 'esports',
-        league: match.league,
-        challengeData: match,
-      }));
-    markets.push(...challengeCards);
-  }
-
   if (cryptoMarkets && (activeCategory === 'all' || activeCategory === Category.CRYPTO) && status === MarketStatus.OPEN) {
     const cryptoCards: MarketCard[] = cryptoMarkets.map((cm) => ({
       id: cm.marketId,
@@ -137,10 +86,49 @@ function buildMarkets(
     markets.unshift(...cryptoCards);
   }
 
+  if (clobMarkets) {
+    const clobCards: MarketCard[] = clobMarkets
+      .filter((cm) => {
+        const mc = cm.category.toLowerCase();
+        const fc = activeCategory === 'all' ? 'all' : activeCategory.toLowerCase();
+        if (fc !== 'all' && mc !== fc) return false;
+        if (status === MarketStatus.OPEN && cm.status !== 'open') return false;
+        if (status === MarketStatus.CLOSED && cm.status !== 'closed') return false;
+        if (status === MarketStatus.RESOLVED && !cm.resolved) return false;
+        return true;
+      })
+      .map((cm) => {
+        const catIcon = cm.category === 'politics' ? 'P'
+          : cm.category === 'sports' ? 'S'
+          : cm.category === 'technology' ? 'T'
+          : cm.category === 'finance' ? 'F' : '?';
+        const defaultPrice = Math.round(100 / cm.numOutcomes);
+        const outcomes = cm.outcomeNames.map((name: string) => ({ name, price: defaultPrice }));
+        return {
+          id: cm.marketId,
+          category: cm.category as Category,
+          question: cm.question,
+          description: cm.description,
+          icon: catIcon,
+          targetTimestamp: cm.resolutionTimestamp,
+          totalVolume: cm.totalVolume.toFixed(2),
+          totalBets: 0,
+          status: (cm.resolved ? 'resolved' : cm.status === 'open' ? 'open' : 'closed') as 'open' | 'closed' | 'resolved',
+          imageUrl: cm.imageUrl,
+          isClob: true,
+          outcomes,
+          numOutcomes: cm.numOutcomes,
+          sport: (cm as any).sport,
+          league: (cm as any).league,
+        };
+      });
+    markets.push(...clobCards);
+  }
+
   return markets;
 }
 
-export default function MarketsClient({ initialEvents, initialCryptoMarkets }: Props) {
+export default function MarketsClient({ initialEvents, initialCryptoMarkets, initialClobMarkets }: Props) {
   const router = useRouter();
   const { t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
@@ -151,19 +139,16 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets }: P
   const [sidebarSelection, setSidebarSelection] = useState<SidebarSelection | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // Live queries — undefined means still loading, null means loaded but empty
+  // Live queries — fall back to server-fetched initial data until Convex connects
   const liveEvents = useQuery(api.events.getEvents, {});
   const liveCrypto = useQuery(api.events.getCryptoMarkets, {});
-  const liveChallenges = useQuery(api.challenges.getChallengeMatches, { status: 'all', limit: 200 });
-
-  // Show skeletons while Convex hasn't responded yet
-  const isLoading = liveEvents === undefined || liveCrypto === undefined || liveChallenges === undefined;
+  const liveClob = useQuery(api.clob.getClobMarkets, {});
 
   const convexEvents = liveEvents ?? initialEvents;
   const cryptoMarkets = liveCrypto ?? initialCryptoMarkets;
-  const challengeMatches = liveChallenges ?? [];
+  const clobMarkets = liveClob ?? initialClobMarkets;
 
-  const markets = buildMarkets(convexEvents, cryptoMarkets, challengeMatches, activeCategory, status);
+  const markets = buildMarkets(convexEvents, cryptoMarkets, clobMarkets, activeCategory, status);
 
   const handleMarketClick = (market: MarketCard) => router.push(`/markets/${market.id}`);
 
@@ -184,8 +169,6 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets }: P
   const filteredMarkets = markets
     .filter((market) => {
       if (searchQuery && !market.question.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      // On sports tab, hide all non-sports categories
-      if (activeCategory === Category.SPORTS && market.category !== Category.SPORTS) return false;
       if (hiddenCategories.has(market.category)) return false;
       if (sidebarSelection?.sport && market.sport !== sidebarSelection.sport) return false;
       if (sidebarSelection?.league && market.league !== sidebarSelection.league) return false;
@@ -201,12 +184,9 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets }: P
       }
     });
 
-  const showSidebar = activeCategory === Category.FINANCE;
+  const showSidebar = activeCategory === Category.SPORTS || activeCategory === Category.FINANCE;
   const sidebarTaxonomy = activeCategory === Category.FINANCE ? FINANCE_TAXONOMY : undefined;
   const sidebarLabel = activeCategory === Category.FINANCE ? 'All Finances' : 'All Sports';
-  
-  // For Esports: show categories in filters instead of sidebar
-  const esportsTaxonomy = activeCategory === Category.SPORTS ? SPORT_TAXONOMY.filter(s => s.id === 'esports')[0]?.leagues || [] : [];
 
   return (
     <div className="min-h-screen bg-white dark:bg-black flex flex-col">
@@ -223,18 +203,15 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets }: P
 
       <main className={`relative z-10 bg-white dark:bg-black ${showSidebar ? 'w-full px-4 md:px-0' : 'container mx-auto px-4'} pt-2 pb-8 flex-1 flex gap-6`}>
         {showSidebar && (
-          <div className="hidden md:block pl-4 w-56 shrink-0">
-            {/* Sticky sidebar — starts at top of main, stays in view while scrolling */}
-            <div className="sticky top-4 max-h-[calc(100vh-5rem)] overflow-y-auto pr-1 scrollbar-thin">
-              <MarketsSidebar
-                markets={markets}
-                selection={sidebarSelection}
-                onSelect={setSidebarSelection}
-                taxonomy={sidebarTaxonomy}
-                sectionLabel={sidebarLabel}
-                defaultExpandAll={activeCategory === Category.FINANCE}
-              />
-            </div>
+          <div className="hidden md:block pl-4 w-64 shrink-0">
+            <MarketsSidebar
+              markets={markets}
+              selection={sidebarSelection}
+              onSelect={setSidebarSelection}
+              taxonomy={sidebarTaxonomy}
+              sectionLabel={sidebarLabel}
+              defaultExpandAll={activeCategory === Category.FINANCE}
+            />
           </div>
         )}
 
@@ -260,6 +237,16 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets }: P
         )}
 
         <div className={`flex-1 flex flex-col min-w-0 ${showSidebar ? 'md:pr-4' : ''}`}>
+          <div className="mb-6">
+            <CategoryTabs
+              activeCategory={activeCategory}
+              onCategoryChange={(cat) => {
+                setActiveCategory(cat);
+                if (cat !== Category.SPORTS && cat !== Category.FINANCE) setSidebarSelection(null);
+              }}
+            />
+          </div>
+
           {showSidebar && (
             <div className="md:hidden mb-4">
               <button
@@ -271,16 +258,6 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets }: P
               </button>
             </div>
           )}
-
-          <div className="mb-4">
-            <CategoryTabs
-              activeCategory={activeCategory}
-              onCategoryChange={(cat) => {
-                setActiveCategory(cat);
-                if (cat !== Category.SPORTS && cat !== Category.FINANCE) setSidebarSelection(null);
-              }}
-            />
-          </div>
 
           <div className="mb-6">
             <MarketFilters
@@ -294,50 +271,20 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets }: P
               onClearFilters={clearFilters}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
-              showEsportsCategories={activeCategory === Category.SPORTS}
-              esportsCategories={esportsTaxonomy}
-              sidebarSelection={sidebarSelection}
-              onSidebarSelectionChange={setSidebarSelection}
             />
           </div>
 
           <div className="flex-1">
-            {isLoading ? (
-              /* Skeleton cards while Convex connects — same grid, same card shape, no layout shift */
+            {filteredMarkets.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="rounded-2xl bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 overflow-hidden animate-pulse"
-                  >
-                    <div className="h-24 bg-gray-200 dark:bg-neutral-800" />
-                    <div className="p-3 flex flex-col gap-2">
-                      <div className="h-3 bg-gray-300 dark:bg-neutral-700 rounded w-4/5" />
-                      <div className="h-3 bg-gray-300 dark:bg-neutral-700 rounded w-3/5" />
-                      <div className="h-2.5 bg-gray-200 dark:bg-neutral-800 rounded w-2/5 mt-1" />
-                      <div className="flex gap-2 mt-2">
-                        <div className="h-8 bg-gray-200 dark:bg-neutral-800 rounded-lg flex-1" />
-                        <div className="h-8 bg-gray-200 dark:bg-neutral-800 rounded-lg flex-1" />
-                      </div>
-                    </div>
-                  </div>
+                {filteredMarkets.map((market) => (
+                  <GenericMarketCard key={market.id} market={market} onClick={() => handleMarketClick(market)} />
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredMarkets.length === 0 ? (
-                  <div className="text-gray-500 py-12 text-center border border-gray-200 dark:border-neutral-800 rounded-xl bg-gray-50 dark:bg-[#111111]">
-                    No markets found matching your filters.
-                  </div>
-                ) : (
-                  filteredMarkets.map((market) => (
-                    market.challengeData ? (
-                      <ChallengeCard key={market.id} market={market} onClick={() => handleMarketClick(market)} />
-                    ) : (
-                      <GenericMarketCard key={market.id} market={market} onClick={() => handleMarketClick(market)} />
-                    )
-                  ))
-                )}
+              <div className="text-center py-12">
+                <p className="text-gray-400 text-lg">{t.noMarketsFound}</p>
+                <p className="text-gray-500 text-sm mt-2">{t.tryAdjusting}</p>
               </div>
             )}
           </div>
