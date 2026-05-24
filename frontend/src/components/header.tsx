@@ -24,7 +24,8 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatAddress, cn } from '@/lib/utils';
+import { formatAddress, cn, getAvatarPalette } from '@/lib/utils';
+import Avatar from 'boring-avatars';
 import { WalletSelector } from '@/components/wallet-selector';
 import {
   useWallet,
@@ -1235,13 +1236,9 @@ export function Header({ children }: { children?: React.ReactNode }) {
                     className="flex items-center gap-1"
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   >
-                    {user?.imageUrl ? (
-                      <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-8 h-8 bg-vibrant-purple rounded-full flex items-center justify-center text-white text-xs font-medium">
-                        {(user?.firstName || user?.primaryEmailAddress?.emailAddress || 'U').charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
+                      <Avatar size={32} name={user?.id || 'default'} variant="marble" colors={getAvatarPalette(user?.id || 'default')} square={false} />
+                    </div>
                     <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform duration-200', profileDropdownOpen && 'rotate-180')} />
                   </button>
                 </div>
@@ -1359,13 +1356,9 @@ export function Header({ children }: { children?: React.ReactNode }) {
                     className="flex items-center gap-1"
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   >
-                    {user?.imageUrl ? (
-                      <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-8 h-8 bg-vibrant-purple rounded-full flex items-center justify-center text-white text-xs font-medium">
-                        {(user?.firstName || user?.primaryEmailAddress?.emailAddress || 'U').charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
+                      <Avatar size={32} name={user?.id || 'default'} variant="marble" colors={getAvatarPalette(user?.id || 'default')} square={false} />
+                    </div>
                     <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform duration-200', profileDropdownOpen && 'rotate-180')} />
                   </button>
                 </div>
@@ -1508,11 +1501,9 @@ function ProfileDropdownPortal({
       {/* Top section: address + settings */}
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          {user?.imageUrl ? (
-            <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-          ) : (
-            <div className="w-8 h-8 bg-gradient-to-br from-vibrant-purple to-pink-500 rounded-full flex-shrink-0" />
-          )}
+          <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
+            <Avatar size={32} name={user?.id || 'default'} variant="marble" colors={getAvatarPalette(user?.id || 'default')} square={false} />
+          </div>
           {displayAddress ? (
             <button
               onClick={handleCopy}
