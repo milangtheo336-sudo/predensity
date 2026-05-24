@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields: userId, betId, category' }, { status: 400 });
     }
 
-    const authResult = await requireAuthMatchingUser(userId);
+    const authResult = await requireAuthMatchingUser(request, userId);
     if (authResult instanceof NextResponse) return authResult;
 
     const contractId = CONTRACT_IDS[category as Category];
