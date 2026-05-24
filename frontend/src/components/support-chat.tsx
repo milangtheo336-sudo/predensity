@@ -120,7 +120,7 @@ export function SupportChat() {
     return () => window.removeEventListener('open-support-chat', handleOpen);
   }, []);
 
-  const displayName = user?.firstName || user?.username || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'there';
+  const displayName = user?.email?.split('@')[0] || 'there';
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
