@@ -30,7 +30,7 @@ import { getMagic, getUserInfo } from '@/lib/magic';
 import { api } from '../../convex/_generated/api';
 import BoringAvatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
-import { useBalanceVisibility } from '@/components/header';
+import { useBalanceVisibility, useDepositModal } from '@/components/header';
 import { useEIP6963Wallets } from '@/hooks/useEIP6963Wallets';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -754,6 +754,7 @@ export function PredictionCard({
     user ? { userId: user.issuer } : 'skip'
   );
   const { balancesHidden } = useBalanceVisibility();
+  const { openDeposit } = useDepositModal();
 
   const [selectedRange, setSelectedRange] = useState({ min: 0.01, max: 0.2843 });
   const [depositAmount, setDepositAmount] = useState('');
@@ -849,7 +850,7 @@ export function PredictionCard({
     if (platformBalance === 0) return t.deposit;
     if (!hasValidLeadPeriod) return `${t.minLeadRequired} (${leadPeriodHours < 1 ? Math.round(leadPeriodHours * 60) + 'min' : leadPeriodHours.toFixed(1) + 'h'})`;
     if (!hasValidAmount) return t.priceRangeUSD;
-    return t.deposit;
+    return t.placePrediction;
   };
 
   // Time remaining display
@@ -1616,8 +1617,8 @@ export function PredictionCard({
 
               {/* Action Button */}
               <Button
-                onClick={handlePlaceBet}
-                disabled={!canPlaceBet}
+                onClick={platformBalance === 0 && isSignedIn ? openDeposit : handlePlaceBet}
+                disabled={platformBalance === 0 && isSignedIn ? false : !canPlaceBet}
                 className="w-full h-12 text-base font-bold bg-vibrant-purple hover:bg-vibrant-purple/90 text-white rounded-lg transition-all disabled:opacity-40"
               >
                 {getButtonText()}
