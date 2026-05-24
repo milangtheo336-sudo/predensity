@@ -2,6 +2,7 @@
 
 import { useQuery as useConvexQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { useLanguage } from '@/context/LanguageContext';
 
 import React, {
   useEffect,
@@ -173,6 +174,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
     },
     ref
   ) => {
+    const { t } = useLanguage();
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== 'light';
     const colors = useMemo(() => getThemeColors(isDark), [isDark]);
@@ -247,7 +249,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
           .attr('class', 'flex items-center justify-center h-full');
         emptyDiv.append('span')
           .attr('class', `text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`)
-          .text('No predictions yet. Place a bet to see the community forecast.');
+          .text(t.noPredictionsYet);
         return;
       }
 
@@ -563,7 +565,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
       <div className={cn('w-full', className)}>
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <span className="text-sm text-gray-500 dark:text-neutral-400 font-medium mr-auto">
-            Community Forecast
+            {t.communityForecast}
           </span>
           {!hideTimeRange && (
           <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-neutral-900 rounded-lg p-0.5">
