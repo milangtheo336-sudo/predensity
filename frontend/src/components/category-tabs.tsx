@@ -2,6 +2,7 @@
 
 import { Category, CATEGORIES } from '@/lib/types/categories';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface CategoryTabsProps {
   activeCategory: Category | 'all';
@@ -9,13 +10,14 @@ interface CategoryTabsProps {
 }
 
 export function CategoryTabs({ activeCategory, onCategoryChange }: CategoryTabsProps) {
+  const { t } = useLanguage();
   const tabs = [
-    { id: 'all' as const, name: 'Top' },
-    { id: Category.POLITICS, name: 'Politics' },
-    { id: Category.CRYPTO, name: 'Crypto' },
-    { id: Category.TECHNOLOGY, name: 'Technology' },
-    { id: Category.SPORTS, name: 'Sports' },
-    { id: Category.FINANCE, name: 'Finance' },
+    { id: 'all' as const, name: t.top },
+    { id: Category.POLITICS, name: t.politics },
+    { id: Category.CRYPTO, name: t.crypto },
+    { id: Category.TECHNOLOGY, name: t.technology },
+    { id: Category.SPORTS, name: t.sports },
+    { id: Category.FINANCE, name: t.finance },
   ];
 
   return (
