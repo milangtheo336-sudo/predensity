@@ -618,6 +618,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
   // UI state
   const [selectedOutcome, setSelectedOutcome] = useState<number>(0);
+  const [expandedOutcome, setExpandedOutcome] = useState<number | null>(null);
   const [orderSide, setOrderSide] = useState<'buy' | 'sell'>('buy');
   const [orderPrice, setOrderPrice] = useState('');
   const [orderQuantity, setOrderQuantity] = useState('');
@@ -631,6 +632,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const [shareCopied, setShareCopied] = useState(false);
   const [hideEliminated, setHideEliminated] = useState(false);
   const [inputMode, setInputMode] = useState<'contracts' | 'dollars'>('contracts');
+  const [outcomeTab, setOutcomeTab] = useState<'orderbook' | 'probability' | 'orders' | 'positions'>('orderbook');
 
   // Read balance from blockchain (non-custodial)
   const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(user?.publicAddress);
@@ -867,75 +869,178 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               </div>
             </div>
 
-            {/* Outcome buttons -- Polymarket style */}
+            {/* Outcome buttons -- Polymarket style with collapsible details */}
             <div className="space-y-2">
               {outcomes
                 .filter((o, i) => {
                   const isEliminated = market.eliminatedOutcomes?.includes(i);
                   const isWinner = market.resolved && market.winningOutcome === i;
                   const isLoser = market.resolved && market.winningOutcome !== i;
-                  // Hide if: (eliminated OR loser) AND hideEliminated is true
                   return !hideEliminated || (!isEliminated && !isLoser);
                 })
                 .map((o, i) => {
                   const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
                   const isSelected = selectedOutcome === i;
+                  const isExpanded = expandedOutcome === i;
                   const isEliminated = market.eliminatedOutcomes?.includes(i);
                   const isWinner = market.resolved && market.winningOutcome === i;
                   const isLoser = market.resolved && market.winningOutcome !== i;
+                  
+                  // Calculate volume for this outcome (mock for now - you can add real data later)
+                  const outcomeVolume = (market.totalVolume || 0) * (o.price / 100);
+                  
                   return (
-                    <button
-                      key={i}
-                      onClick={() => !isEliminated && !market.resolved && setSelectedOutcome(i)}
-                      disabled={isEliminated || market.resolved}
-                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
-                        isEliminated || isLoser
-                          ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-neutral-900/30 border-gray-200 dark:border-neutral-800'
-                          : isWinner
-                          ? 'border-green-500 bg-green-50 dark:bg-green-500/10'
-                          : isSelected
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
-                          : 'border-gray-200 dark:border-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: isEliminated || isLoser ? '#6b7280' : isWinner ? '#22c55e' : color }} />
-                        <span className={`text-sm font-medium ${isEliminated || isLoser ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>
-                          {o.name}
-                        </span>
-                        {isEliminated && (
-                          <span className="ml-2 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                    <div key={i} className={`border rounded-xl transition-all ${
+                      isEliminated || isLoser
+                        ? 'opacity-50 bg-gray-50 dark:bg-neutral-900/30 border-gray-200 dark:border-neutral-800'
+                        : isWinner
+                        ? 'border-green-500 bg-green-50 dark:bg-green-500/10'
+                        : isExpanded
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
+                        : 'border-gray-200 dark:border-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700'
+                    }`}>
+                      {/* Outcome header - always visible */}
+                      <button
+                        onClick={() => {
+                          if (!isEliminated && !market.resolved) {
+                            setSelectedOutcome(i);
+                            setExpandedOutcome(isExpanded ? null : i);
+                          }
+                        }}
+                        disabled={isEliminated || market.resolved}
+                        className="w-full flex items-center justify-between p-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: isEliminated || isLoser ? '#6b7280' : isWinner ? '#22c55e' : color }} />
+                          <span className={`text-sm font-medium ${isEliminated || isLoser ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                            {o.name}
                           </span>
+                          {isEliminated && (
+                            <span className="ml-2 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </span>
+                          )}
+                          {isWinner && (
+                            <span className="ml-2 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                              <CheckIcon className="w-3 h-3 text-white" strokeWidth="3" />
+                            </span>
+                          )}
+                        </div>
+                        {!isEliminated && !isLoser && (
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <div className="text-xs text-gray-500 dark:text-gray-400">Volume</div>
+                              <div className="text-sm font-semibold text-gray-900 dark:text-white">{outcomeVolume.toFixed(2)} USDC</div>
+                            </div>
+                            <div className="text-lg font-bold text-gray-900 dark:text-white">{o.price}%</div>
+                            {!isEliminated && !market.resolved && (
+                              isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />
+                            )}
+                          </div>
+                        )}
+                        {isEliminated && (
+                          <span className="text-sm font-semibold text-red-500">Eliminated</span>
                         )}
                         {isWinner && (
-                          <span className="ml-2 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                            <CheckIcon className="w-3 h-3 text-white" strokeWidth="3" />
-                          </span>
+                          <span className="text-sm font-semibold text-green-500">Winner</span>
                         )}
-                      </div>
-                      {!isEliminated && !isLoser && (
-                        <div className="flex items-center gap-4">
-                          <span className="text-lg font-bold text-gray-900 dark:text-white">{o.price}%</span>
-                          <div className="flex gap-1.5">
-                            <span className="text-xs px-2 py-1 rounded-md bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 font-semibold">
-                              Yes {o.price}c
-                            </span>
-                            <span className="text-xs px-2 py-1 rounded-md bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 font-semibold">
-                              No {100 - o.price}c
-                            </span>
+                      </button>
+
+                      {/* Expanded outcome details */}
+                      {isExpanded && !isEliminated && !market.resolved && (
+                        <div className="border-t border-gray-200 dark:border-neutral-800 p-4 space-y-4">
+                          {/* Tabs for outcome details */}
+                          <div className="flex items-center gap-4 border-b border-gray-200 dark:border-neutral-800">
+                            <button
+                              onClick={() => setOutcomeTab('orderbook')}
+                              className={`pb-2 text-xs font-semibold transition-colors ${
+                                outcomeTab === 'orderbook'
+                                  ? 'text-gray-900 dark:text-white border-b-2 border-blue-500'
+                                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                              }`}
+                            >
+                              Order book
+                            </button>
+                            <button
+                              onClick={() => setOutcomeTab('probability')}
+                              className={`pb-2 text-xs font-semibold transition-colors ${
+                                outcomeTab === 'probability'
+                                  ? 'text-gray-900 dark:text-white border-b-2 border-blue-500'
+                                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                              }`}
+                            >
+                              Probability
+                            </button>
+                            <button
+                              onClick={() => setOutcomeTab('orders')}
+                              className={`pb-2 text-xs font-semibold transition-colors ${
+                                outcomeTab === 'orders'
+                                  ? 'text-gray-900 dark:text-white border-b-2 border-blue-500'
+                                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                              }`}
+                            >
+                              Open Orders
+                            </button>
+                            <button
+                              onClick={() => setOutcomeTab('positions')}
+                              className={`pb-2 text-xs font-semibold transition-colors ${
+                                outcomeTab === 'positions'
+                                  ? 'text-gray-900 dark:text-white border-b-2 border-blue-500'
+                                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                              }`}
+                            >
+                              Positions
+                            </button>
                           </div>
+
+                          {/* Tab content */}
+                          {outcomeTab === 'orderbook' && (
+                            <OrderBookView marketId={marketId} outcomeIndex={i} />
+                          )}
+                          {outcomeTab === 'probability' && (
+                            <div className="h-40">
+                              <PriceChart marketId={marketId} outcomes={[o]} />
+                            </div>
+                          )}
+                          {outcomeTab === 'orders' && (
+                            <div className="text-xs text-gray-500 text-center py-4">
+                              {userOrders && userOrders.filter((ord: any) => ord.outcomeIndex === i && ord.status === 'open').length > 0 ? (
+                                <div className="space-y-2">
+                                  {userOrders.filter((ord: any) => ord.outcomeIndex === i && ord.status === 'open').map((ord: any) => (
+                                    <div key={ord._id} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-neutral-900 p-2 rounded">
+                                      <span className={ord.side === 'buy' ? 'text-green-500' : 'text-red-500'}>{ord.side.toUpperCase()}</span>
+                                      <span>{ord.price}c × {ord.quantity}</span>
+                                      <button onClick={() => handleCancelOrder(ord._id)} className="text-red-500 hover:text-red-600">Cancel</button>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                'No open orders'
+                              )}
+                            </div>
+                          )}
+                          {outcomeTab === 'positions' && (
+                            <div className="text-xs text-gray-500 text-center py-4">
+                              {marketPositions && marketPositions.filter((pos: any) => pos.outcomeIndex === i).length > 0 ? (
+                                <div className="space-y-2">
+                                  {marketPositions.filter((pos: any) => pos.outcomeIndex === i).map((pos: any) => (
+                                    <div key={pos._id} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-neutral-900 p-2 rounded">
+                                      <span>Shares: {pos.shares}</span>
+                                      <span>Avg: {pos.averagePrice}c</span>
+                                      <span>Cost: ${pos.costBasis.toFixed(2)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                'No positions'
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
-                      {isEliminated && (
-                        <span className="text-sm font-semibold text-red-500">Eliminated</span>
-                      )}
-                      {isWinner && (
-                        <span className="text-sm font-semibold text-green-500">Winner</span>
-                      )}
-                    </button>
+                    </div>
                   );
                 })}
               
