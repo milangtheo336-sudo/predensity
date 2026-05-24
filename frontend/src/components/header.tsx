@@ -1587,48 +1587,47 @@ export function Header({ children }: { children?: React.ReactNode }) {
     return null;
   };
 
+  // Unified address: Magic user OR wallet user
+  const effectivePublicAddress = user?.publicAddress ?? walletUser?.publicAddress ?? null;
+
   const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(() => {
-    return user?.publicAddress ? getCachedProxyWallet(user.publicAddress) : null;
+    if (typeof window === 'undefined') return null;
+    const addr = (typeof user !== 'undefined' && user?.publicAddress) || null;
+    return addr ? getCachedProxyWallet(addr) : null;
   });
-  
+
   useEffect(() => {
     let pollingInterval: NodeJS.Timeout;
 
     const fetchProxyWallet = async () => {
-      if (!user?.publicAddress) return;
-      
-      // Check cache first
-      const cached = getCachedProxyWallet(user.publicAddress);
+      if (!effectivePublicAddress) return;
+
+      // Check cache first — wallet sign-in caches it immediately, so this is usually instant
+      const cached = getCachedProxyWallet(effectivePublicAddress);
       if (cached) {
         setProxyWalletAddress(cached);
         return;
       }
-      
+
       try {
-        const response = await fetch(`/api/proxy-wallet/create?userAddress=${user.publicAddress}`);
+        const response = await fetch(`/api/proxy-wallet/create?userAddress=${effectivePublicAddress}`);
         const data = await response.json();
         if (data.exists && data.proxyWalletAddress) {
           setProxyWalletAddress(data.proxyWalletAddress);
-          // Cache the proxy wallet address
           localStorage.setItem(
-            `predensity_proxy_wallet_${user.publicAddress}`,
-            JSON.stringify({
-              proxyWallet: data.proxyWalletAddress,
-              timestamp: Date.now(),
-            })
+            `predensity_proxy_wallet_${effectivePublicAddress}`,
+            JSON.stringify({ proxyWallet: data.proxyWalletAddress, timestamp: Date.now() })
           );
         }
       } catch (error) {
         console.error('[header] Failed to fetch proxy wallet:', error);
-        // On error, keep cached value if available
       }
     };
 
-    if (isSignedIn && user) {
+    if (isSignedIn && effectivePublicAddress) {
       if (!proxyWalletAddress) {
-        // Fetch immediately
         fetchProxyWallet();
-        // If not found yet (new user), poll every 5 seconds until it is created
+        // Poll every 5 s for new users whose proxy wallet may still be deploying
         pollingInterval = setInterval(fetchProxyWallet, 5000);
       }
     }
@@ -1636,7 +1635,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
     return () => {
       if (pollingInterval) clearInterval(pollingInterval);
     };
-  }, [isSignedIn, user?.publicAddress, proxyWalletAddress]);
+  }, [isSignedIn, effectivePublicAddress, proxyWalletAddress]);
 
   // Read balance from blockchain (non-custodial) - use proxy wallet address
   const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(proxyWalletAddress || undefined);
@@ -1647,9 +1646,10 @@ export function Header({ children }: { children?: React.ReactNode }) {
       proxyWalletAddress,
       platformBalance,
       balanceLoading,
-      userPublicAddress: user?.publicAddress,
+      effectivePublicAddress,
+      authType: walletUser ? 'wallet' : user ? 'magic' : 'none',
     });
-  }, [proxyWalletAddress, platformBalance, balanceLoading, user?.publicAddress]);
+  }, [proxyWalletAddress, platformBalance, balanceLoading, effectivePublicAddress]);
   
   // Still query managed wallet for user info (but not balance)
   const managedWallet = useConvexQuery(
