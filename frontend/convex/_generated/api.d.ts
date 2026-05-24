@@ -22,6 +22,7 @@ import type * as social from "../social.js";
 import type * as stats from "../stats.js";
 import type * as sync from "../sync.js";
 import type * as users from "../users.js";
+import type * as waitlist from "../waitlist.js";
 
 import type {
   ApiFromModules,
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   stats: typeof stats;
   sync: typeof sync;
   users: typeof users;
+  waitlist: typeof waitlist;
 }>;
 
 /**
