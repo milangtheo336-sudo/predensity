@@ -1470,6 +1470,17 @@ export function Header({ children }: { children?: React.ReactNode }) {
       setAuthModalOpen(false);
     }
   }, [user, authModalOpen]);
+
+  // Guard: if the wallet library disconnects externally (user rejects in HashPack,
+  // removes extension, etc.) while signed in as a wallet user — clear the session.
+  // Also handles the case where a Magic/OAuth user connected a wallet for deposits
+  // and then logs out: isConnected becomes false naturally after logout calls disconnect().
+  useEffect(() => {
+    if (!isConnected && walletUser) {
+      console.log('[header] Wallet disconnected externally — clearing wallet user session');
+      clearWalletUser();
+    }
+  }, [isConnected, walletUser, clearWalletUser]);
   
   // Handler to open auth modal (only if not already logged in)
   const handleOpenAuthModal = useCallback(() => {
@@ -2358,7 +2369,17 @@ function ProfileDropdownPortal({
           </button>
         )}
         <button
-          onClick={() => { logout(); clearWalletUser(); onClose(); }}
+          onClick={async () => {
+            // Always disconnect wallet library too — covers the case where
+            // user connected a wallet for deposits and then logs out without
+            // explicitly disconnecting first
+            if (isConnected) {
+              try { await disconnect(); } catch { /* ignore */ }
+            }
+            clearWalletUser();
+            logout();
+            onClose();
+          }}
           className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
         >
           <LogOut className="w-4 h-4" />
