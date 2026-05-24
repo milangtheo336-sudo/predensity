@@ -211,7 +211,7 @@ export default function OnboardingPage() {
 
             <div className="w-full max-w-sm flex flex-col items-center text-center pb-8">
               <p className="text-white/50 text-sm mb-2">Welcome to Predensity</p>
-              <h2 className="text-2xl font-bold text-white mb-8">The home of what happens next</h2>
+              <h2 className="text-2xl font-bold text-white mb-8">Turn Predictions Into Profits</h2>
               <button
                 onClick={() => setStep('trade')}
                 className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-neutral-200 transition-colors"
