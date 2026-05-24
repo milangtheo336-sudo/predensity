@@ -1009,8 +1009,34 @@ export function Header({ children }: { children?: React.ReactNode }) {
             )}
           </div>
 
-          {/* Mobile: Login/Signup buttons only */}
+          {/* Mobile: Profile avatar when signed in, Login/Signup when not */}
           <div className="md:hidden flex items-center gap-2">
+            {isSignedIn && mounted && (
+              <div
+                className="relative"
+                onMouseEnter={() => {
+                  if (profileCloseTimer.current) { clearTimeout(profileCloseTimer.current); profileCloseTimer.current = null; }
+                  setProfileDropdownOpen(true);
+                }}
+                onMouseLeave={() => {
+                  profileCloseTimer.current = setTimeout(() => setProfileDropdownOpen(false), 200);
+                }}
+              >
+                <button
+                  ref={profileBtnRef}
+                  className="flex items-center gap-1"
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                >
+                  {user?.imageUrl ? (
+                    <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-8 h-8 bg-vibrant-purple rounded-full flex items-center justify-center text-white text-xs font-medium">
+                      {(user?.firstName || user?.primaryEmailAddress?.emailAddress || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </button>
+              </div>
+            )}
             {!isSignedIn && mounted && (
               <>
                 <SignInButton mode="modal">
