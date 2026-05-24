@@ -276,6 +276,7 @@ export const reconcileBet = internalMutation({
     blockTimestamp: v.number(),
     entryBandWeight: v.optional(v.string()),
     exited: v.optional(v.boolean()),
+    transactionHash: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -303,6 +304,7 @@ export const reconcileBet = internalMutation({
       asset: inferAssetFromPrice(args),
       entryBandWeight: args.entryBandWeight,
       exited: args.exited,
+      transactionHash: args.transactionHash,
       status: "confirmed" as const,
       timestamp: args.blockTimestamp * 1000,
     };
@@ -655,6 +657,7 @@ export const syncFromMirrorNode = internalAction({
                   bucket: undefined,
                   asset: parsed.asset,
                   blockTimestamp: Math.floor(parsed.timestamp),
+                  transactionHash: parsed.transactionHash,
                 });
                 totalReconciled++;
               }
@@ -679,6 +682,7 @@ export const syncFromMirrorNode = internalAction({
                   bucket: parsed.bucket,
                   asset: parsed.asset,
                   blockTimestamp: Math.floor(parsed.timestamp),
+                  transactionHash: parsed.transactionHash,
                 });
                 totalReconciled++;
               }
@@ -705,6 +709,7 @@ export const syncFromMirrorNode = internalAction({
                 bucket: parsed.bucket,
                 asset: undefined,
                 blockTimestamp: Math.floor(parsed.timestamp),
+                transactionHash: parsed.transactionHash,
               });
               totalReconciled++;
             }
