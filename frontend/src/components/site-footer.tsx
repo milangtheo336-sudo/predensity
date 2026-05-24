@@ -40,12 +40,9 @@ export function FloatingBackToTop() {
   return (
     <button
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      className="fixed bottom-[4.5rem] left-1/2 -translate-x-1/2 z-40 md:hidden flex items-center gap-1.5 px-4 py-2 rounded-full bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-sm text-xs font-medium text-white shadow-lg transition-all"
+      className="fixed bottom-28 right-4 z-40 md:hidden px-3.5 py-1.5 rounded-full bg-[#1c2028] text-[11px] font-medium text-gray-300 shadow-md border border-white/[0.08] transition-opacity"
     >
-      Back to top
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 15l-6-6-6 6"/>
-      </svg>
+      Back to top &uarr;
     </button>
   );
 }
