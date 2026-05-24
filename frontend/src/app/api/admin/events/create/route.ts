@@ -1,5 +1,3 @@
-﻿
-export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { api } from '../../../../../../convex/_generated/api';
 import { requireAdmin, rateLimit } from '@/lib/api-auth';
@@ -36,8 +34,6 @@ export async function POST(request: NextRequest) {
       sportType,
       company,
       decimals,
-      sport,
-      league,
     } = body;
 
     if (!eventId || !category || !eventName || eventTimestamp === undefined || !imageUrl || !description) {
@@ -59,8 +55,6 @@ export async function POST(request: NextRequest) {
       sportType,
       company,
       decimals: decimals === undefined ? undefined : Number(decimals),
-      sport,
-      league,
     });
 
     return NextResponse.json({ success: true, eventId: result });
@@ -72,5 +66,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-
