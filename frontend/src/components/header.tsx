@@ -39,6 +39,7 @@ import {
   useWatchTransactionReceipt,
 } from '@buidlerlabs/hashgraph-react-wallets';
 import { useMagic } from '@/context/MagicContext';
+import { useWalletUser } from '@/context/WalletUserContext';
 import { getDIDToken, getUserInfo } from '@/lib/magic';
 import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -1433,7 +1434,9 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const { isConnected, disconnect } = useWallet();
   const { data: accountId } = useAccountId();
   const { user, logout, isAuthenticating } = useMagic();
-  const isSignedIn = !!user;
+  const { walletUser, clearWalletUser } = useWalletUser();
+  // Signed in = Magic user OR wallet user
+  const isSignedIn = !!user || !!walletUser;
 
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositInitialView, setDepositInitialView] = useState<DepositView>('crypto');
@@ -2120,6 +2123,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
         evmAddress={managedWallet?.evmAddress || undefined}
         disconnect={disconnect}
         logout={logout}
+        clearWalletUser={clearWalletUser}
       />
       <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} platformBalance={platformBalance} />
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} triggerRef={authSignupBtnRef} />
@@ -2144,6 +2148,7 @@ function ProfileDropdownPortal({
   evmAddress,
   disconnect,
   logout,
+  clearWalletUser,
 }: {
   buttonRef: React.RefObject<HTMLButtonElement | null>;
   mobileButtonRef: React.RefObject<HTMLButtonElement | null>;
@@ -2156,6 +2161,7 @@ function ProfileDropdownPortal({
   evmAddress: string | undefined;
   disconnect: () => Promise<any>;
   logout: () => Promise<void>;
+  clearWalletUser: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -2316,7 +2322,7 @@ function ProfileDropdownPortal({
       <div className="py-1.5">
         {isConnected && (
           <button
-            onClick={() => { disconnect(); onClose(); }}
+            onClick={() => { disconnect(); clearWalletUser(); onClose(); }}
             className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
           >
             <Wallet className="w-4 h-4" />
@@ -2324,7 +2330,7 @@ function ProfileDropdownPortal({
           </button>
         )}
         <button
-          onClick={() => { logout(); onClose(); }}
+          onClick={() => { logout(); clearWalletUser(); onClose(); }}
           className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
         >
           <LogOut className="w-4 h-4" />
