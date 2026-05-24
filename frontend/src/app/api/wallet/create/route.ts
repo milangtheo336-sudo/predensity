@@ -5,14 +5,8 @@ import { rateLimit } from '@/lib/api-auth';
 import { CONTRACT_ADDRESSES } from '@/lib/contracts/contract-config';
 import {
   Client,
-  ContractExecuteTransaction,
-  ContractId,
   PrivateKey,
-  TransferTransaction,
-  Hbar,
   AccountId,
-  TokenId,
-  TokenAssociateTransaction,
 } from '@hashgraph/sdk';
 import { ethers } from 'ethers';
 
@@ -21,13 +15,6 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
 const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || '';
 const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || '';
 const HEDERA_NETWORK = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-const PROXY_WALLET_FACTORY_ID = process.env.PROXY_WALLET_FACTORY_CONTRACT_ID || '';
-
-// Initial HBAR funding per wallet (covers token associations + future gas)
-const INITIAL_HBAR_FUNDING = 0.15; // ~$0.01 USD
-
-// USDC token ID for auto-association
-const USDC_TOKEN_ID = HEDERA_NETWORK === 'mainnet' ? '0.0.456858' : '0.0.8229951';
 
 function getHederaClient(): Client {
   const client = HEDERA_NETWORK === 'mainnet' ? Client.forMainnet() : Client.forTestnet();
@@ -81,47 +68,35 @@ export async function POST(request: NextRequest) {
     
     let hederaAccountId = '';
     let fundingSuccess = false;
-    let associationSuccess = false;
 
+    // NOTE: We no longer fund user wallets upfront with HBAR
+    // Instead, the operator pays transaction fees when needed (token association, etc.)
+    // This prevents wasting HBAR on inactive accounts
+    
     try {
-      // Step 1: Create a proper Hedera account for the Magic Link wallet
-      // This is required for token associations to work
-      console.log('[wallet/create] Creating Hedera account for Magic EOA:', magicEOAAddress);
+      // Get the actual Hedera Account ID from mirror node
+      const network = HEDERA_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
+      const mirrorBase = network === 'mainnet' 
+        ? 'https://mainnet.mirrornode.hedera.com' 
+        : 'https://testnet.mirrornode.hedera.com';
       
-      // We need to create an account with the EVM address as an alias
-      // But Hedera requires a public key for account creation
-      // Since we don't have access to the user's private key (Magic Link MPC),
-      // we'll use a workaround: create an account with operator key, then transfer ownership
+      console.log('[wallet/create] Looking up Hedera account for EVM address:', magicEOAAddress);
       
-      // For now, let's just fund the EVM address and document the limitation
-      const fundTx = new TransferTransaction()
-        .addHbarTransfer(OPERATOR_ID, new Hbar(-INITIAL_HBAR_FUNDING))
-        .addHbarTransfer(AccountId.fromEvmAddress(0, 0, magicEOAAddress), new Hbar(INITIAL_HBAR_FUNDING))
-        .freezeWith(client);
+      const accountResponse = await fetch(`${mirrorBase}/api/v1/accounts/${magicEOAAddress}`);
       
-      const signedFundTx = await fundTx.sign(operatorKey);
-      const fundResponse = await signedFundTx.execute(client);
-      const fundReceipt = await fundResponse.getReceipt(client);
-      
-      if (fundReceipt.status.toString() === 'SUCCESS') {
+      if (accountResponse.ok) {
+        const accountData = await accountResponse.json();
+        hederaAccountId = accountData.account;
+        console.log('[wallet/create] Found existing Hedera account:', hederaAccountId);
         fundingSuccess = true;
+      } else {
+        // Account doesn't exist yet - will be created on first transaction
+        console.log('[wallet/create] Account not found on Hedera yet - will be created on first use');
         hederaAccountId = AccountId.fromEvmAddress(0, 0, magicEOAAddress).toString();
-        console.log('[wallet/create] Funding successful, account ID:', hederaAccountId);
       }
-    } catch (fundErr: any) {
-      console.error('[wallet/create] HBAR funding failed:', fundErr);
-      // Continue - user can still deposit USDC and pay their own gas
-    }
-
-    try {
-      // Step 2: Auto-associate USDC token with Magic EOA
-      // NOTE: Token association MUST be signed by the account owner (Magic Link wallet)
-      // The operator cannot do this on behalf of the user
-      // This will be handled client-side after wallet creation
-      console.log('[wallet/create] Token association will be handled client-side');
-      associationSuccess = false; // Will be done client-side
-    } catch (associateErr: any) {
-      console.error('[wallet/create] Token association setup failed:', associateErr);
+    } catch (err: any) {
+      console.error('[wallet/create] Account lookup failed:', err);
+      hederaAccountId = AccountId.fromEvmAddress(0, 0, magicEOAAddress).toString();
     }
 
     client.close();
@@ -137,7 +112,7 @@ export async function POST(request: NextRequest) {
       evmAddress: magicEOAAddress,
       hederaAccountId: hederaAccountId || magicEOAAddress,
       usdcBalance: '0', // Not used - balance read from blockchain
-      hbarBalance: fundingSuccess ? INITIAL_HBAR_FUNDING.toFixed(8) : '0',
+      hbarBalance: '0', // No upfront funding - operator pays fees when needed
       isActive: true,
       createdAt: Date.now(),
       lastActivity: Date.now(),
@@ -151,10 +126,10 @@ export async function POST(request: NextRequest) {
         email,
         magicEOAAddress,
         hederaAccountId,
-        initialHbarFunding: fundingSuccess ? INITIAL_HBAR_FUNDING : 0,
-        usdcAssociated: associationSuccess,
+        initialHbarFunding: 0, // No upfront funding
+        usdcAssociated: false, // Will be done on first deposit
         fundingSuccess,
-        associationSuccess,
+        note: 'Operator pays transaction fees when needed - no upfront HBAR funding',
       },
     });
   } catch (error) {
