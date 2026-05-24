@@ -1092,52 +1092,48 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                       }`}
                     >
                       {/* Outcome header */}
-                      <div className="w-full flex items-center gap-3 p-3.5">
+                      <div className="w-full flex items-center gap-3 p-4">
                         {/* Icon */}
-                        <div className="w-[34px] h-[34px] bg-[#1a1a2e] rounded-lg flex items-center justify-center flex-shrink-0 text-base">
+                        <div className="w-10 h-10 bg-[#1c1c1c] rounded-lg flex items-center justify-center flex-shrink-0">
                           {outcomeImage ? (
                             <img src={outcomeImage} alt={o.name} className="w-full h-full object-cover rounded-lg" />
                           ) : (
-                            <span>🏆</span>
+                            <span className="text-xl">🏆</span>
                           )}
                         </div>
                         
                         {/* Name and volume */}
                         <div className="flex-1 text-left">
-                          <div className={`text-sm font-semibold ${isEliminated || isLoser ? 'line-through text-gray-400' : 'text-white'}`}>
+                          <div className={`text-base font-bold ${isEliminated || isLoser ? 'line-through text-gray-400' : 'text-white'}`}>
                             {o.name}
                           </div>
-                          <div className="flex items-center gap-1 text-[11px] text-[#888888] mt-0.5">
-                            <svg viewBox="0 0 12 12" fill="none" stroke="#4a9eff" strokeWidth="1.5" className="w-[11px] h-[11px]">
+                          <div className="flex items-center gap-1.5 text-xs text-[#888888] mt-1">
+                            <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3">
+                              <path d="M6 2L8 8L2 6L6 2Z" fill="#4a9eff"/>
+                            </svg>
+                            <svg viewBox="0 0 12 12" fill="none" stroke="#888888" strokeWidth="1.5" className="w-3 h-3">
                               <path d="M1 9l3-3 2 2 4-5"/>
                             </svg>
-                            Volume {outcomeVolume.toFixed(2)} USDC
+                            Volume {outcomeVolume.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC
                           </div>
                         </div>
                         
-                        {/* Status or No text */}
+                        {/* Percentage */}
+                        {!isEliminated && !isLoser && !isWinner && (
+                          <span className="text-2xl font-bold text-white">{o.price}%</span>
+                        )}
                         {isEliminated && (
-                          <span className="text-base font-bold text-[#ff6b35]">No</span>
+                          <span className="text-xl font-bold text-[#ff6b35]">No</span>
                         )}
                         {isWinner && (
-                          <span className="text-sm font-semibold text-green-500">Winner</span>
-                        )}
-                        {!isEliminated && !isLoser && !isWinner && (
-                          <span className="text-base font-bold text-white">{o.price}% ∨</span>
+                          <span className="text-base font-semibold text-green-500">Winner</span>
                         )}
                       </div>
-
-                      {/* Percentage display (center section) */}
-                      {!isEliminated && !isLoser && !isWinner && (
-                        <div className="flex items-center justify-center py-2 border-t border-[#2a2a2a]">
-                          <span className="text-2xl font-bold text-white">{o.price}%</span>
-                        </div>
-                      )}
 
                       {/* YES/NO buttons */}
                       {!isEliminated && !isLoser && !isWinner && (
                         <div 
-                          className="flex gap-3 px-3 pb-3"
+                          className="flex gap-2 px-4 pb-4"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <button
@@ -1146,7 +1142,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                               setOrderSide('buy');
                               setOrderBookSide('yes');
                             }}
-                            className="flex-1 py-3 text-center text-sm font-semibold text-[#3fdc8c] border-2 border-[#3fdc8c] rounded-full hover:bg-[#3fdc8c]/10 transition-colors"
+                            className="flex-1 py-3.5 text-center text-base font-bold text-[#3fdc8c] bg-[#0d2818] rounded-xl hover:bg-[#0e3020] transition-colors"
                           >
                             Yes {o.price}¢
                           </button>
@@ -1156,7 +1152,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                               setOrderSide('sell');
                               setOrderBookSide('no');
                             }}
-                            className="flex-1 py-3 text-center text-sm font-semibold text-[#ff6b35] border-2 border-[#ff6b35] rounded-full hover:bg-[#ff6b35]/10 transition-colors"
+                            className="flex-1 py-3.5 text-center text-base font-bold text-[#ff6b35] bg-[#2d1410] rounded-xl hover:bg-[#3d1810] transition-colors"
                           >
                             No {(100 - o.price).toFixed(1)}¢
                           </button>
@@ -1165,7 +1161,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
                       {/* Expanded content */}
                       {isExpanded && !isEliminated && !market.resolved && (
-                        <>
+                        <div onClick={(e) => e.stopPropagation()}>
                           {/* Tabs */}
                           <div className="flex gap-0 border-t border-b border-[#2a2a2a]">
                             <button
@@ -1275,7 +1271,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                               </div>
                             )}
                             {outcomeTab === 'probability' && (
-                              <div className="h-40">
+                              <div className="h-64">
                                 <PriceChart marketId={marketId} outcomes={[o]} />
                               </div>
                             )}
@@ -1314,7 +1310,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                               </div>
                             )}
                           </div>
-                        </>
+                        </div>
                       )}
                     </div>
                   );
