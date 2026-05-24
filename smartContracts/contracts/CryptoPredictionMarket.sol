@@ -485,7 +485,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
      * @notice Claim winnings for a finalized bet (only after aggregation complete)
      * @param betId The ID of the bet to claim
      */
-    function claimBet(uint256 betId) external {
+    function claimBet(uint256 betId) external whenNotPaused nonReentrant {
         Bet storage bet = bets[betId];
         require(bet.bettor == msg.sender, "Not bet owner");
         require(bet.finalized, "Bet not finalized");
