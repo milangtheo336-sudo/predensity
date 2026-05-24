@@ -120,10 +120,10 @@ function getTimeRangeMs(range: TimeRange): number {
   }
 }
 
-// Polymarket teal-green
+//  teal-green
 const CHART_GREEN = '#2dc96f';
 
-// --- Polymarket-style D3 Chart ---
+// --- ---
 function ForecastChart({
   history,
   currentPct,
@@ -542,7 +542,7 @@ function ForecastChart({
   );
 }
 
-// --- Market Info Section (Polymarket-style: tab navigation for Rules / Market Context) ---
+// --- Market Info Section (: tab navigation for Rules / Market Context) ---
 function MarketInfoSection({
   description,
   eventName,
@@ -583,7 +583,7 @@ function MarketInfoSection({
 
   return (
     <div>
-      {/* Tab headers -- inline like Polymarket */}
+      {/* Tab headers -- inline like*/}
       <div className="flex items-center gap-6 border-b border-gray-200 dark:border-white/[0.06]">
         <button
           onClick={() => { setActiveTab('rules'); setExpanded(false); }}
@@ -647,7 +647,7 @@ function MarketInfoSection({
   );
 }
 
-// --- Activity Section (Polymarket-style tab row: Positions, Activity) ---
+// --- Activity Section : Positions, Activity) ---
 
 // Deterministic gradient from an address string
 function politicsAddrToGradient(addr: string): string {
@@ -894,7 +894,7 @@ export function PoliticsPredictionCard({
   eventId, eventName, candidate, predictionType, eventTimestamp, imageUrl, description, resolved = false,
 }: PoliticsPredictionCardProps) {
   // Wallet provider check -- hooks must be called unconditionally
-  // In Polymarket model, wallet is only used for deposits, not betting
+  // wallet is only used for deposits, not betting
   let isConnected = false;
   let readContractFn: any;
 
@@ -910,7 +910,7 @@ export function PoliticsPredictionCard({
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== 'light';
 
-  // Managed wallet detection -- Polymarket model: all users use platform balance
+  // Managed wallet detection : all users use platform balance
   const { user, isSignedIn } = useUser();
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
@@ -1111,7 +1111,7 @@ export function PoliticsPredictionCard({
     if (!isEventOpen) { setBetError('Event closed'); return; }
     setIsPlacingBet(true); setBetError(null);
     try {
-      // All bets go through the treasury -- Polymarket model
+      // All bets go through the treasury 
       const res = await fetch('/api/bet/place', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
