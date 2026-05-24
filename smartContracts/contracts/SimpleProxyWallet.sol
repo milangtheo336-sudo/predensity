@@ -211,37 +211,50 @@ contract SimpleProxyWallet {
      * Execute a bet transaction with signature verification.
      * Backend calls this with user's signature to place bet.
      * Proxy wallet verifies the signature matches the owner.
+     * 
+     * Uses Hedera Token Service (HTS) precompile for token transfers,
+     * then calls placeBetWithPreTransferredToken on the prediction market.
      */
     function executeBetWithSignature(
         address predictionContract,
         uint256 betAmount,
         bytes calldata betData,
-        bytes32 messageHash,
+        string calldata message,
         bytes calldata signature
     ) external returns (bytes memory) {
         // Verify signature matches owner
-        address signer = recoverSigner(messageHash, signature);
-        require(signer == owner, "Invalid signature");
+        require(recoverSigner(message, signature) == owner, "Invalid signature");
         
-        // Approve USDC spending for the prediction market
-        // USDC token address on Hedera testnet: 0x0000000000000000000000000000000000068cDa
-        address usdcToken = address(0x0000000000000000000000000000000000068cDa);
-        (bool approveSuccess, ) = usdcToken.call(
-            abi.encodeWithSignature("approve(address,uint256)", predictionContract, betAmount)
+        // Transfer USDC using HTS precompile
+        // HTS: 0x0000000000000000000000000000000000000167
+        // USDC: 0x00000000000000000000000000000000007d943F
+        // transferToken selector: 0xeca36917
+        (bool transferSuccess, bytes memory transferResult) = address(0x0000000000000000000000000000000000000167).call(
+            abi.encodeWithSelector(
+                bytes4(0xeca36917),
+                address(0x00000000000000000000000000000000007d943F),
+                address(this),
+                predictionContract,
+                int64(uint64(betAmount))
+            )
         );
-        require(approveSuccess, "USDC approval failed");
+        
+        require(transferSuccess, "HTS transfer failed");
         
         // Execute bet
         (bool success, bytes memory result) = predictionContract.call(betData);
         require(success, "Bet execution failed");
+        
         emit Executed(predictionContract, 0, betData);
         return result;
     }
     
     /**
-     * Recover signer from signature.
+     * Recover signer from signature (for string messages).
+     * personal_sign already adds the "\x19Ethereum Signed Message:\n" prefix,
+     * so we need to reconstruct the exact same hash.
      */
-    function recoverSigner(bytes32 messageHash, bytes memory signature) internal pure returns (address) {
+    function recoverSigner(string memory message, bytes memory signature) internal pure returns (address) {
         require(signature.length == 65, "Invalid signature length");
         
         bytes32 r;
@@ -260,9 +273,35 @@ contract SimpleProxyWallet {
         
         require(v == 27 || v == 28, "Invalid signature v value");
         
-        // EIP-191 signed message
-        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        // personal_sign format: "\x19Ethereum Signed Message:\n" + len(message) + message
+        bytes memory messageBytes = bytes(message);
+        bytes memory prefix = "\x19Ethereum Signed Message:\n";
+        bytes memory lengthBytes = bytes(uintToString(messageBytes.length));
+        
+        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked(prefix, lengthBytes, message));
         return ecrecover(ethSignedMessageHash, v, r, s);
+    }
+    
+    /**
+     * Convert uint to string for message length.
+     */
+    function uintToString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
     }
     
     /**
