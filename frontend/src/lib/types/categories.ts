@@ -5,7 +5,7 @@ export enum Category {
   POLITICS = 'politics',
   SPORTS = 'sports',
   TECHNOLOGY = 'technology',
-  FINANCE = 'finance',
+  INTERNATIONAL = 'international',
 }
 
 export interface CategoryConfig {
@@ -46,12 +46,12 @@ export const CATEGORIES: Record<Category, CategoryConfig> = {
     icon: 'T',
     enabled: true,
   },
-  [Category.FINANCE]: {
-    id: Category.FINANCE,
-    name: 'Finance',
-    description: 'Stocks, commodities, and economic indicators',
-    icon: 'F',
-    enabled: true,
+  [Category.INTERNATIONAL]: {
+    id: Category.INTERNATIONAL,
+    name: 'International',
+    description: 'Global events and economics',
+    icon: 'I',
+    enabled: false, // Not implemented yet
   },
 };
 
@@ -70,6 +70,9 @@ export interface CryptoBet {
   actualValue?: string;
   won?: boolean;
   asset?: string;
+  // DPM fields
+  entryBandWeight?: string;
+  exited?: boolean;
 }
 
 // Politics-specific types
@@ -105,6 +108,8 @@ export interface PoliticsBet {
   finalized: boolean;
   claimed: boolean;
   won?: boolean;
+  entryBandWeight?: string;
+  exited?: boolean;
 }
 
 // Sports-specific types
@@ -156,6 +161,8 @@ export interface SportsBet {
   finalized: boolean;
   claimed: boolean;
   won?: boolean;
+  entryBandWeight?: string;
+  exited?: boolean;
 }
 
 // Technology-specific types
@@ -195,6 +202,8 @@ export interface TechBet {
   finalized: boolean;
   claimed: boolean;
   won?: boolean;
+  entryBandWeight?: string;
+  exited?: boolean;
 }
 
 // Generic market card data
@@ -212,10 +221,6 @@ export interface MarketCard {
   currentValue?: string;
   status: 'open' | 'closed' | 'resolved';
   imageUrl?: string;
-  // Sidebar taxonomy
-  sport?: string;
-  league?: string;
-  challengeData?: any;
 }
 
 // Filter and sort options
