@@ -761,6 +761,7 @@ export function PredictionCard({
     return `${tomorrow.getHours().toString().padStart(2, '0')}:${tomorrow.getMinutes().toString().padStart(2, '0')}`;
   });
   const [isPlacingBet, setIsPlacingBet] = useState(false);
+  const [betPlacingSuccess, setBetPlacingSuccess] = useState(false);
   const [isBetPlaced, setIsBetPlaced] = useState(false);
   const [betError, setBetError] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
@@ -1211,9 +1212,9 @@ export function PredictionCard({
         }
 
         setTransactionId(result.txHash);
-        setIsBetPlaced(true);
-        setIsPlacingBet(false);
         setBetError(null);
+        setBetPlacingSuccess(true);
+        setTimeout(() => { setBetPlacingSuccess(false); setIsPlacingBet(false); setIsBetPlaced(true); }, 1800);
         return;
       }
 
@@ -1246,9 +1247,9 @@ export function PredictionCard({
       }
 
       setTransactionId(result.txHash);
-      setIsBetPlaced(true);
-      setIsPlacingBet(false);
       setBetError(null);
+      setBetPlacingSuccess(true);
+      setTimeout(() => { setBetPlacingSuccess(false); setIsPlacingBet(false); setIsBetPlaced(true); }, 1800);
     } catch (err) {
       console.error('[handlePlaceBet] Error:', err);
       setIsPlacingBet(false);
@@ -1652,9 +1653,10 @@ export function PredictionCard({
 
       <BetPlacingModal
         isOpen={isPlacingBet}
-        onClose={() => { setIsPlacingBet(false); setBetError(null); }}
+        onClose={() => { setIsPlacingBet(false); setBetPlacingSuccess(false); setBetError(null); }}
         asset={tokenSymbol}
         amount={depositAmount || undefined}
+        success={betPlacingSuccess}
       />
       <BetPlacedModal isOpen={isBetPlaced} onClose={() => { setIsBetPlaced(false); setTransactionId(null); setDepositAmount(''); }} onViewExplorer={() => {
         const url = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase() === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
