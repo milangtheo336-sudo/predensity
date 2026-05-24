@@ -1,9 +1,9 @@
-// CLOB Prediction Card -- Polymarket-style multi-outcome trading
+﻿// CLOB Prediction Card -- Polymarket-style multi-outcome trading
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { ArrowLeft, Clock, Share2, Twitter, Link2, Check as CheckIcon, Loader2, Activity as ActivityIcon, Heart, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Clock, Share2, Twitter, Link2, Check as CheckIcon, Loader2, Activity as ActivityIcon, Heart, ExternalLink, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PredictionCardSkeleton } from '@/components/prediction-card-skeleton';
 import { useQuery as useConvexQuery, useMutation } from 'convex/react';
@@ -608,18 +608,26 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
     api.clob.getUserOrders,
     isSignedIn && user ? { userId: user.id, marketId } : 'skip'
   );
+  const settlementStatuses = useConvexQuery(
+    api.clob.getUserTradeSettlementStatus,
+    isSignedIn && user ? { userId: user.id, marketId } : 'skip'
+  );
 
   // UI state
   const [selectedOutcome, setSelectedOutcome] = useState<number>(0);
   const [orderSide, setOrderSide] = useState<'buy' | 'sell'>('buy');
   const [orderPrice, setOrderPrice] = useState('');
   const [orderQuantity, setOrderQuantity] = useState('');
+  const [isMarketOrder, setIsMarketOrder] = useState(false);
+  const [slippagePct, setSlippagePct] = useState(2);
   const [isPlacing, setIsPlacing] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState<'chart' | 'orderbook'>('chart');
   const [infoExpanded, setInfoExpanded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [hideEliminated, setHideEliminated] = useState(false);
+  const [inputMode, setInputMode] = useState<'contracts' | 'dollars'>('contracts');
 
   const platformBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
 
@@ -629,19 +637,71 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
     return userPositions.filter((p: { marketId: string; shares: number }) => p.marketId === marketId && p.shares > 0);
   }, [userPositions, marketId]);
 
+  // Settlement status summary
+  const pendingSettlements = useMemo(() => {
+    if (!settlementStatuses) return 0;
+    return (settlementStatuses as any[]).filter((s) => s.settlementStatus === 'pending').length;
+  }, [settlementStatuses]);
+
+  const failedSettlements = useMemo(() => {
+    if (!settlementStatuses) return 0;
+    return (settlementStatuses as any[]).filter((s) => s.settlementStatus === 'settlement_failed').length;
+  }, [settlementStatuses]);
+
+  // Derive outcomes (must be before early return to satisfy hooks rule)
+  const outcomes: OutcomePrice[] = useMemo(() => {
+    if (!market) return [];
+    return prices || market.outcomeNames.map((name: string, i: number) => ({
+      outcomeIndex: i,
+      name,
+      price: Math.round(100 / market.numOutcomes),
+    }));
+  }, [market, prices]);
+
+  // Whether prices are from real trades or estimated
+  const pricesAreEstimated = !prices || prices.length === 0;
+
+  const timeRemaining = market ? formatTimeRemaining(market.resolutionTimestamp * 1000) : '';
+  const isResolved = market?.resolved || false;
+
+  // For market orders, use current price with slippage cap applied
+  const effectivePrice = useMemo(() => {
+    if (!isMarketOrder) return parseInt(orderPrice) || 0;
+    const currentPrice = outcomes[selectedOutcome]?.price || 50;
+    if (orderSide === 'buy') return Math.min(99, Math.round(currentPrice * (1 + slippagePct / 100)));
+    return Math.max(1, Math.round(currentPrice * (1 - slippagePct / 100)));
+  }, [isMarketOrder, orderPrice, orderSide, outcomes, selectedOutcome, slippagePct]);
+
+  const costEstimate = useMemo(() => {
+    const price = isMarketOrder ? effectivePrice : (parseInt(orderPrice) || 0);
+    const qty = parseInt(orderQuantity) || 0;
+    if (!price || !qty) return '0.00';
+    return ((price * qty) / 100).toFixed(2);
+  }, [isMarketOrder, effectivePrice, orderPrice, orderQuantity]);
+
+  // Frontend balance pre-check
+  const balanceError = useMemo(() => {
+    if (!isSignedIn || orderSide !== 'buy') return null;
+    const cost = parseFloat(costEstimate);
+    if (cost > 0 && cost > platformBalance) {
+      return `Insufficient balance. Need $${cost.toFixed(2)}, have $${platformBalance.toFixed(2)} USDC`;
+    }
+    return null;
+  }, [isSignedIn, orderSide, costEstimate, platformBalance]);
+
+  // Early return AFTER all hooks
   if (!market) return <PredictionCardSkeleton />;
 
-  const outcomes: OutcomePrice[] = prices || market.outcomeNames.map((name, i) => ({
-    outcomeIndex: i,
-    name,
-    price: Math.round(100 / market.numOutcomes),
-  }));
-
-  const timeRemaining = formatTimeRemaining(market.resolutionTimestamp * 1000);
-  const isResolved = market.resolved;
-
   const handlePlaceOrder = async () => {
-    if (!user || !orderPrice || !orderQuantity) return;
+    if (!user || !orderQuantity) return;
+    if (balanceError) { setOrderError(balanceError); return; }
+
+    const price = isMarketOrder ? effectivePrice : parseInt(orderPrice);
+    if (!price || price < 1 || price > 99) {
+      setOrderError('Price must be between 1 and 99 cents');
+      return;
+    }
+
     setIsPlacing(true);
     setOrderError(null);
     setOrderSuccess(false);
@@ -654,7 +714,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
           marketId,
           outcomeIndex: selectedOutcome,
           side: orderSide,
-          price: parseInt(orderPrice),
+          price,
           quantity: parseInt(orderQuantity),
         }),
       });
@@ -683,9 +743,6 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   };
 
   const selectedOutcomeData = outcomes[selectedOutcome];
-  const costEstimate = orderPrice && orderQuantity
-    ? ((parseInt(orderPrice) * parseInt(orderQuantity)) / 100).toFixed(2)
-    : '0.00';
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
@@ -741,39 +798,74 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
             {/* Outcome buttons -- Polymarket style */}
             <div className="space-y-2">
-              {outcomes.map((o, i) => {
-                const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
-                const isSelected = selectedOutcome === i;
-                const multiplier = o.price > 0 ? (100 / o.price).toFixed(2) : '--';
-                return (
+              {/* Hide eliminated toggle */}
+              {market.eliminatedOutcomes && market.eliminatedOutcomes.length > 0 && (
+                <div className="flex items-center justify-end mb-2">
                   <button
-                    key={i}
-                    onClick={() => setSelectedOutcome(i)}
-                    className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
-                      isSelected
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
-                        : 'border-gray-200 dark:border-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700'
-                    }`}
+                    onClick={() => setHideEliminated(!hideEliminated)}
+                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: color }} />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">{o.name}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-lg font-bold text-gray-900 dark:text-white">{o.price}%</span>
-                      <div className="flex gap-1.5">
-                        <span className="text-xs px-2 py-1 rounded-md bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 font-semibold">
-                          Yes {o.price}c
-                        </span>
-                        <span className="text-xs px-2 py-1 rounded-md bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 font-semibold">
-                          No {100 - o.price}c
-                        </span>
-                      </div>
-                      <span className="text-xs text-gray-400">{multiplier}x</span>
-                    </div>
+                    {hideEliminated ? 'Show' : 'Hide'} eliminated ({market.eliminatedOutcomes.length})
                   </button>
-                );
-              })}
+                </div>
+              )}
+              
+              {outcomes
+                .filter((o, i) => {
+                  const isEliminated = market.eliminatedOutcomes?.includes(i);
+                  return !hideEliminated || !isEliminated;
+                })
+                .map((o, i) => {
+                  const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
+                  const isSelected = selectedOutcome === i;
+                  const isEliminated = market.eliminatedOutcomes?.includes(i);
+                  const multiplier = o.price > 0 ? (100 / o.price).toFixed(2) : '--';
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => !isEliminated && setSelectedOutcome(i)}
+                      disabled={isEliminated}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
+                        isEliminated
+                          ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-neutral-900/30 border-gray-200 dark:border-neutral-800'
+                          : isSelected
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
+                          : 'border-gray-200 dark:border-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: isEliminated ? '#6b7280' : color }} />
+                        <span className={`text-sm font-medium ${isEliminated ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                          {o.name}
+                        </span>
+                        {isEliminated && (
+                          <span className="ml-2 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </span>
+                        )}
+                      </div>
+                      {!isEliminated && (
+                        <div className="flex items-center gap-4">
+                          <span className="text-lg font-bold text-gray-900 dark:text-white">{o.price}%</span>
+                          <div className="flex gap-1.5">
+                            <span className="text-xs px-2 py-1 rounded-md bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 font-semibold">
+                              Yes {o.price}c
+                            </span>
+                            <span className="text-xs px-2 py-1 rounded-md bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 font-semibold">
+                              No {100 - o.price}c
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-400">{multiplier}x</span>
+                        </div>
+                      )}
+                      {isEliminated && (
+                        <span className="text-sm font-semibold text-red-500">Eliminated</span>
+                      )}
+                    </button>
+                  );
+                })}
             </div>
 
             {/* Chart / Order Book tabs */}
@@ -819,11 +911,32 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
           <div className="order-2 lg:order-none lg:col-span-4">
             <div className="lg:sticky lg:top-20 z-10 bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-white/[0.06] rounded-lg p-5">
 
+              {/* Settlement Status Banners */}
+              {pendingSettlements > 0 && (
+                <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-lg">
+                  <Loader2 className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400 animate-spin flex-shrink-0" />
+                  <span className="text-xs text-yellow-700 dark:text-yellow-300">
+                    {pendingSettlements} trade{pendingSettlements !== 1 ? 's' : ''} settling on-chain...
+                  </span>
+                </div>
+              )}
+              {failedSettlements > 0 && (
+                <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg">
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  <span className="text-xs text-red-700 dark:text-red-300">
+                    {failedSettlements} trade{failedSettlements !== 1 ? 's' : ''} failed settlement
+                  </span>
+                </div>
+              )}
+
               {/* Selected outcome header */}
               <div className="flex items-center gap-2 mb-4">
                 <span className="w-3 h-3 rounded-full" style={{ background: OUTCOME_COLORS[selectedOutcome % OUTCOME_COLORS.length] }} />
                 <span className="text-sm font-semibold text-gray-900 dark:text-white">{selectedOutcomeData?.name}</span>
-                <span className="text-sm text-gray-500 ml-auto">{selectedOutcomeData?.price}%</span>
+                <span className="text-sm text-gray-500 ml-auto">
+                  {pricesAreEstimated && <span className="text-gray-400 text-[10px] mr-1">est.</span>}
+                  {selectedOutcomeData?.price}%
+                </span>
               </div>
 
               {/* Buy / Sell toggle */}
@@ -850,30 +963,103 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                 </button>
               </div>
 
+              {/* Market Order Toggle */}
+              <div className="flex items-center justify-between mb-3 px-1">
+                <span className="text-xs text-gray-600 dark:text-gray-400">Market Order</span>
+                <button
+                  onClick={() => setIsMarketOrder(!isMarketOrder)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${
+                    isMarketOrder ? 'bg-blue-500' : 'bg-gray-300 dark:bg-neutral-700'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                      isMarketOrder ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Slippage slider (only for market orders) */}
+              {isMarketOrder && (
+                <div className="mb-3 px-1">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs text-gray-600 dark:text-gray-400">Slippage Cap</label>
+                    <span className="text-xs text-gray-900 dark:text-white font-medium">{slippagePct.toFixed(1)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="10"
+                    step="0.5"
+                    value={slippagePct}
+                    onChange={(e) => setSlippagePct(parseFloat(e.target.value))}
+                    className="w-full h-1.5 bg-gray-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                  />
+                  <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                    <span>0.5%</span>
+                    <span>10%</span>
+                  </div>
+                </div>
+              )}
+
               {/* Price input */}
               <div className="mb-3">
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Price (cents)</label>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  Price (cents) {isMarketOrder && <span className="text-blue-500">- Auto (Market)</span>}
+                </label>
                 <input
                   type="number"
                   min="1" max="99"
-                  value={orderPrice}
+                  value={isMarketOrder ? effectivePrice : orderPrice}
                   onChange={(e) => setOrderPrice(e.target.value)}
                   placeholder={`${selectedOutcomeData?.price || 50}`}
-                  className="w-full px-3 py-2.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  disabled={isMarketOrder}
+                  className="w-full px-3 py-2.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
                 />
+                {isMarketOrder && (
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Price will be {orderSide === 'buy' ? 'up to' : 'down to'} {effectivePrice}c based on current market price with {slippagePct}% slippage cap
+                  </p>
+                )}
               </div>
 
-              {/* Quantity input */}
+              {/* Quantity input with Dollars/Contracts toggle */}
               <div className="mb-3">
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Shares</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-500 dark:text-gray-400">
+                    {inputMode === 'contracts' ? 'Shares' : 'Amount'}
+                  </label>
+                  <button
+                    onClick={() => setInputMode(inputMode === 'contracts' ? 'dollars' : 'contracts')}
+                    className="text-xs text-blue-500 hover:text-blue-600 transition-colors"
+                  >
+                    {inputMode === 'contracts' ? '$ Dollars' : '# Contracts'}
+                  </button>
+                </div>
                 <input
                   type="number"
                   min="1"
                   value={orderQuantity}
-                  onChange={(e) => setOrderQuantity(e.target.value)}
-                  placeholder="10"
+                  onChange={(e) => {
+                    if (inputMode === 'dollars') {
+                      // Convert dollars to contracts
+                      const dollars = parseFloat(e.target.value) || 0;
+                      const price = isMarketOrder ? effectivePrice : (parseInt(orderPrice) || 50);
+                      const contracts = Math.floor((dollars * 100) / price);
+                      setOrderQuantity(contracts.toString());
+                    } else {
+                      setOrderQuantity(e.target.value);
+                    }
+                  }}
+                  placeholder={inputMode === 'contracts' ? '10' : '5.00'}
                   className="w-full px-3 py-2.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
+                {inputMode === 'dollars' && (
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    ~{orderQuantity || 0} contracts at {isMarketOrder ? effectivePrice : (parseInt(orderPrice) || 50)}c
+                  </p>
+                )}
               </div>
 
               {/* Cost estimate */}
@@ -890,11 +1076,17 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               {/* Error / Success */}
               {orderError && <div className="text-xs text-red-500 mb-3 text-center">{orderError}</div>}
               {orderSuccess && <div className="text-xs text-green-500 mb-3 text-center">Order placed</div>}
+              {market.eliminatedOutcomes?.includes(selectedOutcome) && (
+                <div className="text-xs text-red-500 mb-3 text-center flex items-center justify-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  This outcome has been eliminated
+                </div>
+              )}
 
               {/* Place order button */}
               <Button
                 onClick={handlePlaceOrder}
-                disabled={!isSignedIn || !orderPrice || !orderQuantity || isPlacing || isResolved}
+                disabled={!isSignedIn || !orderPrice || !orderQuantity || isPlacing || isResolved || market.eliminatedOutcomes?.includes(selectedOutcome)}
                 className={`w-full h-12 text-base font-bold rounded-lg transition-all disabled:opacity-40 ${
                   orderSide === 'buy'
                     ? 'bg-green-600 hover:bg-green-700 text-white'
@@ -902,9 +1094,10 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                 }`}
               >
                 {isPlacing ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                  market.eliminatedOutcomes?.includes(selectedOutcome) ? 'Outcome Eliminated' :
                   isResolved ? 'Market Resolved' :
                   !isSignedIn ? 'Sign in to trade' :
-                  `${orderSide === 'buy' ? 'Buy' : 'Sell'} ${selectedOutcomeData?.name} at ${orderPrice || '--'}c`
+                  `${orderSide === 'buy' ? 'Buy' : 'Sell'} ${selectedOutcomeData?.name} at ${isMarketOrder ? effectivePrice : (orderPrice || '--')}c`
                 )}
               </Button>
 
