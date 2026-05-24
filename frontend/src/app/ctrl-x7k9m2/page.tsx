@@ -717,6 +717,19 @@ function AdminPage() {
 
   // Crypto market creation state
   const [showCryptoMarketModal, setShowCryptoMarketModal] = useState(false);
+
+  // CLOB market creation state
+  const [showClobMarketModal, setShowClobMarketModal] = useState(false);
+  const [showClobResolveModal, setShowClobResolveModal] = useState(false);
+  const [isCreatingClobMarket, setIsCreatingClobMarket] = useState(false);
+  const [clobMarketForm, setClobMarketForm] = useState({
+    question: '',
+    category: 'politics',
+    outcomeNames: ['Yes', 'No'],
+    imageUrl: '',
+    description: '',
+    resolutionTimestamp: '',
+  });
   const [cryptoMarketForm, setCryptoMarketForm] = useState({
     tokenSymbol: '',
     tokenName: '',
@@ -1210,6 +1223,40 @@ function AdminPage() {
         title: 'Failed to create crypto market',
         description: err instanceof Error ? err.message : 'An unexpected error occurred',
       });
+    }
+  };
+
+  // CLOB market creation handler
+  const handleCreateClobMarket = async () => {
+    if (!clobMarketForm.question || !clobMarketForm.imageUrl || !clobMarketForm.resolutionTimestamp) {
+      toast({ variant: 'destructive', title: 'Missing fields', description: 'Fill in all required fields' });
+      return;
+    }
+    setIsCreatingClobMarket(true);
+    try {
+      const marketId = `clob-${clobMarketForm.category}-${Date.now()}`;
+      const res = await fetch('/api/clob/market', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          marketId,
+          question: clobMarketForm.question,
+          category: clobMarketForm.category,
+          outcomeNames: clobMarketForm.outcomeNames.filter(n => n.trim()),
+          imageUrl: clobMarketForm.imageUrl,
+          description: clobMarketForm.description,
+          resolutionTimestamp: Math.floor(new Date(clobMarketForm.resolutionTimestamp).getTime() / 1000),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create market');
+      toast({ title: 'CLOB Market Created', description: `Market ID: ${marketId}` });
+      setShowClobMarketModal(false);
+      setClobMarketForm({ question: '', category: 'politics', outcomeNames: ['Yes', 'No'], imageUrl: '', description: '', resolutionTimestamp: '' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to create CLOB market', description: err instanceof Error ? err.message : 'Unknown error' });
+    } finally {
+      setIsCreatingClobMarket(false);
     }
   };
 
@@ -2096,6 +2143,22 @@ function AdminPage() {
           </CardContent>
         </Card>
 
+        {/* CLOB Market Management (Politics, Sports, Tech, International) */}
+        <Card className="bg-white dark:bg-neutral-950/50 border-gray-200 dark:border-white/10">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">CLOB Market Management</h2>
+                <p className="text-sm text-gray-400 mt-1">Create prediction markets with YES/NO or multi-outcome trading</p>
+              </div>
+              <Button variant="predensity" onClick={() => setShowClobMarketModal(true)} className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Create CLOB Market
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Crypto Market Management - Only for Crypto Category */}
         {selectedCategory === Category.CRYPTO && (
           <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
@@ -2605,6 +2668,55 @@ function AdminPage() {
                   disabled={!cryptoMarketForm.tokenSymbol || !cryptoMarketForm.tokenName}
                 >
                   Create Market
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CLOB Market Creation Modal */}
+      {showClobMarketModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-neutral-950 border border-gray-200 dark:border-white/10 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Create CLOB Market</h2>
+              <button onClick={() => setShowClobMarketModal(false)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                <select value={clobMarketForm.category} onChange={(e) => setClobMarketForm({ ...clobMarketForm, category: e.target.value })} className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm">
+                  <option value="politics">Politics</option>
+                  <option value="sports">Sports</option>
+                  <option value="technology">Technology</option>
+                  <option value="international">International</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Question *</label>
+                <input type="text" value={clobMarketForm.question} onChange={(e) => setClobMarketForm({ ...clobMarketForm, question: e.target.value })} placeholder="Who will win the 2026 World Cup?" className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm placeholder:text-gray-400" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Outcomes (one per line, min 2) *</label>
+                <textarea value={clobMarketForm.outcomeNames.join('\n')} onChange={(e) => setClobMarketForm({ ...clobMarketForm, outcomeNames: e.target.value.split('\n') })} rows={4} placeholder={"Yes\nNo"} className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm placeholder:text-gray-400 resize-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image URL *</label>
+                <input type="url" value={clobMarketForm.imageUrl} onChange={(e) => setClobMarketForm({ ...clobMarketForm, imageUrl: e.target.value })} placeholder="https://..." className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm placeholder:text-gray-400" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                <textarea value={clobMarketForm.description} onChange={(e) => setClobMarketForm({ ...clobMarketForm, description: e.target.value })} rows={2} placeholder="Describe the market..." className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm placeholder:text-gray-400 resize-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Resolution Date *</label>
+                <input type="datetime-local" value={clobMarketForm.resolutionTimestamp} onChange={(e) => setClobMarketForm({ ...clobMarketForm, resolutionTimestamp: e.target.value })} className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm" />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" onClick={() => setShowClobMarketModal(false)} className="flex-1">Cancel</Button>
+                <Button variant="predensity" onClick={handleCreateClobMarket} disabled={isCreatingClobMarket} className="flex-1">
+                  {isCreatingClobMarket ? 'Creating...' : 'Create Market'}
                 </Button>
               </div>
             </div>
