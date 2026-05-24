@@ -9,7 +9,9 @@
  */
 
 import type * as _lib_auth from "../_lib/auth.js";
+import type * as challenges from "../challenges.js";
 import type * as crons from "../crons.js";
+import type * as email from "../email.js";
 import type * as events from "../events.js";
 import type * as features from "../features.js";
 import type * as leaderboard from "../leaderboard.js";
@@ -31,7 +33,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "_lib/auth": typeof _lib_auth;
+  challenges: typeof challenges;
   crons: typeof crons;
+  email: typeof email;
   events: typeof events;
   features: typeof features;
   leaderboard: typeof leaderboard;
