@@ -68,7 +68,9 @@ export async function POST(request: NextRequest) {
 
     const recoveredAddress = ethers.utils.verifyTypedData(domain, types, message, signature);
     
-    if (recoveredAddress.toLowerCase() !== wallet.magicEOAAddress.toLowerCase()) {
+    // Verify signature matches user's Magic EOA address (if available) or evmAddress
+    const expectedAddress = (wallet as any).magicEOAAddress || wallet.evmAddress;
+    if (recoveredAddress.toLowerCase() !== expectedAddress.toLowerCase()) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
     }
 
@@ -139,7 +141,9 @@ export async function DELETE(request: NextRequest) {
 
     const recoveredAddress = ethers.utils.verifyTypedData(domain, types, message, signature);
     
-    if (recoveredAddress.toLowerCase() !== wallet.magicEOAAddress.toLowerCase()) {
+    // Verify signature matches user's Magic EOA address (if available) or evmAddress
+    const expectedAddress = (wallet as any).magicEOAAddress || wallet.evmAddress;
+    if (recoveredAddress.toLowerCase() !== expectedAddress.toLowerCase()) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
     }
 
