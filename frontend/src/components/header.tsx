@@ -17,64 +17,34 @@ import {
   Loader2,
   Settings,
   LogOut,
+  Phone,
   ArrowRightLeft,
   Shield,
   FileText,
   Briefcase,
-  ArrowLeft,
-  HelpCircle,
-  Eye,
-  EyeOff,
-  Phone,
-  Swords,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatAddress, cn, getAvatarPalette } from '@/lib/utils';
-import Avatar from 'boring-avatars';
+import { formatAddress } from '@/lib/utils';
 import { WalletSelector } from '@/components/wallet-selector';
-import { useAccount, useDisconnect } from 'wagmi';
-import { useContractWriteCompat } from '@/hooks/useContractWrite';
-import { useMagic } from '@/context/MagicContext';
-import { useWalletUser } from '@/context/WalletUserContext';
-import { getDIDToken, getUserInfo } from '@/lib/magic';
-import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
+import {
+  useWallet,
+  useBalance,
+  useAccountId,
+  useEvmAddress,
+  useWriteContract,
+  useWatchTransactionReceipt,
+} from '@buidlerlabs/hashgraph-react-wallets';
+import { SignInButton, SignUpButton, useUser, useClerk } from '@clerk/nextjs';
+import { useQuery as useConvexQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { getStakingCurrency, getStakingTokenId, getStakingTokenAddress, isTokenMode } from '@/lib/contracts/contract-config';
+import { getStakingCurrency, getStakingTokenId } from '@/lib/contracts/contract-config';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { QRCodeSVG } from 'qrcode.react';
-import { AuthModal } from '@/components/auth-modal';
-import { useBlockchainBalance } from '@/hooks/useBlockchainBalance';
-import { useEIP6963Wallets } from '@/hooks/useEIP6963Wallets';
-import { useCountryCode } from '@/hooks/useCountryCode';
-import { useLanguage } from '@/context/LanguageContext';
-import { LANGUAGES } from '@/lib/i18n/translations';
-
-// ---------------------------------------------------------------------------
-// Balance Visibility Context -- persisted to localStorage
-// ---------------------------------------------------------------------------
-
-interface BalanceVisibilityContextType {
-  balancesHidden: boolean;
-  toggleBalancesHidden: () => void;
-}
-
-const BalanceVisibilityContext = createContext<BalanceVisibilityContextType>({
-  balancesHidden: false,
-  toggleBalancesHidden: () => {},
-});
-
-export function useBalanceVisibility() {
-  return useContext(BalanceVisibilityContext);
-}
-
-// Masked placeholder for hidden values
-const HIDDEN_VALUE = '****';
 
 // ---------------------------------------------------------------------------
 // Deposit Modal Context
 // ---------------------------------------------------------------------------
 
-type DepositView = 'crypto' | 'cash' | 'crypto-transfer' | 'wallet-connect' | 'wallet-transfer' | 'cex-deposit' | 'withdraw';
+type DepositView = 'menu' | 'mpesa' | 'wallet-connect' | 'wallet-transfer' | 'withdraw';
 
 interface DepositModalContextType {
   openDeposit: () => void;
@@ -97,113 +67,48 @@ export function useDepositModal() {
 export function DepositModal({
   isOpen,
   onClose,
-  initialView = 'crypto',
-  platformBalance = 0,
+  initialView = 'menu',
 }: {
   isOpen: boolean;
   onClose: () => void;
   initialView?: DepositView;
-  platformBalance?: number;
 }) {
   const [view, setView] = useState<DepositView>(initialView);
   const [mounted, setMounted] = useState(false);
-  const [eip6963Provider, setEip6963Provider] = useState<any>(null);
-  const balancesHidden = typeof window !== 'undefined' && localStorage.getItem('predensity-hide-balances') === 'true';
-  const { walletUser } = useWalletUser();
-  const eip6963Wallets = useEIP6963Wallets();
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (isOpen) setView(initialView);
   }, [isOpen, initialView]);
 
-  // When a wallet-auth user reaches the wallet-connect screen, auto-match their
-  // already-connected EIP-6963 provider and skip straight to wallet-transfer.
-  useEffect(() => {
-    if (view !== 'wallet-connect' || !walletUser?.publicAddress || !walletUser?.walletType) return;
-    const hint = walletUser.walletType.toLowerCase();
-    const matched = eip6963Wallets.find((w: any) =>
-      w.info.rdns?.toLowerCase().includes(hint) ||
-      w.info.name?.toLowerCase().includes(hint)
-    );
-    if (!matched) return;
-    // Silently request accounts to refresh connection, then skip to transfer view
-    matched.provider.request({ method: 'eth_requestAccounts' }).then(() => {
-      setEip6963Provider(matched.provider);
-      setView('wallet-transfer');
-    }).catch(() => {
-      // If it fails, stay on wallet-connect so user can manually pick
-    });
-  }, [view, walletUser, eip6963Wallets]);
-
-  const { t } = useLanguage();
-
   if (!mounted || !isOpen) return null;
-
-  const isWithdraw = view === 'withdraw';
-  // Determine which top-level tab is active
-  const isCryptoSide = view === 'crypto' || view === 'crypto-transfer' || view === 'wallet-connect' || view === 'wallet-transfer' || view === 'cex-deposit';
-  const isCashSide = view === 'cash';
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
-        className="bg-white dark:bg-neutral-900/80 backdrop-blur-xl border border-gray-200 dark:border-white/[0.08] rounded-2xl w-[420px] max-w-[92vw] relative shadow-2xl"
+        className="bg-neutral-900/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl w-[420px] max-w-[92vw] relative shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {isWithdraw ? t.withdraw : t.deposit}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {t.portfolioBalance}: <span className="text-gray-900 dark:text-white font-medium">{balancesHidden ? '****' : `$${platformBalance.toFixed(2)}`}</span>
-            </p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+          <h2 className="text-lg font-semibold text-white">
+            {view === 'menu' && 'Deposit'}
+            {view === 'mpesa' && 'M-Pesa Deposit'}
+            {view === 'wallet-connect' && 'Connect Wallet'}
+            {view === 'wallet-transfer' && 'Transfer from Wallet'}
+            {view === 'withdraw' && 'Withdraw'}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Two-tab toggle -- only for deposit */}
-        {!isWithdraw && (view === 'crypto' || view === 'cash') && (
-          <div className="px-6 pb-4">
-            <div className="flex rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden">
-              <button
-                onClick={() => setView('crypto')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${
-                  isCryptoSide
-                    ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-              >
-                <Image src="/arc-logo.svg" alt="" width={18} height={18} />
-                {t.useCrypto}
-              </button>
-              <button
-                onClick={() => setView('cash')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${
-                  isCashSide
-                    ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-              >
-                <Image src="/fiat.svg" alt="" width={18} height={18} className="brightness-0 invert" />
-                {t.useFiat}
-              </button>
-            </div>
-          </div>
-        )}
-
         <div className="px-6 pb-6">
-          {view === 'crypto' && <CryptoMenuView onSelect={setView} />}
-          {view === 'crypto-transfer' && <CryptoDepositView onBack={() => setView('crypto')} />}
-          {view === 'wallet-connect' && <WalletConnectView onBack={() => setView('crypto')} onConnected={(provider) => { setEip6963Provider(provider || null); setView('wallet-transfer'); }} />}
-          {view === 'wallet-transfer' && <WalletTransferView onBack={() => setView(walletUser ? 'crypto' : 'wallet-connect')} onClose={onClose} eip6963Provider={eip6963Provider} />}
-          {view === 'cex-deposit' && <CexDepositView onBack={() => setView('crypto')} />}
-          {view === 'cash' && <CashMenuView />}
-          {view === 'withdraw' && <WithdrawView onBack={() => setView('crypto')} onClose={onClose} />}
+          {view === 'menu' && <DepositMenuView onSelect={setView} />}
+          {view === 'mpesa' && <MpesaDepositView onBack={() => setView('menu')} onClose={onClose} />}
+          {view === 'wallet-connect' && <WalletConnectView onBack={() => setView('menu')} onConnected={() => setView('wallet-transfer')} />}
+          {view === 'wallet-transfer' && <WalletTransferView onBack={() => setView('menu')} onClose={onClose} />}
+          {view === 'withdraw' && <WithdrawView onBack={() => setView('menu')} onClose={onClose} />}
         </div>
       </div>
     </div>,
@@ -212,430 +117,46 @@ export function DepositModal({
 }
 
 // ---------------------------------------------------------------------------
-// Crypto Menu View -- card selection (Transfer Crypto / Connect Wallet)
+// Deposit Menu View -- wallet logos + M-Pesa
 // ---------------------------------------------------------------------------
 
-function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
-  const { t } = useLanguage();
-  const { isConnected } = useAccount();
+function DepositMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
+  const { isConnected } = useWallet();
 
   return (
-    <div className="space-y-3">
-      {/* Transfer Crypto -- QR code flow */}
-      <button
-        onClick={() => onSelect('crypto-transfer')}
-        className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors text-left"
-      >
-        <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/[0.05] flex items-center justify-center flex-shrink-0">
-          <QRCodeSVG value="deposit" size={22} level="L" bgColor="transparent" fgColor="#a78bfa" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-gray-900 dark:text-white">{t.transferCrypto}</div>
-          <div className="text-xs text-gray-400">{t.noLimitInstant}</div>
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <Image src="/arc-logo.svg" alt="Arc" width={20} height={20} />
-        </div>
-      </button>
-
-      {/* Connect Wallet -- direct wallet transfer */}
+    <div className="space-y-4">
+      {/* Connect Wallet / Transfer Crypto -- shows wallet icons */}
       <button
         onClick={() => onSelect(isConnected ? 'wallet-transfer' : 'wallet-connect')}
-        className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors text-left"
+        className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-vibrant-purple/50 hover:bg-white/[0.03] transition-colors text-left"
       >
-        <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/[0.05] flex items-center justify-center flex-shrink-0">
-          <Wallet className="w-5 h-5 text-gray-400" />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Image src="/hashpack.jpg" alt="HashPack" width={32} height={32} className="rounded-full" />
+          <Image src="/metamask.png" alt="MetaMask" width={32} height={32} className="rounded-full" />
+          <Image src="/blade.png" alt="Blade" width={32} height={32} className="rounded-full" />
+          <Image src="/kabila.jpg" alt="Kabila" width={32} height={32} className="rounded-full" />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-gray-900 dark:text-white">
-            {isConnected ? t.transferFromWallet : t.connectWallet}
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-white">
+            {isConnected ? 'Transfer Crypto' : 'Connect Wallet'}
           </div>
           <div className="text-xs text-gray-400">
-            {isConnected ? t.sendUSDCDirectly : t.noLimitInstant}
+            {isConnected ? 'Send USDC from your wallet' : 'No limit -- Instant'}
           </div>
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <Image src="/MetaMask-icon-fox.svg" alt="MetaMask" width={20} height={20} className="rounded-full" />
         </div>
       </button>
 
-      {/* CEX Deposit -- Binance, Coinbase */}
+      {/* M-Pesa option with logo */}
       <button
-        onClick={() => onSelect('cex-deposit')}
-        className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors text-left"
+        onClick={() => onSelect('mpesa')}
+        className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-green-500/50 hover:bg-green-500/[0.03] transition-colors text-left"
       >
-        <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/[0.05] flex items-center justify-center flex-shrink-0">
-          <ArrowUpRight className="w-5 h-5 text-gray-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-gray-900 dark:text-white">{t.fromExchange}</div>
-          <div className="text-xs text-gray-400">{t.withdrawUSDCFromCEX}</div>
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <Image src="/binance logo.png" alt="Binance" width={40} height={40} className="rounded-md" />
-          <Image src="/coinbase.svg" alt="Coinbase" width={40} height={40} className="rounded-md" />
+        <Image src="/mpesa.png" alt="M-Pesa" width={40} height={40} className="rounded-lg flex-shrink-0" />
+        <div>
+          <div className="text-sm font-medium text-white">M-Pesa</div>
+          <div className="text-xs text-gray-400">Deposit via mobile money (KES)</div>
         </div>
       </button>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Crypto Deposit View -- Arc native (QR) + Cross-chain CCTP bridge
-// ---------------------------------------------------------------------------
-
-interface SupportedToken {
-  id: string;
-  name: string;
-  icon: string;
-  needsSwap?: boolean;
-}
-
-interface SupportedChain {
-  id: string;
-  name: string;
-  icon: string;
-  native?: boolean;
-}
-
-const IS_TESTNET = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || !process.env.NEXT_PUBLIC_NETWORK;
-
-const SUPPORTED_TOKENS: SupportedToken[] = IS_TESTNET
-  ? [
-      { id: 'usdc', name: 'USDC', icon: '/tokens/usdc.svg' },
-      { id: 'eurc', name: 'EURC', icon: '/tokens/eurc.svg', needsSwap: true },
-    ]
-  : [
-      { id: 'usdc', name: 'USDC', icon: '/tokens/usdc.svg' },
-      { id: 'eurc', name: 'EURC', icon: '/tokens/eurc.svg', needsSwap: true },
-      { id: 'usdt', name: 'USDT', icon: '/tokens/usdt.svg', needsSwap: true },
-      { id: 'dai', name: 'DAI', icon: '/tokens/dai.svg', needsSwap: true },
-      { id: 'pyusd', name: 'PYUSD', icon: '/tokens/pyusd.svg', needsSwap: true },
-    ];
-
-const SUPPORTED_CHAINS: SupportedChain[] = [
-  { id: 'arc', name: 'Arc', icon: '/arc.jpg', native: true },
-  { id: 'ethereum', name: 'Ethereum', icon: '/chains/ethereum.svg' },
-  { id: 'base', name: 'Base', icon: '/chains/base.svg' },
-  { id: 'arbitrum', name: 'Arbitrum', icon: '/chains/arbitrum.svg' },
-  { id: 'optimism', name: 'Optimism', icon: '/chains/optimism.svg' },
-  { id: 'polygon', name: 'Polygon', icon: '/chains/polygon.svg' },
-  { id: 'avalanche', name: 'Avalanche', icon: '/chains/avalanche.svg' },
-];
-
-function CryptoDepositView({ onBack }: { onBack: () => void }) {
-  const { t } = useLanguage();
-  const [copied, setCopied] = useState(false);
-  const [selectedToken, setSelectedToken] = useState<SupportedToken>(SUPPORTED_TOKENS[0]);
-  const [selectedChain, setSelectedChain] = useState<SupportedChain>(SUPPORTED_CHAINS[0]);
-  const [tokenDropdownOpen, setTokenDropdownOpen] = useState(false);
-  const [chainDropdownOpen, setChainDropdownOpen] = useState(false);
-  const [tokenSearch, setTokenSearch] = useState('');
-  const [chainSearch, setChainSearch] = useState('');
-  const [amount, setAmount] = useState('');
-  const [bridging, setBridging] = useState(false);
-  const [bridgeError, setBridgeError] = useState('');
-  const [bridgeSuccess, setBridgeSuccess] = useState(false);
-  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
-  const [loadingProxy, setLoadingProxy] = useState(false);
-  const { user } = useMagic();
-  const { walletUser } = useWalletUser();
-  const currency = getStakingCurrency();
-
-  const managedWallet = useConvexQuery(
-    api.users.getManagedWalletByUserId,
-    user ? { userId: user.issuer } : 'skip'
-  );
-
-  const userAddress = user?.publicAddress ?? walletUser?.publicAddress ?? '';
-
-  // Fetch proxy wallet address with caching
-  useEffect(() => {
-    const fetchProxyWallet = async () => {
-      if (!userAddress) return;
-      try {
-        const cached = localStorage.getItem(`predensity_proxy_wallet_${userAddress}`);
-        if (cached) {
-          const data = JSON.parse(cached);
-          if (Date.now() - data.timestamp < 86400000) {
-            setProxyWalletAddress(data.proxyWallet);
-            return;
-          }
-        }
-      } catch { /* ignore */ }
-      setLoadingProxy(true);
-      try {
-        const response = await fetch(`/api/proxy-wallet/create?userAddress=${userAddress}`);
-        const data = await response.json();
-        if (data.exists && data.proxyWalletAddress) {
-          setProxyWalletAddress(data.proxyWalletAddress);
-          localStorage.setItem(`predensity_proxy_wallet_${userAddress}`, JSON.stringify({ proxyWallet: data.proxyWalletAddress, timestamp: Date.now() }));
-        }
-      } catch { /* ignore */ } finally { setLoadingProxy(false); }
-    };
-    fetchProxyWallet();
-  }, [userAddress]);
-
-  const depositAddress = proxyWalletAddress || userAddress;
-  const isArcNative = selectedChain.native;
-
-  const handleCopy = async () => {
-    if (depositAddress) {
-      await navigator.clipboard.writeText(depositAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleBridge = async () => {
-    if (!amount || parseFloat(amount) <= 0) { setBridgeError('Enter a valid amount'); return; }
-    setBridging(true); setBridgeError(''); setBridgeSuccess(false);
-    try {
-      const { bridgeUSDCToArc, swapToUSDCOnArc, switchWalletChain } = await import('@/lib/arc-bridge');
-      const provider = (window as any).ethereum;
-      if (!provider) throw new Error('No wallet detected. Please install MetaMask or another wallet.');
-
-      await switchWalletChain(provider, selectedChain.id);
-      await bridgeUSDCToArc(provider, selectedChain.id, amount, depositAddress);
-
-      if (selectedToken.needsSwap) {
-        const kitKey = process.env.NEXT_PUBLIC_CIRCLE_KIT_KEY;
-        if (kitKey) {
-          await swapToUSDCOnArc(provider, selectedToken.id, amount, kitKey);
-        }
-      }
-      setBridgeSuccess(true);
-    } catch (err: any) {
-      setBridgeError(err?.message || 'Bridge failed. Please try again.');
-    } finally { setBridging(false); }
-  };
-
-  const filteredTokens = SUPPORTED_TOKENS.filter(t => t.name.toLowerCase().includes(tokenSearch.toLowerCase()));
-  const filteredChains = SUPPORTED_CHAINS.filter(c => c.name.toLowerCase().includes(chainSearch.toLowerCase()));
-
-  return (
-    <div className="space-y-4">
-      <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back</button>
-
-      {/* Token & Chain selectors */}
-      <div className="flex gap-2">
-        {/* Token selector */}
-        <div className="relative flex-1">
-          <label className="text-[10px] uppercase tracking-wider text-gray-400 mb-1 block">Currency</label>
-          <button onClick={() => { setTokenDropdownOpen(!tokenDropdownOpen); setChainDropdownOpen(false); }}
-            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10 text-sm">
-            <Image src={selectedToken.icon} alt={selectedToken.name} width={20} height={20} className="rounded-full" />
-            <span className="text-gray-900 dark:text-white font-medium">{selectedToken.name}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-gray-400 ml-auto" />
-          </button>
-          {tokenDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
-              <input value={tokenSearch} onChange={e => setTokenSearch(e.target.value)} placeholder="Search token..."
-                className="w-full px-3 py-2 text-xs bg-transparent border-b border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none" />
-              {filteredTokens.map(token => (
-                <button key={token.id} onClick={() => { setSelectedToken(token); setTokenDropdownOpen(false); setTokenSearch(''); if (token.needsSwap) setSelectedChain(SUPPORTED_CHAINS[0]); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/[0.05] text-sm text-gray-900 dark:text-white">
-                  <Image src={token.icon} alt={token.name} width={18} height={18} className="rounded-full" />
-                  {token.name}
-                  {token.needsSwap && <span className="text-[10px] text-amber-400 ml-auto">swap</span>}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Chain selector */}
-        <div className="relative flex-1">
-          <label className="text-[10px] uppercase tracking-wider text-gray-400 mb-1 block">Network</label>
-          <button onClick={() => { setChainDropdownOpen(!chainDropdownOpen); setTokenDropdownOpen(false); }}
-            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10 text-sm">
-            <Image src={selectedChain.icon} alt={selectedChain.name} width={20} height={20} className="rounded-full" />
-            <span className="text-gray-900 dark:text-white font-medium">{selectedChain.name}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-gray-400 ml-auto" />
-          </button>
-          {chainDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
-              <input value={chainSearch} onChange={e => setChainSearch(e.target.value)} placeholder="Search chain..."
-                className="w-full px-3 py-2 text-xs bg-transparent border-b border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none" />
-              {filteredChains.map(chain => (
-                <button key={chain.id} onClick={() => { setSelectedChain(chain); setChainDropdownOpen(false); setChainSearch(''); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/[0.05] text-sm text-gray-900 dark:text-white">
-                  <Image src={chain.icon} alt={chain.name} width={18} height={18} className="rounded-full" />
-                  {chain.name}
-                  {chain.native && <span className="text-[10px] text-green-400 ml-auto">native</span>}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Swap notice */}
-      {selectedToken.needsSwap && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
-          <HelpCircle className="w-3.5 h-3.5 flex-shrink-0" />
-          {selectedToken.name} will be bridged via CCTP then swapped to USDC on Arc.
-        </div>
-      )}
-
-      {/* Arc native: QR + copy address */}
-      {isArcNative ? (
-        <>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">Send {selectedToken.name} on Arc network</span>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10">
-              <span className="text-xs text-gray-300">{currency.symbol}</span>
-            </div>
-          </div>
-
-          {depositAddress ? (
-            <div className="flex justify-center py-3">
-              <div className="relative rounded-2xl p-[2px] bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-400 shadow-[0_0_20px_rgba(139,92,246,0.3),0_0_40px_rgba(59,130,246,0.15)]">
-                <div className="bg-white p-3 rounded-[14px]">
-                  <QRCodeSVG value={depositAddress} size={180} level="H" includeMargin={false}
-                    imageSettings={{ src: '/arc.jpg', x: undefined, y: undefined, height: 36, width: 36, excavate: true }} />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500 text-sm">
-              {managedWallet === undefined ? 'Loading wallet...' : 'No wallet found. Sign in to create one.'}
-            </div>
-          )}
-
-          <p className="text-xs text-gray-400 text-center">Minimum <span className="font-semibold text-white">$1 USD</span></p>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs text-gray-400">Address</label>
-            </div>
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10">
-              <span className="text-sm text-gray-900 dark:text-white font-mono truncate flex-1">
-                {loadingProxy ? 'Loading...' : (depositAddress || 'Not available')}
-              </span>
-            </div>
-            <p className="text-xs text-gray-400 mt-1.5">Send USDC to this address. Funds are held in your smart contract wallet.</p>
-            <button onClick={handleCopy} disabled={!depositAddress}
-              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-gray-200 dark:border-white/10 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50">
-              {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-              {copied ? 'Copied' : 'Copy address'}
-            </button>
-          </div>
-        </>
-      ) : (
-        /* Cross-chain CCTP bridge flow */
-        <>
-          {bridgeSuccess ? (
-            <div className="text-center py-6">
-              <Check className="w-8 h-8 text-green-500 mx-auto mb-2" />
-              <p className="text-lg text-green-400 font-semibold">Bridge successful!</p>
-              <p className="text-xs text-gray-400 mt-1">
-                {selectedToken.needsSwap
-                  ? `${selectedToken.name} bridged and swapped to USDC on Arc`
-                  : `${amount} USDC bridged to Arc`}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Amount</label>
-                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" min="0" step="any"
-                  className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-white/[0.05] border border-gray-200 dark:border-white/10 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-vibrant-purple" />
-              </div>
-
-              {/* Fee breakdown */}
-              <div className="space-y-1.5 px-1">
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>Bridge fee</span><span>~$0.00</span>
-                </div>
-                {selectedToken.needsSwap && (
-                  <div className="flex justify-between text-xs text-amber-400">
-                    <span>Swap fee ({selectedToken.name} → USDC)</span><span>~0.3%</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-xs text-gray-300 font-medium border-t border-white/10 pt-1.5">
-                  <span>You receive (est.)</span>
-                  <span>{amount ? (selectedToken.needsSwap ? (parseFloat(amount) * 0.997).toFixed(2) : parseFloat(amount).toFixed(2)) : '0.00'} USDC</span>
-                </div>
-              </div>
-
-              {bridgeError && <p className="text-xs text-red-400 text-center">{bridgeError}</p>}
-
-              <button onClick={handleBridge} disabled={bridging || !amount}
-                className="w-full py-2.5 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                {bridging ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" />Bridging...</>
-                ) : (
-                  `Bridge ${selectedToken.name} from ${selectedChain.name}`
-                )}
-              </button>
-
-              <p className="text-[10px] text-gray-500 text-center">
-                Powered by Circle CCTP. Bridge takes ~1-2 minutes.
-              </p>
-            </>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Cash Menu View -- fiat deposit options (Coming Soon)
-// ---------------------------------------------------------------------------
-
-function CashMenuView() {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500 font-medium">Available methods</span>
-        <div className="relative group">
-          <HelpCircle className="w-3.5 h-3.5 text-gray-500 cursor-help" />
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 rounded-lg bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-[11px] text-gray-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-            More fiat on-ramp methods will be available soon.
-          </div>
-        </div>
-      </div>
-
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// CEX Deposit View -- Binance QR + manual TX ID, Coinbase coming soon
-// ---------------------------------------------------------------------------
-
-function CexDepositView({ onBack }: { onBack: () => void }) {
-  return (
-    <div>
-      <button onClick={onBack} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 flex items-center gap-1">
-        <ArrowLeft className="w-3.5 h-3.5" /> Back
-      </button>
-
-      <div className="space-y-3">
-        {/* Binance -- coming soon */}
-        <div className="p-4 rounded-xl border border-gray-200 dark:border-white/10 opacity-50">
-          <div className="flex items-center gap-3">
-            <Image src="/binance logo.png" alt="Binance" width={40} height={40} className="rounded-lg" />
-            <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-white">Binance</div>
-              <div className="text-xs text-gray-400">Coming soon</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Coinbase -- coming soon */}
-        <div className="p-4 rounded-xl border border-gray-200 dark:border-white/10 opacity-50">
-          <div className="flex items-center gap-3">
-            <Image src="/coinbase.svg" alt="Coinbase" width={40} height={40} className="rounded-lg" />
-            <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-white">Coinbase</div>
-              <div className="text-xs text-gray-400">Coming soon</div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -644,15 +165,31 @@ function CexDepositView({ onBack }: { onBack: () => void }) {
 // Wallet Connect View -- just wallet icons, transitions to transfer on connect
 // ---------------------------------------------------------------------------
 
-function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConnected: (eip6963Provider?: any) => void }) {
-  const { isConnected } = useAccount();
+function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConnected: () => void }) {
+  const { isConnected } = useWallet();
   const prevConnected = useRef(isConnected);
   const [connecting, setConnecting] = useState<string | null>(null);
-  const eip6963Wallets = useEIP6963Wallets();
 
-  const walletMap: Record<string, any> = {};
+  // Import all wallet hooks at top level (React rules)
+  let hashpackWallet: any, metamaskWallet: any, bladeWallet: any, kabilaWallet: any;
+  try {
+    const connectors = require('@buidlerlabs/hashgraph-react-wallets/connectors');
+    hashpackWallet = useWallet(connectors.HashpackConnector);
+    metamaskWallet = useWallet(connectors.MetamaskConnector);
+    bladeWallet = useWallet(connectors.BladeConnector);
+    kabilaWallet = useWallet(connectors.KabilaConnector);
+  } catch {
+    // Fallback if connectors not available
+  }
 
-  // Auto-transition when a wallet connects
+  const walletMap: Record<string, any> = {
+    hashpack: hashpackWallet,
+    metamask: metamaskWallet,
+    blade: bladeWallet,
+    kabila: kabilaWallet,
+  };
+
+  // Auto-transition when wallet connects
   useEffect(() => {
     if (!prevConnected.current && isConnected) {
       onConnected();
@@ -660,7 +197,7 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
     prevConnected.current = isConnected;
   }, [isConnected, onConnected]);
 
-  const handleWalletConnect = async (type: string) => {
+  const handleConnect = async (type: string) => {
     setConnecting(type);
     try {
       const wallet = walletMap[type];
@@ -672,77 +209,164 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
     }
   };
 
-  const handleEIP6963Connect = async (providerDetail: any) => {
-    setConnecting(providerDetail.info.uuid);
-    try {
-      await providerDetail.provider.request({ method: 'eth_requestAccounts' });
-      onConnected(providerDetail.provider);
-    } catch (err) {
-      console.error('EIP-6963 wallet connect failed:', err);
-    } finally {
-      setConnecting(null);
-    }
-  };
-
-  // Filter out unsupported wallets from EIP-6963
-  const filteredEIP6963 = eip6963Wallets;
+  const wallets = [
+    { name: 'HashPack', img: '/hashpack.jpg', type: 'hashpack' },
+    { name: 'MetaMask', img: '/metamask.png', type: 'metamask' },
+    { name: 'Blade', img: '/blade.png', type: 'blade' },
+    { name: 'Kabila', img: '/kabila.jpg', type: 'kabila' },
+  ];
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-sm text-gray-400 hover:text-white flex items-center gap-1">
-        <ArrowLeft className="w-3.5 h-3.5" /> Back
+      <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">
+        &larr; Back
       </button>
+
       <p className="text-sm text-gray-400 text-center">Select a wallet to connect</p>
 
-      {/* Supported wallets */}
       <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => handleWalletConnect('metamask')}
-          disabled={connecting !== null}
-          className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50"
-        >
-          <Image src="/MetaMask-icon-fox.svg" alt="MetaMask" width={48} height={48} />
-          <span className="text-xs text-gray-300 font-medium">MetaMask</span>
-          {connecting === 'metamask' && <Loader2 className="w-3 h-3 animate-spin text-vibrant-purple" />}
-        </button>
-        <button
-          onClick={() => handleWalletConnect('walletconnect')}
-          disabled={connecting !== null}
-          className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50"
-        >
-          <svg width="48" height="48" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="40" height="40" rx="10" fill="#3B99FC"/>
-            <path d="M11.5 17.2c4.7-4.6 12.3-4.6 17 0l.6.5a.6.6 0 010 .9l-2 2a.3.3 0 01-.4 0l-.8-.8c-3.3-3.2-8.6-3.2-11.9 0l-.8.8a.3.3 0 01-.4 0l-2-2a.6.6 0 010-.9l.7-.5zm21 3.9l1.8 1.7a.6.6 0 010 .9l-8 7.8a.6.6 0 01-.8 0l-5.7-5.5a.15.15 0 00-.2 0l-5.7 5.5a.6.6 0 01-.8 0l-8-7.8a.6.6 0 010-.9l1.8-1.7a.6.6 0 01.8 0l5.7 5.5c.1.1.2.1.2 0l5.7-5.5a.6.6 0 01.8 0l5.7 5.5c.1.1.2.1.2 0l5.7-5.5a.6.6 0 01.8 0z" fill="white"/>
-          </svg>
-          <span className="text-xs text-gray-300 font-medium">WalletConnect</span>
-          {connecting === 'walletconnect' && <Loader2 className="w-3 h-3 animate-spin text-vibrant-purple" />}
-        </button>
+        {wallets.map((w) => (
+          <button
+            key={w.type}
+            onClick={() => handleConnect(w.type)}
+            disabled={connecting !== null}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl border border-white/10 hover:border-vibrant-purple/50 hover:bg-white/[0.03] transition-colors disabled:opacity-50"
+          >
+            <Image src={w.img} alt={w.name} width={48} height={48} className="rounded-full" />
+            <span className="text-xs text-gray-300 font-medium">{w.name}</span>
+            {connecting === w.type && <Loader2 className="w-3 h-3 animate-spin text-vibrant-purple" />}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// M-Pesa Deposit View -- green themed
+// ---------------------------------------------------------------------------
+
+function MpesaDepositView({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
+  const { user } = useUser();
+  const [phone, setPhone] = useState('');
+  const [amount, setAmount] = useState('');
+  const [rate, setRate] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    fetch('/api/exchange-rate')
+      .then((r) => r.json())
+      .then((d) => setRate(d.rate))
+      .catch(() => setRate(130));
+  }, []);
+
+  const kesAmount = rate && amount ? (parseFloat(amount) * rate).toFixed(0) : '0';
+
+  const handleDeposit = async () => {
+    if (!phone || !amount) return;
+    setLoading(true);
+    setStatus('idle');
+    setErrorMsg('');
+    try {
+      const res = await fetch('/api/mpesa/deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: phone.startsWith('254') ? phone : `254${phone.replace(/^0/, '')}`,
+          amount: parseFloat(kesAmount),
+          userId: user?.id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Deposit failed');
+      setStatus('pending');
+      setTimeout(() => setStatus('success'), 8000);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Something went wrong');
+      setStatus('error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">
+        &larr; Back
+      </button>
+
+      {/* M-Pesa branding header */}
+      <div className="flex items-center gap-3 p-3 rounded-xl bg-green-900/20 border border-green-500/20">
+        <Image src="/mpesa.png" alt="M-Pesa" width={36} height={36} className="rounded-lg flex-shrink-0" />
+        <div>
+          <div className="text-sm font-medium text-green-400">M-Pesa Deposit</div>
+          <div className="text-xs text-gray-400">STK push to your phone</div>
+        </div>
       </div>
 
-      {/* Browser-detected EIP-6963 wallets (MetaMask, Rabby, etc.) */}
-      {filteredEIP6963.length > 0 && (
-        <>
-          <div className="flex items-center gap-2 my-1">
-            <div className="flex-1 h-px bg-gray-200 dark:bg-white/10" />
-            <span className="text-[10px] text-gray-400 uppercase tracking-wider">Detected in browser</span>
-            <div className="flex-1 h-px bg-gray-200 dark:bg-white/10" />
+      <div>
+        <label className="block text-xs text-gray-400 mb-1">Phone Number</label>
+        <input
+          type="tel"
+          placeholder="0712345678"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs text-gray-400 mb-1">Amount (USD)</label>
+        <input
+          type="number"
+          placeholder="10.00"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+        />
+      </div>
+
+      {rate && amount && parseFloat(amount) > 0 && (
+        <div className="text-xs bg-green-900/10 border border-green-500/10 rounded-lg p-3">
+          <div className="flex justify-between text-gray-400">
+            <span>Exchange rate</span>
+            <span className="text-white">1 USD = {rate.toFixed(2)} KES</span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {filteredEIP6963.map((w: any) => (
-              <button
-                key={w.info.uuid}
-                onClick={() => handleEIP6963Connect(w)}
-                disabled={connecting !== null}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors disabled:opacity-50"
-              >
-                <img src={w.info.icon} alt={w.info.name} width={48} height={48} className="rounded-full" style={{ width: 48, height: 48, objectFit: 'cover' }} />
-                <span className="text-xs text-gray-300 font-medium">{w.info.name}</span>
-                {connecting === w.info.uuid && <Loader2 className="w-3 h-3 animate-spin text-vibrant-purple" />}
-              </button>
-            ))}
+          <div className="flex justify-between mt-1 text-gray-400">
+            <span>You pay</span>
+            <span className="text-green-400 font-medium">KES {parseInt(kesAmount).toLocaleString()}</span>
           </div>
-        </>
+          <div className="flex justify-between mt-1 text-gray-400">
+            <span>You receive</span>
+            <span className="text-white font-medium">{parseFloat(amount).toFixed(2)} USDC</span>
+          </div>
+        </div>
       )}
+
+      {status === 'pending' && (
+        <div className="flex items-center gap-2 text-sm text-green-400">
+          <Loader2 className="w-4 h-4 animate-spin" /> Check your phone for the STK push...
+        </div>
+      )}
+      {status === 'success' && (
+        <div className="flex items-center gap-2 text-sm text-green-400">
+          <Check className="w-4 h-4" /> Deposit successful. Balance will update shortly.
+        </div>
+      )}
+      {status === 'error' && (
+        <div className="text-sm text-red-400">{errorMsg}</div>
+      )}
+
+      <button
+        onClick={handleDeposit}
+        disabled={loading || !phone || !amount}
+        className="w-full py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
+        {loading ? 'Processing...' : 'Pay with M-Pesa'}
+      </button>
     </div>
   );
 }
@@ -751,105 +375,36 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
 // Wallet Transfer View -- ERC-20 approve + transfer
 // ---------------------------------------------------------------------------
 
-function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderProp }: { onBack: () => void; onClose: () => void; eip6963Provider?: any }) {
-  const { t } = useLanguage();
-  const { user } = useMagic();
-  const { walletUser } = useWalletUser();
-  const effectiveAddress = user?.publicAddress ?? walletUser?.publicAddress ?? null;
-  const { isConnected } = useAccount();
-  const { address: evmAddress, address: accountId } = useAccount();
-  const { writeContract, watch } = useContractWriteCompat();
-  const eip6963Wallets = useEIP6963Wallets();
+function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
+  const { user } = useUser();
+  const { isConnected } = useWallet();
+  const { data: evmAddress } = useEvmAddress();
+  const { data: accountId } = useAccountId();
+  const { writeContract } = useWriteContract();
+  const { watch } = useWatchTransactionReceipt();
   const [amount, setAmount] = useState('');
-  const [step, setStep] = useState<'input' | 'transferring' | 'done' | 'error'>('input');
+  const [step, setStep] = useState<'input' | 'approving' | 'transferring' | 'crediting' | 'done' | 'error'>('input');
   const [errorMsg, setErrorMsg] = useState('');
   const [walletUsdcBalance, setWalletUsdcBalance] = useState<string | null>(null);
-  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
-  const [loadingProxy, setLoadingProxy] = useState(false);
-  // Resolved EIP-6963 provider: use prop if set, otherwise find it from walletUser.walletType
-  const [resolvedProvider, setResolvedProvider] = useState<any>(eip6963ProviderProp ?? null);
 
+  const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_EVM_ADDRESS || '';
   const tokenId = getStakingTokenId();
   const currency = getStakingCurrency();
 
-  // If the prop provider arrives later or walletUser is a wallet-auth user without an explicit
-  // prop provider, resolve the matching EIP-6963 provider from the detected wallet list.
-  useEffect(() => {
-    if (eip6963ProviderProp) { setResolvedProvider(eip6963ProviderProp); return; }
-    if (!walletUser?.walletType) return;
-    const hint = walletUser.walletType.toLowerCase();
-    const matched = eip6963Wallets.find((w: any) =>
-      w.info.rdns?.toLowerCase().includes(hint) ||
-      w.info.name?.toLowerCase().includes(hint)
-    );
-    if (matched) setResolvedProvider(matched.provider);
-  }, [eip6963ProviderProp, walletUser, eip6963Wallets]);
-
-  // Use resolvedProvider everywhere instead of the raw prop
-  const eip6963Provider = resolvedProvider;
-
-  // Fetch proxy wallet address with caching
-  useEffect(() => {
-    const fetchProxyWallet = async () => {
-      if (!effectiveAddress) return;
-
-      // Check cache first
-      try {
-        const cached = localStorage.getItem(`predensity_proxy_wallet_${effectiveAddress}`);
-        if (cached) {
-          const data = JSON.parse(cached);
-          if (Date.now() - data.timestamp < 86400000) {
-            setProxyWalletAddress(data.proxyWallet);
-            setLoadingProxy(false);
-            return;
-          }
-        }
-      } catch (e) {
-        console.error('[WalletTransferView] Cache read error:', e);
-      }
-
-      setLoadingProxy(true);
-      try {
-        const response = await fetch(`/api/proxy-wallet/create?userAddress=${effectiveAddress}`);
-        const data = await response.json();
-        if (data.exists && data.proxyWalletAddress) {
-          setProxyWalletAddress(data.proxyWalletAddress);
-          localStorage.setItem(
-            `predensity_proxy_wallet_${effectiveAddress}`,
-            JSON.stringify({
-              proxyWallet: data.proxyWalletAddress,
-              timestamp: Date.now(),
-            })
-          );
-        }
-      } catch (error) {
-        console.error('[WalletTransferView] Failed to fetch proxy wallet:', error);
-      } finally {
-        setLoadingProxy(false);
-      }
-    };
-
-    fetchProxyWallet();
-  }, [effectiveAddress]);
-
-  // Fetch USDC balance via mirror node (for native wallets)
+  // Fetch the connected wallet's USDC token balance from Hedera mirror node
   useEffect(() => {
     if (!accountId || !tokenId) return;
     let cancelled = false;
     const fetchBalance = async () => {
       try {
-        // Fetch USDC balance via ERC-20 balanceOf on Arc
-        const paddedAddr = accountId.replace('0x', '').toLowerCase().padStart(64, '0');
-        const callData = '0x70a08231' + paddedAddr;
-        const res = await fetch('/api/rpc-proxy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: tokenId, data: callData }, 'latest'] }),
-        });
+        const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+        const base = network === 'mainnet' ? 'https://mainnet.mirrornode.hedera.com' : 'https://testnet.mirrornode.hedera.com';
+        const res = await fetch(`${base}/api/v1/tokens/${tokenId}/balances?account.id=${accountId}&limit=1`);
         if (res.ok) {
           const data = await res.json();
-          if (data.result && data.result !== '0x' && !cancelled) {
-            const bal = Number(BigInt(data.result)) / Math.pow(10, currency.decimals);
+          const entry = data?.balances?.[0];
+          if (entry && !cancelled) {
+            const bal = Number(entry.balance) / Math.pow(10, currency.decimals);
             setWalletUsdcBalance(bal.toFixed(2));
           } else if (!cancelled) {
             setWalletUsdcBalance('0.00');
@@ -863,120 +418,54 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
     return () => { cancelled = true; };
   }, [accountId, tokenId, currency.decimals, step]);
 
-  // Fetch USDC balance via eth_call → balanceOf for EIP-6963 wallets (MetaMask on Arc).
-  // MetaMask holds USDC as ERC-20, so mirror node token queries return empty.
-  // We call balanceOf(address) directly via the wallet's own RPC.
-  useEffect(() => {
-    if (!eip6963Provider) return;
-    const tokenAddress = getStakingTokenAddress(); // USDC on Arc: 0x3600000000000000000000000000000000000000
-    if (!tokenAddress || tokenAddress === '0x0000000000000000000000000000000000000000') return;
-    let cancelled = false;
-    const fetchEip6963Balance = async () => {
-      try {
-        const accounts: string[] = await eip6963Provider.request({ method: 'eth_accounts' });
-        console.log('[WalletTransferView] eth_accounts:', accounts);
-        if (!accounts.length || cancelled) return;
-        const userAddr = accounts[0];
-        // balanceOf(address) selector = 0x70a08231, argument padded to 32 bytes
-        const data = '0x70a08231' + userAddr.slice(2).toLowerCase().padStart(64, '0');
-        console.log('[WalletTransferView] eth_call tokenAddress:', tokenAddress, 'userAddr:', userAddr);
-        const result: string = await eip6963Provider.request({
-          method: 'eth_call',
-          params: [{ to: tokenAddress, data }, 'latest'],
-        });
-        console.log('[WalletTransferView] eth_call raw result:', result);
-        if (cancelled) return;
-        if (result && result !== '0x' && result !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
-          const bal = Number(BigInt(result)) / Math.pow(10, currency.decimals);
-          console.log('[WalletTransferView] parsed balance:', bal);
-          setWalletUsdcBalance(bal.toFixed(2));
-        } else {
-          setWalletUsdcBalance('0.00');
-        }
-      } catch (e) {
-        console.error('[WalletTransferView] EIP-6963 balanceOf error:', e);
-        setWalletUsdcBalance('0.00');
-      }
-    };
-    fetchEip6963Balance();
-    return () => { cancelled = true; };
-  }, [eip6963Provider, currency.decimals, step]);
-
   const handleTransfer = async () => {
-    if (!amount) return;
-    if (!isConnected && !eip6963Provider) return;
-
-    if (!proxyWalletAddress) {
-      setStep('error');
-      setErrorMsg('Proxy wallet not found. Please refresh the page and try again.');
-      return;
-    }
-
+    if (!amount || !isConnected || !treasuryAddress) return;
     const rawAmount = BigInt(Math.floor(parseFloat(amount) * Math.pow(10, currency.decimals)));
 
     try {
+      // Single transfer -- no approve needed since user is sending their own tokens.
+      // On Hedera, HTS tokens support ERC-20 transfer via the precompile.
       setStep('transferring');
-      setErrorMsg('Processing transfer to your proxy wallet...');
+      const transferTxId = await writeContract({
+        contractId: tokenId,
+        abi: [{ type: 'function', name: 'transfer', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'nonpayable' }] as const,
+        functionName: 'transfer',
+        args: [treasuryAddress as `0x${string}`, rawAmount],
+      });
 
-      if (eip6963Provider) {
-        // EIP-6963 wallet (MetaMask, Rabby, etc.) — use eth_sendTransaction
-        const accounts: string[] = await eip6963Provider.request({ method: 'eth_accounts' });
-        if (!accounts.length) throw new Error('No accounts found in wallet');
-        // ERC-20 transfer(address,uint256) selector = 0xa9059cbb
-        const paddedTo = proxyWalletAddress.slice(2).padStart(64, '0');
-        const paddedAmt = rawAmount.toString(16).padStart(64, '0');
-        const data = '0xa9059cbb' + paddedTo + paddedAmt;
-        // Token EVM address: 0x0000...{tokenNum in hex}
-        const tokenParts = tokenId.split('.');
-        const tokenEvmAddr = '0x' + parseInt(tokenParts[tokenParts.length - 1]).toString(16).padStart(40, '0');
-        await eip6963Provider.request({
-          method: 'eth_sendTransaction',
-          params: [{ from: accounts[0], to: tokenEvmAddr, data }],
+      await new Promise<void>((resolve, reject) => {
+        watch(transferTxId as string, {
+          onSuccess: (tx) => { resolve(); return tx; },
+          onError: (receipt, err) => { reject(new Error('Transfer failed')); return receipt; },
         });
-      } else {
-        // Native wallet — use writeContract
-        const transferTxId = await writeContract({
-          contractId: tokenId,
-          abi: [{ type: 'function', name: 'transfer', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'nonpayable' }] as const,
-          functionName: 'transfer',
-          args: [proxyWalletAddress as `0x${string}`, rawAmount],
-        });
+      });
 
-        await new Promise<void>((resolve, reject) => {
-          watch(transferTxId as string, {
-            onSuccess: (tx) => { resolve(); return tx; },
-            onError: (receipt, err) => { reject(new Error('Transfer failed')); return receipt; },
-          });
-        });
+      // Credit Convex balance via API (verify on-chain + update balance)
+      setStep('crediting');
+      const res = await fetch('/api/wallet/deposit-crypto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          transactionId: transferTxId,
+          expectedAmount: parseFloat(amount),
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Failed to credit balance');
       }
-
-      if (typeof window !== 'undefined' && (window as any).adjustBalance) {
-        (window as any).adjustBalance(parseFloat(amount));
-      }
-
       setStep('done');
     } catch (err: any) {
-      let errorMessage = 'Transfer failed. Please try again.';
-      if (err.message) {
-        if (err.message.includes('User denied') || err.message.includes('cancelled') || err.message.includes('rejected')) {
-          errorMessage = 'You cancelled the transfer.';
-        } else if (err.message.includes('Insufficient')) {
-          errorMessage = 'Insufficient balance in your wallet.';
-        } else if (err.message.includes('Proxy wallet not found')) {
-          errorMessage = err.message;
-        } else if (err.message.length < 150 && !err.message.includes('at ') && !err.message.includes('stack')) {
-          errorMessage = err.message;
-        }
-      }
-      setErrorMsg(errorMessage);
+      setErrorMsg(err.message || 'Transfer failed');
       setStep('error');
     }
   };
 
-  if (!isConnected && !eip6963Provider) {
+  if (!isConnected) {
     return (
       <div className="space-y-4">
-        <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back</button>
+        <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">&larr; Back</button>
         <div className="text-center py-6">
           <Wallet className="w-8 h-8 text-gray-500 mx-auto mb-3" />
           <p className="text-sm text-gray-400 mb-4">Connect a wallet to transfer crypto</p>
@@ -988,67 +477,40 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back</button>
+      <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">&larr; Back</button>
 
       {step === 'input' && (
         <>
           <div className="flex items-center gap-3 p-3 rounded-xl bg-vibrant-purple/10 border border-vibrant-purple/20">
             <ArrowRightLeft className="w-5 h-5 text-vibrant-purple flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-900 dark:text-white">{t.transferFromWallet}</div>
+            <div>
+              <div className="text-sm font-medium text-white">Transfer from Wallet</div>
               <div className="text-xs text-gray-400">
-                {evmAddress ? formatAddress(evmAddress, 6) : effectiveAddress ? formatAddress(effectiveAddress, 6) : 'Connected'}
+                {evmAddress ? formatAddress(evmAddress, 6) : 'Connected'}
               </div>
             </div>
-            <div className="ml-auto text-right flex-shrink-0">
-              {walletUsdcBalance !== null ? (
-                <>
-                  <div className="text-sm font-semibold text-gray-900 dark:text-white">{walletUsdcBalance}</div>
-                  <div className="text-[10px] text-gray-500">{currency.symbol}</div>
-                </>
-              ) : (
-                <div className="text-[10px] text-gray-500">Loading…</div>
-              )}
-            </div>
+            {walletUsdcBalance !== null && (
+              <div className="ml-auto text-right">
+                <div className="text-sm font-semibold text-white">{walletUsdcBalance}</div>
+                <div className="text-[10px] text-gray-500">{currency.symbol}</div>
+              </div>
+            )}
           </div>
 
-          {/* Warn if wallet has no USDC */}
-          {walletUsdcBalance === '0.00' && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-400">
-              <span className="mt-0.5">⚠️</span>
-              <span>This wallet has no {currency.symbol} on Arc. Your {currency.symbol} may be in a different wallet (e.g. MetaMask). Switch wallets or fund this address first.</span>
-            </div>
-          )}
-
-          {/* Show destination (proxy wallet) */}
-          {proxyWalletAddress && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-white/10">
-              <div className="flex-1 min-w-0">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">To (Your Proxy Wallet)</div>
-                <code className="text-xs font-mono text-gray-900 dark:text-white truncate block">
-                  {proxyWalletAddress}
-                </code>
-              </div>
-            </div>
-          )}
-          {loadingProxy && !proxyWalletAddress && (
-            <div className="text-center py-2 text-xs text-gray-500">Loading proxy wallet...</div>
-          )}
-
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Amount ({currency.symbol})</label>
+            <label className="block text-xs text-gray-400 mb-1">Amount ({currency.symbol})</label>
             <input
               type="number"
               placeholder="100.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+              className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
             />
           </div>
 
           <button
             onClick={handleTransfer}
-            disabled={!amount || parseFloat(amount) <= 0 || !proxyWalletAddress}
+            disabled={!amount || parseFloat(amount) <= 0}
             className="w-full py-2.5 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <ArrowRightLeft className="w-4 h-4" />
@@ -1060,83 +522,31 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
       {step === 'transferring' && (
         <div className="text-center py-8">
           <Loader2 className="w-8 h-8 animate-spin text-vibrant-purple mx-auto mb-3" />
-          <p className="text-sm text-gray-900 dark:text-white">Transferring {amount} {currency.symbol}...</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Confirm in your wallet</p>
-          {errorMsg && <p className="text-xs text-gray-400 mt-2">{errorMsg}</p>}
+          <p className="text-sm text-white">Transferring {amount} {currency.symbol}...</p>
+          <p className="text-xs text-gray-400 mt-1">Confirm in your wallet</p>
+        </div>
+      )}
+      {step === 'crediting' && (
+        <div className="text-center py-8">
+          <Loader2 className="w-8 h-8 animate-spin text-green-400 mx-auto mb-3" />
+          <p className="text-sm text-white">Crediting your balance...</p>
         </div>
       )}
       {step === 'done' && (
-        <div className="text-center py-12">
-          {/* Animated checkmark circle */}
-          <div className="relative w-24 h-24 mx-auto mb-6">
-            {/* Animated circle border */}
-            <svg className="w-24 h-24 animate-[spin_1s_ease-in-out]" viewBox="0 0 100 100">
-              <circle
-                cx="50"
-                cy="50"
-                r="45"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="4"
-                className="text-green-500"
-                strokeDasharray="283"
-                strokeDashoffset="0"
-                style={{
-                  animation: 'drawCircle 0.6s ease-out forwards'
-                }}
-              />
-            </svg>
-            {/* Checkmark */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Check 
-                className="w-12 h-12 text-green-500" 
-                style={{
-                  animation: 'fadeIn 0.3s ease-in 0.4s forwards',
-                  opacity: 0
-                }}
-              />
-            </div>
-          </div>
-          
-          <p className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">Transfer complete</p>
-          <p className="text-base text-gray-600 dark:text-gray-400">{amount} {currency.symbol} sent to your proxy wallet</p>
-          
-          <button 
-            onClick={onClose} 
-            className="mt-8 px-12 py-3 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white text-base font-medium transition-colors"
-          >
+        <div className="text-center py-8">
+          <Check className="w-8 h-8 text-green-400 mx-auto mb-3" />
+          <p className="text-sm text-white">Transfer complete</p>
+          <p className="text-xs text-gray-400 mt-1">{amount} {currency.symbol} added to your balance</p>
+          <button onClick={onClose} className="mt-4 px-6 py-2 rounded-lg bg-vibrant-purple text-white text-sm font-medium">
             Done
           </button>
-          
-          <style jsx>{`
-            @keyframes drawCircle {
-              from {
-                stroke-dashoffset: 283;
-              }
-              to {
-                stroke-dashoffset: 0;
-              }
-            }
-            @keyframes fadeIn {
-              from {
-                opacity: 0;
-                transform: scale(0.5);
-              }
-              to {
-                opacity: 1;
-                transform: scale(1);
-              }
-            }
-          `}</style>
         </div>
       )}
       {step === 'error' && (
         <div className="text-center py-8">
-          <div className="w-12 h-12 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <X className="w-6 h-6 text-red-600 dark:text-red-400" />
-          </div>
-          <p className="text-sm text-red-600 dark:text-red-400 mb-1">{errorMsg}</p>
-          <button onClick={() => { setStep('input'); setErrorMsg(''); }} className="mt-4 px-6 py-2 rounded-lg border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+          <X className="w-8 h-8 text-red-400 mx-auto mb-3" />
+          <p className="text-sm text-red-400">{errorMsg}</p>
+          <button onClick={() => { setStep('input'); setErrorMsg(''); }} className="mt-4 px-6 py-2 rounded-lg border border-white/10 text-white text-sm">
             Try Again
           </button>
         </div>
@@ -1150,23 +560,25 @@ function WalletTransferView({ onBack, onClose, eip6963Provider: eip6963ProviderP
 // ---------------------------------------------------------------------------
 
 function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
-  const { user } = useMagic();
-  const { address: evmAddress } = useAccount();
-  const { isConnected } = useAccount();
+  const { user } = useUser();
+  const { data: evmAddress } = useEvmAddress();
+  const { isConnected } = useWallet();
 
   // Pre-fill with connected wallet address or managed wallet address
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    user ? { userId: user.issuer } : 'skip'
+    user ? { userId: user.id } : 'skip'
   );
   const defaultAddress = evmAddress || managedWallet?.evmAddress || '';
 
-  const [method, setMethod] = useState<'crypto' | null>('crypto');
-  const [address, setAddress] = useState(defaultAddress);
+  const [method, setMethod] = useState<'crypto' | 'mpesa' | null>(null);
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [rate, setRate] = useState<number | null>(null);
   const [useCustomAddress, setUseCustomAddress] = useState(false);
 
   // Set default address when method is selected
@@ -1177,6 +589,13 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
 
   const currency = getStakingCurrency();
 
+  useEffect(() => {
+    fetch('/api/exchange-rate')
+      .then((r) => r.json())
+      .then((d) => setRate(d.rate))
+      .catch(() => setRate(130));
+  }, []);
+
   const handleWithdraw = async () => {
     if (!amount) return;
     setLoading(true);
@@ -1184,34 +603,32 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
     setErrorMsg('');
 
     try {
-      if (!address) throw new Error('Enter a wallet address');
-      const res = await fetch('/api/wallet/withdraw-non-custodial', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.issuer, destinationAddress: address, amountUsdc: amount }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Withdrawal failed');
-
-      if (typeof window !== 'undefined' && (window as any).adjustBalance) {
-        (window as any).adjustBalance(-parseFloat(amount));
+      if (method === 'crypto') {
+        if (!address) throw new Error('Enter a wallet address');
+        const res = await fetch('/api/wallet/withdraw-crypto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user?.id, destinationAddress: address, amountUsdc: amount }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Withdrawal failed');
+      } else {
+        if (!phone) throw new Error('Enter a phone number');
+        const res = await fetch('/api/mpesa/withdraw', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user?.id,
+            phoneNumber: phone.startsWith('254') ? phone : `254${phone.replace(/^0/, '')}`,
+            amountUSDC: amount,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Withdrawal failed');
       }
-
       setStatus('success');
     } catch (err: any) {
-      let errorMessage = 'Something went wrong. Please try again.';
-      if (err.message) {
-        if (err.message.includes('User denied') || err.message.includes('cancelled')) {
-          errorMessage = 'You cancelled the transaction.';
-        } else if (err.message.includes('Insufficient')) {
-          errorMessage = err.message;
-        } else if (err.message.includes('Enter a')) {
-          errorMessage = err.message;
-        } else if (err.message.length < 150 && !err.message.includes('at ') && !err.message.includes('stack')) {
-          errorMessage = err.message;
-        }
-      }
-      setErrorMsg(errorMessage);
+      setErrorMsg(err.message || 'Something went wrong');
       setStatus('error');
     } finally {
       setLoading(false);
@@ -1220,23 +637,33 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">&larr; Back</button>
+      <button onClick={onBack} className="text-xs text-gray-400 hover:text-white transition-colors">&larr; Back</button>
 
       {!method && (
         <>
           <button
             onClick={handleSelectCrypto}
-            className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:border-vibrant-purple/50 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors text-left"
+            className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-vibrant-purple/50 hover:bg-white/[0.03] transition-colors text-left"
           >
             <div className="w-10 h-10 rounded-lg bg-vibrant-purple/20 text-vibrant-purple flex items-center justify-center flex-shrink-0">
               <ArrowUpRight className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-900 dark:text-white">Withdraw to Wallet</div>
+              <div className="text-sm font-medium text-white">Withdraw to Wallet</div>
               <div className="text-xs text-gray-400">Send {currency.symbol} to any EVM address</div>
             </div>
           </button>
 
+          <button
+            onClick={() => setMethod('mpesa')}
+            className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-green-500/50 hover:bg-green-500/[0.03] transition-colors text-left"
+          >
+            <Image src="/mpesa.png" alt="M-Pesa" width={40} height={40} className="rounded-lg flex-shrink-0" />
+            <div>
+              <div className="text-sm font-medium text-white">Withdraw to M-Pesa</div>
+              <div className="text-xs text-gray-400">Receive KES on your phone</div>
+            </div>
+          </button>
         </>
       )}
 
@@ -1267,7 +694,7 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
                 placeholder="0x..."
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm font-mono placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+                className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm font-mono placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
               />
             )}
           </div>
@@ -1278,7 +705,7 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
               placeholder="50.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+              className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
             />
           </div>
           <button
@@ -1292,6 +719,46 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
         </>
       )}
 
+      {method === 'mpesa' && status === 'idle' && (
+        <>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Phone Number</label>
+            <input
+              type="tel"
+              placeholder="0712345678"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Amount (USD)</label>
+            <input
+              type="number"
+              placeholder="10.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+            />
+          </div>
+          {rate && amount && parseFloat(amount) > 0 && (
+            <div className="text-xs bg-green-900/10 border border-green-500/10 rounded-lg p-3">
+              <div className="flex justify-between text-gray-400">
+                <span>You receive</span>
+                <span className="text-green-400 font-medium">KES {(parseFloat(amount) * rate).toFixed(0)}</span>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={handleWithdraw}
+            disabled={loading || !phone || !amount}
+            className="w-full py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
+            {loading ? 'Processing...' : 'Withdraw to M-Pesa'}
+          </button>
+        </>
+      )}
 
       {status === 'success' && (
         <div className="text-center py-8">
@@ -1327,9 +794,7 @@ function GuestHamburgerMenu({
   parentCloseTimer: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
 }) {
   const [mounted, setMounted] = useState(false);
-  const [langPanelOpen, setLangPanelOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { t } = useLanguage();
 
   useEffect(() => setMounted(true), []);
 
@@ -1350,7 +815,6 @@ function GuestHamburgerMenu({
   const rect = buttonRef.current.getBoundingClientRect();
 
   return createPortal(
-    <LangPanelContext.Provider value={{ open: langPanelOpen, setOpen: setLangPanelOpen }}>
     <div
       ref={menuRef}
       onMouseEnter={() => {
@@ -1365,71 +829,21 @@ function GuestHamburgerMenu({
         right: window.innerWidth - rect.right,
         zIndex: 9999,
       }}
-      className="relative w-56 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden text-gray-900 dark:text-white"
+      className="w-56 bg-neutral-950 border border-neutral-800 rounded-xl shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200"
     >
-      {/* Language flyout row */}
-      <LanguageFlyout />
-
-      <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 mx-3" />
-
-      {/* Support */}
-      <a href="mailto:support@predensity.com" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
-        <HelpCircle className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        {t.support}
-      </a>
-
-      <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 mx-3" />
-
-      {/* Blog & Whitepaper */}
-      <a href="https://predensity.substack.com/" target="_blank" rel="noopener noreferrer" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-400 dark:text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>
-        Blog
-      </a>
-      <a href="https://predensity.gitbook.io/predensity-whitepaper" target="_blank" rel="noopener noreferrer" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-400 dark:text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-        Whitepaper
-      </a>
-
-      <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 mx-3" />
-
-      <Link href="/privacy" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
-        <Shield className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        {t.privacyPolicy}
-      </Link>
-      <Link href="/terms" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
-        <FileText className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        {t.termsOfUse}
-      </Link>
-      <Link href="/cookies" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
-        <FileText className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        Cookie Policy
-      </Link>
-
-      <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 mx-3" />
-
-      {/* Social links */}
-      <div className="px-3 py-2 flex items-center gap-3">
-        {[
-          { href: 'https://x.com/predensity', label: 'X', icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.733-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg> },
-          { href: 'https://instagram.com/predensity', label: 'Instagram', icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg> },
-          { href: 'https://tiktok.com/@predensity.com', label: 'TikTok', icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.75a4.85 4.85 0 0 1-1.01-.06z"/></svg> },
-          { href: 'https://youtube.com/@predensity', label: 'YouTube', icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg> },
-        ].map((s) => (
-          <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} onClick={onClose}
-            className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
-            {s.icon}
-          </a>
-        ))}
+      <div className="px-2 py-1">
+        <ThemeToggle />
       </div>
-
-      <div className="px-4 pb-2">
-        <span className="text-[11px] text-gray-400 dark:text-gray-500">© {new Date().getFullYear()} Predensity</span>
-      </div>
-
-      {/* Language panel overlay */}
-      {langPanelOpen && <LanguagePanel onClose={() => setLangPanelOpen(false)} />}
-    </div>
-    </LangPanelContext.Provider>,
+      <div className="h-px bg-neutral-800 my-1" />
+      <Link href="/privacy" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-neutral-900 hover:text-white transition-colors rounded-lg mx-1">
+        <Shield className="w-4 h-4 text-gray-500" />
+        Privacy Policy
+      </Link>
+      <Link href="/terms" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-neutral-900 hover:text-white transition-colors rounded-lg mx-1">
+        <FileText className="w-4 h-4 text-gray-500" />
+        Terms of Use
+      </Link>
+    </div>,
     document.body
   );
 }
@@ -1439,88 +853,23 @@ function GuestHamburgerMenu({
 // ---------------------------------------------------------------------------
 
 export function Header({ children }: { children?: React.ReactNode }) {
-  const { t } = useLanguage();
-  const countryCode = useCountryCode();
-  const { isConnected, address: accountId } = useAccount();
-  const { disconnect } = useDisconnect();
-  const { user, logout, isAuthenticating } = useMagic();
-  const { walletUser, clearWalletUser } = useWalletUser();
-  // Signed in = Magic user OR wallet user
-  const isSignedIn = !!user || !!walletUser;
-  const { isWalletAuthenticating } = useWalletUser();
+  const { isConnected, disconnect } = useWallet();
+  const { data: balanceData, isLoading: balanceLoading } = useBalance({ autoFetch: isConnected });
+  const { data: accountId } = useAccountId();
+  const { user, isSignedIn } = useUser();
+  const { signOut } = useClerk();
 
   const [depositOpen, setDepositOpen] = useState(false);
-  const [depositInitialView, setDepositInitialView] = useState<DepositView>('crypto');
+  const [depositInitialView, setDepositInitialView] = useState<DepositView>('menu');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [guestMenuOpen, setGuestMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const guestMenuBtnRef = useRef<HTMLButtonElement>(null);
-  const authSignupBtnRef = useRef<HTMLButtonElement>(null);
-  const authLoginBtnRef = useRef<HTMLButtonElement>(null);
   const profileBtnRef = useRef<HTMLButtonElement>(null);
-  const mobileProfileBtnRef = useRef<HTMLButtonElement>(null);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const profileCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const guestCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [notifOpen, setNotifOpen] = useState(false);
-  const notifBtnRef = useRef<HTMLButtonElement>(null);
-  const authModalOpeningRef = useRef(false);
-  
-  // Log when authModalOpen changes
-  useEffect(() => {
-    console.log('[header] authModalOpen changed to:', authModalOpen);
-  }, [authModalOpen]);
-  
-  // Auto-close auth modal when user logs in
-  useEffect(() => {
-    if (user && authModalOpen) {
-      console.log('[header] User logged in, auto-closing auth modal');
-      setAuthModalOpen(false);
-    }
-  }, [user, authModalOpen]);
-
-  // Guard: if the wallet library disconnects externally (user rejects in MetaMask,
-  // removes extension, etc.) while signed in as a wallet user — clear the session.
-  // Also handles the case where a Magic/OAuth user connected a wallet for deposits
-  // and then logs out: isConnected becomes false naturally after logout calls disconnect().
-  useEffect(() => {
-    // Only clear the session if isConnected is explicitly false (not undefined).
-    // undefined means the wallet library hasn't resolved yet (e.g. during a
-    // failed connection attempt). Clearing on undefined caused a loop where
-    // a failed EIP-6963 connect would clear a legitimate session and
-    // reopen the auth modal repeatedly.
-    if (isConnected === false && walletUser) {
-      console.log('[header] Wallet disconnected externally — clearing wallet user session');
-      clearWalletUser();
-    }
-  }, [isConnected, walletUser, clearWalletUser]);
-  
-  // Handler to open auth modal (only if not already logged in)
-  const handleOpenAuthModal = useCallback(() => {
-    console.log('[header] Opening auth modal, user:', user, 'already opening:', authModalOpeningRef.current, 'modal state:', authModalOpen);
-    
-    // Prevent multiple rapid calls
-    if (authModalOpeningRef.current || authModalOpen) {
-      console.log('[header] Modal already opening or open, ignoring duplicate call');
-      return;
-    }
-    
-    if (user) {
-      console.log('[header] User already logged in, not opening modal');
-      return;
-    }
-    
-    authModalOpeningRef.current = true;
-    setAuthModalOpen(true);
-    
-    // Reset the flag after a short delay
-    setTimeout(() => {
-      authModalOpeningRef.current = false;
-    }, 1000);
-  }, [user, authModalOpen]);
-  const mobileNotifBtnRef = useRef<HTMLButtonElement>(null);
-  const notifPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -1530,288 +879,23 @@ export function Header({ children }: { children?: React.ReactNode }) {
     };
   }, []);
 
-  // Fetch proxy wallet address for balance display with caching
-  const getCachedProxyWallet = (userAddr: string): string | null => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const cached = localStorage.getItem(`predensity_proxy_wallet_${userAddr}`);
-      if (cached) {
-        const data = JSON.parse(cached);
-        // Cache valid for 24 hours
-        if (Date.now() - data.timestamp < 86400000) {
-          return data.proxyWallet;
-        }
-      }
-    } catch (e) {
-      console.error('[header] Proxy wallet cache read error:', e);
-    }
-    return null;
-  };
-
-  // Unified address: Magic user OR wallet user
-  const effectivePublicAddress = user?.publicAddress ?? walletUser?.publicAddress ?? null;
-
-  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const addr = (typeof user !== 'undefined' && user?.publicAddress) || null;
-    return addr ? getCachedProxyWallet(addr) : null;
-  });
-
-  useEffect(() => {
-    let pollingInterval: NodeJS.Timeout;
-
-    const fetchProxyWallet = async () => {
-      if (!effectivePublicAddress) return;
-
-      // Check cache first — wallet sign-in caches it immediately, so this is usually instant
-      const cached = getCachedProxyWallet(effectivePublicAddress);
-      if (cached) {
-        setProxyWalletAddress(cached);
-        return;
-      }
-
-      try {
-        const response = await fetch(`/api/proxy-wallet/create?userAddress=${effectivePublicAddress}`);
-        const data = await response.json();
-        if (data.exists && data.proxyWalletAddress) {
-          setProxyWalletAddress(data.proxyWalletAddress);
-          localStorage.setItem(
-            `predensity_proxy_wallet_${effectivePublicAddress}`,
-            JSON.stringify({ proxyWallet: data.proxyWalletAddress, timestamp: Date.now() })
-          );
-        }
-      } catch (error) {
-        console.error('[header] Failed to fetch proxy wallet:', error);
-      }
-    };
-
-    if (isSignedIn && effectivePublicAddress) {
-      if (!proxyWalletAddress) {
-        fetchProxyWallet();
-        // Poll every 5 s for new users whose proxy wallet may still be deploying
-        pollingInterval = setInterval(fetchProxyWallet, 5000);
-      }
-    }
-
-    return () => {
-      if (pollingInterval) clearInterval(pollingInterval);
-    };
-  }, [isSignedIn, effectivePublicAddress, proxyWalletAddress]);
-
-  // Read balance from blockchain (non-custodial) - use proxy wallet address
-  const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(proxyWalletAddress || undefined);
-  
-  // Debug logging
-  useEffect(() => {
-    console.log('[header] Balance debug:', {
-      proxyWalletAddress,
-      platformBalance,
-      balanceLoading,
-      effectivePublicAddress,
-      authType: walletUser ? 'wallet' : user ? 'magic' : 'none',
-    });
-  }, [proxyWalletAddress, platformBalance, balanceLoading, effectivePublicAddress]);
-  
-  // Still query managed wallet for user info (but not balance)
+  // Managed wallet balance from Convex
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    isSignedIn && user ? { userId: user.issuer } : 'skip'
+    isSignedIn && user ? { userId: user.id } : 'skip'
   );
+  const platformBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
 
-  // Balance visibility toggle -- persisted to localStorage, synced across components
-  const [balancesHidden, setBalancesHidden] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('predensity-hide-balances') === 'true';
-    }
-    return false;
-  });
-  useEffect(() => {
-    // Listen for changes from other components (e.g. my-bets page toggle)
-    const onCustom = () => {
-      setBalancesHidden(localStorage.getItem('predensity-hide-balances') === 'true');
-    };
-    window.addEventListener('predensity-balance-toggle', onCustom);
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'predensity-hide-balances') {
-        setBalancesHidden(e.newValue === 'true');
-      }
-    });
-    return () => {
-      window.removeEventListener('predensity-balance-toggle', onCustom);
-    };
-  }, []);
-  const toggleBalancesHidden = useCallback(() => {
-    setBalancesHidden(prev => {
-      const next = !prev;
-      localStorage.setItem('predensity-hide-balances', String(next));
-      window.dispatchEvent(new Event('predensity-balance-toggle'));
-      return next;
-    });
-  }, []);
-
-  // Query user bets to calculate portfolio value (positions + unrealized P&L)
-  const managedUserAddress = isSignedIn && user ? `managed:${user.issuer}`.toLowerCase() : null;
-  const managedEvmAddress = managedWallet?.evmAddress?.toLowerCase() || null;
-  const { address: evmAddr } = useAccount();
-  const walletAddress = evmAddr?.toLowerCase() || null;
-
-  const managedEoaAddress = isSignedIn && (user?.publicAddress || evmAddr) 
-    ? `managed:${user?.publicAddress || evmAddr}`.toLowerCase() 
-    : null;
-
-  const managedBetsRaw = useConvexQuery(
-    api.sync.getBetsByUser,
-    managedUserAddress ? { userAddress: managedUserAddress } : 'skip'
-  );
-  const walletBetsRaw = useConvexQuery(
-    api.sync.getBetsByUser,
-    walletAddress ? { userAddress: walletAddress } : 'skip'
-  );
-  const managedEvmBetsRaw = useConvexQuery(
-    api.sync.getBetsByUser,
-    managedEvmAddress && managedEvmAddress !== walletAddress
-      ? { userAddress: managedEvmAddress }
-      : 'skip'
-  );
-  const managedEoaBetsRaw = useConvexQuery(
-    api.sync.getBetsByUser,
-    managedEoaAddress ? { userAddress: managedEoaAddress } : 'skip'
-  );
-
-  // Wallet-auth users: bets stored as managed:<walletUser.publicAddress>
-  const walletUserBetAddress = walletUser?.publicAddress
-    ? `managed:${walletUser.publicAddress}`.toLowerCase()
-    : null;
-  const walletUserBetsRaw = useConvexQuery(
-    api.sync.getBetsByUser,
-    walletUserBetAddress && walletUserBetAddress !== managedEoaAddress
-      ? { userAddress: walletUserBetAddress }
-      : 'skip'
-  );
-
-  // Calculate portfolio value: active positions value + unrealized P&L
-  const portfolioValue = React.useMemo(() => {
-    const allRaw = [
-      ...(managedBetsRaw || []),
-      ...(walletBetsRaw || []),
-      ...(managedEvmBetsRaw || []),
-      ...(managedEoaBetsRaw || []),
-      ...(walletUserBetsRaw || []),
-    ].filter((b: any) => b.status !== 'failed');
-    // Deduplicate by betId
-    const seen = new Set<string>();
-    const bets: any[] = [];
-    for (const b of allRaw) {
-      if (!seen.has(b.betId)) { seen.add(b.betId); bets.push(b); }
-    }
-    const currency = getStakingCurrency();
-    const formatStake = (val: number | string) => {
-      if (isTokenMode()) return Number(val) / Math.pow(10, currency.decimals);
-      return Number(val) / 1e8;
-    };
-    // Active positions value
-    const activeBets = bets.filter(b => !b.finalized);
-    const activeValue = activeBets.reduce((sum, b) => sum + formatStake(b.stake), 0);
-    // Unrealized P&L from resolved bets (won payouts minus all stakes)
-    const resolvedBets = bets.filter(b => b.finalized);
-    const totalWonPayout = resolvedBets.reduce((sum, b) => {
-      if (b.won) return sum + formatStake(b.payout || b.expectedPayout);
-      return sum;
-    }, 0);
-    const totalResolvedStake = resolvedBets.reduce((sum, b) => sum + formatStake(b.stake), 0);
-    const unrealizedPnl = totalWonPayout - totalResolvedStake;
-    return activeValue + unrealizedPnl;
-  }, [managedBetsRaw, walletBetsRaw, managedEvmBetsRaw, managedEoaBetsRaw, walletUserBetsRaw]);
-
-  // Auto-create managed wallet for new users who don't have one yet
-  const walletCreationAttempted = useRef(false);
-  useEffect(() => {
-    if (!isSignedIn || !user || managedWallet === undefined) return; // still loading
-    if (managedWallet !== null || walletCreationAttempted.current) return; // already exists or already tried
-
-    walletCreationAttempted.current = true;
-    
-    // Get DID token and create wallet
-    (async () => {
-      try {
-        const didToken = await getDIDToken();
-        const userInfo = await getUserInfo();
-        
-        const res = await fetch('/api/wallet/create', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${didToken}`,
-          },
-          body: JSON.stringify({
-            userId: userInfo?.issuer,
-            email: userInfo?.email,
-            magicEOAAddress: userInfo?.publicAddress,
-          }),
-        });
-        
-        if (!res.ok) {
-          const data = await res.json();
-          console.warn('[auto-wallet] Creation skipped:', data.error);
-          return;
-        }
-        
-        console.log('[auto-wallet] Managed wallet created for new user');
-      } catch (err) {
-        console.error('[auto-wallet] Error:', err);
-      }
-    })();
-  }, [isSignedIn, user, managedWallet]);
-
-  // Auto-sync user profile data to Convex userProfiles (for public profiles)
-  const updateProfile = useConvexMutation(api.social.updateProfile);
-  const profileSyncAttempted = useRef(false);
-  useEffect(() => {
-    if (!isSignedIn || !user || profileSyncAttempted.current) return;
-    profileSyncAttempted.current = true;
-    const addr = `managed:${user.issuer}`.toLowerCase();
-    updateProfile({
-      userAddress: addr,
-      displayName: user.email?.split('@')[0] || undefined,
-      avatar: (user as any).picture || undefined,
-      bio: undefined,
-    }).catch(() => { /* ignore sync errors */ });
-  }, [isSignedIn, user]);
-
-  // Background deposit detection is no longer needed
-  // Balance is automatically refreshed by useBlockchainBalance hook every 10 seconds
-
-  // Notifications
-  const notifications = useConvexQuery(
-    api.notifications.getUserNotifications,
-    isSignedIn && user ? { userId: user.issuer } : 'skip'
-  );
-  const unreadCount = useConvexQuery(
-    api.notifications.getUnreadCount,
-    isSignedIn && user ? { userId: user.issuer } : 'skip'
-  );
-  const markAllRead = useConvexMutation(api.notifications.markAllNotificationsRead);
-  const hasNotifications = (unreadCount ?? 0) > 0;
-
-  // Close notification panel on outside click
-  useEffect(() => {
-    if (!notifOpen) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        notifPanelRef.current && !notifPanelRef.current.contains(target) &&
-        (!notifBtnRef.current || !notifBtnRef.current.contains(target)) &&
-        (!mobileNotifBtnRef.current || !mobileNotifBtnRef.current.contains(target))
-      ) {
-        setNotifOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [notifOpen]);
+  // HBAR balance from connected wallet
+  const hbarBalance = React.useMemo(() => {
+    if (!balanceData) return 0;
+    if (typeof balanceData === 'object' && 'hbars' in balanceData) return parseFloat(balanceData.hbars.toString());
+    if (typeof balanceData === 'object' && 'value' in balanceData) return parseFloat(balanceData.value.toString());
+    return parseFloat(balanceData.toString());
+  }, [balanceData]);
 
   const openDeposit = useCallback(() => {
-    setDepositInitialView('crypto');
+    setDepositInitialView('menu');
     setDepositOpen(true);
   }, []);
 
@@ -1820,44 +904,37 @@ export function Header({ children }: { children?: React.ReactNode }) {
     setDepositOpen(true);
   }, []);
 
+  const formatHbar = (b: number) => {
+    if (!b) return '0 HBAR';
+    return b >= 1000 ? `${(b / 1000).toFixed(2)}k HBAR` : `${b.toFixed(2)} HBAR`;
+  };
+
   return (
-    <BalanceVisibilityContext.Provider value={{ balancesHidden, toggleBalancesHidden }}>
     <DepositModalContext.Provider value={{ openDeposit, openWithdraw }}>
-      <header className="sticky top-3 z-50 px-4 mt-1.5">
-        <div className="mx-auto max-w-screen-2xl px-3 sm:px-5 h-14 sm:h-16 flex items-center justify-between gap-2 rounded-2xl bg-white dark:bg-neutral-950 border border-gray-200 dark:border-white/[0.08] shadow-lg dark:shadow-black/40 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-neutral-950/90">
+      <header className="border-b border-border bg-neutral-950 backdrop-blur supports-[backdrop-filter]:bg-background/60 relative z-50">
+        <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
           {/* Logo */}
-          <Link href="/markets" className="flex items-center gap-1.5 flex-shrink-0">
-            {/* Inline SVG — cropped to the actual shape so no phantom whitespace */}
-            <svg viewBox="200 90 180 255" className="w-4 h-5 fill-black dark:fill-white" aria-hidden="true">
-              <path d="M288.289 93.2865C292.454 94.1865 303.501 101.637 307.525 104.03L336.786 121.118C344.683 125.662 352.542 130.272 360.362 134.947C364.627 137.446 369.148 139.538 373.014 142.58C374.05 146.213 373.601 159.985 373.584 164.447L373.599 192.072L373.666 224.482C373.675 228.554 373.952 237.838 373.375 241.468C372.011 242.877 356.932 251.166 354.389 252.641L312.721 276.986C305.815 281.054 296.401 286.354 289.839 290.686C289.619 293.215 289.809 298.382 289.787 301.124C289.68 308.606 289.635 316.088 289.65 323.571C289.677 327.425 289.803 331.289 289.773 335.141C289.76 336.729 290.036 338.935 288.436 339.585C285.705 339.087 266.579 327.47 262.978 325.348C256.514 321.661 205.572 292.495 203.898 290.536C202.619 285.701 203.257 273.352 203.253 267.959L203.291 227.886L203.283 208.302C203.274 203.72 203.011 195.982 204.029 191.795C204.596 191.052 205.617 190.334 206.416 189.853C216.455 183.811 226.692 178.14 236.617 171.904C238.963 170.431 241.711 168.701 244.2 167.533C233.649 160.849 222.762 154.845 212.098 148.347C210.214 147.2 204.232 144.393 204.061 142.411C205.58 140.802 223.805 130.547 227.161 128.575L268.583 104.477C273.179 101.79 283.771 94.5567 288.289 93.2865ZM247.704 167.249C251.307 169.147 259.609 174.058 262.892 176.452C267.007 179.454 285.565 188.818 287.402 191.793C287.326 195.313 248.867 214.553 247.719 216.891C246.292 219.797 246.788 262.35 247.109 265.393C250.027 267.759 259.326 272.583 263.319 275.135C270.475 279.293 279.997 285.139 287.341 288.503C287.106 283.644 287.176 276.102 287.23 271.171C287.314 263.464 286.416 249.288 287.765 242.115C287.826 242.038 287.885 241.96 287.946 241.883C290.411 238.785 297.09 235.818 300.681 233.748C304.516 231.536 328.516 218.126 329.342 216.452C329.822 215.477 329.886 213.906 329.933 212.838C330.273 205.147 329.94 197.29 329.972 189.585C330.001 182.722 330.477 175.471 329.855 168.642C329.828 168.342 329.795 168.043 329.755 167.745C327.161 165.663 317.302 159.764 314.154 158.202C309.988 156.134 291.173 143.866 288.497 143.705C284.455 144.985 279.89 148.051 276.196 150.299L258.871 160.833C255.22 163.048 251.567 165.464 247.704 167.249Z" />
-            </svg>
-            <span className="text-base sm:text-xl font-bold text-light-gray">
-              Predensity{countryCode && (
-                <sup className="text-[10px] font-semibold text-gray-400 ml-0.5 align-super">{countryCode}</sup>
-              )}
-            </span>
+          <Link href="/markets" className="flex items-center space-x-2 flex-shrink-0">
+            <Image src="/predensity-logo.png" alt="Predensity" width={32} height={32} className="sm:w-10 sm:h-10 rounded-md" />
+            <span className="text-base sm:text-xl font-bold text-light-gray">Predensity</span>
           </Link>
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-2">
             {isSignedIn && (
               <>
-                {/* Portfolio link with icon + value, then Bal value, then eye toggle */}
+                {/* Portfolio link with icon + value, then Bal value */}
                 <Link href="/my-bets" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                   <div className="flex items-center gap-1.5">
                     <Wallet className="w-4 h-4 text-gray-400" />
                     <div>
-                      <div className="text-[11px] text-gray-500 leading-tight">{t.portfolio}</div>
-                      <div className="text-sm font-semibold text-green-500">
-                        {balancesHidden ? HIDDEN_VALUE : `$${portfolioValue.toFixed(2)}`}
-                      </div>
+                      <div className="text-[11px] text-gray-500 leading-tight">Portfolio</div>
+                      <div className="text-sm font-semibold text-green-500">${platformBalance.toFixed(2)}</div>
                     </div>
                   </div>
                   <div>
-                    <div className="text-[11px] text-gray-500 leading-tight">{t.balance}</div>
-                    <div className="text-sm font-semibold text-green-500">
-                      {balancesHidden ? HIDDEN_VALUE : `$${platformBalance.toFixed(2)}`}
-                    </div>
+                    <div className="text-[11px] text-gray-500 leading-tight">Bal</div>
+                    <div className="text-sm font-semibold text-green-500">${platformBalance.toFixed(2)}</div>
                   </div>
                 </Link>
 
@@ -1866,65 +943,10 @@ export function Header({ children }: { children?: React.ReactNode }) {
                   onClick={openDeposit}
                   className="px-4 py-1.5 rounded-lg bg-vibrant-purple hover:bg-vibrant-purple/90 text-white font-medium text-sm transition-colors"
                 >
-                  {t.deposit}
+                  Deposit
                 </button>
 
-                {/* Notification icon */}
-                <div className="relative">
-                  <button
-                    ref={notifBtnRef}
-                    className="p-1 text-gray-400 hover:text-white transition-colors relative"
-                    onClick={() => {
-                      setNotifOpen(o => !o);
-                      if (!notifOpen && hasNotifications && user) {
-                        markAllRead({ userId: user.issuer });
-                      }
-                    }}
-                    aria-label="Notifications"
-                  >
-                    <Image
-                      src="/notification.svg"
-                      alt="Notifications"
-                      width={24}
-                      height={24}
-                      className="dark:brightness-0 dark:invert"
-                    />
-                    {hasNotifications && (
-                      <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
-                    )}
-                  </button>
-                  {notifOpen && (
-                    <div
-                      ref={notifPanelRef}
-                      className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#111] rounded-xl shadow-2xl z-[100] overflow-hidden"
-                    >
-                      <div className="px-4 py-3">
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{t.notifications}</span>
-                      </div>
-                      {(!notifications || notifications.length === 0) ? (
-                        <div className="flex flex-col items-center justify-center py-10 px-4">
-                          <Image src="/no notification.svg" alt="" width={36} height={36} className="dark:brightness-0 dark:invert opacity-40 mb-3" />
-                          <span className="text-sm text-gray-500 dark:text-neutral-500">You have no notifications.</span>
-                        </div>
-                      ) : (
-                        <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-neutral-800/50">
-                          {notifications.map((n: any) => (
-                            <div key={n._id} className={`px-4 py-3 text-sm ${n.read ? 'text-gray-400 dark:text-neutral-500' : 'text-gray-900 dark:text-white'} hover:bg-gray-50 dark:hover:bg-neutral-900/50 transition-colors`}>
-                              <div className="leading-snug">{n.message}</div>
-                              <div className="text-[11px] text-gray-400 dark:text-neutral-600 mt-1">
-                                {new Date(n.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                {' '}
-                                {new Date(n.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Profile avatar -- hover or click to expand dropdown */}
+                {/* Profile avatar -- hover to expand dropdown */}
                 <div
                   className="relative"
                   onMouseEnter={() => {
@@ -1938,47 +960,35 @@ export function Header({ children }: { children?: React.ReactNode }) {
                   <button
                     ref={profileBtnRef}
                     className="flex items-center gap-1"
-                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   >
-                    <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-                      <Avatar size={32} name={user?.issuer || walletUser?.publicAddress || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || walletUser?.publicAddress || 'default')} square={false} />
-                    </div>
-                    <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform duration-200', profileDropdownOpen && 'rotate-180')} />
+                    {user?.imageUrl ? (
+                      <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 bg-vibrant-purple rounded-full flex items-center justify-center text-white text-xs font-medium">
+                        {(user?.firstName || user?.primaryEmailAddress?.emailAddress || 'U').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <ChevronDown className="w-3 h-3 text-gray-400" />
                   </button>
                 </div>
               </>
             )}
 
             {/* Non-signed-in: Sign In, Sign Up, hamburger (hover) */}
-            {!isSignedIn && !isAuthenticating && !isWalletAuthenticating && mounted && (
+            {!isSignedIn && mounted && (
               <>
-                <Button 
-                  ref={authLoginBtnRef} 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleOpenAuthModal();
-                  }}
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-sm text-gray-300 hover:text-white flex items-center gap-1.5"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                  Log in
-                </Button>
-                <Button 
-                  ref={authSignupBtnRef} 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleOpenAuthModal();
-                  }}
-                  size="sm" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg px-5 py-2 flex items-center gap-1.5"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                  Sign up
-                </Button>
+                <SignInButton mode="modal">
+                  <Button variant="ghost" size="sm" className="text-sm text-gray-300 hover:text-white flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                    Log in
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg px-5 py-2 flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                    Sign up
+                  </Button>
+                </SignUpButton>
                 <div
                   className="relative"
                   onMouseEnter={() => {
@@ -1998,180 +1008,15 @@ export function Header({ children }: { children?: React.ReactNode }) {
                 </div>
               </>
             )}
-            
-            {/* Authenticating state */}
-            {isAuthenticating && mounted && createPortal(
-              <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-                <div className="bg-[#1a1a1c] rounded-3xl shadow-2xl border border-white/10 w-[480px] max-w-[90vw] p-16">
-                  <div className="text-center">
-                    {/* Magic Logo with spinning ring */}
-                    <div className="mb-8 flex justify-center">
-                      <div className="relative w-32 h-32 flex items-center justify-center">
-                        {/* Spinning ring */}
-                        <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
-                        {/* Magic Logo */}
-                        <Image 
-                          src="/1-Icon_Magic_Color.png" 
-                          alt="Magic" 
-                          width={64} 
-                          height={64}
-                          className="opacity-90"
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Title */}
-                    <h2 className="text-2xl font-bold text-white mb-3">
-                      Redirecting...
-                    </h2>
-                    
-                    {/* Subtitle */}
-                    <p className="text-gray-400 text-base">
-                      Please wait as we redirect you.
-                    </p>
-                  </div>
-                </div>
-              </div>,
-              document.body
-            )}
-
-            {/* Wallet sign-in authenticating overlay — same design as Magic */}
-            {isWalletAuthenticating && mounted && createPortal(
-              <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-                <div className="bg-[#1a1a1c] rounded-3xl shadow-2xl border border-white/10 w-[480px] max-w-[90vw] p-16">
-                  <div className="text-center">
-                    <div className="mb-8 flex justify-center">
-                      <div className="relative w-32 h-32 flex items-center justify-center">
-                        <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
-                        <img src="/predensity-logo.png" alt="Predensity" className="w-14 h-14 object-contain" />
-                      </div>
-                    </div>
-                    <h2 className="text-2xl font-bold text-white mb-3">
-                      Setting up your account...
-                    </h2>
-                    <p className="text-gray-400 text-base">
-                      Please wait as we set up your wallet.
-                    </p>
-                  </div>
-                </div>
-              </div>,
-              document.body
-            )}
           </div>
 
-          {/* Mobile: Profile avatar when signed in, Login/Signup when not */}
-          <div className="md:hidden flex items-center gap-2">
-            {isSignedIn && mounted && (
-              <>
-                {/* Notification icon */}
-                <div className="relative">
-                  <button
-                    ref={mobileNotifBtnRef}
-                    className="p-1 text-gray-400 hover:text-white transition-colors relative"
-                    onClick={() => {
-                      setNotifOpen(o => !o);
-                      if (!notifOpen && hasNotifications && user) {
-                        markAllRead({ userId: user.issuer });
-                      }
-                    }}
-                    aria-label="Notifications"
-                  >
-                    <Image
-                      src="/notification.svg"
-                      alt="Notifications"
-                      width={22}
-                      height={22}
-                      className="dark:brightness-0 dark:invert"
-                    />
-                    {hasNotifications && (
-                      <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
-                    )}
-                  </button>
-                  {notifOpen && (
-                    <div
-                      ref={notifPanelRef}
-                      className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white dark:bg-[#111] rounded-xl shadow-2xl z-[100] overflow-hidden"
-                    >
-                      <div className="px-4 py-3">
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{t.notifications}</span>
-                      </div>
-                      {(!notifications || notifications.length === 0) ? (
-                        <div className="flex flex-col items-center justify-center py-10 px-4">
-                          <Image src="/no notification.svg" alt="" width={36} height={36} className="dark:brightness-0 dark:invert opacity-40 mb-3" />
-                          <span className="text-sm text-gray-500 dark:text-neutral-500">You have no notifications.</span>
-                        </div>
-                      ) : (
-                        <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-neutral-800/50">
-                          {notifications.map((n: any) => (
-                            <div key={n._id} className={`px-4 py-3 text-sm ${n.read ? 'text-gray-400 dark:text-neutral-500' : 'text-gray-900 dark:text-white'} hover:bg-gray-50 dark:hover:bg-neutral-900/50 transition-colors`}>
-                              <div className="leading-snug">{n.message}</div>
-                              <div className="text-[11px] text-gray-400 dark:text-neutral-600 mt-1">
-                                {new Date(n.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                {' '}
-                                {new Date(n.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div
-                  className="relative"
-                  onMouseEnter={() => {
-                    if (profileCloseTimer.current) { clearTimeout(profileCloseTimer.current); profileCloseTimer.current = null; }
-                    if (window.matchMedia('(hover: hover)').matches) setProfileDropdownOpen(true);
-                  }}
-                  onMouseLeave={() => {
-                    if (window.matchMedia('(hover: hover)').matches) {
-                      profileCloseTimer.current = setTimeout(() => setProfileDropdownOpen(false), 200);
-                    }
-                  }}
-                >
-                  <button
-                    ref={mobileProfileBtnRef}
-                    className="flex items-center gap-1"
-                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                  >
-                    <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-[#0a0a0c]">
-                      <Avatar size={32} name={user?.issuer || walletUser?.publicAddress || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || walletUser?.publicAddress || 'default')} square={false} />
-                    </div>
-                    <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform duration-200', profileDropdownOpen && 'rotate-180')} />
-                  </button>
-                </div>
-              </>
-            )}
-            {!isSignedIn && !isWalletAuthenticating && mounted && (
-              <>
-                <Button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleOpenAuthModal();
-                  }}
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-xs text-gray-300 hover:text-white flex items-center gap-1"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                  Log in
-                </Button>
-                <Button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleOpenAuthModal();
-                  }}
-                  size="sm" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg px-3 py-1.5 flex items-center gap-1"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                  Sign up
-                </Button>
-              </>
-            )}
-          </div>
+          {/* Mobile hamburger */}
+          <button
+            className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-neutral-800 transition-colors"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </header>
 
@@ -2182,23 +1027,31 @@ export function Header({ children }: { children?: React.ReactNode }) {
       <GuestHamburgerMenu buttonRef={guestMenuBtnRef} isOpen={guestMenuOpen} onClose={() => setGuestMenuOpen(false)} parentCloseTimer={guestCloseTimer} />
       <ProfileDropdownPortal
         buttonRef={profileBtnRef}
-        mobileButtonRef={mobileProfileBtnRef}
         isOpen={profileDropdownOpen}
         onClose={() => setProfileDropdownOpen(false)}
         parentCloseTimer={profileCloseTimer}
         user={user}
-        walletUser={walletUser}
         isConnected={isConnected}
         accountId={accountId}
-        evmAddress={managedWallet?.evmAddress || walletUser?.publicAddress || undefined}
+        evmAddress={managedWallet?.evmAddress || undefined}
         disconnect={disconnect}
-        logout={logout}
-        clearWalletUser={clearWalletUser}
+        signOut={signOut}
       />
-      <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} platformBalance={platformBalance} />
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} triggerRef={authSignupBtnRef} />
+      <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} />
+      {mobileMenuOpen && (
+        <MobileMenu
+          isSignedIn={!!isSignedIn}
+          isConnected={isConnected}
+          mounted={mounted}
+          platformBalance={platformBalance}
+          openDeposit={() => { setMobileMenuOpen(false); openDeposit(); }}
+          openWithdraw={() => { setMobileMenuOpen(false); openWithdraw(); }}
+          onClose={() => setMobileMenuOpen(false)}
+          disconnect={disconnect}
+          signOut={signOut}
+        />
+      )}
     </DepositModalContext.Provider>
-    </BalanceVisibilityContext.Provider>
   );
 }
 
@@ -2206,158 +1059,49 @@ export function Header({ children }: { children?: React.ReactNode }) {
 // Profile Dropdown -- portal-based
 // ---------------------------------------------------------------------------
 
-// Rendered inside ProfileDropdownPortal — uses a context to push the panel up
-const LangPanelContext = createContext<{ open: boolean; setOpen: (v: boolean) => void }>({
-  open: false, setOpen: () => {},
-});
-
-function LanguageFlyout() {
-  const { setOpen } = useContext(LangPanelContext);
-  const { lang, t, countryCode } = useLanguage();
-  const currentLangMeta = LANGUAGES.find(l => l.code === lang);
-
-  return (
-    <div
-      className="border-t border-b border-gray-100 dark:border-neutral-800"
-      onClick={() => setOpen(true)}
-    >
-      <div className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-neutral-800/60 transition-colors cursor-pointer select-none active:bg-gray-100 dark:active:bg-neutral-800">
-        <div className="flex items-center gap-2.5">
-          <span className="text-[13px] font-bold text-gray-500 dark:text-gray-400 w-6 flex-shrink-0 tracking-wide">
-            {countryCode ?? currentLangMeta?.flag ?? '🌐'}
-          </span>
-          <div className="text-left">
-            <div className="text-[11px] text-gray-400 dark:text-gray-500 leading-tight">{t.language}</div>
-            <div className="text-xs font-bold text-gray-800 dark:text-gray-200 leading-tight">
-              {currentLangMeta?.nativeName ?? 'English'}
-            </div>
-          </div>
-        </div>
-        <ChevronDown className="w-3.5 h-3.5 text-gray-400 -rotate-90 flex-shrink-0" />
-      </div>
-    </div>
-  );
-}
-
-function LanguagePanel({ onClose }: { onClose: () => void }) {
-  const { lang, setLang, t } = useLanguage();
-  return (
-    <div className="absolute inset-0 z-10 bg-white dark:bg-neutral-900 rounded-xl flex flex-col overflow-hidden">
-      {/* Header row */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-neutral-800 flex-shrink-0">
-        <button
-          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClose(); }}
-          className="p-1 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 active:bg-gray-200 dark:active:bg-neutral-700 transition-colors"
-        >
-          <ChevronDown className="w-4 h-4 rotate-90" />
-        </button>
-        <span className="text-sm font-semibold text-gray-900 dark:text-white">{t.selectLanguage}</span>
-      </div>
-      {/* Language list */}
-      <div className="overflow-y-auto flex-1 py-1">
-        {LANGUAGES.map((l) => (
-          <button
-            key={l.code}
-            onClick={(e) => { e.stopPropagation(); e.preventDefault(); setLang(l.code); onClose(); }}
-            className={cn(
-              'w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left',
-              lang === l.code
-                ? 'bg-vibrant-purple/10 text-vibrant-purple'
-                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white active:bg-gray-200 dark:active:bg-neutral-700'
-            )}
-          >
-            <span className="text-xl leading-none flex-shrink-0">{l.flag}</span>
-            <span className="flex-1 font-bold">{l.nativeName}</span>
-            {lang === l.code && (
-              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function ProfileDropdownPortal({
   buttonRef,
-  mobileButtonRef,
   isOpen,
   onClose,
   parentCloseTimer,
   user,
-  walletUser,
   isConnected,
   accountId,
   evmAddress,
   disconnect,
-  logout,
-  clearWalletUser,
+  signOut,
 }: {
   buttonRef: React.RefObject<HTMLButtonElement | null>;
-  mobileButtonRef: React.RefObject<HTMLButtonElement | null>;
   isOpen: boolean;
   onClose: () => void;
   parentCloseTimer: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
   user: any;
-  walletUser: any;
   isConnected: boolean;
   accountId: string | undefined;
   evmAddress: string | undefined;
-  disconnect: () => void;
-  logout: () => Promise<void>;
-  clearWalletUser: () => void;
+  disconnect: () => Promise<any>;
+  signOut: () => Promise<any>;
 }) {
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
   const [comingSoonMsg, setComingSoonMsg] = useState<string | null>(null);
-  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
-  const [langPanelOpen, setLangPanelOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { t } = useLanguage();
-
-  // Use whichever button ref is currently visible
-  const activeRef = buttonRef.current?.offsetParent !== null ? buttonRef : mobileButtonRef;
 
   useEffect(() => setMounted(true), []);
-
-  // Fetch proxy wallet address
-  useEffect(() => {
-    const fetchProxyWallet = async () => {
-      if (!evmAddress) return;
-      
-      try {
-        const response = await fetch(`/api/proxy-wallet/create?userAddress=${evmAddress}`);
-        const data = await response.json();
-        if (data.exists && data.proxyWalletAddress) {
-          setProxyWalletAddress(data.proxyWalletAddress);
-        }
-      } catch (error) {
-        console.error('Failed to fetch proxy wallet:', error);
-      }
-    };
-
-    if (isOpen) {
-      fetchProxyWallet();
-    }
-  }, [isOpen, evmAddress]);
 
   useEffect(() => {
     if (!isOpen) return;
     const handleClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node) &&
-          (!buttonRef.current || !buttonRef.current.contains(e.target as Node)) &&
-          (!mobileButtonRef.current || !mobileButtonRef.current.contains(e.target as Node))) {
+          buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
         onClose();
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [isOpen, onClose, buttonRef, mobileButtonRef]);
+  }, [isOpen, onClose, buttonRef]);
 
-  // Show proxy wallet address if available, otherwise fallback to connected wallet or Magic Link
-  const displayAddress = proxyWalletAddress || evmAddress || accountId;
+  const displayAddress = evmAddress || accountId;
 
   const handleCopy = async () => {
     if (displayAddress) {
@@ -2372,22 +1116,17 @@ function ProfileDropdownPortal({
     setTimeout(() => setComingSoonMsg(null), 2000);
   };
 
-  if (!mounted || !isOpen) return null;
-  const activeBtnEl = activeRef.current;
-  if (!activeBtnEl) return null;
-  const rect = activeBtnEl.getBoundingClientRect();
+  if (!mounted || !isOpen || !buttonRef.current) return null;
+  const rect = buttonRef.current.getBoundingClientRect();
 
-  const portal = createPortal(
-    <LangPanelContext.Provider value={{ open: langPanelOpen, setOpen: setLangPanelOpen }}>
+  return createPortal(
     <div
       ref={menuRef}
       onMouseEnter={() => {
         if (parentCloseTimer.current) { clearTimeout(parentCloseTimer.current); parentCloseTimer.current = null; }
       }}
       onMouseLeave={() => {
-        if (window.matchMedia('(hover: hover)').matches) {
-          onClose();
-        }
+        onClose();
       }}
       style={{
         position: 'fixed',
@@ -2395,36 +1134,35 @@ function ProfileDropdownPortal({
         right: window.innerWidth - rect.right,
         zIndex: 9999,
       }}
-      className="relative w-64 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-0 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden text-gray-900 dark:text-white"
+      className="w-64 bg-neutral-950 border border-neutral-800 rounded-xl shadow-2xl py-0 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden"
     >
       {/* Top section: address + settings */}
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200 dark:border-white/10 flex-shrink-0 bg-gray-100 dark:bg-[#0a0a0c]">
-            <Avatar size={32} name={user?.issuer || walletUser?.publicAddress || 'default'} variant="marble" colors={getAvatarPalette(user?.issuer || walletUser?.publicAddress || 'default')} square={false} />
-          </div>
+          {user?.imageUrl ? (
+            <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-8 h-8 bg-gradient-to-br from-vibrant-purple to-pink-500 rounded-full flex-shrink-0" />
+          )}
           {displayAddress ? (
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1.5 text-sm text-gray-900 dark:text-white font-mono hover:text-vibrant-purple transition-colors truncate"
+              className="flex items-center gap-1.5 text-sm text-white font-mono hover:text-vibrant-purple transition-colors truncate"
               title={copied ? 'Copied' : 'Click to copy'}
             >
               {formatAddress(displayAddress, 6)}
-              {copied ? <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /> : <Copy className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /> : <Copy className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />}
             </button>
           ) : (
-            <span className="text-sm text-gray-900 dark:text-white truncate">
-              {user?.email || 'User'}
+            <span className="text-sm text-white truncate">
+              {user?.firstName || user?.primaryEmailAddress?.emailAddress || 'User'}
             </span>
           )}
         </div>
-        <Link href="/settings" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors flex-shrink-0">
+        <Link href="/settings" onClick={onClose} className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-neutral-800 transition-colors flex-shrink-0">
           <Settings className="w-4 h-4" />
         </Link>
       </div>
-
-      {/* Location + Language row — hover reveals fly-out submenu */}
-      <LanguageFlyout />
 
       {/* Coming soon toast */}
       {comingSoonMsg && (
@@ -2435,106 +1173,173 @@ function ProfileDropdownPortal({
 
       {/* Main menu items */}
       <div className="py-1.5">
-        <Link href="/my-bets" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors">
-          <Wallet className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-          {t.portfolio}
-        </Link>
-        <Link href="/challenges" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors">
-          <Swords className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-          Challenges
-        </Link>
-        <Link href="/leaderboard" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-400 dark:text-gray-500">
-            <path d="M6 9h12M6 9v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9M10 17v-7M14 17v-4M10 6v1M14 6v1M8 6h8"/>
-          </svg>
-          Leaderboard
+        <Link href="/my-bets" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-200 hover:bg-neutral-900 hover:text-white transition-colors">
+          <Wallet className="w-4 h-4 text-gray-500" />
+          Portfolio
         </Link>
         <div className="px-2 py-0.5">
           <ThemeToggle />
         </div>
       </div>
 
+      <div className="h-px bg-neutral-800" />
+
       {/* Secondary links */}
       <div className="py-1.5">
         <button
           onClick={() => { window.dispatchEvent(new Event('open-support-chat')); onClose(); }}
-          className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-900 hover:text-gray-200 transition-colors w-full text-left"
         >
           <Phone className="w-4 h-4" />
-          {t.support}
+          Support
         </button>
         <button
-          onClick={() => showComingSoon(t.helpCenter)}
-          className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
+          onClick={() => showComingSoon('Help Center')}
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-900 hover:text-gray-200 transition-colors w-full text-left"
         >
           <FileText className="w-4 h-4" />
-          {t.helpCenter}
+          Help Center
         </button>
-        <Link href="/privacy" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
+        <Link href="/privacy" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-900 hover:text-gray-200 transition-colors">
           <Shield className="w-4 h-4" />
-          {t.privacyPolicy}
+          Privacy Policy
         </Link>
-        <Link href="/terms" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
+        <Link href="/terms" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-900 hover:text-gray-200 transition-colors">
           <FileText className="w-4 h-4" />
-          {t.termsOfUse}
-        </Link>
-        <Link href="/cookies" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
-          <FileText className="w-4 h-4" />
-          Cookie Policy
+          Terms of Use
         </Link>
       </div>
+
+      <div className="h-px bg-neutral-800" />
 
       {/* Bottom actions */}
       <div className="py-1.5">
-        {walletUser ? (
-          /* Wallet-auth user: one button does both disconnect + logout */
+        {isConnected && (
           <button
-            onClick={async () => {
-              if (isConnected) { try { await disconnect(); } catch { /* ignore */ } }
-              clearWalletUser();
-              onClose();
-            }}
-            className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
+            onClick={() => { disconnect(); onClose(); }}
+            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-900 hover:text-gray-200 transition-colors w-full text-left"
           >
-            <LogOut className="w-4 h-4" />
-            {t.disconnectAndLogOut}
+            <Wallet className="w-4 h-4" />
+            Disconnect Wallet
           </button>
-        ) : (
-          /* Email/OAuth user: separate disconnect and logout buttons */
-          <>
-            {isConnected && (
-              <button
-                onClick={() => { disconnect(); onClose(); }}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
-              >
-                <Wallet className="w-4 h-4" />
-                {t.disconnectWallet}
-              </button>
-            )}
-            <button
-              onClick={async () => {
-                if (isConnected) { try { await disconnect(); } catch { /* ignore */ } }
-                clearWalletUser();
-                logout();
-                onClose();
-              }}
-              className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
-            >
-              <LogOut className="w-4 h-4" />
-              {t.logout}
-            </button>
-          </>
         )}
+        <button
+          onClick={() => { signOut(); onClose(); }}
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
+        >
+          <LogOut className="w-4 h-4" />
+          Logout
+        </button>
       </div>
-
-      {/* Language panel slides over the whole dropdown on hover */}
-      {langPanelOpen && <LanguagePanel onClose={() => setLangPanelOpen(false)} />}
-    </div>
-    </LangPanelContext.Provider>,
+    </div>,
     document.body
   );
-
-  return portal;
 }
 
+// ---------------------------------------------------------------------------
+// Mobile Menu
+// ---------------------------------------------------------------------------
 
+function MobileMenu({
+  isSignedIn,
+  isConnected,
+  mounted,
+  platformBalance,
+  openDeposit,
+  openWithdraw,
+  onClose,
+  disconnect,
+  signOut,
+}: {
+  isSignedIn: boolean;
+  isConnected: boolean;
+  mounted: boolean;
+  platformBalance: number;
+  openDeposit: () => void;
+  openWithdraw: () => void;
+  onClose: () => void;
+  disconnect: () => Promise<any>;
+  signOut: () => Promise<any>;
+}) {
+  return (
+    <div className="md:hidden border-b border-neutral-800 bg-neutral-950 px-4 py-4 space-y-3">
+      {isSignedIn && (
+        <>
+          <Link href="/my-bets" onClick={onClose} className="block px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900">
+            Portfolio
+          </Link>
+          <Link href="/markets" onClick={onClose} className="block px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900">
+            Markets
+          </Link>
+
+          <div className="flex items-center justify-between px-3 py-2">
+            <span className="text-sm text-gray-400">Balance</span>
+            <span className="text-sm font-medium text-vibrant-purple">${platformBalance.toFixed(2)}</span>
+          </div>
+
+          <div className="flex gap-2 px-3">
+            <button onClick={openDeposit} className="flex-1 py-2 rounded-lg bg-vibrant-purple text-white text-sm font-medium">Deposit</button>
+            <button onClick={openWithdraw} className="flex-1 py-2 rounded-lg border border-neutral-700 text-gray-300 text-sm font-medium">Withdraw</button>
+          </div>
+
+          {!isConnected && (
+            <div className="px-3"><WalletSelector /></div>
+          )}
+        </>
+      )}
+
+      {!isSignedIn && mounted && (
+        <>
+          <Link href="/markets" onClick={onClose} className="block px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900">
+            Markets
+          </Link>
+        </>
+      )}
+
+      {/* Common links */}
+      <div className="h-px bg-neutral-800" />
+      <div className="px-2 py-1">
+        <ThemeToggle />
+      </div>
+      <Link href="/privacy" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900">
+        <Shield className="w-4 h-4 text-gray-500" />
+        Privacy Policy
+      </Link>
+      <Link href="/terms" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900">
+        <FileText className="w-4 h-4 text-gray-500" />
+        Terms of Use
+      </Link>
+
+      {isSignedIn && (
+        <>
+          <div className="h-px bg-neutral-800" />
+          <Link href="/settings" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900">
+            <Settings className="w-4 h-4 text-gray-500" />
+            Settings
+          </Link>
+          {isConnected && (
+            <button onClick={() => { disconnect(); onClose(); }} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900 w-full text-left">
+              <Wallet className="w-4 h-4 text-gray-500" />
+              Disconnect Wallet
+            </button>
+          )}
+          <button onClick={() => { signOut(); onClose(); }} className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg w-full text-left">
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+        </>
+      )}
+
+      {!isSignedIn && mounted && (
+        <div className="flex gap-2 px-3 pt-2">
+          <SignInButton mode="modal">
+            <Button variant="outline" size="sm" className="flex-1 text-sm">Log in</Button>
+          </SignInButton>
+          <SignUpButton mode="modal">
+            <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm">Sign up</Button>
+          </SignUpButton>
+        </div>
+      )}
+    </div>
+  );
+}
