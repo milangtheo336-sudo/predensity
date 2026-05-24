@@ -6,7 +6,7 @@ import { useMagic } from '@/context/MagicContext';
 import { useWalletUser } from '@/context/WalletUserContext';
 import { getDIDToken, getMagic, getUserInfo } from '@/lib/magic';
 import { useWallet, useEvmAddress, useAuthSignature } from '@buidlerlabs/hashgraph-react-wallets';
-import { HashpackConnector } from '@buidlerlabs/hashgraph-react-wallets/connectors';
+import { HashpackConnector, HWCConnector } from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { useEIP6963Wallets, EIP6963ProviderDetail } from '@/hooks/useEIP6963Wallets';
 import Image from 'next/image';
 
@@ -32,14 +32,18 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const { setWalletUser } = useWalletUser();
   const { isConnected } = useWallet();
 
-  // EIP-6963: auto-discovers every EVM wallet extension installed in the browser
-  // (MetaMask, Rabby, Coinbase Wallet, Phantom EVM, etc.)
-  const eip6963Wallets = useEIP6963Wallets();
-
   // HashPack connector hooks (Hedera-native, not EIP-6963)
   const hashpackWallet = useWallet(HashpackConnector);
   const hashpackEvmAddress = useEvmAddress({ connector: HashpackConnector });
   const { signAuth: signHashpack } = useAuthSignature(HashpackConnector);
+
+  // WalletConnect (HWC) — handles browser extensions + QR code for mobile wallets
+  const hwcWallet = useWallet(HWCConnector);
+  const hwcEvmAddress = useEvmAddress({ connector: HWCConnector });
+  const { signAuth: signHWC } = useAuthSignature(HWCConnector);
+
+  // EIP-6963: auto-discovers every EVM wallet extension installed in the browser
+  const eip6963Wallets = useEIP6963Wallets();
 
   useEffect(() => {
     console.log('[auth-modal] isConnected changed to:', isConnected, 'isOpen:', isOpen);
