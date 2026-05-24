@@ -994,7 +994,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                       alt="Notifications"
                       width={24}
                       height={24}
-                      className="brightness-0 invert"
+                      className="dark:brightness-0 dark:invert"
                     />
                     {hasNotifications && (
                       <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
@@ -1003,22 +1003,22 @@ export function Header({ children }: { children?: React.ReactNode }) {
                   {notifOpen && (
                     <div
                       ref={notifPanelRef}
-                      className="absolute right-0 mt-2 w-80 bg-[#111] rounded-xl shadow-2xl z-[100] overflow-hidden"
+                      className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#111] rounded-xl shadow-2xl z-[100] overflow-hidden"
                     >
                       <div className="px-4 py-3">
-                        <span className="text-sm font-semibold text-white">Notifications</span>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</span>
                       </div>
                       {(!notifications || notifications.length === 0) ? (
                         <div className="flex flex-col items-center justify-center py-10 px-4">
-                          <Image src="/no notification.svg" alt="" width={36} height={36} className="brightness-0 invert opacity-40 mb-3" />
-                          <span className="text-sm text-neutral-500">You have no notifications.</span>
+                          <Image src="/no notification.svg" alt="" width={36} height={36} className="dark:brightness-0 dark:invert opacity-40 mb-3" />
+                          <span className="text-sm text-gray-500 dark:text-neutral-500">You have no notifications.</span>
                         </div>
                       ) : (
-                        <div className="max-h-72 overflow-y-auto divide-y divide-neutral-800/50">
+                        <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-neutral-800/50">
                           {notifications.map((n: any) => (
-                            <div key={n._id} className={`px-4 py-3 text-sm ${n.read ? 'text-neutral-500' : 'text-white'} hover:bg-neutral-900/50 transition-colors`}>
+                            <div key={n._id} className={`px-4 py-3 text-sm ${n.read ? 'text-gray-400 dark:text-neutral-500' : 'text-gray-900 dark:text-white'} hover:bg-gray-50 dark:hover:bg-neutral-900/50 transition-colors`}>
                               <div className="leading-snug">{n.message}</div>
-                              <div className="text-[11px] text-neutral-600 mt-1">
+                              <div className="text-[11px] text-gray-400 dark:text-neutral-600 mt-1">
                                 {new Date(n.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                 {' '}
                                 {new Date(n.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
@@ -1116,7 +1116,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                     alt="Notifications"
                     width={22}
                     height={22}
-                    className="brightness-0 invert"
+                    className="dark:brightness-0 dark:invert"
                   />
                   {hasNotifications && (
                     <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
@@ -1278,10 +1278,10 @@ function ProfileDropdownPortal({
         right: window.innerWidth - rect.right,
         zIndex: 9999,
       }}
-      className="w-64 bg-neutral-950 border border-neutral-800 rounded-xl shadow-2xl py-0 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden"
+      className="w-64 bg-white dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-0 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden"
     >
       {/* Top section: address + settings */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-neutral-800">
         <div className="flex items-center gap-2.5 min-w-0">
           {user?.imageUrl ? (
             <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
@@ -1291,19 +1291,19 @@ function ProfileDropdownPortal({
           {displayAddress ? (
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1.5 text-sm text-white font-mono hover:text-vibrant-purple transition-colors truncate"
+              className="flex items-center gap-1.5 text-sm text-gray-900 dark:text-white font-mono hover:text-vibrant-purple transition-colors truncate"
               title={copied ? 'Copied' : 'Click to copy'}
             >
               {formatAddress(displayAddress, 6)}
-              {copied ? <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /> : <Copy className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /> : <Copy className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />}
             </button>
           ) : (
-            <span className="text-sm text-white truncate">
+            <span className="text-sm text-gray-900 dark:text-white truncate">
               {user?.firstName || user?.primaryEmailAddress?.emailAddress || 'User'}
             </span>
           )}
         </div>
-        <Link href="/settings" onClick={onClose} className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-neutral-800 transition-colors flex-shrink-0">
+        <Link href="/settings" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors flex-shrink-0">
           <Settings className="w-4 h-4" />
         </Link>
       </div>
@@ -1317,8 +1317,8 @@ function ProfileDropdownPortal({
 
       {/* Main menu items */}
       <div className="py-1.5">
-        <Link href="/my-bets" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-200 hover:bg-neutral-900 hover:text-white transition-colors">
-          <Wallet className="w-4 h-4 text-gray-500" />
+        <Link href="/my-bets" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors">
+          <Wallet className="w-4 h-4 text-gray-400 dark:text-gray-500" />
           Portfolio
         </Link>
         <div className="px-2 py-0.5">
@@ -1326,42 +1326,42 @@ function ProfileDropdownPortal({
         </div>
       </div>
 
-      <div className="h-px bg-neutral-800" />
+      <div className="h-px bg-gray-200 dark:bg-neutral-800" />
 
       {/* Secondary links */}
       <div className="py-1.5">
         <button
           onClick={() => { window.dispatchEvent(new Event('open-support-chat')); onClose(); }}
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-900 hover:text-gray-200 transition-colors w-full text-left"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
         >
           <Phone className="w-4 h-4" />
           Support
         </button>
         <button
           onClick={() => showComingSoon('Help Center')}
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-900 hover:text-gray-200 transition-colors w-full text-left"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
         >
           <FileText className="w-4 h-4" />
           Help Center
         </button>
-        <Link href="/privacy" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-900 hover:text-gray-200 transition-colors">
+        <Link href="/privacy" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
           <Shield className="w-4 h-4" />
           Privacy Policy
         </Link>
-        <Link href="/terms" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-900 hover:text-gray-200 transition-colors">
+        <Link href="/terms" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
           <FileText className="w-4 h-4" />
           Terms of Use
         </Link>
       </div>
 
-      <div className="h-px bg-neutral-800" />
+      <div className="h-px bg-gray-200 dark:bg-neutral-800" />
 
       {/* Bottom actions */}
       <div className="py-1.5">
         {isConnected && (
           <button
             onClick={() => { disconnect(); onClose(); }}
-            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-neutral-900 hover:text-gray-200 transition-colors w-full text-left"
+            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
           >
             <Wallet className="w-4 h-4" />
             Disconnect Wallet
