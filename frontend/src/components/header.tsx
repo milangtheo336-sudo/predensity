@@ -114,11 +114,32 @@ export function DepositModal({
   const [mounted, setMounted] = useState(false);
   const [eip6963Provider, setEip6963Provider] = useState<any>(null);
   const balancesHidden = typeof window !== 'undefined' && localStorage.getItem('predensity-hide-balances') === 'true';
+  const { walletUser } = useWalletUser();
+  const eip6963Wallets = useEIP6963Wallets();
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (isOpen) setView(initialView);
   }, [isOpen, initialView]);
+
+  // When a wallet-auth user reaches the wallet-connect screen, auto-match their
+  // already-connected EIP-6963 provider and skip straight to wallet-transfer.
+  useEffect(() => {
+    if (view !== 'wallet-connect' || !walletUser?.publicAddress || !walletUser?.walletType) return;
+    const hint = walletUser.walletType.toLowerCase();
+    const matched = eip6963Wallets.find((w: any) =>
+      w.info.rdns?.toLowerCase().includes(hint) ||
+      w.info.name?.toLowerCase().includes(hint)
+    );
+    if (!matched) return;
+    // Silently request accounts to refresh connection, then skip to transfer view
+    matched.provider.request({ method: 'eth_requestAccounts' }).then(() => {
+      setEip6963Provider(matched.provider);
+      setView('wallet-transfer');
+    }).catch(() => {
+      // If it fails, stay on wallet-connect so user can manually pick
+    });
+  }, [view, walletUser, eip6963Wallets]);
 
   if (!mounted || !isOpen) return null;
 
@@ -859,7 +880,7 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
     fetchProxyWallet();
   }, [effectiveAddress]);
 
-  // Fetch the connected wallet's USDC token balance from Hedera mirror node
+  // Fetch USDC balance via Hedera mirror node (for Hedera-native wallets)
   useEffect(() => {
     if (!accountId || !tokenId) return;
     let cancelled = false;
@@ -885,6 +906,36 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
     fetchBalance();
     return () => { cancelled = true; };
   }, [accountId, tokenId, currency.decimals, step]);
+
+  // Fetch USDC balance via eth_call for EIP-6963 wallets (MetaMask, Rabby, etc.)
+  useEffect(() => {
+    if (!eip6963Provider || !tokenId) return;
+    let cancelled = false;
+    const fetchEip6963Balance = async () => {
+      try {
+        const accounts: string[] = await eip6963Provider.request({ method: 'eth_accounts' });
+        if (!accounts.length || cancelled) return;
+        const tokenParts = tokenId.split('.');
+        const tokenEvmAddr = '0x' + parseInt(tokenParts[tokenParts.length - 1]).toString(16).padStart(40, '0');
+        // balanceOf(address) selector = 0x70a08231
+        const data = '0x70a08231' + accounts[0].slice(2).padStart(64, '0');
+        const result: string = await eip6963Provider.request({
+          method: 'eth_call',
+          params: [{ to: tokenEvmAddr, data }, 'latest'],
+        });
+        if (!cancelled && result && result !== '0x') {
+          const bal = Number(BigInt(result)) / Math.pow(10, currency.decimals);
+          setWalletUsdcBalance(bal.toFixed(2));
+        } else if (!cancelled) {
+          setWalletUsdcBalance('0.00');
+        }
+      } catch (e) {
+        console.error('[WalletTransferView] EIP-6963 balance fetch error:', e);
+      }
+    };
+    fetchEip6963Balance();
+    return () => { cancelled = true; };
+  }, [eip6963Provider, tokenId, currency.decimals, step]);
 
   const handleTransfer = async () => {
     if (!amount) return;
@@ -981,7 +1032,7 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-gray-900 dark:text-white">Transfer from Wallet</div>
               <div className="text-xs text-gray-400">
-                {evmAddress ? formatAddress(evmAddress, 6) : 'Connected'}
+                {evmAddress ? formatAddress(evmAddress, 6) : effectiveAddress ? formatAddress(effectiveAddress, 6) : 'Connected'}
               </div>
             </div>
             {walletUsdcBalance !== null && (
