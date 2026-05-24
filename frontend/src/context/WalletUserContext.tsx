@@ -11,7 +11,7 @@
  * page navigations within the same tab but is cleared when the tab closes.
  */
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 
 export interface WalletUser {
   /** EVM address (0x…) — acts as the user's identity */
