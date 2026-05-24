@@ -1101,27 +1101,58 @@ export function Header({ children }: { children?: React.ReactNode }) {
             {isSignedIn && mounted && (
               <>
                 {/* Notification icon */}
-                <button
-                  className="p-1 text-gray-400 hover:text-white transition-colors relative"
-                  onClick={() => {
-                    setNotifOpen(o => !o);
-                    if (!notifOpen && hasNotifications && user) {
-                      markAllRead({ userId: user.id });
-                    }
-                  }}
-                  aria-label="Notifications"
-                >
-                  <Image
-                    src="/notification.svg"
-                    alt="Notifications"
-                    width={22}
-                    height={22}
-                    className="dark:brightness-0 dark:invert"
-                  />
-                  {hasNotifications && (
-                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
+                <div className="relative">
+                  <button
+                    className="p-1 text-gray-400 hover:text-white transition-colors relative"
+                    onClick={() => {
+                      setNotifOpen(o => !o);
+                      if (!notifOpen && hasNotifications && user) {
+                        markAllRead({ userId: user.id });
+                      }
+                    }}
+                    aria-label="Notifications"
+                  >
+                    <Image
+                      src="/notification.svg"
+                      alt="Notifications"
+                      width={22}
+                      height={22}
+                      className="dark:brightness-0 dark:invert"
+                    />
+                    {hasNotifications && (
+                      <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
+                    )}
+                  </button>
+                  {notifOpen && (
+                    <div
+                      ref={notifPanelRef}
+                      className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white dark:bg-[#111] rounded-xl shadow-2xl z-[100] overflow-hidden"
+                    >
+                      <div className="px-4 py-3">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</span>
+                      </div>
+                      {(!notifications || notifications.length === 0) ? (
+                        <div className="flex flex-col items-center justify-center py-10 px-4">
+                          <Image src="/no notification.svg" alt="" width={36} height={36} className="dark:brightness-0 dark:invert opacity-40 mb-3" />
+                          <span className="text-sm text-gray-500 dark:text-neutral-500">You have no notifications.</span>
+                        </div>
+                      ) : (
+                        <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-neutral-800/50">
+                          {notifications.map((n: any) => (
+                            <div key={n._id} className={`px-4 py-3 text-sm ${n.read ? 'text-gray-400 dark:text-neutral-500' : 'text-gray-900 dark:text-white'} hover:bg-gray-50 dark:hover:bg-neutral-900/50 transition-colors`}>
+                              <div className="leading-snug">{n.message}</div>
+                              <div className="text-[11px] text-gray-400 dark:text-neutral-600 mt-1">
+                                {new Date(n.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                {' '}
+                                {new Date(n.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
-                </button>
+                </div>
                 <div
                   className="relative"
                   onMouseEnter={() => {
