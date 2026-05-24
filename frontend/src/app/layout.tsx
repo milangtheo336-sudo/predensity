@@ -18,6 +18,20 @@ const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <title>Predensity - Decentralized Prediction Market</title>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <meta name="description" content="Predensity is a decentralized prediction market on Hedera. Stay informed and profit from your knowledge by trading on future events across crypto, politics, sports, and technology." />
+        <meta name="theme-color" content="#7c3aed" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta property="og:title" content="Predensity - Decentralized Prediction Market" />
+        <meta property="og:description" content="Trade on future events across crypto, politics, sports, and technology. Powered by Hedera." />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Predensity" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Predensity - Decentralized Prediction Market" />
+        <meta name="twitter:description" content="Trade on future events across crypto, politics, sports, and technology. Powered by Hedera." />
+      </head>
       <body className={inter.className} style={{ backgroundColor: '#000' }}>
         {/* Inline splash screen visible before JS hydrates */}
         <div
