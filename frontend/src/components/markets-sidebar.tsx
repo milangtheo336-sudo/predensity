@@ -16,8 +16,11 @@ interface MarketsSidebarProps {
   onSelect: (selection: SidebarSelection | null) => void;
 }
 
+const LEAGUES_COLLAPSED_LIMIT = 5;
+
 export function MarketsSidebar({ markets, selection, onSelect }: MarketsSidebarProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [showAllLeagues, setShowAllLeagues] = useState<Set<string>>(new Set());
 
   const { sportCounts, leagueCounts, total } = useMemo(() => {
     const sc = new Map<string, number>();
@@ -43,6 +46,15 @@ export function MarketsSidebar({ markets, selection, onSelect }: MarketsSidebarP
     });
   };
 
+  const toggleShowAllLeagues = (sportId: string) => {
+    setShowAllLeagues((prev) => {
+      const next = new Set(prev);
+      if (next.has(sportId)) next.delete(sportId);
+      else next.add(sportId);
+      return next;
+    });
+  };
+
   const handleSportClick = (sportId: string) => {
     toggleExpand(sportId);
     onSelect({ sport: sportId });
@@ -55,21 +67,22 @@ export function MarketsSidebar({ markets, selection, onSelect }: MarketsSidebarP
   const isAllActive = !selection;
 
   return (
-    <aside className="w-64 shrink-0 border-r border-gray-200 dark:border-gray-800 pr-2">
+    <aside className="w-full">
       <nav className="flex flex-col gap-1">
+        {/* "All" row -- larger, bolder */}
         <button
           onClick={() => onSelect(null)}
-          className={`flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+          className={`flex items-center justify-between px-2 py-2 text-left transition-colors ${
             isAllActive
-              ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-medium'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900'
+              ? 'text-gray-900 dark:text-white'
+              : 'text-gray-800 dark:text-gray-100'
           }`}
         >
-          <span>All</span>
-          <span className="text-gray-500 dark:text-gray-400 text-xs">{total}</span>
+          <span className="text-base font-semibold">All</span>
+          <span className="text-sm text-gray-400 dark:text-gray-400">{total}</span>
         </button>
 
-        <div className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 px-3 pt-3 pb-1">
+        <div className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 px-2 pt-2 pb-1">
           All Sports
         </div>
 
@@ -78,39 +91,44 @@ export function MarketsSidebar({ markets, selection, onSelect }: MarketsSidebarP
           const isSportActive =
             selection?.sport === sport.id && !selection?.league;
           const count = sportCounts.get(sport.id) ?? 0;
+          const showAll = showAllLeagues.has(sport.id);
+          const leaguesToShow = showAll
+            ? sport.leagues
+            : sport.leagues.slice(0, LEAGUES_COLLAPSED_LIMIT);
+          const hasMoreLeagues = sport.leagues.length > LEAGUES_COLLAPSED_LIMIT;
 
           return (
             <div key={sport.id} className="flex flex-col">
               <button
                 onClick={() => handleSportClick(sport.id)}
-                className={`flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isSportActive
-                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-medium'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900'
+                    ? 'bg-gray-100 dark:bg-neutral-900 text-gray-900 dark:text-white'
+                    : 'text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-neutral-900/60'
                 }`}
               >
-                <span className="flex items-center gap-2 min-w-0">
+                <span className="flex items-center gap-2.5 min-w-0">
                   {sport.iconUrl && (
                     <img src={sport.iconUrl} alt="" className="w-5 h-5 object-contain shrink-0 rounded-sm" />
                   )}
                   <span className="truncate">{sport.label}</span>
                 </span>
                 <span className="flex items-center gap-2">
-                  <span className="text-gray-500 dark:text-gray-400 text-xs">
-                    {count}
-                  </span>
+                  {isExpanded && count > 0 && (
+                    <span className="text-sm text-gray-400 dark:text-gray-400">{count}</span>
+                  )}
                   {sport.leagues.length > 0 &&
                     (isExpanded ? (
-                      <ChevronUp className="w-3.5 h-3.5 text-gray-400" />
+                      <ChevronUp className="w-4 h-4 text-gray-400" />
                     ) : (
-                      <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
                     ))}
                 </span>
               </button>
 
               {isExpanded && sport.leagues.length > 0 && (
-                <div className="flex flex-col mt-0.5">
-                  {sport.leagues.map((league) => {
+                <div className="flex flex-col">
+                  {leaguesToShow.map((league) => {
                     const isLeagueActive =
                       selection?.sport === sport.id &&
                       selection?.league === league.id;
@@ -120,10 +138,10 @@ export function MarketsSidebar({ markets, selection, onSelect }: MarketsSidebarP
                       <button
                         key={league.id}
                         onClick={() => handleLeagueClick(sport.id, league.id)}
-                        className={`flex items-center justify-between pl-8 pr-3 py-1.5 rounded-md text-sm transition-colors ${
+                        className={`flex items-center justify-between pl-9 pr-3 py-2 rounded-md text-sm transition-colors ${
                           isLeagueActive
-                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-medium'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900'
+                            ? 'text-gray-900 dark:text-white font-medium'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                         }`}
                       >
                         <span className="flex items-center gap-2 min-w-0">
@@ -132,12 +150,26 @@ export function MarketsSidebar({ markets, selection, onSelect }: MarketsSidebarP
                           )}
                           <span className="truncate">{league.label}</span>
                         </span>
-                        <span className="text-gray-500 dark:text-gray-500 text-xs ml-2">
+                        <span className="text-sm text-gray-400 dark:text-gray-400 ml-2">
                           {lCount}
                         </span>
                       </button>
                     );
                   })}
+
+                  {hasMoreLeagues && (
+                    <button
+                      onClick={() => toggleShowAllLeagues(sport.id)}
+                      className="flex items-center gap-1 pl-9 pr-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                    >
+                      <span>{showAll ? `Show less` : `More ${sport.label.toLowerCase()}`}</span>
+                      {showAll ? (
+                        <ChevronUp className="w-3 h-3" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3" />
+                      )}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
