@@ -216,8 +216,8 @@ export async function POST(request: NextRequest) {
         'placeBetWithToken',
         new ContractFunctionParameters()
           .addUint256(targetTimestamp)
-          .addUint256(priceMinBN.toString())
-          .addUint256(priceMaxBN.toString())
+          .addUint256(priceMinBN.toBigInt())
+          .addUint256(priceMaxBN.toBigInt())
           .addUint256(tokenAmount)
       )
       .setMaxTransactionFee(new Hbar(2));
