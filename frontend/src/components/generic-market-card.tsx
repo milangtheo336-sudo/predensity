@@ -1,13 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { MarketCard, Category, CATEGORIES } from '@/lib/types/categories';
 import { getContractAddress } from '@/lib/contracts/contract-config';
 import { aggregateForecast } from '@/lib/forecast';
 import { cn } from '@/lib/utils';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { useQuery as useConvexQuery } from 'convex/react';
+import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 
 function getDefaultThreshold(category: Category): number {
