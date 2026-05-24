@@ -9,8 +9,9 @@ import { api } from '../../../convex/_generated/api';
 
 import { Bet } from '@/lib/types';
 import Image from 'next/image';
+import Avatar from 'boring-avatars';
 import { CONTRACT_ADDRESSES, getStakingCurrency, isTokenMode } from '@/lib/contracts/contract-config';
-import { formatDateUTC, formatTinybarsToHbar, getLocalTimezoneAbbr } from '@/lib/utils';
+import { formatDateUTC, formatTinybarsToHbar, getLocalTimezoneAbbr, getAvatarPalette } from '@/lib/utils';
 
 import { useToast } from '@/components/ui/useToast';
 import { Toaster } from '@/components/ui/toaster';
@@ -40,6 +41,7 @@ import {
   Gift,
   Upload,
   SortAsc,
+  Twitter,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -1049,6 +1051,57 @@ export default function PortfolioPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleShareToX = () => {
+    const displayName = user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Trader';
+    const pnlSign = totalPnl >= 0 ? '+' : '';
+    const pnlStr = `${pnlSign}${formatUsd(totalPnl)}`;
+    const winStr = biggestWin > 0 ? `Biggest win: ${formatUsd(biggestWin)}` : '';
+    const ogParams = new URLSearchParams({
+      name: displayName,
+      pnl: pnlStr,
+      predictions: String(totalPredictions),
+      win: formatUsd(biggestWin),
+      seed: user?.id || 'default',
+    });
+    const profileUrl = `${window.location.origin}/profile/${user?.id || ''}?${ogParams.toString()}`;
+    const lines = [
+      `${displayName} on Predensity`,
+      `P&L: ${pnlStr}`,
+      `${totalPredictions} predictions`,
+      winStr,
+      '',
+      profileUrl,
+    ].filter(Boolean);
+    const text = lines.join('\n');
+    const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    window.open(xUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleShareToWhatsApp = () => {
+    const displayName = user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Trader';
+    const pnlSign = totalPnl >= 0 ? '+' : '';
+    const pnlStr = `${pnlSign}${formatUsd(totalPnl)}`;
+    const winStr = biggestWin > 0 ? `Biggest win: ${formatUsd(biggestWin)}` : '';
+    const ogParams = new URLSearchParams({
+      name: displayName,
+      pnl: pnlStr,
+      predictions: String(totalPredictions),
+      win: formatUsd(biggestWin),
+      seed: user?.id || 'default',
+    });
+    const profileUrl = `${window.location.origin}/profile/${user?.id || ''}?${ogParams.toString()}`;
+    const lines = [
+      `*${displayName} on Predensity*`,
+      `P&L: ${pnlStr}`,
+      `${totalPredictions} predictions`,
+      winStr,
+      '',
+      profileUrl,
+    ].filter(Boolean);
+    const text = lines.join('\n');
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+  };
+
   const handleExportCsv = () => {
     setExportingCsv(true);
     try {
@@ -1117,17 +1170,15 @@ export default function PortfolioPage() {
             {/* Header row */}
             <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
-                {user?.imageUrl ? (
-                  <img
-                    src={user.imageUrl}
-                    alt=""
-                    className="w-12 h-12 rounded-full object-cover ring-1 ring-gray-200 dark:ring-neutral-700"
+                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0 bg-[#0a0a0c]">
+                  <Avatar
+                    size={56}
+                    name={user?.id || 'default'}
+                    variant="marble"
+                    colors={getAvatarPalette(user?.id || 'default')}
+                    square={false}
                   />
-                ) : (
-                  <div className="w-12 h-12 bg-gradient-to-br from-vibrant-purple to-pink-500 rounded-full flex items-center justify-center text-white text-lg font-bold ring-1 ring-gray-200 dark:ring-neutral-700">
-                    {(user?.firstName || user?.primaryEmailAddress?.emailAddress || 'U').charAt(0).toUpperCase()}
-                  </div>
-                )}
+                </div>
                 <div>
                   <div className="text-base font-bold text-gray-900 dark:text-white">
                     {user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Trader'}
@@ -1139,27 +1190,27 @@ export default function PortfolioPage() {
               </div>
 
               {/* Action icons -- top right */}
-              <div className="flex items-center gap-0.5">
+              <div className="flex items-center gap-0.5 relative">
                 <button
                   onClick={handleShareProfile}
                   className="p-2 rounded-lg text-gray-400 dark:text-neutral-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
-                  title={copied ? 'Copied!' : 'Share profile'}
+                  title={copied ? 'Copied!' : 'Copy link'}
                 >
-                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
+                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Link2 className="w-4 h-4" />}
                 </button>
                 <button
+                  onClick={handleShareToX}
                   className="p-2 rounded-lg text-gray-400 dark:text-neutral-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
-                  title="Rewards"
+                  title="Share to X"
                 >
-                  <Gift className="w-4 h-4" />
+                  <Twitter className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={handleExportCsv}
-                  disabled={exportingCsv || allBets.length === 0}
-                  className="p-2 rounded-lg text-gray-400 dark:text-neutral-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors disabled:opacity-30"
-                  title="Export CSV"
+                  onClick={handleShareToWhatsApp}
+                  className="p-2 rounded-lg text-gray-400 dark:text-neutral-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+                  title="Share to WhatsApp"
                 >
-                  <Upload className="w-4 h-4" />
+                  <Share2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
