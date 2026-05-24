@@ -45,14 +45,15 @@ export default function MarketDetailPage() {
     if (cryptoMarket === null) return <NotFoundView message="This crypto market doesn't exist." onBack={goBack} />;
     return (
       <div className="min-h-screen bg-white dark:bg-black">
-        <Header />
-        <PredictionCard
-          tokenSymbol={cryptoMarket.tokenSymbol}
-          tokenName={cryptoMarket.tokenName}
-          tokenLogo={cryptoMarket.imageUrl}
-          priceDecimals={cryptoMarket.priceDecimals}
-          contractId={cryptoMarket.contractId}
-        />
+        <Header>
+          <PredictionCard
+            tokenSymbol={cryptoMarket.tokenSymbol}
+            tokenName={cryptoMarket.tokenName}
+            tokenLogo={cryptoMarket.imageUrl}
+            priceDecimals={cryptoMarket.priceDecimals}
+            contractId={cryptoMarket.contractId}
+          />
+        </Header>
       </div>
     );
   }
