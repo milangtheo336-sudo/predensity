@@ -32,6 +32,33 @@ export const getUserProfilesBatch = query({
   },
 });
 
+/**
+ * Given a list of comment userAddresses (e.g. "managed:did:ethr:0x..."),
+ * returns a map of commentUserAddress -> proxyWalletAddress by looking up
+ * the managedWallets table using the userId (issuer).
+ * This bridges Magic Link identity (used for comments) with proxy wallet
+ * address (used for on-chain bets).
+ */
+export const getProxyWalletsByUserIds = query({
+  args: { userAddresses: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const result: Record<string, string> = {};
+    for (const addr of args.userAddresses) {
+      // Extract userId from "managed:userId" format
+      const userId = addr.startsWith('managed:') ? addr.slice(8) : addr;
+      if (!userId) continue;
+      const wallet = await ctx.db
+        .query("managedWallets")
+        .withIndex("by_user_id", (q) => q.eq("userId", userId))
+        .first();
+      if (wallet?.proxyWalletAddress) {
+        result[addr.toLowerCase()] = wallet.proxyWalletAddress.toLowerCase();
+      }
+    }
+    return result;
+  },
+});
+
 export const updateProfile = mutation({
   args: {
     userAddress: v.string(),
