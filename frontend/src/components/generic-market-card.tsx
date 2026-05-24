@@ -1,38 +1,25 @@
 'use client';
 
 import { useMemo } from 'react';
-import { MarketCard, Category, CATEGORIES } from '@/lib/types/categories';
+import { MarketCard, Category, CATEGORIES, PoliticsPredictionType } from '@/lib/types/categories';
 import { getContractAddress } from '@/lib/contracts/contract-config';
 import { aggregateForecast } from '@/lib/forecast';
 import { cn } from '@/lib/utils';
-import { TrendingUp } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { useQuery as useConvexQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { useLanguage } from '@/context/LanguageContext';
-import type { Translations } from '@/lib/i18n/translations';
 
-function localizedTimeLeft(timestamp: number, t: Translations): string {
-  const diff = timestamp * 1000 - Date.now();
-  if (diff <= 0) return t.resolved;
-  const totalSecs = Math.floor(diff / 1000);
-  const mins = Math.floor(totalSecs / 60);
-  const hours = Math.floor(mins / 60);
-  const days = Math.floor(hours / 24);
-  const months = Math.floor(days / 30);
-  if (months >= 2) return t.aboutMonthsLeft.replace('{n}', String(months));
-  if (months === 1) return t.oneMonthLeft;
-  if (days >= 2) return `${days} ${t.daysLeft}`;
-  if (days === 1) return t.oneDayLeft;
-  if (hours >= 1) return t.hoursRemaining.replace('{n}', String(hours));
-  return t.minutesRemaining.replace('{n}', String(Math.max(1, mins)));
-}
-
+// Default threshold for non-crypto events (50% in BPS for percentage types)
 function getDefaultThreshold(category: Category): number {
   switch (category) {
-    case Category.POLITICS: return 5000;
-    case Category.SPORTS: return 5000;
-    case Category.TECHNOLOGY: return 5000;
-    default: return 5000;
+    case Category.POLITICS:
+      return 5000; // 50% in BPS
+    case Category.SPORTS:
+      return 5000;
+    case Category.TECHNOLOGY:
+      return 5000;
+    default:
+      return 5000;
   }
 }
 
@@ -41,105 +28,17 @@ interface GenericMarketCardProps {
   onClick?: () => void;
 }
 
-function CryptoSparkline({ convexBets }: { convexBets: any[] | undefined }) {
-  const W = 300;
-  const H = 64;
-  const PAD = 4;
-
-  const { points, isBullish } = useMemo(() => {
-    const active = (convexBets || [])
-      .filter((b: any) => b.status !== 'failed')
-      .sort((a: any, b: any) => a.timestamp - b.timestamp);
-
-    if (active.length < 2) {
-      // flat line at midpoint
-      return {
-        points: Array.from({ length: 10 }, (_, i) => ({ x: (i / 9) * W, y: H / 2 })),
-        isBullish: true,
-      };
-    }
-
-    // Running average of bet midpoints over time
-    const midpoints = active.map((b: any) => (parseFloat(b.priceMin) + parseFloat(b.priceMax)) / 2);
-    const window = Math.max(1, Math.floor(midpoints.length / 20));
-    const smoothed: number[] = [];
-    for (let i = 0; i < midpoints.length; i++) {
-      const slice = midpoints.slice(Math.max(0, i - window), i + 1);
-      smoothed.push(slice.reduce((s, v) => s + v, 0) / slice.length);
-    }
-
-    const minV = Math.min(...smoothed);
-    const maxV = Math.max(...smoothed);
-    const range = maxV - minV || 1;
-
-    const pts = smoothed.map((v, i) => ({
-      x: PAD + (i / (smoothed.length - 1)) * (W - PAD * 2),
-      // invert Y: higher price = higher on chart
-      y: PAD + (1 - (v - minV) / range) * (H - PAD * 2),
-    }));
-
-    // bullish = last value above median midpoint
-    const median = [...midpoints].sort((a, b) => a - b)[Math.floor(midpoints.length / 2)];
-    const lastMid = midpoints[midpoints.length - 1];
-
-    return { points: pts, isBullish: lastMid >= median };
-  }, [convexBets]);
-
-  // Build smooth SVG path via cubic bezier
-  const linePath = points.reduce((d, pt, i) => {
-    if (i === 0) return `M ${pt.x},${pt.y}`;
-    const prev = points[i - 1];
-    const cpx = (prev.x + pt.x) / 2;
-    return `${d} C ${cpx},${prev.y} ${cpx},${pt.y} ${pt.x},${pt.y}`;
-  }, '');
-
-  // Close path for area fill (go to bottom-right then bottom-left)
-  const areaPath = `${linePath} L ${points[points.length - 1].x},${H} L ${points[0].x},${H} Z`;
-
-  const color = isBullish ? '#22c55e' : '#ef4444';
-  const gradId = `spark-grad-${isBullish ? 'bull' : 'bear'}`;
-
-  return (
-    <div className="w-full overflow-hidden rounded-lg" style={{ height: H }}>
-      <svg
-        width="100%"
-        height={H}
-        viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
-        className="block"
-      >
-        <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.45" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.03" />
-          </linearGradient>
-        </defs>
-        {/* area fill */}
-        <path d={areaPath} fill={`url(#${gradId})`} />
-        {/* line */}
-        <path
-          d={linePath}
-          fill="none"
-          stroke={color}
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      </svg>
-    </div>
-  );
-}
-
 export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
-  const { t } = useLanguage();
   const categoryConfig = CATEGORIES[market.category];
-  const timeRemaining = localizedTimeLeft(market.targetTimestamp, t);
+  const timeRemaining = formatDistanceToNow(new Date(market.targetTimestamp * 1000), {
+    addSuffix: false,
+  });
 
   const isCrypto = market.category === Category.CRYPTO;
   const isEventBased = !isCrypto;
   const contractAddress = getContractAddress(market.category)?.toLowerCase() || '';
 
-  // For old event-based categories, fetch bets by contract + timestamp
+  // For event-based categories, fetch bets by contract + timestamp
   const eventBets = useConvexQuery(
     api.sync.getBetsByEvent,
     isEventBased && contractAddress
@@ -147,14 +46,15 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
       : 'skip'
   );
 
-  // For crypto, fetch bets filtered by token symbol so HBAR and BTC are separate
+  // For crypto, fetch all bets for the contract
   const cryptoBets = useConvexQuery(
-    api.sync.getBetsByMarketAndAsset,
-    isCrypto && contractAddress && market.question
-      ? { marketId: contractAddress.toLowerCase(), asset: market.question }
+    api.sync.getBetsByMarket,
+    isCrypto && contractAddress
+      ? { marketId: contractAddress }
       : 'skip'
   );
 
+  // Fallback: fetch stored forecast for event-based cards (pre-computed from detail page visits)
   const storedForecast = useConvexQuery(
     api.events.getForecast,
     isEventBased ? { eventId: market.id } : 'skip'
@@ -162,28 +62,43 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
 
   const convexBets = isCrypto ? cryptoBets : eventBets;
 
-  const { betCount, totalVolume: computedVolume } = useMemo(() => {
+  // Compute real stats from actual bets
+  const { betCount, totalVolume } = useMemo(() => {
     if (!convexBets || convexBets.length === 0) {
+      // Use stored forecast bet count as fallback
       if (storedForecast && storedForecast.betCount > 0) {
         return { betCount: storedForecast.betCount, totalVolume: 0 };
       }
       return { betCount: 0, totalVolume: 0 };
     }
     const activeBets = convexBets.filter((b) => (b as any).status !== 'failed');
-    const vol = activeBets.reduce((sum, b) => sum + Number(b.stake) / 1e6, 0);
+    const vol = activeBets.reduce((sum, b) => {
+      // stake is stored in smallest unit (6 decimals for USDC)
+      const stakeNum = Number(b.stake) / 1e6;
+      return sum + stakeNum;
+    }, 0);
     return { betCount: activeBets.length, totalVolume: Math.round(vol) };
   }, [convexBets, storedForecast]);
 
   const forecast = useMemo(() => {
-    if (!isEventBased) return { aboveThresholdPct: 50, belowThresholdPct: 50, betCount: 0, totalWeight: 0 };
+    if (!isEventBased) {
+      return { aboveThresholdPct: 50, belowThresholdPct: 50, betCount: 0, totalWeight: 0 };
+    }
+    // Try computing from live bets first
     if (convexBets && convexBets.length > 0) {
       const threshold = getDefaultThreshold(market.category);
       const betsForForecast = convexBets
         .filter((b) => (b as any).status !== 'failed')
-        .map((b) => ({ priceMin: b.priceMin, priceMax: b.priceMax, weight: b.weight, stake: b.stake }));
+        .map((b) => ({
+          priceMin: b.priceMin,
+          priceMax: b.priceMax,
+          weight: b.weight,
+          stake: b.stake,
+        }));
       const result = aggregateForecast(betsForForecast, 0, 10000, threshold);
       if (result.betCount > 0) return result;
     }
+    // Fallback to stored forecast from Convex
     if (storedForecast && storedForecast.betCount > 0) {
       return {
         aboveThresholdPct: storedForecast.aboveThresholdPct,
@@ -199,28 +114,23 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
   const noPercentage = isCrypto ? 50 : forecast.belowThresholdPct;
   const hasBets = betCount > 0;
 
-  // Display volume
-  const displayVolume = computedVolume;
-  const volumeStr = displayVolume >= 1000
-    ? `$${(displayVolume / 1000).toFixed(1)}k`
-    : `$${displayVolume.toFixed(0)}`;
   return (
     <div
       onClick={onClick}
       className={cn(
-        'group bg-gray-50 dark:bg-neutral-900 rounded-xl p-4 cursor-pointer',
+        'bg-gray-50 dark:bg-neutral-900 rounded-lg p-4 cursor-pointer',
         'hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all',
-        'border border-gray-200 dark:border-neutral-800',
+        'border border-gray-300 dark:border-gray-700',
         'flex flex-col gap-3'
       )}
     >
-      {/* Header: rounded-square image + bold title */}
+      {/* Header with image/icon and question */}
       <div className="flex items-start gap-3">
         {market.imageUrl ? (
           <img
             src={market.imageUrl}
             alt={market.question}
-            className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+            className="w-10 h-10 rounded-full object-cover flex-shrink-0"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
@@ -229,28 +139,18 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
             }}
           />
         ) : null}
-        <div
-          className="w-14 h-14 rounded-xl bg-gray-200 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 text-base font-bold text-gray-700 dark:text-white"
+        <div 
+          className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 text-sm font-bold text-gray-700 dark:text-white"
           style={{ display: market.imageUrl ? 'none' : 'flex' }}
         >
           {categoryConfig.icon}
         </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-gray-900 dark:text-white text-[15px] font-bold leading-snug group-hover:underline group-hover:decoration-gray-400 dark:group-hover:decoration-neutral-500 underline-offset-2">
-            {market.description || market.question}
-          </h3>
-          {market.description && market.question && market.description !== market.question && (
-            <p className="text-[13px] text-gray-500 mt-0.5 truncate">{market.question}</p>
-          )}
-        </div>
+        <h3 className="text-gray-900 dark:text-white text-sm font-normal leading-tight flex-1">
+          {market.question}
+        </h3>
       </div>
 
-      {/* Sparkline chart (crypto) */}
-      {isCrypto && (
-        <CryptoSparkline convexBets={convexBets} />
-      )}
-
-      {/* YES-NO bar (event-based only) */}
+      {/* YES/NO Progress Bars */}
       {!isCrypto && (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -266,32 +166,32 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className={hasBets ? 'text-green-500' : 'text-gray-500'}>
-              {t.yes.toUpperCase()} {hasBets ? `${yesPercentage}%` : '--'}
+              YES {hasBets ? `${yesPercentage}%` : '--'}
             </span>
             <span className={hasBets ? 'text-red-500' : 'text-gray-500'}>
-              {t.no.toUpperCase()} {hasBets ? `${noPercentage}%` : '--'}
+              NO {hasBets ? `${noPercentage}%` : '--'}
             </span>
           </div>
         </div>
       )}
 
-      {/* Footer */}
-      <div className="flex items-center justify-between text-xs mt-auto">
-        <div className="flex items-center gap-1 text-gray-400">
-          <TrendingUp className="w-3.5 h-3.5" />
-          <span>{volumeStr} {t.vol}.</span>
+      {/* Footer with volume, time, and LIVE indicator for crypto */}
+      <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center gap-1.5 text-gray-400">
+          <div className="w-2 h-2 rounded-full bg-green-500" />
+          <span>{totalVolume > 0 ? `${totalVolume} Vol` : '0 Vol'}</span>
         </div>
         <div className="flex items-center gap-2">
           {isCrypto && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 animate-ripple" />
+                <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 animate-heartbeat" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
               </span>
-              <span className="text-red-500 font-semibold text-[10px] tracking-wide">{t.live}</span>
+              <span className="text-red-500 font-semibold text-[10px] tracking-wide">LIVE</span>
             </div>
           )}
-          <span className="text-gray-400">{timeRemaining}</span>
+          <span className="text-gray-400">{timeRemaining} remaining</span>
         </div>
       </div>
     </div>
