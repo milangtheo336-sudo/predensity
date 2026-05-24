@@ -41,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             position: 'fixed',
             inset: 0,
             zIndex: 9999,
+            backgroundColor: '#000',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -48,24 +49,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             transition: 'opacity 0.4s ease',
           }}
         >
+          <img id="splash-logo-dark" src="/predensity-logo.png" alt="" width={64} height={64} style={{ marginBottom: 20 }} />
+          <img id="splash-logo-light" src="/white the loading predensity logo.png" alt="" width={64} height={64} style={{ marginBottom: 20, display: 'none' }} />
+          <span id="splash-text" style={{ color: '#ffffff', fontSize: 24, fontWeight: 600, letterSpacing: 2 }}>
+            predensity
+          </span>
         </div>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                var s = document.getElementById('splash');
-                if (!s) return;
                 var theme = localStorage.getItem('theme');
                 var isLight = theme === 'light' || (!theme && window.matchMedia('(prefers-color-scheme: light)').matches);
-                s.style.backgroundColor = isLight ? '#ffffff' : '#000000';
-                var img = document.createElement('img');
-                img.src = isLight ? '/white the loading predensity logo.png' : '/predensity-logo.png';
-                img.width = 64; img.height = 64; img.style.marginBottom = '20px';
-                s.appendChild(img);
-                var txt = document.createElement('span');
-                txt.textContent = 'predensity';
-                txt.style.cssText = 'font-size:24px;font-weight:600;letter-spacing:2px;color:' + (isLight ? '#000000' : '#ffffff');
-                s.appendChild(txt);
+                var s = document.getElementById('splash');
+                if (s && isLight) {
+                  s.style.backgroundColor = '#ffffff';
+                  var darkLogo = document.getElementById('splash-logo-dark');
+                  var lightLogo = document.getElementById('splash-logo-light');
+                  var txt = document.getElementById('splash-text');
+                  if (darkLogo) darkLogo.style.display = 'none';
+                  if (lightLogo) lightLogo.style.display = 'block';
+                  if (txt) txt.style.color = '#000000';
+                }
                 function removeSplash() {
                   if (s) { s.style.opacity = '0'; setTimeout(function() { s.remove(); }, 400); }
                 }
