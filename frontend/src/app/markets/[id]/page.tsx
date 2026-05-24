@@ -9,6 +9,7 @@ import { ClobPredictionCard } from '@/components/clob-prediction-card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { MarketPageSkeleton } from '@/components/page-skeleton';
 
 function NotFoundView({ message, onBack }: { message: string; onBack: () => void }) {
   const { t } = useLanguage();
@@ -27,16 +28,6 @@ function NotFoundView({ message, onBack }: { message: string; onBack: () => void
   );
 }
 
-function LoadingView() {
-  return (
-    <div className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center">
-      <img src="/predensity-logo.png" alt="Predensity" className="w-32 h-32 object-contain animate-pulse hidden dark:block" />
-      <img src="/white the loading predensity logo.png" alt="Predensity" className="w-32 h-32 object-contain animate-pulse dark:hidden" />
-      <span className="mt-4 text-gray-900 dark:text-white text-lg font-semibold tracking-wide">predensity</span>
-    </div>
-  );
-}
-
 export default function MarketDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -51,7 +42,7 @@ export default function MarketDetailPage() {
 
   // Crypto: use DPM prediction card
   if (isCryptoMarket) {
-    if (cryptoMarket === undefined) return <LoadingView />;
+    if (cryptoMarket === undefined) return <MarketPageSkeleton />;
     if (cryptoMarket === null) return <NotFoundView message="This crypto market doesn't exist." onBack={goBack} />;
     return (
       <div className="min-h-screen bg-white dark:bg-black">
@@ -68,7 +59,6 @@ export default function MarketDetailPage() {
   }
 
   // Non-crypto (politics, sports, tech, finance): use CLOB card
-  // The ClobPredictionCard handles its own data fetching
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       <Header />
