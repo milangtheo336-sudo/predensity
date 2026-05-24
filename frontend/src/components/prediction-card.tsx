@@ -1101,39 +1101,72 @@ export function PredictionCard({
 
         // -------------------------------------------------------------------
         // Find the correct EIP-1193 provider for this owner address.
-        // Multiple wallets (e.g. Rabby + HashPack) each announce via EIP-6963;
-        // window.ethereum is just whichever took it last (usually Rabby).
-        // We iterate all announced providers and pick the one whose accounts
-        // include ownerAddress. This avoids prompting the wrong wallet.
+        //
+        // Strategy (in order):
+        // 1. Look for a provider whose eth_accounts already contains ownerAddress
+        //    — no popup needed, matches silently.
+        // 2. If walletUser.walletType is known, find that specific wallet in
+        //    EIP-6963 by name/rdns and call eth_requestAccounts ONLY on it.
+        //    This avoids firing popups on every installed wallet simultaneously.
+        // 3. Fall back to window.ethereum as last resort.
         // -------------------------------------------------------------------
         let signingProvider: any = null;
 
-        // 1. Check all EIP-6963 announced wallets
+        // 1. Silent check: find any EIP-6963 provider already holding ownerAddress
         for (const detail of eip6963Wallets) {
           try {
-            let addrs: string[] = await detail.provider.request({ method: 'eth_accounts' });
-            if (!addrs.length) {
-              addrs = await detail.provider.request({ method: 'eth_requestAccounts' });
-            }
+            const addrs: string[] = await detail.provider.request({ method: 'eth_accounts' });
             if (addrs.some((a: string) => a.toLowerCase() === ownerAddress.toLowerCase())) {
               signingProvider = detail.provider;
-              console.log('[handlePlaceBet] Found matching wallet via EIP-6963:', detail.info.name);
+              console.log('[handlePlaceBet] Silent match via EIP-6963:', detail.info.name);
               break;
             }
           } catch {
-            // provider rejected or not ready — skip
+            // provider not ready — skip silently
           }
         }
 
-        // 2. Fall back to window.ethereum if EIP-6963 didn't find a match
+        // 2. Targeted prompt: find wallet by walletType and request accounts from it only
+        if (!signingProvider && walletUser.walletType) {
+          const walletNameHint = walletUser.walletType.toLowerCase(); // 'hashpack' | 'metamask' | 'blade'
+          const targeted = eip6963Wallets.find(w =>
+            w.info.rdns?.toLowerCase().includes(walletNameHint) ||
+            w.info.name?.toLowerCase().includes(walletNameHint)
+          );
+          if (targeted) {
+            try {
+              const addrs: string[] = await targeted.provider.request({ method: 'eth_requestAccounts' });
+              if (addrs.some((a: string) => a.toLowerCase() === ownerAddress.toLowerCase())) {
+                signingProvider = targeted.provider;
+                console.log('[handlePlaceBet] Targeted match via EIP-6963:', targeted.info.name);
+              } else if (addrs.length) {
+                // HashPack returned a different account than the one stored at sign-in.
+                // This means the user selected a different account. Show a clear error.
+                throw new Error(
+                  `HashPack returned account ${addrs[0].slice(0, 8)}… but you signed in with ${ownerAddress.slice(0, 8)}…. ` +
+                  `Please switch to the correct account in your wallet and try again.`
+                );
+              }
+            } catch (e: any) {
+              if (e.message?.includes('signed in with')) throw e; // re-throw the account mismatch error
+              // Otherwise provider rejected — fall through to window.ethereum
+            }
+          }
+        }
+
+        // 3. Last resort: window.ethereum
         if (!signingProvider) {
           const fallback = (window as any).ethereum;
           if (fallback) {
-            let addrs: string[] = await fallback.request({ method: 'eth_accounts' });
-            if (!addrs.length) addrs = await fallback.request({ method: 'eth_requestAccounts' });
-            if (addrs.some((a: string) => a.toLowerCase() === ownerAddress.toLowerCase())) {
-              signingProvider = fallback;
-              console.log('[handlePlaceBet] Found matching wallet via window.ethereum fallback');
+            try {
+              let addrs: string[] = await fallback.request({ method: 'eth_accounts' });
+              if (!addrs.length) addrs = await fallback.request({ method: 'eth_requestAccounts' });
+              if (addrs.some((a: string) => a.toLowerCase() === ownerAddress.toLowerCase())) {
+                signingProvider = fallback;
+                console.log('[handlePlaceBet] Match via window.ethereum fallback');
+              }
+            } catch {
+              // ignore
             }
           }
         }
@@ -1141,7 +1174,8 @@ export function PredictionCard({
         if (!signingProvider) {
           throw new Error(
             `Could not find an active wallet for address ${ownerAddress.slice(0, 8)}…. ` +
-            `Please make sure your wallet (${walletUser.walletType ?? 'wallet'}) is unlocked and connected.`
+            `Please make sure ${walletUser.walletType ?? 'your wallet'} is unlocked, ` +
+            `and the correct account (${ownerAddress.slice(0, 8)}…) is selected.`
           );
         }
 
