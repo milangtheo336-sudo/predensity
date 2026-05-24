@@ -90,13 +90,13 @@ function CrawlerSnapshot({ events, cryptoMarkets, clobMarkets }: {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'Predensity',
-    url: 'https://predensity.com',
+    url: 'https://www.predensity.com',
     description: 'Profit from bold, early, and accurate price forecasts. Predensity rewards boldness and sharpness of predictions — trade on crypto, politics, sports, and technology outcomes on Hedera.',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: 'https://predensity.com/?q={search_term_string}',
+        urlTemplate: 'https://www.predensity.com/?q={search_term_string}',
       },
       'query-input': 'required name=search_term_string',
     },
@@ -106,13 +106,13 @@ function CrawlerSnapshot({ events, cryptoMarkets, clobMarkets }: {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     name: 'Active Prediction Markets',
-    url: 'https://predensity.com',
+    url: 'https://www.predensity.com',
     numberOfItems: allMarkets.length,
     itemListElement: allMarkets.slice(0, 20).map((m, i) => ({
       '@type': 'ListItem',
       position: i + 1,
       name: m.question,
-      url: `https://predensity.com/markets/${m.id}`,
+      url: `https://www.predensity.com/markets/${m.id}`,
     })),
   };
 
@@ -134,7 +134,7 @@ function CrawlerSnapshot({ events, cryptoMarkets, clobMarkets }: {
         <ul>
           {allMarkets.map((m) => (
             <li key={m.id}>
-              <a href={`/markets/${m.id}`}>{m.question} — {m.category}</a>
+              <a href={`https://www.predensity.com/markets/${m.id}`}>{m.question} — {m.category}</a>
             </li>
           ))}
         </ul>
