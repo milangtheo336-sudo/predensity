@@ -17,20 +17,11 @@
  * deployment's environment variables (Convex dashboard -> Settings -> Env).
  */
 
+import crypto from "crypto";
+
 function serverTokenFromEnv(): string | undefined {
   // Convex functions can read env vars via process.env at runtime.
   return process.env.CONVEX_ADMIN_TOKEN;
-}
-
-// Constant-time string equality. Avoids Node's `crypto` module so this file
-// can run in Convex's default (non-Node) runtime.
-function timingSafeStringEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
 }
 
 /**
@@ -46,7 +37,16 @@ export function requireServerToken(token: string | undefined): void {
     // Fail closed: if the secret is not configured, refuse everything.
     throw new Error("Server authentication is not configured (CONVEX_ADMIN_TOKEN missing)");
   }
-  if (!token || !timingSafeStringEqual(token, expected)) {
+  if (!token || token.length !== expected.length) {
+    throw new Error("Unauthorized: invalid server token");
+  }
+  try {
+    const a = Buffer.from(token);
+    const b = Buffer.from(expected);
+    if (!crypto.timingSafeEqual(a, b)) {
+      throw new Error("Unauthorized: invalid server token");
+    }
+  } catch {
     throw new Error("Unauthorized: invalid server token");
   }
 }
