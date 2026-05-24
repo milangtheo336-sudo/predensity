@@ -1,9 +1,11 @@
 'use client';
 
 import React from 'react';
-import { MarketPageSkeleton } from '@/components/page-skeleton';
 
-// Keep export for any remaining references — now delegates to the proper skeleton
 export function PredictionCardSkeleton() {
-  return <MarketPageSkeleton />;
+  return (
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center">
+      <img src="/predensity-logo.png" alt="Predensity" className="w-32 h-32 object-contain animate-pulse" />
+    </div>
+  );
 }
