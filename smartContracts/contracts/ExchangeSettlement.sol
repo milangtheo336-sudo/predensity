@@ -143,6 +143,17 @@ contract ExchangeSettlement is Ownable, ReentrancyGuard, Pausable, EIP712 {
         );
         require(rc2 == 22, "USDC transfer failed");
 
+        // Pull the fee from the buyer to the contract itself
+        if (fee > 0) {
+            int64 rc3 = hts.transferToken(
+                usdcToken,
+                buyer,
+                address(this),
+                int64(int256(fee))
+            );
+            require(rc3 == 22, "Fee transfer failed");
+        }
+
         emit TradeSettled(tradeId, buyer, seller, outcomeToken, price, quantity, usdcAmount);
     }
 
@@ -228,6 +239,13 @@ contract ExchangeSettlement is Ownable, ReentrancyGuard, Pausable, EIP712 {
             usdcToken, buyer, seller, int64(int256(usdcAmount - fee))
         ) == 22, "USDC transfer failed");
 
+        // Pull the fee from the buyer to the contract itself
+        if (fee > 0) {
+            require(hts.transferToken(
+                usdcToken, buyer, address(this), int64(int256(fee))
+            ) == 22, "Fee transfer failed");
+        }
+
         emit TradeSettled(tradeId, buyer, seller, makerOrder.outcomeToken, makerOrder.price, makerOrder.quantity, usdcAmount);
     }
 
@@ -277,6 +295,21 @@ contract ExchangeSettlement is Ownable, ReentrancyGuard, Pausable, EIP712 {
 
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    /**
+     * @notice Associate with a Hedera token (required before receiving HTS tokens like USDC fees).
+     * On Hedera, contracts must explicitly associate with tokens.
+     * 
+     * Hedera Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
+     */
+    function associateToken(address token) external onlyOwner {
+        // Call HTS associateToken function
+        // Function selector: 0x49146bde (associateToken(address,address))
+        (bool success, ) = address(0x0000000000000000000000000000000000000167).call(
+            abi.encodeWithSelector(0x49146bde, address(this), token)
+        );
+        require(success, "Token association failed");
     }
 
     // =========================================================================
