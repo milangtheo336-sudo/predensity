@@ -1514,9 +1514,14 @@ function AdminPage() {
     setIsCreatingClobMarket(true);
     try {
       const marketId = `clob-${clobMarketForm.category}-${Date.now()}`;
+      const { getDIDToken } = await import('@/lib/magic');
+      const didToken = await getDIDToken();
       const res = await fetch('/api/clob/market', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${didToken}`,
+        },
         body: JSON.stringify({
           marketId,
           question: clobMarketForm.question,
@@ -2948,9 +2953,40 @@ function AdminPage() {
                 </select>
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Market Type</label>
+                <div className="flex rounded-lg border border-gray-200 dark:border-neutral-700 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setClobMarketForm({ ...clobMarketForm, marketType: 'binary', outcomes: [{ name: 'Yes', imageUrl: '' }, { name: 'No', imageUrl: '' }] })}
+                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                      clobMarketForm.marketType === 'binary'
+                        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Binary (Yes / No)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClobMarketForm({ ...clobMarketForm, marketType: 'multi', outcomes: [{ name: '', imageUrl: '' }, { name: '', imageUrl: '' }] })}
+                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                      clobMarketForm.marketType === 'multi'
+                        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Multi-outcome
+                  </button>
+                </div>
+                {clobMarketForm.marketType === 'binary' && (
+                  <p className="text-xs text-gray-400 mt-1.5">Outcomes are fixed to Yes and No. No images needed.</p>
+                )}
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Question *</label>
                 <input type="text" value={clobMarketForm.question} onChange={(e) => setClobMarketForm({ ...clobMarketForm, question: e.target.value })} placeholder="Who will win the 2026 World Cup?" className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm placeholder:text-gray-400" />
               </div>
+              {clobMarketForm.marketType === 'multi' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Outcomes (Minimum 2) *</label>
                 <div className="space-y-3">
@@ -3008,6 +3044,7 @@ function AdminPage() {
                   </button>
                 </div>
               </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Market Image URL *</label>
                 <input type="url" value={clobMarketForm.marketImageUrl} onChange={(e) => setClobMarketForm({ ...clobMarketForm, marketImageUrl: e.target.value })} placeholder="https://..." className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm placeholder:text-gray-400" />
