@@ -240,7 +240,6 @@ export async function POST(request: NextRequest) {
         finalized: onChainBet.finalized,
         won: onChainBet.won,
         claimed: onChainBet.claimed,
-        exited: onChainBet.exited,
         stake: onChainBet.stake?.toString(),
         weight: onChainBet.weight?.toString(),
       });
@@ -258,10 +257,6 @@ export async function POST(request: NextRequest) {
         await convex.adminMutation(api.sync.markBetClaimed, { betId });
         client.close();
         return NextResponse.json({ success: true, betId, alreadyClaimed: true, payoutAmount: '0', newBalance: '' });
-      }
-      if (onChainBet.exited) {
-        client.close();
-        return NextResponse.json({ error: 'Bet was already exited via DPM sell.' }, { status: 400 });
       }
       if (!onChainBet.won) {
         client.close();
