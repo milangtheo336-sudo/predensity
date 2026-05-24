@@ -208,7 +208,7 @@ export function CategoryTabs({ activeCategory, onCategoryChange }: CategoryTabsP
     { id: Category.CRYPTO, name: 'Crypto' },
     { id: Category.TECHNOLOGY, name: 'Technology' },
     { id: Category.SPORTS, name: 'Sports' },
-    { id: Category.INTERNATIONAL, name: 'International' },
+    { id: Category.FINANCE, name: 'Finance' },
   ];
 
   return (
