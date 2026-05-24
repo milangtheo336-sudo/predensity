@@ -16,6 +16,7 @@ import { formatDateUTC, formatTinybarsToHbar, getLocalTimezoneAbbr, getAvatarPal
 import { useToast } from '@/components/ui/useToast';
 import { Toaster } from '@/components/ui/toaster';
 import { Header, DepositModal, useBalanceVisibility } from '@/components/header';
+import { useBlockchainBalance } from '@/hooks/useBlockchainBalance';
 import {
   Loader2,
   ArrowUpRight,
@@ -879,7 +880,9 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   );
 
   const currency = getStakingCurrency();
-  const cashBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
+  
+  // Read balance from blockchain (non-custodial)
+  const { balance: cashBalance, isLoading: balanceLoading } = useBlockchainBalance(user?.publicAddress);
 
   const activeBets = allBets.filter(b => !b.finalized);
   const historyBets = allBets.filter(b => b.finalized);
