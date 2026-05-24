@@ -4,10 +4,8 @@ import React, { useState } from 'react';
 import { useWallet, useAccountId, useBalance } from '@buidlerlabs/hashgraph-react-wallets';
 import {
   HashpackConnector,
-  MetamaskConnector,
   BladeConnector,
   KabilaConnector,
-  HWCConnector,
 } from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { Button } from '@/components/ui/button';
 import {
