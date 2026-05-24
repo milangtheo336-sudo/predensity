@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next';
 
-const BASE_URL = 'https://predensity.com';
+const BASE_URL = 'https://www.predensity.com';
 
 async function fetchMarkets() {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
