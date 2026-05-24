@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import GamePlay from '@/components/game-play';
+import WinnerPage from '@/components/winner-page';
 
 const CATEGORIES = [
   { id: 'crypto', name: 'Crypto', icon: '₿' },
@@ -24,7 +26,7 @@ const MATCH = {
 export default function OnboardingPage() {
   const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [step, setStep] = useState<'categories' | 'trade' | 'modal' | 'simulation' | 'result'>('categories');
+  const [step, setStep] = useState<'categories' | 'trade' | 'modal' | 'gameplay' | 'result'>('categories');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedOutcomeIndex, setSelectedOutcomeIndex] = useState(0);
   const [selectedAmount, setSelectedAmount] = useState('');
@@ -32,40 +34,6 @@ export default function OnboardingPage() {
   const [isMarketOrder, setIsMarketOrder] = useState(true);
   const [orderPrice, setOrderPrice] = useState('50');
   const [showOutcomeDropdown, setShowOutcomeDropdown] = useState(false);
-  const [minute, setMinute] = useState(0);
-  const [homeScore, setHomeScore] = useState(0);
-  const [awayScore, setAwayScore] = useState(0);
-
-  // Simulation tick sequence: 1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90
-  const TICK_SEQUENCE = [1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90];
-
-  useEffect(() => {
-    if (step !== 'simulation') return;
-    setMinute(0); setHomeScore(0); setAwayScore(0);
-    let tickIndex = 0;
-    const interval = setInterval(() => {
-      tickIndex++;
-      if (tickIndex >= TICK_SEQUENCE.length) {
-        clearInterval(interval);
-        // Final score: chosen outcome wins
-        const chosen = OUTCOMES[selectedOutcomeIndex];
-        if (chosen.name === MATCH.home.name) { setHomeScore(2); setAwayScore(1); }
-        else if (chosen.name === MATCH.away.name) { setHomeScore(1); setAwayScore(3); }
-        else { setHomeScore(1); setAwayScore(1); }
-        setMinute(90);
-        setTimeout(() => setStep('result'), 1200);
-        return;
-      }
-      const m = TICK_SEQUENCE[tickIndex];
-      setMinute(m);
-      // Randomly add goals at certain minutes
-      if (m === 25) setAwayScore(s => s + 1);
-      if (m === 55) setHomeScore(s => s + 1);
-      if (m === 70) setAwayScore(s => s + 1);
-      if (m === 82) setAwayScore(s => s + 1);
-    }, 300);
-    return () => clearInterval(interval);
-  }, [step]);
 
   const OUTCOMES = [
     { name: MATCH.home.name, flag: MATCH.home.flag, yesPrice: 38, noPrice: 62 },
@@ -221,130 +189,7 @@ export default function OnboardingPage() {
         )}
       </AnimatePresence>
 
-        {/* STEP 4: Simulation */}
-        {step === 'simulation' && (
-          <motion.div
-            key="simulation"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex-1 flex flex-col"
-            style={{ backgroundColor: '#1e3a5f' }}
-          >
-            {/* Top: lime green with question */}
-            <div className="flex-1 flex items-center justify-center px-8" style={{ backgroundColor: '#d4f06e' }}>
-              <p className="text-gray-900 text-base font-medium text-center">
-                Will {OUTCOMES[selectedOutcomeIndex].name === 'Draw' ? 'the match end in a Draw' : `${OUTCOMES[selectedOutcomeIndex].name} win the match`}?
-              </p>
-            </div>
-
-            {/* Bottom: dark with score */}
-            <div className="px-6 py-8 flex flex-col items-center gap-4">
-              {/* Timer */}
-              <motion.span
-                key={minute}
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-[#d4f06e] text-lg font-bold"
-              >
-                {minute}'
-              </motion.span>
-
-              {/* Score */}
-              <div className="flex items-center gap-6">
-                <div className="flex flex-col items-center gap-1">
-                  <Image src={MATCH.home.flag} alt={MATCH.home.name} width={32} height={22} className="rounded-sm object-cover w-8 h-6" />
-                  <span className="text-white text-xs">{MATCH.home.name}</span>
-                </div>
-                <span className="text-white text-2xl font-bold">{homeScore} : {awayScore}</span>
-                <div className="flex flex-col items-center gap-1">
-                  <Image src={MATCH.away.flag} alt={MATCH.away.name} width={32} height={22} className="rounded-sm object-cover w-8 h-6" />
-                  <span className="text-white text-xs">{MATCH.away.name}</span>
-                </div>
-              </div>
-
-              {/* Progress bar */}
-              <div className="w-full max-w-xs bg-white/10 rounded-full h-1.5 overflow-hidden">
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{ backgroundColor: '#d4f06e' }}
-                  animate={{ width: `${(minute / 90) * 100}%` }}
-                  transition={{ duration: 0.25 }}
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* STEP 5: Result */}
-        {step === 'result' && (
-          <motion.div
-            key="result"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex-1 flex flex-col items-center justify-center px-6"
-            style={{ backgroundColor: '#d4f06e' }}
-          >
-            {/* Progress bars */}
-            <div className="absolute top-8 left-1/2 -translate-x-1/2 flex gap-1.5">
-              {[0,1,2,3].map((i) => (
-                <div key={i} className="h-0.5 w-10 rounded-full bg-black/30" />
-              ))}
-            </div>
-
-            {/* Win card */}
-            <div className="bg-white rounded-2xl w-full max-w-xs p-6 shadow-xl">
-              {/* Green checkmark */}
-              <div className="flex justify-center mb-3">
-                <div className="w-12 h-12 rounded-full bg-[#3fdc8c] flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" className="w-6 h-6">
-                    <path d="M5 13l4 4L19 7"/>
-                  </svg>
-                </div>
-              </div>
-
-              <h2 className="text-center text-lg font-bold text-gray-900 mb-4">
-                {OUTCOMES[selectedOutcomeIndex].name === 'Draw' ? 'Draw!' : `${OUTCOMES[selectedOutcomeIndex].name} Won!`}
-              </h2>
-
-              {/* Final score */}
-              <div className="flex items-center justify-center gap-4 mb-5">
-                <div className="flex flex-col items-center gap-1">
-                  <Image src={MATCH.home.flag} alt={MATCH.home.name} width={36} height={25} className="rounded-sm object-cover w-9 h-6" />
-                  <span className="text-xs text-gray-500">{MATCH.home.name}</span>
-                </div>
-                <span className="text-xl font-bold text-gray-900">
-                  {OUTCOMES[selectedOutcomeIndex].name === MATCH.away.name ? '1 : 3' :
-                   OUTCOMES[selectedOutcomeIndex].name === MATCH.home.name ? '2 : 1' : '1 : 1'}
-                </span>
-                <div className="flex flex-col items-center gap-1">
-                  <Image src={MATCH.away.flag} alt={MATCH.away.name} width={36} height={25} className="rounded-sm object-cover w-9 h-6" />
-                  <span className="text-xs text-gray-500">{MATCH.away.name}</span>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-100 pt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Demo bet:</span>
-                  <span className="font-semibold text-gray-900">{selectedAmount || '5'} USDC</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Winning:</span>
-                  <span className="font-bold text-[#3fdc8c] text-base">{toWin} <span className="text-xs font-normal">USDC</span></span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => router.push('/markets')}
-                className="w-full mt-5 bg-black text-white font-bold py-3.5 rounded-xl hover:bg-gray-800 transition-colors text-sm"
-              >
-                Explore Markets
-              </button>
-            </div>
-          </motion.div>
-        )}
-    </div>
-  );
-}
+        {/* STEP 3: Full-screen trading UI -- matches CLOB trading panel exactly */}
         {step === 'modal' && (
           <motion.div
             key="trading"
@@ -539,10 +384,10 @@ export default function OnboardingPage() {
               <div className="text-xs text-gray-400 mb-3 text-center">Balance: 0.00 USDC</div>
 
               <button
-                onClick={() => setStep('simulation')}
+                onClick={() => router.push('/markets')}
                 className="block w-[calc(100%-32px)] mx-4 mb-4 py-3.5 bg-black text-white rounded-2xl text-sm font-bold hover:bg-gray-800 transition-colors"
               >
-                Trade
+                Log in / Sign up to Trade
               </button>
             </div>
           </motion.div>
