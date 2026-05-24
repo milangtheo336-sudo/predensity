@@ -75,14 +75,14 @@ export const createManagedWallet = mutation({
     encryptedPrivateKey: v.string(),
   },
   handler: async (ctx, args) => {
-    // Check for duplicates by userId or phoneNumber
+    // Check for duplicates by userId or phoneNumber -- return existing instead of throwing
     if (args.userId) {
       const existingByUser = await ctx.db
         .query("managedWallets")
         .withIndex("by_user_id", (q) => q.eq("userId", args.userId!))
         .first();
       if (existingByUser) {
-        throw new Error("Wallet already exists for this user");
+        return existingByUser._id;
       }
     }
 
@@ -92,7 +92,7 @@ export const createManagedWallet = mutation({
         .withIndex("by_phone", (q) => q.eq("phoneNumber", args.phoneNumber!))
         .first();
       if (existingByPhone) {
-        throw new Error("Wallet already exists for this phone number");
+        return existingByPhone._id;
       }
     }
 
