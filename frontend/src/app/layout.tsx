@@ -1,119 +1,72 @@
-import type { Metadata, Viewport } from 'next';
+'use client';
+
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
-import { LayoutChrome } from '@/components/layout-chrome';
-import { WalletErrorSuppressor } from '@/components/wallet-error-suppressor';
-import { HydrationErrorBoundary } from '@/components/hydration-error-boundary';
-import { WalletProviderClient } from '@/components/wallet-provider-client';
-import { ConvexClientProvider } from '@/components/convex-client-provider';
-import { MagicProvider } from '@/context/MagicContext';
-import { WalletUserProvider } from '@/context/WalletUserContext';
-import { LanguageProvider } from '@/context/LanguageContext';
-import { Analytics } from '@vercel/analytics/react';
-import SeoContent from './seo-content';
+import ContextProvider from '../../context';
+import { ConvexProvider, ConvexReactClient } from 'convex/react';
+import { ClerkProvider } from '@clerk/nextjs';
+import { dark } from '@clerk/themes';
+import { SupportChat } from '@/components/support-chat';
 
-const appFont = Inter({
-  subsets: ['latin'],
-  variable: '--font-app',
-  weight: ['300', '400', '500', '600', '700', '800', '900'],
-});
+const inter = Inter({ subsets: ['latin'] });
 
-export const metadata: Metadata = {
-  title: 'Predensity - Decentralized Prediction Market',
-  description:
-    'Predensity is a decentralized prediction market . Profit from bold, early, and accurate price forecasts. Trade on crypto, politics, esports, and technology outcomes. The platform rewards boldness and sharpness of predictions.',
-  manifest: '/manifest.json',
-  keywords: ['prediction market', 'crypto predictions', 'decentralized','sports betting', 'politics market', 'web3'],
-  openGraph: {
-    title: 'Predensity - Decentralized Prediction Market',
-    description:
-      'Profit from bold, early, and accurate price forecasts. The platform rewards boldness and sharpness of predictions. ',
-    type: 'website',
-    siteName: 'Predensity',
-    url: 'https://www.predensity.com',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Predensity - Decentralized Prediction Market',
-    description:
-      'Profit from bold, early, and accurate price forecasts. The platform rewards boldness and sharpness of predictions.',
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-    },
-  },
-  alternates: {
-    canonical: 'https://www.predensity.com',
-  },
-};
+const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-export const viewport: Viewport = {
-  themeColor: '#7c3aed',
-};
-
-async function fetchSeoData() {
-  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-  if (!convexUrl) return { events: [], cryptoMarkets: [] };
-  const base = convexUrl.endsWith('/') ? convexUrl.slice(0, -1) : convexUrl;
-  try {
-    const [eventsRes, cryptoRes] = await Promise.allSettled([
-      fetch(`${base}/api/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: 'events:getEvents', args: {} }), next: { revalidate: 60 } }),
-      fetch(`${base}/api/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: 'events:getCryptoMarkets', args: {} }), next: { revalidate: 60 } }),
-    ]);
-    return {
-      events: eventsRes.status === 'fulfilled' && eventsRes.value.ok ? (await eventsRes.value.json()).value ?? [] : [],
-      cryptoMarkets: cryptoRes.status === 'fulfilled' && cryptoRes.value.ok ? (await cryptoRes.value.json()).value ?? [] : [],
-    };
-  } catch { return { events: [], cryptoMarkets: [] }; }
-}
-
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const seoData = await fetchSeoData();
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        {/* Critical inline CSS — guarantees dark background on very first byte, before any stylesheet loads */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-          html,body{background:#000;color:#fff;min-height:100vh}
-          @media(prefers-color-scheme:light){html,body{background:#f5f5f5;color:#000}}
-        ` }} />
-      </head>
-      <body className={`${appFont.variable} font-sans bg-[#f5f5f5] dark:bg-black`}>
-        {/* SEO content — pure server HTML, outside all client providers, always in the DOM */}
-        <SeoContent
-          events={seoData.events}
-          cryptoMarkets={seoData.cryptoMarkets}
+      <body className={inter.className} style={{ backgroundColor: '#000' }}>
+        {/* Inline splash screen visible before JS hydrates */}
+        <div
+          id="splash"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: '#000',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'opacity 0.4s ease',
+          }}
+        >
+          <img src="/predensity-logo.png" alt="" width={64} height={64} style={{ marginBottom: 20 }} />
+          <span style={{ color: '#7c3aed', fontSize: 24, fontWeight: 600, letterSpacing: 2 }}>
+            predensity
+          </span>
+        </div>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('load', function() {
+                var s = document.getElementById('splash');
+                if (s) { s.style.opacity = '0'; setTimeout(function() { s.remove(); }, 400); }
+              });
+            `,
+          }}
         />
-        <WalletErrorSuppressor />
-        <HydrationErrorBoundary>
-        <MagicProvider>
-          <WalletUserProvider>
-            <ConvexClientProvider>
-              <LanguageProvider>
-                <WalletProviderClient>
-                  <ThemeProvider
-                    attribute="class"
-                    defaultTheme="dark"
-                    enableSystem
-                    disableTransitionOnChange
-                  >
-                    {children}
-                    <LayoutChrome />
-                    <Analytics />
-                  </ThemeProvider>
-                </WalletProviderClient>
-              </LanguageProvider>
-            </ConvexClientProvider>
-          </WalletUserProvider>
-        </MagicProvider>
-        </HydrationErrorBoundary>
+        <ClerkProvider
+          appearance={{
+            baseTheme: dark,
+            variables: { colorPrimary: '#7c3aed' },
+          }}
+        >
+          <ConvexProvider client={convex}>
+              <ContextProvider>
+                <ThemeProvider
+                  attribute="class"
+                  defaultTheme="dark"
+                  enableSystem
+                  disableTransitionOnChange
+                >
+                  {children}
+                  <SupportChat />
+                </ThemeProvider>
+              </ContextProvider>
+          </ConvexProvider>
+        </ClerkProvider>
       </body>
     </html>
   );
