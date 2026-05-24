@@ -1036,15 +1036,19 @@ function TechnologyEventFields({ formData, updateField }: any) {
   );
 }
 
-// Markets Display Component
+// Markets Display Component (deprecated — multi-outcome system removed)
 function ClobMarketsDisplay({ category }: { category: Category }) {
+  return <div className="text-center py-8 text-gray-400">Multi-outcome markets removed</div>;
+}
+
+function _DEAD_ClobMarketsDisplay({ category }: { category: Category }) {
   const { toast } = useToast();
   const [selectedMarketForElimination, setSelectedMarketForElimination] = useState<string | null>(null);
   const [selectedMarketForResolution, setSelectedMarketForResolution] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Fetch CLOB markets for current category
-  const allClobMarkets = useConvexQuery(api.clob.getClobMarkets, {});
+  const allClobMarkets: any[] = [];
   const clobMarkets = useMemo(() => {
     if (!allClobMarkets) return [];
     // Filter by category - show all for crypto, filter for others
@@ -1348,37 +1352,6 @@ function AdminPage() {
   // Crypto market creation state
   const [showCryptoMarketModal, setShowCryptoMarketModal] = useState(false);
 
-  // CLOB market creation state
-  const [showClobMarketModal, setShowClobMarketModal] = useState(false);
-  const [showClobResolveModal, setShowClobResolveModal] = useState(false);
-  const [isCreatingClobMarket, setIsCreatingClobMarket] = useState(false);
-  const [clobMarketForm, setClobMarketForm] = useState({
-    question: '',
-    category: 'politics',
-    marketType: 'binary' as 'binary' | 'multi' | 'match',
-    outcomes: [
-      { name: 'Yes', imageUrl: '' },
-      { name: 'No', imageUrl: '' }
-    ],
-    marketImageUrl: '',
-    description: '',
-    resolutionTimestamp: '',
-    sport: undefined as string | undefined,
-    league: undefined as string | undefined,
-    // Finance-only fields (ignored for other categories)
-    financeSubCategory: '' as string,
-    // `template-or-multi` sub-cats: admin picks which variant to render
-    financeVariant: 'template' as 'template' | 'multi',
-    // Template fields for "above-price" shape
-    financeAssetName: '',
-    financeAssetSymbol: '',
-    financeTargetPrice: '',
-    // Fields for "asset-vs-asset" shape
-    financeAssetA: '',
-    financeAssetALogo: '',
-    financeAssetB: '',
-    financeAssetBLogo: '',
-  });
   const [cryptoMarketForm, setCryptoMarketForm] = useState({
     tokenSymbol: '',
     tokenName: '',
@@ -1449,11 +1422,6 @@ function AdminPage() {
     const results: Record<string, { fees: string; balance: string; isOwner: boolean; loading: boolean }> = {};
 
     for (const cat of categories) {
-      // Skip fee fetching for CLOB categories (Politics, Sports, Tech) - they don't have legacy contracts
-      if (cat.id !== Category.CRYPTO) {
-        results[cat.id] = { fees: 'N/A (CLOB)', balance: '--', isOwner: false, loading: false };
-        continue;
-      }
       
       const addr = getContractAddress(cat.id);
       const abi = CryptoPredictionMarketABI.abi;
@@ -1481,11 +1449,6 @@ function AdminPage() {
   }, [isConnected, isAdmin, readContract]);
 
   const handleWithdrawFees = async (category: Category) => {
-    // Skip withdrawal for CLOB categories - they don't have legacy contracts
-    if (category !== Category.CRYPTO) {
-      toast({ variant: 'destructive', title: 'Not available', description: 'Fee withdrawal only available for Crypto category' });
-      return;
-    }
     
     const contractId = getContractId(category);
     const abi = CryptoPredictionMarketABI.abi;
@@ -1933,7 +1896,7 @@ function AdminPage() {
     }
   };
 
-  // CLOB market creation handler
+  // CLOB market creation handler (deprecated - kept as no-op)
   const handleCreateClobMarket = async () => {
     if (!clobMarketForm.marketImageUrl || !clobMarketForm.resolutionTimestamp) {
       toast({ variant: 'destructive', title: 'Missing fields', description: 'Image and resolution date are required' });
@@ -2950,7 +2913,7 @@ function AdminPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">CLOB Market Management</h2>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Market Management</h2>
                 <p className="text-sm text-gray-400 mt-1">Create prediction markets with YES/NO or multi-outcome trading</p>
               </div>
               <Button variant="predensity" onClick={() => {
@@ -2958,7 +2921,7 @@ function AdminPage() {
                 setClobMarketForm(prev => ({ ...prev, category: selectedCategory.toLowerCase() }));
               }} className="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                Create CLOB Market
+                Create Market
               </Button>
             </div>
             <ClobMarketsDisplay category={selectedCategory} />
