@@ -11,6 +11,7 @@ import { useMagic } from '@/context/MagicContext';
 import { signTypedData, getDIDToken } from '@/lib/magic';
 import { api } from '../../convex/_generated/api';
 import { useBalanceVisibility } from '@/components/header';
+import { useBlockchainBalance } from '@/hooks/useBlockchainBalance';
 import BoringAvatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
 // User Avatar component
@@ -631,7 +632,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const [hideEliminated, setHideEliminated] = useState(false);
   const [inputMode, setInputMode] = useState<'contracts' | 'dollars'>('contracts');
 
-  const platformBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
+  // Read balance from blockchain (non-custodial)
+  const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(user?.publicAddress);
 
   // Positions for this market
   const marketPositions = useMemo(() => {
