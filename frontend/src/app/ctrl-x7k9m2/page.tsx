@@ -1,27 +1,21 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import Link from 'next/link';
-import { useMagic } from '@/context/MagicContext';
+import { useEffect, useState } from 'react';
+import { SignInButton, SignOutButton, useUser } from '@clerk/nextjs';
 import { useMutation, useQuery as useConvexQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
-import { useAccount } from 'wagmi';
-import { useContractWriteCompat, useReadContractCompat } from '@/hooks/useContractWrite';
+import {
+  useWallet,
+  useWriteContract,
+  useWatchTransactionReceipt,
+  useReadContract,
+} from '@buidlerlabs/hashgraph-react-wallets';
 import { parseUnits } from 'ethers/lib/utils';
 import { ethers } from 'ethers';
 import { Calendar, RefreshCw } from 'lucide-react';
 
 import type { Bet } from '@/lib/types';
 import { Category, CATEGORIES } from '@/lib/types/categories';
-import { SPORT_TAXONOMY, getSport } from '@/lib/types/sports';
-import {
-  FINANCE_TAXONOMY,
-  FINANCE_SUBCATEGORIES,
-  FED_RATES_PRESET_OUTCOMES,
-  getFinanceSubCategory,
-  buildAbovePriceQuestion,
-  type FinanceShape,
-} from '@/lib/types/finance';
 import { getContractId, getContractAddress, isCategoryDeployed, getStakingCurrency, isTokenMode, getOnChainBucket } from '@/lib/contracts/contract-config';
 
 import { formatDateUTC, formatTinybarsToHbar, getLocalTimezoneAbbr } from '@/lib/utils';
@@ -33,11 +27,9 @@ import { useToast } from '@/components/ui/useToast';
 import { Toaster } from '@/components/ui/toaster';
 import NoWalletConnectedContainer from '@/components/no-wallet-connected-container';
 import CryptoPredictionMarketABI from '../../../abi/CryptoPredictionMarket.json';
-
-// Old ABIs removed -- politics/sports/tech contracts deprecated
-const PoliticsPredictionMarketABI = { abi: [] as any[] };
-const SportsPredictionMarketABI = { abi: [] as any[] };
-const TechnologyPredictionMarketABI = { abi: [] as any[] };
+import PoliticsPredictionMarketABI from '../../../abi/PoliticsPredictionMarket.json';
+import SportsPredictionMarketABI from '../../../abi/SportsPredictionMarket.json';
+import TechnologyPredictionMarketABI from '../../../abi/TechnologyPredictionMarket.json';
 
 export default function AdminPageWrapper() {
   return (
@@ -66,24 +58,10 @@ interface EventResolutionSectionProps {
 
 function EventResolutionSection({ category, contractId }: EventResolutionSectionProps) {
   const events = useConvexQuery(api.events.getEventsByCategory, { category });
-  const { writeContract, watch } = useContractWriteCompat();
+  const { writeContract } = useWriteContract();
+  const { watch } = useWatchTransactionReceipt();
   const { toast } = useToast();
-  // Gated Convex mutation; proxied through admin API route that enforces requireAdmin().
-  const resolveEventMutation = async (input: { eventId: string; actualValue: number }) => {
-    const { getDIDToken } = await import('@/lib/magic');
-    const didToken = await getDIDToken();
-    const res = await fetch('/api/admin/events/resolve', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${didToken}`,
-      },
-      body: JSON.stringify(input),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'resolve-event failed');
-    return data.id;
-  };
+  const resolveEventMutation = useMutation(api.events.resolveEvent);
   
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [resolutionValue, setResolutionValue] = useState<string>('');
@@ -384,332 +362,6 @@ function EventsList({ category }: EventsListProps) {
   );
 }
 
-interface SportLeagueSelectorProps {
-  sport?: string;
-  league?: string;
-  onChange: (next: { sport?: string; league?: string }) => void;
-  // When category=Finance we swap in the finance taxonomy + labels.
-  category?: Category | string;
-}
-
-function SportLeagueSelector({ sport, league, onChange, category }: SportLeagueSelectorProps) {
-  const isFinance = category === Category.FINANCE || category === 'finance';
-  const taxonomy = isFinance ? FINANCE_TAXONOMY : SPORT_TAXONOMY;
-  const topLabel = isFinance ? 'Group' : 'Sport';
-  const subLabel = isFinance ? 'Sub-category' : 'League';
-  const leagues = sport ? taxonomy.find((s) => s.id === sport)?.leagues ?? [] : [];
-  return (
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-          {topLabel}
-        </label>
-        <select
-          value={sport ?? ''}
-          onChange={(e) => onChange({ sport: e.target.value || undefined, league: undefined })}
-          className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple"
-        >
-          <option value="">— None —</option>
-          {taxonomy.map((s) => (
-            <option key={s.id} value={s.id}>{s.label}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-          {subLabel}
-        </label>
-        <select
-          value={league ?? ''}
-          disabled={!sport || leagues.length === 0}
-          onChange={(e) => onChange({ sport, league: e.target.value || undefined })}
-          className="w-full px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-predensity-purple disabled:opacity-50"
-        >
-          <option value="">— None —</option>
-          {leagues.map((l) => (
-            <option key={l.id} value={l.id}>{l.label}</option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-}
-
-// Finance-specific market-creation fields. Picks a sub-category first, then
-// renders only the inputs that sub-category needs. Writes into the same
-// marketForm shared with the non-finance flow so submission is unified.
-interface FinanceMarketFieldsProps {
-  form: any;
-  setForm: (updater: (prev: any) => any) => void;
-}
-function FinanceMarketFields({ form, setForm }: FinanceMarketFieldsProps) {
-  const sub = getFinanceSubCategory(form.financeSubCategory);
-  const effectiveShape: FinanceShape | 'multi-free' | undefined = sub
-    ? sub.shape === 'template-or-multi'
-      ? (form.financeVariant === 'template' ? 'above-price' : 'multi-free')
-      : sub.shape
-    : undefined;
-
-  const pickSubCategory = (id: string) => {
-    const nextSub = getFinanceSubCategory(id);
-    setForm((prev: any) => {
-      const next: any = { ...prev, financeSubCategory: id };
-      // Reset variant so template-or-multi always starts on 'template'.
-      next.financeVariant = 'template';
-      // Seed outcomes for shapes that use the outcomes editor.
-      if (nextSub?.shape === 'fed-rates') {
-        next.outcomes = FED_RATES_PRESET_OUTCOMES.map((name) => ({ name, imageUrl: '' }));
-        next.question = '';
-      } else if (nextSub?.shape === 'template-or-multi') {
-        next.outcomes = [{ name: '', imageUrl: '' }, { name: '', imageUrl: '' }];
-        next.question = '';
-      }
-      return next;
-    });
-  };
-
-  const setVariant = (variant: 'template' | 'multi') => {
-    setForm((prev: any) => {
-      const next: any = { ...prev, financeVariant: variant };
-      if (variant === 'multi') {
-        // Seed empty rows when switching to freeform multi.
-        next.outcomes = [{ name: '', imageUrl: '' }, { name: '', imageUrl: '' }];
-        next.question = '';
-      }
-      return next;
-    });
-  };
-
-  const updateOutcome = (idx: number, field: 'name' | 'imageUrl', value: string) => {
-    setForm((prev: any) => {
-      const outcomes = [...prev.outcomes];
-      outcomes[idx] = { ...outcomes[idx], [field]: value };
-      return { ...prev, outcomes };
-    });
-  };
-
-  const addOutcome = () => setForm((prev: any) => ({
-    ...prev,
-    outcomes: [...prev.outcomes, { name: '', imageUrl: '' }],
-  }));
-
-  const removeOutcome = (idx: number) => setForm((prev: any) => ({
-    ...prev,
-    outcomes: prev.outcomes.filter((_: any, i: number) => i !== idx),
-  }));
-
-  const resolutionDate = form.resolutionTimestamp ? new Date(form.resolutionTimestamp) : null;
-  const previewQuestion = (() => {
-    if (effectiveShape === 'above-price' && form.financeAssetName && form.financeTargetPrice && resolutionDate) {
-      return buildAbovePriceQuestion({
-        assetName: form.financeAssetName,
-        symbol: form.financeAssetSymbol || undefined,
-        price: form.financeTargetPrice,
-        date: resolutionDate,
-      });
-    }
-    if (effectiveShape === 'asset-vs-asset' && form.financeAssetA && form.financeAssetB) {
-      return `${form.financeAssetA} vs ${form.financeAssetB}`;
-    }
-    return null;
-  })();
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Finance sub-category *</label>
-        <select
-          value={form.financeSubCategory}
-          onChange={(e) => pickSubCategory(e.target.value)}
-          className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
-        >
-          <option value="">— Select —</option>
-          <optgroup label="Duration">
-            {FINANCE_SUBCATEGORIES.filter((s) => s.group === 'duration').map((s) => (
-              <option key={s.id} value={s.id}>{s.label}</option>
-            ))}
-          </optgroup>
-          <optgroup label="Finance Events">
-            {FINANCE_SUBCATEGORIES.filter((s) => s.group === 'finance-events').map((s) => (
-              <option key={s.id} value={s.id}>{s.label}</option>
-            ))}
-          </optgroup>
-        </select>
-      </div>
-
-      {sub?.shape === 'template-or-multi' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Question shape</label>
-          <div className="flex rounded-lg border border-gray-200 dark:border-neutral-700 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setVariant('template')}
-              className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                form.financeVariant === 'template'
-                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              Binary &quot;above $X&quot;
-            </button>
-            <button
-              type="button"
-              onClick={() => setVariant('multi')}
-              className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                form.financeVariant === 'multi'
-                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              Multi-outcome
-            </button>
-          </div>
-        </div>
-      )}
-
-      {effectiveShape === 'above-price' && (
-        <div className="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900/50">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Asset name *</label>
-              <input
-                type="text"
-                value={form.financeAssetName}
-                onChange={(e) => setForm((p: any) => ({ ...p, financeAssetName: e.target.value }))}
-                placeholder="Gold"
-                className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Symbol</label>
-              <input
-                type="text"
-                value={form.financeAssetSymbol}
-                onChange={(e) => setForm((p: any) => ({ ...p, financeAssetSymbol: e.target.value }))}
-                placeholder="PAXG"
-                className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Target price (USD) *</label>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={form.financeTargetPrice}
-              onChange={(e) => setForm((p: any) => ({ ...p, financeTargetPrice: e.target.value }))}
-              placeholder="4782.48"
-              className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
-            />
-          </div>
-          {previewQuestion && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              <span className="font-medium">Preview:</span> {previewQuestion}
-            </p>
-          )}
-          <p className="text-xs text-gray-400">Outcomes fixed to Yes / No. Question is generated from asset + price + resolution date.</p>
-        </div>
-      )}
-
-      {effectiveShape === 'asset-vs-asset' && (
-        <div className="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900/50">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Asset A *</label>
-              <input
-                type="text"
-                value={form.financeAssetA}
-                onChange={(e) => setForm((p: any) => ({ ...p, financeAssetA: e.target.value }))}
-                placeholder="BTC"
-                className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Asset B *</label>
-              <input
-                type="text"
-                value={form.financeAssetB}
-                onChange={(e) => setForm((p: any) => ({ ...p, financeAssetB: e.target.value }))}
-                placeholder="Gold"
-                className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
-              />
-            </div>
-          </div>
-          {previewQuestion && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              <span className="font-medium">Preview:</span> {previewQuestion}
-            </p>
-          )}
-          <p className="text-xs text-gray-400">
-            Binary Yes / No market — YES means <span className="font-medium">{form.financeAssetA || 'Asset A'}</span> beats <span className="font-medium">{form.financeAssetB || 'Asset B'}</span>. Use Market Image URL above for a composite logo.
-          </p>
-        </div>
-      )}
-
-      {(effectiveShape === 'fed-rates' || effectiveShape === 'multi-free') && (
-        <>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Question *</label>
-            <input
-              type="text"
-              value={form.question}
-              onChange={(e) => setForm((p: any) => ({ ...p, question: e.target.value }))}
-              placeholder={effectiveShape === 'fed-rates' ? 'Fed decision in April?' : 'What will WTI Crude Oil hit in April 2026?'}
-              className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-gray-900 dark:text-white text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Outcomes *
-              {effectiveShape === 'fed-rates' && (
-                <span className="ml-2 text-xs font-normal text-gray-400">(prefilled with Fed presets, edit as needed)</span>
-              )}
-            </label>
-            <div className="space-y-2">
-              {form.outcomes.map((outcome: any, idx: number) => (
-                <div key={idx} className="flex gap-2 items-start p-2 bg-gray-50 dark:bg-neutral-900 rounded border border-gray-200 dark:border-neutral-700">
-                  <div className="flex-1 space-y-2">
-                    <input
-                      type="text"
-                      value={outcome.name}
-                      onChange={(e) => updateOutcome(idx, 'name', e.target.value)}
-                      placeholder="Outcome name (e.g., No change, $3.800, ↑ $120)"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-sm text-gray-900 dark:text-white"
-                    />
-                    <input
-                      type="url"
-                      value={outcome.imageUrl}
-                      onChange={(e) => updateOutcome(idx, 'imageUrl', e.target.value)}
-                      placeholder="Image URL (optional)"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded text-sm text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  {form.outcomes.length > 2 && (
-                    <button
-                      type="button"
-                      className="mt-1 px-2 py-1 text-red-600 hover:text-red-700 dark:text-red-400 text-sm font-medium"
-                      onClick={() => removeOutcome(idx)}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={addOutcome}
-                className="w-full mt-1 px-3 py-2 border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded text-sm text-gray-600 dark:text-gray-400 hover:border-gray-400"
-              >
-                + Add outcome
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: EventCreationFormProps) {
   const [formData, setFormData] = useState<any>({
     eventName: '',
@@ -789,17 +441,6 @@ function EventCreationForm({ category, onSubmit, onCancel, isSubmitting }: Event
           />
         </div>
       </div>
-
-      {/* Sidebar taxonomy: sport (top-level) + optional league (sub-category) */}
-      <SportLeagueSelector
-        category={category}
-        sport={formData.sport}
-        league={formData.league}
-        onChange={(next) => {
-          updateField('sport', next.sport);
-          updateField('league', next.league);
-        }}
-      />
 
       {/* Category-Specific Fields */}
       {category === Category.POLITICS && <PoliticsEventFields formData={formData} updateField={updateField} />}
@@ -1037,36 +678,17 @@ function TechnologyEventFields({ formData, updateField }: any) {
 }
 
 function AdminPage() {
-  const { user, isLoading, logout } = useMagic();
-  const isSignedIn = !!user;
-  const isLoaded = !isLoading;
-  
-  // Check if user is admin (based on email)
-  const adminEmails = ['mwangihenry336@gmail.com', 'warukirahenry336@gmail.com'];
-  const isAdmin = user && adminEmails.includes(user.email);
+  const { user, isLoaded, isSignedIn } = useUser();
+  const isAdmin = user?.publicMetadata?.role === 'admin';
 
   // Wallet connection
-  const { isConnected } = useAccount();
-  const { writeContract, watch } = useContractWriteCompat();
-  const { readContract } = useReadContractCompat();
+  const { isConnected } = useWallet();
+  const { writeContract } = useWriteContract();
+  const { watch } = useWatchTransactionReceipt();
+  const { readContract } = useReadContract();
 
   // Convex mutations
-  // Gated Convex mutation; proxied through admin API route that enforces requireAdmin().
-  const createEventMutation = async (input: any) => {
-    const { getDIDToken } = await import('@/lib/magic');
-    const didToken = await getDIDToken();
-    const res = await fetch('/api/admin/events/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${didToken}`,
-      },
-      body: JSON.stringify(input),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'create-event failed');
-    return data.eventId;
-  };
+  const createEventMutation = useMutation(api.events.createEvent);
 
   // Toast notifications
   const { toast } = useToast();
@@ -1093,7 +715,6 @@ function AdminPage() {
 
   // Crypto market creation state
   const [showCryptoMarketModal, setShowCryptoMarketModal] = useState(false);
-
   const [cryptoMarketForm, setCryptoMarketForm] = useState({
     tokenSymbol: '',
     tokenName: '',
@@ -1101,79 +722,31 @@ function AdminPage() {
     imageUrl: '',
     description: '',
   });
-
-  // Gated Convex mutation; proxied through admin API route that enforces requireAdmin().
-  const createCryptoMarketMutation = async (input: any) => {
-    const { getDIDToken } = await import('@/lib/magic');
-    const didToken = await getDIDToken();
-    const res = await fetch('/api/admin/events/create-crypto-market', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${didToken}`,
-      },
-      body: JSON.stringify(input),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'create-crypto-market failed');
-    return data;
-  };
-
-  // Gated Convex mutations are proxied through admin API routes that enforce
-  // requireAdmin() on the server. The helpers below keep the same call shape
-  // as the original useMutation hooks so downstream call sites don't change.
-  const finalizeBetsMutation = async (input: any) => {
-    const { getDIDToken } = await import('@/lib/magic');
-    const didToken = await getDIDToken();
-    const res = await fetch('/api/admin/sync/finalize-bets', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${didToken}`,
-      },
-      body: JSON.stringify(input),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'finalize-bets failed');
-    return data;
-  };
-
-  const updateBetOnChainIdMutation = async (input: any) => {
-    const { getDIDToken } = await import('@/lib/magic');
-    const didToken = await getDIDToken();
-    const res = await fetch('/api/admin/sync/update-bet-onchain-id', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${didToken}`,
-      },
-      body: JSON.stringify(input),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'update-bet-onchain-id failed');
-    return data;
-  };
+  const createCryptoMarketMutation = useMutation(api.events.createCryptoMarket);
+  const finalizeBetsMutation = useMutation(api.sync.finalizeBetsForBucket);
+  const updateBetOnChainIdMutation = useMutation(api.sync.updateBetOnChainId);
 
   // Protocol fee state
   const [feeData, setFeeData] = useState<Record<string, { fees: string; balance: string; isOwner: boolean; loading: boolean }>>({});
   const [isWithdrawing, setIsWithdrawing] = useState<string | null>(null);
 
-  // Fetch fee data for Crypto contract only (Legacy contracts have empty ABIs)
+  // Fetch fee data for all deployed contracts
   const fetchFeeData = async () => {
     if (!readContract || !isConnected) return;
-    const categories = Object.values(CATEGORIES).filter(c => c.enabled && isCategoryDeployed(c.id) && c.id === Category.CRYPTO);
+    const categories = Object.values(CATEGORIES).filter(c => c.enabled && isCategoryDeployed(c.id));
     const results: Record<string, { fees: string; balance: string; isOwner: boolean; loading: boolean }> = {};
 
     for (const cat of categories) {
-      
       const addr = getContractAddress(cat.id);
-      const abi = CryptoPredictionMarketABI.abi;
+      const abi = cat.id === Category.CRYPTO ? CryptoPredictionMarketABI.abi : 
+                  cat.id === Category.POLITICS ? PoliticsPredictionMarketABI.abi :
+                  cat.id === Category.SPORTS ? SportsPredictionMarketABI.abi : TechnologyPredictionMarketABI.abi;
       try {
         const [fees, owner] = await Promise.all([
           readContract({ address: addr, abi, functionName: 'totalFeesCollected', args: [] }),
           readContract({ address: addr, abi, functionName: 'owner', args: [] }),
         ]);
-        // Show fees only (balance fetched separately via ERC-20 balanceOf)
+        // Hedera RPC does not support eth_getBalance via the wallet SDK, so we show fees only
         results[cat.id] = {
           fees: fees ? (isTokenMode() ? (Number(fees.toString()) / Math.pow(10, getStakingCurrency().decimals)).toString() : ethers.utils.formatEther(fees.toString())) : '0',
           balance: '--',
@@ -1192,9 +765,10 @@ function AdminPage() {
   }, [isConnected, isAdmin, readContract]);
 
   const handleWithdrawFees = async (category: Category) => {
-    
     const contractId = getContractId(category);
-    const abi = CryptoPredictionMarketABI.abi;
+    const abi = category === Category.CRYPTO ? CryptoPredictionMarketABI.abi :
+                category === Category.POLITICS ? PoliticsPredictionMarketABI.abi :
+                category === Category.SPORTS ? SportsPredictionMarketABI.abi : TechnologyPredictionMarketABI.abi;
     setIsWithdrawing(category);
     try {
       const result = await writeContract({
@@ -1247,7 +821,7 @@ function AdminPage() {
       ? { marketId: getContractAddress(selectedCategory).toLowerCase() }
       : 'skip'
   );
-  const loading = !!(convexBetsRaw === undefined && isLoaded && isSignedIn && isAdmin);
+  const loading = convexBetsRaw === undefined && isLoaded && isSignedIn && isAdmin;
   const refetch = () => {}; // Convex auto-updates in real time
 
   // Map Convex bets to the Bet interface shape used by the rest of the admin page
@@ -1353,7 +927,7 @@ function AdminPage() {
           if (start >= end) continue; // safety guard
 
           try {
-            const res = await fetch(`/api/USDC -price?symbol=${asset}&from=${start}&to=${end}`);
+            const res = await fetch(`/api/hbar-price?symbol=${asset}&from=${start}&to=${end}`);
             if (!res.ok) {
               console.error(`[admin] Price fetch failed for ${asset}: ${res.status}`);
               continue;
@@ -1366,7 +940,7 @@ function AdminPage() {
               // Fall back to the current spot price as a close approximation.
               console.warn(`[admin] No historical data for ${asset} (${start}-${end}), trying spot price`);
               try {
-                const spotRes = await fetch(`/api/USDC -price?symbol=${asset}`);
+                const spotRes = await fetch(`/api/hbar-price?symbol=${asset}`);
                 if (spotRes.ok) {
                   const spotData = await spotRes.json();
                   if (typeof spotData.price === 'number') {
@@ -1542,8 +1116,6 @@ function AdminPage() {
                 sportType: eventData.sportType,
                 company: eventData.company,
                 decimals: eventData.decimals ? parseInt(eventData.decimals) : undefined,
-                sport: eventData.sport,
-                league: eventData.league,
               });
               console.log('Event metadata stored in Convex successfully. Convex ID:', convexEventId);
               
@@ -1860,13 +1432,13 @@ function AdminPage() {
         const [bucket, prices] = bucketEntries[i];
         const betIds = bucketBetIds.get(bucket) || [];
 
-        // Read bucket info from contract for parimutuel payout calculation
-        let poolData: { totalStaked: string; totalWinningWeight: string } | undefined;
+        // Read bucket info from contract for DPM payout calculation
+        let poolData: { totalStaked: string; totalExited: string; totalWinningWeight: string } | undefined;
         let betWeights: { betId: string; weight: string }[] | undefined;
 
         try {
           if (readContract) {
-            // Read bucket stats: totalStaked, totalWeight
+            // Read bucket stats: totalStaked, totalWeight, price
             const bucketStats = await readContract({
               address: contractAddr,
               abi: CryptoPredictionMarketABI.abi,
@@ -1882,12 +1454,24 @@ function AdminPage() {
               args: [bucket],
             }) as any;
 
-            // getBucketStats returns (totalStaked, totalWeight)
+            // getBucketStats returns (totalStaked, totalWeight, price)
             // getBucketInfo returns (totalBets, totalWinningWeight, nextProcessIndex, aggregationComplete)
             const totalStaked = bucketStats?.[0]?.toString() || '0';
             const totalWinningWeight = bucketInfo?.[1]?.toString() || '0';
 
-            poolData = { totalStaked, totalWinningWeight };
+            // Read totalExited from the buckets mapping directly
+            // buckets is a public mapping, so buckets(bucket) returns the struct fields
+            const bucketData = await readContract({
+              address: contractAddr,
+              abi: CryptoPredictionMarketABI.abi,
+              functionName: 'buckets',
+              args: [bucket],
+            }) as any;
+            // Public mapping returns: totalStaked, totalWeight, totalWinningWeight, nextProcessIndex, aggregationComplete, totalExited
+            // The exact order depends on the struct layout
+            const totalExited = bucketData?.totalExited?.toString() || bucketData?.[5]?.toString() || '0';
+
+            poolData = { totalStaked, totalExited, totalWinningWeight };
 
             // Read each bet's weight from the contract using on-chain bet IDs
             betWeights = [];
@@ -2187,9 +1771,9 @@ function AdminPage() {
                       };
                     });
 
-                    // Read contract data for parimutuel payout calculation, then finalize in Convex
+                    // Read contract data for DPM payout calculation, then finalize in Convex
                     const finalizeWithContractData = async () => {
-                      let poolData: { totalStaked: string; totalWinningWeight: string } | undefined;
+                      let poolData: { totalStaked: string; totalExited: string; totalWinningWeight: string } | undefined;
                       let betWeights: { betId: string; weight: string }[] | undefined;
                       try {
                         if (readContract) {
@@ -2205,9 +1789,16 @@ function AdminPage() {
                             functionName: 'getBucketInfo',
                             args: [bucketIndex],
                           }) as any;
+                          const bucketRaw = await readContract({
+                            address: getContractAddress(selectedCategory),
+                            abi: CryptoPredictionMarketABI.abi,
+                            functionName: 'buckets',
+                            args: [bucketIndex],
+                          }) as any;
 
                           poolData = {
                             totalStaked: bucketStats?.[0]?.toString() || '0',
+                            totalExited: bucketRaw?.totalExited?.toString() || bucketRaw?.[5]?.toString() || '0',
                             totalWinningWeight: bucketInfoData?.[1]?.toString() || '0',
                           };
 
@@ -2360,12 +1951,8 @@ function AdminPage() {
             Please sign in with an account that has admin privileges.
           </p>
 
-          <Button 
-            variant="predensity" 
-            className="w-48"
-            onClick={() => window.location.href = '/'}
-          >
-            Go to Home
+          <Button variant="predensity" className="w-48" asChild>
+            <SignInButton />
           </Button>
         </div>
       </div>
@@ -2381,8 +1968,8 @@ function AdminPage() {
           <p className="text-gray-500 dark:text-gray-400">
             You do not have permission to access the admin dashboard.
           </p>
-          <Button variant="predensity" className="w-48" onClick={() => logout()}>
-            Sign Out
+          <Button variant="predensity" className="w-48" asChild>
+            <SignOutButton />
           </Button>
         </div>
       </div>
@@ -2411,7 +1998,7 @@ function AdminPage() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Select Market Category</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Object.values(CATEGORIES)
-                  .filter((cat) => cat.enabled && (isCategoryDeployed(cat.id) || cat.id === Category.FINANCE))
+                  .filter((cat) => cat.enabled && isCategoryDeployed(cat.id))
                   .map((category) => (
                     <button
                       key={category.id}
@@ -2471,7 +2058,7 @@ function AdminPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {Object.values(CATEGORIES)
-                .filter(cat => cat.enabled && isCategoryDeployed(cat.id) && cat.id === Category.CRYPTO)
+                .filter(cat => cat.enabled && isCategoryDeployed(cat.id))
                 .map(cat => {
                   const info = feeData[cat.id];
                   const feesNum = info ? parseFloat(info.fees) : 0;
@@ -2533,19 +2120,43 @@ function AdminPage() {
           </Card>
         )}
 
-        {/* Event Creation Section - REMOVED for Politics/Sports/Tech */}
-        {/* These categories now use CLOB-only system */}
-        {/* Legacy event creation kept only if you need range-based betting */}
+        {/* Event Creation Section - Only for Politics, Sports, Technology */}
+        {selectedCategory !== Category.CRYPTO && (
+          <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Event Management</h2>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Create events for users to place bets on
+                  </p>
+                </div>
+                <Button
+                  variant="predensity"
+                  onClick={() => setShowEventModal(true)}
+                  className="flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create Event
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Events List - REMOVED for Politics/Sports/Tech */}
-        {/* These categories use CLOB markets only */}
+        {/* Events List - Only for Politics, Sports, Technology */}
+        {selectedCategory !== Category.CRYPTO && (
+          <EventsList category={selectedCategory} />
+        )}
 
-        {/* Event Resolution Section - REMOVED for Politics/Sports/Tech */}
-        {/* These categories use CLOB markets only */}
+        {/* Event Resolution Section - Only for Politics, Sports, Technology */}
+        {selectedCategory !== Category.CRYPTO && (
+          <EventResolutionSection category={selectedCategory} contractId={currentContractId} />
+        )}
 
         {/* Controls Card */}
-        {selectedCategory === Category.CRYPTO && (
-          <>
         <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -2716,12 +2327,31 @@ function AdminPage() {
                       const isManual = manualPrices.has(betPriceKey);
                       const isCrypto = selectedCategory === Category.CRYPTO;
 
-                      // Format range values - we're in CRYPTO category block
-                      // Crypto: 8-decimal format -> dollar price
-                      const rangeMin = parseFloat(formatTinybarsToHbar(bet.priceMin));
-                      const rangeMax = parseFloat(formatTinybarsToHbar(bet.priceMax));
-                      const displayMin = '$' + rangeMin.toFixed(4);
-                      const displayMax = '$' + rangeMax.toFixed(4);
+                      // Format range values based on category
+                      let displayMin: string;
+                      let displayMax: string;
+                      let rangeMin: number;
+                      let rangeMax: number;
+
+                      if (selectedCategory === Category.POLITICS) {
+                        // Politics: BPS values (0-10000) -> percentage
+                        rangeMin = Number(bet.priceMin);
+                        rangeMax = Number(bet.priceMax);
+                        displayMin = (rangeMin / 100).toFixed(1) + '%';
+                        displayMax = (rangeMax / 100).toFixed(1) + '%';
+                      } else if (selectedCategory === Category.SPORTS || selectedCategory === Category.TECHNOLOGY) {
+                        // Sports/Tech: raw numeric values
+                        rangeMin = Number(bet.priceMin);
+                        rangeMax = Number(bet.priceMax);
+                        displayMin = rangeMin.toLocaleString();
+                        displayMax = rangeMax.toLocaleString();
+                      } else {
+                        // Crypto: 8-decimal format -> dollar price
+                        rangeMin = parseFloat(formatTinybarsToHbar(bet.priceMin));
+                        rangeMax = parseFloat(formatTinybarsToHbar(bet.priceMax));
+                        displayMin = '$' + rangeMin.toFixed(4);
+                        displayMax = '$' + rangeMax.toFixed(4);
+                      }
 
                       const isInRange =
                         finalPrice !== null && finalPrice >= rangeMin && finalPrice <= rangeMax;
@@ -2815,15 +2445,13 @@ function AdminPage() {
             {filteredBets && filteredBets.length > 0 && selectedCategory !== Category.CRYPTO && (
               <div className="mt-4 p-3 bg-gray-100 dark:bg-neutral-800/50 rounded border border-white/10">
                 <p className="text-sm text-gray-400">
-                  {CATEGORIES[selectedCategory as Category].name} bets are resolved via the Event Resolution section above.
+                  {CATEGORIES[selectedCategory].name} bets are resolved via the Event Resolution section above.
                   Submit the actual result for the event to trigger bet settlement.
                 </p>
               </div>
             )}
           </CardContent>
         </Card>
-          </>
-        )}
       </main>
 
       {/* Event Creation Modal */}
