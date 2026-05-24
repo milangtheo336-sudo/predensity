@@ -22,6 +22,7 @@ import {
   Shield,
   FileText,
   Briefcase,
+  ArrowLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatAddress, cn, getAvatarPalette } from '@/lib/utils';
@@ -46,7 +47,7 @@ import { QRCodeSVG } from 'qrcode.react';
 // Deposit Modal Context
 // ---------------------------------------------------------------------------
 
-type DepositView = 'crypto' | 'cash' | 'crypto-transfer' | 'wallet-connect' | 'wallet-transfer' | 'withdraw';
+type DepositView = 'crypto' | 'cash' | 'crypto-transfer' | 'wallet-connect' | 'wallet-transfer' | 'cex-deposit' | 'withdraw';
 
 interface DepositModalContextType {
   openDeposit: () => void;
@@ -89,7 +90,7 @@ export function DepositModal({
 
   const isWithdraw = view === 'withdraw';
   // Determine which top-level tab is active
-  const isCryptoSide = view === 'crypto' || view === 'crypto-transfer' || view === 'wallet-connect' || view === 'wallet-transfer';
+  const isCryptoSide = view === 'crypto' || view === 'crypto-transfer' || view === 'wallet-connect' || view === 'wallet-transfer' || view === 'cex-deposit';
   const isCashSide = view === 'cash';
 
   return createPortal(
@@ -148,6 +149,7 @@ export function DepositModal({
           {view === 'crypto-transfer' && <CryptoDepositView onBack={() => setView('crypto')} />}
           {view === 'wallet-connect' && <WalletConnectView onBack={() => setView('crypto')} onConnected={() => setView('wallet-transfer')} />}
           {view === 'wallet-transfer' && <WalletTransferView onBack={() => setView('wallet-connect')} onClose={onClose} />}
+          {view === 'cex-deposit' && <CexDepositView onBack={() => setView('crypto')} />}
           {view === 'cash' && <CashMenuView />}
           {view === 'withdraw' && <WithdrawView onBack={() => setView('crypto')} onClose={onClose} />}
         </div>
@@ -204,6 +206,24 @@ function CryptoMenuView({ onSelect }: { onSelect: (v: DepositView) => void }) {
           <Image src="/metamask.png" alt="" width={20} height={20} className="rounded-full" />
           <Image src="/blade.png" alt="" width={20} height={20} className="rounded-full" />
           <Image src="/kabila.jpg" alt="" width={20} height={20} className="rounded-full" />
+        </div>
+      </button>
+
+      {/* CEX Deposit -- Binance, Coinbase */}
+      <button
+        onClick={() => onSelect('cex-deposit')}
+        className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-vibrant-purple/50 hover:bg-white/[0.03] transition-colors text-left"
+      >
+        <div className="w-10 h-10 rounded-lg bg-white/[0.05] flex items-center justify-center flex-shrink-0">
+          <ArrowUpRight className="w-5 h-5 text-gray-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-white">From Exchange</div>
+          <div className="text-xs text-gray-400">Withdraw USDC from CEX</div>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Image src="/binance logo.png" alt="Binance" width={40} height={40} className="rounded-md" />
+          <Image src="/coinbase.svg" alt="Coinbase" width={40} height={40} className="rounded-md" />
         </div>
       </button>
     </div>
@@ -330,6 +350,44 @@ function CashMenuView() {
 }
 
 // ---------------------------------------------------------------------------
+// CEX Deposit View -- Binance QR + manual TX ID, Coinbase coming soon
+// ---------------------------------------------------------------------------
+
+function CexDepositView({ onBack }: { onBack: () => void }) {
+  return (
+    <div>
+      <button onClick={onBack} className="text-sm text-gray-400 hover:text-white mb-4 flex items-center gap-1">
+        <ArrowLeft className="w-3.5 h-3.5" /> Back
+      </button>
+
+      <div className="space-y-3">
+        {/* Binance -- coming soon */}
+        <div className="p-4 rounded-xl border border-white/10 opacity-50">
+          <div className="flex items-center gap-3">
+            <Image src="/binance logo.png" alt="Binance" width={40} height={40} className="rounded-lg" />
+            <div>
+              <div className="text-sm font-medium text-white">Binance</div>
+              <div className="text-xs text-gray-400">Coming soon</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Coinbase -- coming soon */}
+        <div className="p-4 rounded-xl border border-white/10 opacity-50">
+          <div className="flex items-center gap-3">
+            <Image src="/coinbase.svg" alt="Coinbase" width={40} height={40} className="rounded-lg" />
+            <div>
+              <div className="text-sm font-medium text-white">Coinbase</div>
+              <div className="text-xs text-gray-400">Coming soon</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Wallet Connect View -- just wallet icons, transitions to transfer on connect
 // ---------------------------------------------------------------------------
 
@@ -386,6 +444,9 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
 
   return (
     <div className="space-y-4">
+      <button onClick={onBack} className="text-sm text-gray-400 hover:text-white flex items-center gap-1">
+        <ArrowLeft className="w-3.5 h-3.5" /> Back
+      </button>
       <p className="text-sm text-gray-400 text-center">Select a wallet to connect</p>
 
       <div className="grid grid-cols-2 gap-3">
