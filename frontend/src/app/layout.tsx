@@ -12,6 +12,7 @@ import { MagicProvider } from '@/context/MagicContext';
 import { WalletUserProvider } from '@/context/WalletUserContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { Analytics } from '@vercel/analytics/react';
+import SeoContent from './seo-content';
 
 const appFont = Inter({
   subsets: ['latin'],
@@ -53,7 +54,26 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+async function fetchSeoData() {
+  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+  if (!convexUrl) return { events: [], cryptoMarkets: [], clobMarkets: [] };
+  const base = convexUrl.endsWith('/') ? convexUrl.slice(0, -1) : convexUrl;
+  try {
+    const [eventsRes, cryptoRes, clobRes] = await Promise.allSettled([
+      fetch(`${base}/api/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: 'events:getEvents', args: {} }), next: { revalidate: 60 } }),
+      fetch(`${base}/api/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: 'events:getCryptoMarkets', args: {} }), next: { revalidate: 60 } }),
+      fetch(`${base}/api/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: 'clob:getClobMarkets', args: {} }), next: { revalidate: 60 } }),
+    ]);
+    return {
+      events: eventsRes.status === 'fulfilled' && eventsRes.value.ok ? (await eventsRes.value.json()).value ?? [] : [],
+      cryptoMarkets: cryptoRes.status === 'fulfilled' && cryptoRes.value.ok ? (await cryptoRes.value.json()).value ?? [] : [],
+      clobMarkets: clobRes.status === 'fulfilled' && clobRes.value.ok ? (await clobRes.value.json()).value ?? [] : [],
+    };
+  } catch { return { events: [], cryptoMarkets: [], clobMarkets: [] }; }
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const seoData = await fetchSeoData();
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -65,6 +85,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         ` }} />
       </head>
       <body className={`${appFont.variable} font-sans`} style={{ backgroundColor: '#000' }}>
+        {/* SEO content — pure server HTML, outside all client providers, always in the DOM */}
+        <SeoContent
+          events={seoData.events}
+          cryptoMarkets={seoData.cryptoMarkets}
+          clobMarkets={seoData.clobMarkets}
+        />
         <WalletErrorSuppressor />
         <HydrationErrorBoundary>
         <MagicProvider>
