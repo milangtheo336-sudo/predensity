@@ -1476,7 +1476,12 @@ export function Header({ children }: { children?: React.ReactNode }) {
   // Also handles the case where a Magic/OAuth user connected a wallet for deposits
   // and then logs out: isConnected becomes false naturally after logout calls disconnect().
   useEffect(() => {
-    if (!isConnected && walletUser) {
+    // Only clear the session if isConnected is explicitly false (not undefined).
+    // undefined means the wallet library hasn't resolved yet (e.g. during a
+    // failed connection attempt). Clearing on undefined caused a loop where
+    // a failed Kabila/EIP-6963 connect would clear a legitimate session and
+    // reopen the auth modal repeatedly.
+    if (isConnected === false && walletUser) {
       console.log('[header] Wallet disconnected externally — clearing wallet user session');
       clearWalletUser();
     }
