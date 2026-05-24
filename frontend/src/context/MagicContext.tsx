@@ -68,9 +68,38 @@ export function MagicProvider({ children }: { children: React.ReactNode }) {
         // Check if we're in the middle of OAuth flow
         const oauthInitiated = sessionStorage.getItem('magic-oauth-initiated');
         if (oauthInitiated === 'true') {
-          setIsAuthenticating(true);
-          setIsLoading(false);
-          return; // Don't check user yet, let callback handle it
+          // Immediately check if we're on the callback page
+          const isCallbackPage = window.location.pathname === '/auth/callback';
+          
+          if (!isCallbackPage) {
+            // User is not on callback page but OAuth was initiated - they cancelled
+            console.log('[MagicContext] OAuth cancelled - clearing flags immediately');
+            sessionStorage.removeItem('magic-oauth-initiated');
+            sessionStorage.removeItem('magic-oauth-return-url');
+            sessionStorage.removeItem('magic-oauth-timeout');
+            setIsAuthenticating(false);
+            setIsLoading(false);
+            // Continue to normal user check below
+          } else {
+            // We're on the callback page, wait for it to complete
+            setIsAuthenticating(true);
+            setIsLoading(false);
+            
+            // Set a timeout as backup
+            const oauthTimeout = setTimeout(() => {
+              const stillInitiated = sessionStorage.getItem('magic-oauth-initiated');
+              if (stillInitiated === 'true') {
+                console.log('[MagicContext] OAuth timeout');
+                sessionStorage.removeItem('magic-oauth-initiated');
+                sessionStorage.removeItem('magic-oauth-return-url');
+                setIsAuthenticating(false);
+                setIsLoading(false);
+              }
+            }, 30000); // 30 second timeout
+            
+            sessionStorage.setItem('magic-oauth-timeout', oauthTimeout.toString());
+            return; // Don't check user yet, let callback handle it
+          }
         }
         
         // First check if we have cached user data from recent auth
