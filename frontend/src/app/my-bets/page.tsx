@@ -230,7 +230,7 @@ function PnlSparkline({ data, color }: { data: number[]; color: string }) {
 // ---------------------------------------------------------------------------
 // Activity Row
 // ---------------------------------------------------------------------------
-function ActivityRow({ item, hashscanBase, getCryptoImage }: { item: any; hashscanBase: string; getCryptoImage: (asset: string) => string | null }) {
+function ActivityRow({ item, explorerBase, getCryptoImage }: { item: any; explorerBase: string; getCryptoImage: (asset: string) => string | null }) {
   const isDeposit = item.type === 'deposit';
   const isWithdrawal = item.type === 'withdrawal';
   const isBetWon = item.type === 'bet_won';
@@ -294,10 +294,10 @@ function ActivityRow({ item, hashscanBase, getCryptoImage }: { item: any; hashsc
   const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
   // Build HashScan link from txHash
-  const hashscanUrl = item.txHash ? `${hashscanBase}/transaction/${item.txHash}` : null;
+  const explorerUrl = item.txHash ? `${explorerBase}/transaction/${item.txHash}` : null;
 
   const rowContent = (
-    <div className={`flex items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-gray-100 dark:border-neutral-800/50 transition-colors ${hashscanUrl ? 'hover:bg-gray-50 dark:hover:bg-neutral-900/20 cursor-pointer' : ''}`}>
+    <div className={`flex items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-gray-100 dark:border-neutral-800/50 transition-colors ${explorerUrl ? 'hover:bg-gray-50 dark:hover:bg-neutral-900/20 cursor-pointer' : ''}`}>
       {icon}
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium text-gray-900 dark:text-white">{label}</div>
@@ -320,7 +320,7 @@ function ActivityRow({ item, hashscanBase, getCryptoImage }: { item: any; hashsc
           {item.status}
         </span>
       </div>
-      {hashscanUrl && (
+      {explorerUrl && (
         <div className="flex-shrink-0">
           <ExternalLink className="w-3.5 h-3.5 text-gray-400 dark:text-neutral-600" />
         </div>
@@ -328,9 +328,9 @@ function ActivityRow({ item, hashscanBase, getCryptoImage }: { item: any; hashsc
     </div>
   );
 
-  if (hashscanUrl) {
+  if (explorerUrl) {
     return (
-      <a href={hashscanUrl} target="_blank" rel="noopener noreferrer" className="block">
+      <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="block">
         {rowContent}
       </a>
     );
@@ -718,8 +718,8 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
-  const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-  const HASHSCAN_BASE = hederaNetwork === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
+  const network = (process.env.NEXT_PUBLIC_NETWORK || 'testnet').toLowerCase();
+  const EXPLORER_BASE = network === 'mainnet' ? 'https://explorer.arc.io' : 'https://testnet-explorer.arc.io';
 
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
@@ -1982,7 +1982,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
                   <ActivityRow
                     key={`${item.type}-${item.timestamp}-${idx}`}
                     item={item}
-                    hashscanBase={HASHSCAN_BASE}
+                    explorerBase={EXPLORER_BASE}
                     getCryptoImage={getCryptoImage}
                   />
                 ))}
