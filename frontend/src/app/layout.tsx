@@ -41,7 +41,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             position: 'fixed',
             inset: 0,
             zIndex: 9999,
-            backgroundColor: '#000',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -49,18 +48,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             transition: 'opacity 0.4s ease',
           }}
         >
-          <img src="/predensity-logo.png" alt="" width={64} height={64} style={{ marginBottom: 20 }} />
-          <span style={{ color: '#ffffff', fontSize: 24, fontWeight: 600, letterSpacing: 2 }}>
-            predensity
-          </span>
         </div>
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              window.addEventListener('load', function() {
+              (function() {
                 var s = document.getElementById('splash');
-                if (s) { s.style.opacity = '0'; setTimeout(function() { s.remove(); }, 400); }
-              });
+                if (!s) return;
+                var theme = localStorage.getItem('theme');
+                var isLight = theme === 'light' || (!theme && window.matchMedia('(prefers-color-scheme: light)').matches);
+                s.style.backgroundColor = isLight ? '#ffffff' : '#000000';
+                var img = document.createElement('img');
+                img.src = isLight ? '/white the loading predensity logo.png' : '/predensity-logo.png';
+                img.width = 64; img.height = 64; img.style.marginBottom = '20px';
+                s.appendChild(img);
+                var txt = document.createElement('span');
+                txt.textContent = 'predensity';
+                txt.style.cssText = 'font-size:24px;font-weight:600;letter-spacing:2px;color:' + (isLight ? '#000000' : '#ffffff');
+                s.appendChild(txt);
+                function removeSplash() {
+                  if (s) { s.style.opacity = '0'; setTimeout(function() { s.remove(); }, 400); }
+                }
+                if (document.readyState === 'complete') { removeSplash(); }
+                else { window.addEventListener('load', removeSplash); }
+              })();
             `,
           }}
         />
