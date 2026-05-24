@@ -23,12 +23,21 @@ async function main() {
   // Hardcoded to mainnet USDC -- this script is mainnet-only
   const stakingToken = "0x000000000000000000000000000000000006f89a";
   console.log("Staking token (USDC):", stakingToken);
+
+  // USDC has 6 decimals on Hedera.
+  //   minStake = 0.01 USDC (10_000 base units)
+  //   maxStake = 100  USDC (100_000_000 base units)
+  // Override via env: MIN_STAKE / MAX_STAKE (raw integer in base units).
+  const minStake = process.env.MIN_STAKE || "10000";
+  const maxStake = process.env.MAX_STAKE || "100000000";
+  console.log("minStake:", minStake);
+  console.log("maxStake:", maxStake);
   console.log("");
 
   // Deploy CryptoPredictionMarket only
   console.log("Deploying CryptoPredictionMarket...");
   const CryptoPredictionMarket = await hre.ethers.getContractFactory("CryptoPredictionMarket");
-  const cryptoMarket = await CryptoPredictionMarket.deploy("HBAR", 8, stakingToken);
+  const cryptoMarket = await CryptoPredictionMarket.deploy("HBAR", 8, stakingToken, minStake, maxStake);
   await cryptoMarket.deployed();
 
   console.log("Contract deployed to:", cryptoMarket.address);
