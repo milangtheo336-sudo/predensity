@@ -1,4 +1,4 @@
-// Contract configuration for multi-category prediction markets
+// Contract configuration for multi-category prediction markets on Arc
 
 import { Category } from '../types/categories';
 
@@ -8,101 +8,65 @@ export interface ContractConfig {
   category: Category;
 }
 
-// Staking token configuration
-// address(0) = native HBAR mode, otherwise ERC-20 token address
+// Staking token configuration — USDC on Arc
 export const STAKING_TOKEN_CONFIG = {
-  // USDC on Hedera Testnet (Test USDC token 0.0.8229951)
-  testnet: '0x00000000000000000000000000000000007d943f',
-  // USDC on Hedera Mainnet (HTS token 0.0.456858)
-  mainnet: '0x000000000000000000000000000000000006f89a',
-  // Native HBAR mode (no staking token)
+  // USDC on Arc Testnet
+  testnet: process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x2FbB5ef7C52a56c3314C0d91962e132061893434',
+  // USDC on Arc Mainnet
+  mainnet: process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x2FbB5ef7C52a56c3314C0d91962e132061893434',
+  // Native mode (not used on Arc — always USDC)
   none: '0x0000000000000000000000000000000000000000',
 };
 
-// Staking token Hedera IDs (0.0.X format) for ContractId.fromString()
-// EVM addresses above are for function arguments; these are for contract calls
-export const STAKING_TOKEN_IDS = {
-  testnet: '0.0.8229951',
-  mainnet: '0.0.456858',
-  none: '',
-};
-
-// Current staking mode: 'none' for HBAR, 'testnet'/'mainnet' for USDC
-// Reads from env var on Vercel (mainnet), defaults to testnet for local dev
+// Current staking mode: always USDC on Arc
 export const STAKING_MODE: 'none' | 'testnet' | 'mainnet' =
   (process.env.NEXT_PUBLIC_STAKING_MODE as 'none' | 'testnet' | 'mainnet') || 'testnet';
 
-// Get the active staking token address (EVM format, for function arguments)
-export function getStakingTokenAddress(): string {
-  return STAKING_TOKEN_CONFIG[STAKING_MODE];
+// Get the active staking token address (EVM format)
+export function getStakingTokenAddress(): `0x${string}` {
+  return STAKING_TOKEN_CONFIG[STAKING_MODE] as `0x${string}`;
 }
 
-// Get the active staking token Hedera ID (0.0.X format, for ContractId.fromString)
-export function getStakingTokenId(): string {
-  return STAKING_TOKEN_IDS[STAKING_MODE];
-}
-
-// Whether contracts are in ERC-20 token mode (USDC) vs native HBAR
+// Whether contracts are in ERC-20 token mode (always true on Arc)
 export function isTokenMode(): boolean {
   return STAKING_MODE !== 'none';
 }
 
 // Staking currency display info
 export function getStakingCurrency(): { symbol: string; decimals: number; name: string } {
-  if (isTokenMode()) {
-    return { symbol: 'USDC', decimals: 6, name: 'USD Coin' };
-  }
-  return { symbol: 'HBAR', decimals: 8, name: 'HBAR' };
+  return { symbol: 'USDC', decimals: 6, name: 'USD Coin' };
 }
 
-// Deployed contract addresses (EVM format) -- USDC Token Mode
-// Reads from env vars on Vercel (mainnet), defaults to testnet for local dev
-export const CONTRACT_ADDRESSES = {
-  [Category.CRYPTO]: process.env.NEXT_PUBLIC_CRYPTO_CONTRACT_ADDRESS || '0x00000000000000000000000000000000007e8166',
-  [Category.POLITICS]: process.env.NEXT_PUBLIC_POLITICS_CONTRACT_ADDRESS || '0xA6fcFd8010C0e135aB53936a125e7d57f58edcD8',
-  [Category.SPORTS]: process.env.NEXT_PUBLIC_SPORTS_CONTRACT_ADDRESS || '0x8f62C698a26888424b5170a11610Fa5Fd7DF540b',
-  [Category.TECHNOLOGY]: process.env.NEXT_PUBLIC_TECH_CONTRACT_ADDRESS || '0x76bFfEff52b9c515fF2CAdF471Df6915A6766dB8',
-  [Category.FINANCE]: '', // Not yet deployed
+// Deployed contract addresses (EVM format) on Arc
+export const CONTRACT_ADDRESSES: Record<string, string> = {
+  [Category.CRYPTO]: process.env.NEXT_PUBLIC_CRYPTO_CONTRACT_ADDRESS || '',
+  [Category.POLITICS]: process.env.NEXT_PUBLIC_POLITICS_CONTRACT_ADDRESS || '',
+  [Category.SPORTS]: process.env.NEXT_PUBLIC_SPORTS_CONTRACT_ADDRESS || '',
+  [Category.TECHNOLOGY]: process.env.NEXT_PUBLIC_TECH_CONTRACT_ADDRESS || '',
+  [Category.FINANCE]: '',
 };
 
-// Hedera Contract IDs (0.0.X format) for each category -- USDC Token Mode
-// Reads from env vars on Vercel (mainnet), defaults to testnet for local dev
-export const CONTRACT_IDS = {
-  [Category.CRYPTO]: process.env.NEXT_PUBLIC_CRYPTO_CONTRACT_ID || '0.0.8290662',
-  [Category.POLITICS]: process.env.NEXT_PUBLIC_POLITICS_CONTRACT_ID || '0.0.8232724',
-  [Category.SPORTS]: process.env.NEXT_PUBLIC_SPORTS_CONTRACT_ID || '0.0.8232726',
-  [Category.TECHNOLOGY]: process.env.NEXT_PUBLIC_TECH_CONTRACT_ID || '0.0.8232727',
-  [Category.FINANCE]: '', // Not yet deployed
-};
-
-// Helper to get contract address by category (EVM format)
+// Helper to get contract address by category
 export function getContractAddress(category: Category): `0x${string}` {
   return CONTRACT_ADDRESSES[category] as `0x${string}`;
 }
 
-// Helper to get contract ID by category (Hedera format)
-export function getContractId(category: Category): string {
-  return CONTRACT_IDS[category];
-}
-
 // Helper to check if category is deployed
 export function isCategoryDeployed(category: Category): boolean {
-  return !!CONTRACT_ADDRESSES[category] && !!CONTRACT_IDS[category];
+  return !!CONTRACT_ADDRESSES[category];
 }
 
 // Immutable startTimestamp for each deployed contract (set at deployment, never changes).
 // On-chain bucket index = Math.floor((targetTimestamp - startTimestamp) / 86400)
-// Reads from env vars on Vercel (mainnet), defaults to testnet for local dev
 export const CONTRACT_START_TIMESTAMPS: Record<string, number> = {
-  [Category.CRYPTO]: Number(process.env.NEXT_PUBLIC_CRYPTO_START_TIMESTAMP) || 1777537604,
-  [Category.POLITICS]: Number(process.env.NEXT_PUBLIC_POLITICS_START_TIMESTAMP) || 1773586860,
-  [Category.SPORTS]: Number(process.env.NEXT_PUBLIC_SPORTS_START_TIMESTAMP) || 1773586872,
-  [Category.TECHNOLOGY]: Number(process.env.NEXT_PUBLIC_TECH_START_TIMESTAMP) || 1773586888,
+  [Category.CRYPTO]: Number(process.env.NEXT_PUBLIC_CRYPTO_START_TIMESTAMP) || 0,
+  [Category.POLITICS]: Number(process.env.NEXT_PUBLIC_POLITICS_START_TIMESTAMP) || 0,
+  [Category.SPORTS]: Number(process.env.NEXT_PUBLIC_SPORTS_START_TIMESTAMP) || 0,
+  [Category.TECHNOLOGY]: Number(process.env.NEXT_PUBLIC_TECH_START_TIMESTAMP) || 0,
   [Category.FINANCE]: 0,
 };
 
 // Compute the correct on-chain bucket index for a given targetTimestamp and category.
-// Mirrors the Solidity: (targetTs - startTimestamp) / SECONDS_PER_DAY
 export function getOnChainBucket(targetTimestamp: number, category: string): number {
   const start = CONTRACT_START_TIMESTAMPS[category] || 0;
   if (start === 0 || targetTimestamp < start) return 0;
@@ -116,49 +80,57 @@ export function getOnChainBucket(targetTimestamp: number, category: string): num
 // =========================================================================
 export const CLOB_CONTRACTS = {
   marketManager: {
-    address: process.env.NEXT_PUBLIC_CLOB_MARKET_MANAGER_ADDRESS || '0x00000000000000000000000000000000008285a4',
-    contractId: process.env.NEXT_PUBLIC_CLOB_MARKET_MANAGER_CONTRACT_ID || '0.0.8553892',
+    address: process.env.NEXT_PUBLIC_CLOB_MARKET_MANAGER_ADDRESS || '',
   },
   exchange: {
-    address: process.env.NEXT_PUBLIC_CLOB_EXCHANGE_ADDRESS || '0x000000000000000000000000000000000082856c',
-    contractId: process.env.NEXT_PUBLIC_CLOB_EXCHANGE_CONTRACT_ID || '0.0.8553836',
+    address: process.env.NEXT_PUBLIC_CLOB_EXCHANGE_ADDRESS || '',
   },
 };
 
-export function getClobMarketManagerAddress(): string {
-  return CLOB_CONTRACTS.marketManager.address;
+export function getClobMarketManagerAddress(): `0x${string}` {
+  return CLOB_CONTRACTS.marketManager.address as `0x${string}`;
 }
 
-export function getClobMarketManagerContractId(): string {
-  return CLOB_CONTRACTS.marketManager.contractId;
+export function getClobExchangeAddress(): `0x${string}` {
+  return CLOB_CONTRACTS.exchange.address as `0x${string}`;
 }
 
-export function getClobExchangeAddress(): string {
-  return CLOB_CONTRACTS.exchange.address;
-}
-
-export function getClobExchangeContractId(): string {
-  return CLOB_CONTRACTS.exchange.contractId;
-}
-
-// Network configuration
+// Network configuration for Arc
 export const NETWORK_CONFIG = {
   testnet: {
-    chainId: '296',
-    rpcUrl: 'https://testnet.hashio.io/api',
-    explorerUrl: 'https://hashscan.io/testnet',
+    chainId: 5042002,
+    rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.testnet.arc.network',
+    explorerUrl: process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://testnet.arcscan.app',
+    explorerApiUrl: process.env.EXPLORER_API_URL || 'https://testnet.arcscan.app/api',
   },
   mainnet: {
-    chainId: '295',
-    rpcUrl: 'https://mainnet.hashio.io/api',
-    explorerUrl: 'https://hashscan.io/mainnet',
+    chainId: 5042002, // Update when mainnet launches
+    rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.arc.network',
+    explorerUrl: process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://arcscan.app',
+    explorerApiUrl: process.env.EXPLORER_API_URL || 'https://arcscan.app/api',
   },
 };
 
-// Current network -- reads from env var, defaults to testnet for local dev
 export const CURRENT_NETWORK: 'testnet' | 'mainnet' =
-  (process.env.NEXT_PUBLIC_HEDERA_NETWORK as 'testnet' | 'mainnet') || 'testnet';
+  (process.env.NEXT_PUBLIC_NETWORK as 'testnet' | 'mainnet') || 'testnet';
 
 export function getCurrentNetworkConfig() {
   return NETWORK_CONFIG[CURRENT_NETWORK];
+}
+
+// Backward compat aliases (some files still reference these)
+export const CONTRACT_IDS = CONTRACT_ADDRESSES;
+export function getContractId(category: Category): string {
+  return CONTRACT_ADDRESSES[category];
+}
+
+// Legacy Hedera token ID references — on Arc we just use EVM addresses
+export const STAKING_TOKEN_IDS = {
+  testnet: STAKING_TOKEN_CONFIG.testnet,
+  mainnet: STAKING_TOKEN_CONFIG.mainnet,
+  none: '',
+};
+
+export function getStakingTokenId(): string {
+  return STAKING_TOKEN_IDS[STAKING_MODE] || STAKING_TOKEN_CONFIG[STAKING_MODE];
 }
