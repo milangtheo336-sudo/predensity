@@ -609,8 +609,7 @@ function SortDropdown({
 // ---------------------------------------------------------------------------
 // Main Portfolio Page
 // ---------------------------------------------------------------------------
-export default function PortfolioPage(props: { publicViewUserId?: string }) {
-  const publicViewUserId = props.publicViewUserId;
+export function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string }) {
   const isPublicView = !!publicViewUserId;
   const { user, isSignedIn } = useUser();
   const { data: evmAddress } = useEvmAddress();
@@ -1901,4 +1900,9 @@ export default function PortfolioPage(props: { publicViewUserId?: string }) {
       <Toaster />
     </div>
   );
+}
+
+// Next.js page wrapper -- no custom props
+export default function PortfolioPage() {
+  return <PortfolioPageContent />;
 }
