@@ -8,7 +8,7 @@ import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useWallet, useAccountId } from '@buidlerlabs/hashgraph-react-wallets';
-import { User, Shield, Bell, Copy, Check, Trash2 } from 'lucide-react';
+import { User, Shield, Bell, Copy, Check, Trash2, Camera } from 'lucide-react';
 import Avatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
 
@@ -148,12 +148,36 @@ function ProfileTab({ user }: { user: any }) {
         <CardContent className="p-6">
           <h3 className="text-sm font-medium text-muted-foreground mb-4">Profile Avatar</h3>
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 bg-[#0a0a0c]">
-              <Avatar size={80} name={user.id} variant="marble" colors={getAvatarPalette(user.id)} square={false} />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Auto-generated avatar</p>
-              <p className="text-xs text-muted-foreground">Unique to your account. Cannot be changed.</p>
+            <div className="relative group cursor-pointer">
+              <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 bg-[#0a0a0c]">
+                {user.imageUrl && !user.imageUrl.includes('gravatar') ? (
+                  <img src={user.imageUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <Avatar size={80} name={user.id} variant="marble" colors={getAvatarPalette(user.id)} square={false} />
+                )}
+              </div>
+              <label
+                htmlFor="avatar-upload"
+                className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+              >
+                <Camera className="w-5 h-5 text-white" />
+              </label>
+              <input
+                id="avatar-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    try {
+                      await user.setProfileImage({ file });
+                    } catch (err) {
+                      console.error('Avatar upload failed:', err);
+                    }
+                  }
+                }}
+              />
             </div>
           </div>
         </CardContent>
