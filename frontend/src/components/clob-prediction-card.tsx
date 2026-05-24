@@ -1206,14 +1206,17 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               {/* Binary market: exactly 2 outcomes (Yes/No) -- single card layout */}
               {outcomes.length === 2 && outcomes.every(o => ['yes', 'no'].includes(o.name.toLowerCase())) ? (
                 <div className="bg-white dark:bg-[#141414] rounded-2xl border border-gray-200 dark:border-[#2a2a2a] overflow-hidden">
-                  <div className="flex gap-2 p-4">
+                  {/* Clicking the padding area (outside buttons) toggles order book */}
+                  <div
+                    className="flex gap-2 p-4 cursor-pointer"
+                    onClick={() => setExpandedOutcome(expandedOutcome === 0 ? null : 0)}
+                  >
                     <button
-                      onClick={() => {
-                        const willExpand = expandedOutcome !== 0;
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedOutcome(0);
                         setOrderSide('buy');
                         setOrderBookSide('yes');
-                        setExpandedOutcome(willExpand ? 0 : null);
                         setShowMobileTradingModal(true);
                       }}
                       className={`flex-1 py-3 text-center text-base font-bold rounded-xl transition-colors ${
@@ -1225,12 +1228,11 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                       Yes {outcomes[0].price}¢
                     </button>
                     <button
-                      onClick={() => {
-                        const willExpand = expandedOutcome !== 1;
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedOutcome(1);
                         setOrderSide('sell');
                         setOrderBookSide('no');
-                        setExpandedOutcome(willExpand ? 1 : null);
                         setShowMobileTradingModal(true);
                       }}
                       className={`flex-1 py-3 text-center text-base font-bold rounded-xl transition-colors ${
@@ -1242,9 +1244,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                       No {outcomes[1].price}¢
                     </button>
                   </div>
-                  {/* Detail tabs — only when this card is expanded (matches multi-outcome UX) */}
-                  {expandedOutcome !== null && !market.resolved && outcomes[expandedOutcome] && (
-                    renderOutcomeTabs(expandedOutcome, outcomes[expandedOutcome])
+                  {expandedOutcome === 0 && !market.resolved && outcomes[selectedOutcome] && (
+                    renderOutcomeTabs(selectedOutcome, outcomes[selectedOutcome])
                   )}
                 </div>
               ) : (
@@ -1291,7 +1292,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                       {/* Outcome header */}
                       <div className="w-full flex items-center gap-3 p-4">
                         {/* Icon */}
-                        <div className="w-10 h-10 bg-gray-100 dark:bg-[#1c1c1c] rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${normalizeOutcomeName(o.name) === 'Draw' ? 'bg-[#141414]' : 'bg-gray-100 dark:bg-[#1c1c1c]'}`}>
                           {outcomeImage ? (
                             <img src={outcomeImage} alt={o.name} className="w-full h-full object-cover rounded-lg" />
                           ) : normalizeOutcomeName(o.name) === 'Draw' ? (
@@ -1453,8 +1454,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                   <span className="text-[11px] text-gray-500 dark:text-[#888888] truncate">{market.question}</span>
                 </div>
 
-                {/* Outcome selector */}
-                {outcomes.length > 1 && (
+                {/* Outcome selector -- only for 3+ outcome markets, binary uses YES/NO buttons directly */}
+                {outcomes.length > 2 && (
                   <div className="relative">
                     <button
                       onClick={() => setShowTradingOutcomeDropdown(!showTradingOutcomeDropdown)}
