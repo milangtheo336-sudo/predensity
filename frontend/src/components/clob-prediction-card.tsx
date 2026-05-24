@@ -1,4 +1,4 @@
-﻿// CLOB Prediction Card -- Polymarket-style multi-outcome trading
+// CLOB Prediction Card -- Polymarket-style multi-outcome trading
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -484,7 +484,8 @@ const OUTCOME_COLORS = ['#4a9eff', '#ff7043', '#66bb6a', '#9c6cff', '#ffa726', '
 
 function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: OutcomePrice[] }) {
   const [timeRange, setTimeRange] = useState<'1H' | '6H' | '1D' | '1W' | '1M' | 'ALL'>('1W');
-  const [showAllOutcomes, setShowAllOutcomes] = useState(false);
+  const [showOutcomeSelector, setShowOutcomeSelector] = useState(false);
+  const [visibleOutcomes, setVisibleOutcomes] = useState<Set<number>>(new Set(outcomes.slice(0, 4).map((_, i) => i)));
   
   // Get price history for all outcomes
   const histories = outcomes.map((o: OutcomePrice) => {
@@ -514,11 +515,23 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
     return labels;
   };
 
-  // Display top 4 outcomes or all
-  const displayOutcomes = showAllOutcomes ? outcomes : outcomes.slice(0, 4);
+  // Toggle outcome visibility
+  const toggleOutcome = (index: number) => {
+    const newVisible = new Set(visibleOutcomes);
+    if (newVisible.has(index)) {
+      if (newVisible.size > 1) { // Keep at least one visible
+        newVisible.delete(index);
+      }
+    } else {
+      if (newVisible.size < 4) { // Max 4 visible
+        newVisible.add(index);
+      }
+    }
+    setVisibleOutcomes(newVisible);
+  };
 
   return (
-    <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-4 mb-5">
+    <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-4 mb-5 relative">
       {/* Chart header */}
       <div className="flex justify-between items-center mb-3">
         <div className="flex gap-0.5">
@@ -541,90 +554,124 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
           <svg viewBox="0 0 12 12" fill="#888" className="w-2.5 h-2.5">
             <path d="M6 0l1.5 4.5H12L8.25 7.5l1.5 4.5L6 9.75 2.25 12l1.5-4.5L0 4.5h4.5z"/>
           </svg>
-          Limitless
+          Predensity
         </div>
       </div>
 
-      {/* Outcomes list on the right side of chart */}
-      <div className="flex gap-4">
-        {/* Chart area */}
-        <div className="flex-1">
-          {/* Legend */}
-          <div className="flex flex-wrap gap-3.5 mb-3 text-xs items-center">
-            {displayOutcomes.map((o, i) => (
-              <div key={i} className="flex items-center gap-1.5">
-                <span className="w-[9px] h-[9px] rounded-full flex-shrink-0" style={{ background: OUTCOME_COLORS[i % OUTCOME_COLORS.length] }} />
-                <span className="text-white">{o.name} {o.price}%</span>
-              </div>
-            ))}
-            {outcomes.length > 4 && (
-              <button onClick={() => setShowAllOutcomes(!showAllOutcomes)} className="text-[#888888] hover:text-white cursor-pointer text-xs">
-                {showAllOutcomes ? 'Show less' : '··· More'}
-              </button>
-            )}
-          </div>
-
-          {/* Chart with grid */}
-          <div className="relative h-[180px] border-b border-[#2a2a2a]">
-            {/* Grid lines */}
-            <div className="absolute inset-0 pr-10">
-              {[100, 75, 50, 25, 0].map((pct, i) => (
-                <div
-                  key={pct}
-                  className="absolute left-0 right-10 border-t border-dashed border-[#2a2a2a]"
-                  style={{ top: `${i * 25}%` }}
-                >
-                  <span className="absolute right-0 -translate-y-1/2 text-[10px] text-[#888888]">
-                    {pct}%
-                  </span>
-                </div>
-              ))}
+      {/* Legend - shows first 4 visible outcomes */}
+      <div className="flex flex-wrap gap-3.5 mb-3 text-xs items-center">
+        {Array.from(visibleOutcomes).slice(0, 4).map((i) => {
+          const o = outcomes[i];
+          return (
+            <div key={i} className="flex items-center gap-1.5">
+              <span className="w-[9px] h-[9px] rounded-full flex-shrink-0" style={{ background: OUTCOME_COLORS[i % OUTCOME_COLORS.length] }} />
+              <span className="text-white">{o.name} {o.price}%</span>
             </div>
+          );
+        })}
+        {outcomes.length > 4 && (
+          <button onClick={() => setShowOutcomeSelector(!showOutcomeSelector)} className="text-[#888888] hover:text-white cursor-pointer text-xs">
+            ··· More
+          </button>
+        )}
+      </div>
 
-            {/* Chart lines */}
-            {allPoints.length > 0 && (
-              <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 w-[calc(100%-40px)] h-full" preserveAspectRatio="none">
-                {histories.map((h, i) => {
-                  if (h.history.length < 2) return null;
-                  const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
-                  const points = h.history.map((p: { timestamp: number; price: number }) => {
-                    const x = ((p.timestamp - minTime) / timeRangeMs) * W;
-                    const y = H - (p.price / 100) * H;
-                    return `${x},${y}`;
-                  }).join(' ');
-                  return <polyline key={i} points={points} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />;
-                })}
-              </svg>
-            )}
+      {/* Outcome Selector Panel - appears on right when "More" is clicked */}
+      {showOutcomeSelector && (
+        <div className="absolute right-4 top-16 w-56 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg shadow-2xl z-50 overflow-hidden">
+          <div className="px-3 py-2.5 border-b border-[#2a2a2a]">
+            <span className="text-[11px] text-[#888888] font-medium">Select up to 4 options</span>
           </div>
-
-          {/* X-axis labels */}
-          <div className="flex justify-between pt-2 pr-10 text-[11px] text-[#888888]">
-            {generateXAxisLabels().map((label, i) => (
-              <span key={i}>{label}</span>
-            ))}
+          <div>
+            {outcomes.map((o, i) => {
+              const isVisible = visibleOutcomes.has(i);
+              const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
+              return (
+                <div 
+                  key={i} 
+                  onClick={() => toggleOutcome(i)}
+                  className="flex items-center justify-between py-2 px-3 hover:bg-[#141414] cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                    <span className={`text-[13px] font-medium truncate ${isVisible ? 'text-white' : 'text-[#888888]'}`}>
+                      {o.price}% {o.name}
+                    </span>
+                  </div>
+                  <svg 
+                    viewBox="0 0 16 16" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="1.5" 
+                    className={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${isVisible ? 'text-white' : 'text-[#555555]'}`}
+                  >
+                    {isVisible ? (
+                      <>
+                        <path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z"/>
+                        <circle cx="8" cy="8" r="2"/>
+                      </>
+                    ) : (
+                      <>
+                        <path d="M1 8s3-5 7-5c1.5 0 2.9.7 4.2 1.8"/>
+                        <path d="M15 8s-1.2 2-3 3.5"/>
+                        <line x1="2" y1="2" x2="14" y2="14"/>
+                      </>
+                    )}
+                  </svg>
+                </div>
+              );
+            })}
           </div>
         </div>
+      )}
 
-        {/* Outcomes list on right */}
-        <div className="w-48 space-y-1 text-xs">
-          <div className="text-[#888888] text-[10px] mb-2">Switch to 4 options</div>
-          {outcomes.map((o, i) => (
-            <div key={i} className="flex items-center justify-between py-1 hover:bg-[#1c1c1c] px-2 rounded cursor-pointer">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: OUTCOME_COLORS[i % OUTCOME_COLORS.length] }} />
-                <span className="text-white truncate text-[11px]">{o.name}</span>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-white font-semibold">{o.price}%</span>
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5 text-[#888888]">
-                  <path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z"/>
-                  <circle cx="8" cy="8" r="2"/>
-                </svg>
-              </div>
+      {/* Click outside to close */}
+      {showOutcomeSelector && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setShowOutcomeSelector(false)}
+        />
+      )}
+
+      {/* Chart with grid */}
+      <div className="relative h-[180px] border-b border-[#2a2a2a]">
+        {/* Grid lines */}
+        <div className="absolute inset-0 pr-10">
+          {[100, 75, 50, 25, 0].map((pct, i) => (
+            <div
+              key={pct}
+              className="absolute left-0 right-10 border-t border-dashed border-[#2a2a2a]"
+              style={{ top: `${i * 25}%` }}
+            >
+              <span className="absolute right-0 -translate-y-1/2 text-[10px] text-[#888888]">
+                {pct}%
+              </span>
             </div>
           ))}
         </div>
+
+        {/* Chart lines */}
+        {allPoints.length > 0 && (
+          <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 w-[calc(100%-40px)] h-full" preserveAspectRatio="none">
+            {histories.map((h, i) => {
+              if (h.history.length < 2 || !visibleOutcomes.has(i)) return null;
+              const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
+              const points = h.history.map((p: { timestamp: number; price: number }) => {
+                const x = ((p.timestamp - minTime) / timeRangeMs) * W;
+                const y = H - (p.price / 100) * H;
+                return `${x},${y}`;
+              }).join(' ');
+              return <polyline key={i} points={points} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />;
+            })}
+          </svg>
+        )}
+      </div>
+
+      {/* X-axis labels */}
+      <div className="flex justify-between pt-2 pr-10 text-[11px] text-[#888888]">
+        {generateXAxisLabels().map((label, i) => (
+          <span key={i}>{label}</span>
+        ))}
       </div>
     </div>
   );
@@ -732,7 +779,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const [orderSide, setOrderSide] = useState<'buy' | 'sell'>('buy');
   const [orderPrice, setOrderPrice] = useState('');
   const [orderQuantity, setOrderQuantity] = useState('');
-  const [isMarketOrder, setIsMarketOrder] = useState(false);
+  const [isMarketOrder, setIsMarketOrder] = useState(true);
   const [slippagePct, setSlippagePct] = useState(2);
   const [isPlacing, setIsPlacing] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -743,6 +790,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const [hideEliminated, setHideEliminated] = useState(false);
   const [inputMode, setInputMode] = useState<'contracts' | 'dollars'>('contracts');
   const [outcomeTab, setOutcomeTab] = useState<'orderbook' | 'probability' | 'orders' | 'positions'>('orderbook');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Read balance from blockchain (non-custodial)
   const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(user?.publicAddress);
@@ -978,6 +1026,20 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                 </button>
               </div>
             </div>
+
+            {/* Main Chart - Always visible at top */}
+            <PriceChart marketId={marketId} outcomes={outcomes} />
+
+            {/* Volume row */}
+            <div className="flex items-center gap-1.5 text-[13px] text-[#888888] mb-5">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
+                <path d="M2 12l4-4 3 3 5-7"/>
+              </svg>
+              Volume <span className="text-white font-medium">{(market.totalVolume || 0).toLocaleString()} USDC</span>
+            </div>
+
+            {/* Outcomes header */}
+            <h2 className="text-xl font-bold text-white mb-3.5">Outcomes</h2>
 
             {/* Outcome cards -- Polymarket style matching guidance exactly */}
             <div className="space-y-3">
@@ -1246,21 +1308,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               )}
             </div>
 
-            {/* Main Chart - Always visible at top */}
-            <PriceChart marketId={marketId} outcomes={outcomes} />
-
-            {/* Volume row */}
-            <div className="flex items-center gap-1.5 text-[13px] text-[#888888] mb-5">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
-                <path d="M2 12l4-4 3 3 5-7"/>
-              </svg>
-              Volume <span className="text-white font-medium">{(market.totalVolume || 0).toLocaleString()} USDC</span>
-            </div>
-
-            {/* Outcomes header */}
-            <h2 className="text-xl font-bold text-white mb-3.5">Outcomes</h2>
-
-            {/* Outcome cards -- Polymarket style matching guidance exactly */}
+            {/* Market Information Section */}
             <div className="border-t border-gray-200 dark:border-white/[0.06] pt-4 mt-4">
               <button
                 onClick={() => setInfoExpanded(!infoExpanded)}
@@ -1323,13 +1371,38 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               </div>
 
               {/* Outcome dropdown */}
-              <div className="px-4 py-2">
-                <button className="flex items-center gap-1 bg-[#1c1c1c] border border-[#2a2a2a] rounded-full px-2.5 py-1 text-[13px] font-semibold text-white w-fit">
+              <div className="px-4 py-2 relative">
+                <button 
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center gap-1 bg-[#1c1c1c] border border-[#2a2a2a] rounded-full px-2.5 py-1 text-[13px] font-semibold text-white w-fit"
+                >
                   {selectedOutcomeData?.name}
-                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}>
                     <path d="M3 4.5l3 3 3-3"/>
                   </svg>
                 </button>
+                {isDropdownOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setIsDropdownOpen(false)}
+                    />
+                    <div className="absolute top-full left-4 mt-1 w-48 bg-[#1c1c1c] border border-[#2a2a2a] rounded-xl shadow-xl z-50 overflow-hidden">
+                      {outcomes.map((o, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setSelectedOutcome(i);
+                            setIsDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[#2a2a2a] transition-colors"
+                        >
+                          {o.name}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Trading panel tabs */}
@@ -1373,52 +1446,91 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
               </div>
 
               {/* YES/NO buttons */}
-              <div className="grid grid-cols-2 gap-2 px-4 py-3.5">
-                <button className="py-3 rounded-xl bg-[#1f4d32] border border-[#3fdc8c] text-[#3fdc8c] text-sm font-bold">
-                  YES {selectedOutcomeData?.price}¢
-                </button>
-                <button className="py-3 rounded-xl bg-[#e8520a] text-white text-sm font-bold">
-                  NO {selectedOutcomeData ? (100 - selectedOutcomeData.price).toFixed(1) : 84}¢
-                </button>
+              <div className="px-4 py-3.5">
+                {orderSide === 'buy' ? (
+                  <button className="w-full py-3 rounded-xl bg-[#1f4d32] border border-[#3fdc8c] text-[#3fdc8c] text-sm font-bold">
+                    YES {selectedOutcomeData?.price}¢
+                  </button>
+                ) : (
+                  <button className="w-full py-3 rounded-xl bg-[#e8520a] border border-[#e8520a] text-white text-sm font-bold">
+                    NO {selectedOutcomeData ? (100 - selectedOutcomeData.price).toFixed(1) : 84}¢
+                  </button>
+                )}
               </div>
 
               {/* Market Order Format */}
               {isMarketOrder && (
                 <>
-                  {/* Amount section */}
+                  {/* Amount section with input */}
                   <div className="px-4 pb-2.5">
-                    <div className="text-xs text-[#888888] mb-1">Amount:</div>
-                    <div className="flex items-baseline justify-between mb-2">
-                      <span className="text-[26px] font-bold text-white">{orderQuantity || 84}</span>
-                      {balanceError && <span className="text-xs font-medium text-[#ff6b35]">Insufficient Balance</span>}
+                    <div className="text-xs text-[#888888] mb-2">Amount</div>
+                    <div className="relative bg-[#1c1c1c] border border-[#2a2a2a] rounded-xl px-4 py-3 mb-2">
+                      <input
+                        type="number"
+                        value={orderQuantity}
+                        onChange={(e) => setOrderQuantity(e.target.value)}
+                        className="w-full bg-transparent text-3xl font-bold text-white outline-none"
+                        placeholder="0"
+                      />
+                      <div className="text-xs text-[#888888] mt-1">Min. Amount is 1 USDC</div>
                     </div>
-                    <div className="flex flex-wrap gap-1.5 mb-2.5">
-                      <button onClick={() => setOrderQuantity('1')} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-white hover:border-[#555]">+1 USDC</button>
-                      <button onClick={() => setOrderQuantity('5')} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-white hover:border-[#555]">+5 USDC</button>
-                      <button onClick={() => setOrderQuantity('10')} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-white hover:border-[#555]">+10 USDC</button>
-                      <button onClick={() => setOrderQuantity('100')} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-white hover:border-[#555]">+100 USDC</button>
-                      <button onClick={() => setOrderQuantity(platformBalance.toString())} className="px-2.5 py-1 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] text-[11px] font-medium text-white hover:border-[#555]">MAX</button>
+                    
+                    {/* Quick add buttons */}
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      <button onClick={() => setOrderQuantity('1')} className="px-3 py-1.5 rounded-lg bg-[#1c1c1c] border border-[#2a2a2a] text-xs font-medium text-white hover:border-[#555]">+1 USDC</button>
+                      <button onClick={() => setOrderQuantity('5')} className="px-3 py-1.5 rounded-lg bg-[#1c1c1c] border border-[#2a2a2a] text-xs font-medium text-white hover:border-[#555]">+5 USDC</button>
+                      <button onClick={() => setOrderQuantity('10')} className="px-3 py-1.5 rounded-lg bg-[#1c1c1c] border border-[#2a2a2a] text-xs font-medium text-white hover:border-[#555]">+10 USDC</button>
+                      <button onClick={() => setOrderQuantity('100')} className="px-3 py-1.5 rounded-lg bg-[#1c1c1c] border border-[#2a2a2a] text-xs font-medium text-white hover:border-[#555]">+100 USDC</button>
+                      <button onClick={() => setOrderQuantity(platformBalance.toString())} className="px-3 py-1.5 rounded-lg bg-[#1c1c1c] border border-[#2a2a2a] text-xs font-medium text-white hover:border-[#555]">MAX</button>
                     </div>
-                    <div className="text-right text-[11px] text-[#888888]">
+                    
+                    <div className="text-right text-xs text-[#888888]">
                       Available Balance: <span className="text-white font-semibold">{balancesHidden ? '****' : `${platformBalance.toFixed(2)}`} USDC</span>
                     </div>
                   </div>
 
-                  <hr className="border-t border-[#2a2a2a] my-2.5" />
+                  <hr className="border-t border-[#2a2a2a] my-3" />
 
                   {/* To Win section */}
-                  <div className="px-4 pb-3.5">
+                  <div className="px-4 pb-4">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="flex items-center gap-1 text-[13px] text-[#888888]">
-                        To Win:
-                        <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-[#888888] text-[9px]">i</span>
-                      </span>
-                      <span className="text-[22px] font-extrabold text-[#3fdc8c]">
-                        {(parseFloat(orderQuantity || '0') * 1.18).toFixed(1)} <span className="text-[15px] font-semibold">USDC</span>
+                      <div className="flex items-center gap-1.5 text-sm text-[#888888] group relative">
+                        <span>To Win:</span>
+                        <div className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#888888] text-[10px] cursor-help">
+                          i
+                        </div>
+                        {/* Tooltip */}
+                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg p-3 shadow-xl">
+                          <div className="text-xs space-y-1.5">
+                            <div className="flex justify-between text-white">
+                              <span>Amount:</span>
+                              <span>{orderQuantity || 0} USDC</span>
+                            </div>
+                            <div className="flex justify-between text-white">
+                              <span>Trading Fee:</span>
+                              <span>0 USDC</span>
+                            </div>
+                            <div className="flex justify-between text-white border-t border-[#2a2a2a] pt-1.5">
+                              <span>Trading Amount After Fee:</span>
+                              <span>{orderQuantity || 0} USDC</span>
+                            </div>
+                            <div className="flex justify-between text-white">
+                              <span>Avg. Price Per Contract:</span>
+                              <span>{selectedOutcomeData?.price || 0}¢</span>
+                            </div>
+                            <div className="flex justify-between text-white font-semibold">
+                              <span>You Get:</span>
+                              <span>{Math.floor((parseFloat(orderQuantity || '0') * 100) / (selectedOutcomeData?.price || 1))} Contracts</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-3xl font-extrabold text-[#3fdc8c]">
+                        {Math.floor((parseFloat(orderQuantity || '0') * 100) / (selectedOutcomeData?.price || 1))} <span className="text-base font-semibold">USDC</span>
                       </span>
                     </div>
-                    <div className="text-right text-[11px] text-[#888888]">
-                      Avg. Price: <span className="text-white">{selectedOutcomeData?.price}¢</span>
+                    <div className="text-right text-xs text-[#888888]">
+                      Avg. Price: <span className="text-white">{selectedOutcomeData?.price || 0}¢</span>
                     </div>
                   </div>
                 </>
