@@ -66,7 +66,7 @@ export default function PrivacyPage() {
               <ul className="list-disc list-inside space-y-1 ml-2 mb-3">
                 <li>Directly from you when you provide it to us.</li>
                 <li>Automatically as you navigate through the site, including usage details, IP addresses, and information collected through cookies and other tracking technologies.</li>
-                <li>In certain instances, from third parties such as our business partners, third-party wallet providers (e.g., MetaMask, Rabby, Trust Wallet) or other networks where you have connected your account.</li>
+                <li>In certain instances, from third parties such as our business partners, third-party wallet providers (e.g., HashPack, MetaMask) or other networks where you have connected your account.</li>
               </ul>
               <p className="mb-2">If you create an account with us, we may collect the following:</p>
               <ul className="list-disc list-inside space-y-1 ml-2 mb-3">
