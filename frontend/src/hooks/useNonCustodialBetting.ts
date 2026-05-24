@@ -9,8 +9,8 @@ import { sendTransaction, waitForTransaction, approveToken, getTokenBalance } fr
 import { CONTRACT_IDS, CONTRACT_ADDRESSES, STAKING_TOKEN_CONFIG, STAKING_MODE } from '@/lib/contracts/contract-config';
 import { Category } from '@/lib/types/categories';
 
-// Custom Hedera provider that disables ENS (same as in magic.ts)
-class HederaProvider extends ethers.providers.JsonRpcProvider {
+// Custom Arc provider that disables ENS (same as in magic.ts)
+class ArcProvider extends ethers.providers.JsonRpcProvider {
   async getResolver(name: string): Promise<null> {
     return null;
   }
@@ -85,7 +85,7 @@ export function useNonCustodialBetting() {
       }
       console.log('[placeBet] Price range:', { min: priceMinBN.toString(), max: priceMaxBN.toString() });
 
-      // Get user address using getUserInfo (works with Hedera extension)
+      // Get user address using getUserInfo (works with Magic extension)
       const { getUserInfo } = await import('@/lib/magic');
       
       console.log('[placeBet] Getting user address...');
@@ -127,9 +127,9 @@ export function useNonCustodialBetting() {
       console.log('[placeBet] Checking token allowance...');
       const tokenAbi = ['function allowance(address owner, address spender) view returns (uint256)'];
       
-      // Use Hedera provider directly to avoid ENS issues
-      const hederaProvider = new HederaProvider('https://testnet.hashio.io/api');
-      const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, hederaProvider);
+      // Use Arc provider directly to avoid ENS issues
+      const arcProvider = new ArcProvider('/api/rpc-proxy');
+      const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, arcProvider);
       const allowance = await tokenContract.allowance(userAddress, contractAddress);
       console.log('[placeBet] Current allowance:', ethers.utils.formatUnits(allowance, 6), 'USDC');
 
