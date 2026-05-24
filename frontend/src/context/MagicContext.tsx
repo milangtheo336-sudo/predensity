@@ -16,6 +16,7 @@ interface MagicContextType {
   login: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  setIsAuthenticating: (v: boolean) => void;
 }
 
 const MagicContext = createContext<MagicContextType | undefined>(undefined);
@@ -226,7 +227,7 @@ export function MagicProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <MagicContext.Provider value={{ user, isLoading: isLoading || isAuthenticating, isAuthenticating, login, logout, refreshUser }}>
+    <MagicContext.Provider value={{ user, isLoading: isLoading || isAuthenticating, isAuthenticating, login, logout, refreshUser, setIsAuthenticating }}>
       {children}
     </MagicContext.Provider>
   );
