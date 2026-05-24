@@ -133,6 +133,8 @@ if (process.env.TESTNET_ENDPOINT && process.env.TESTNET_OPERATOR_PRIVATE_KEY) {
   networks.testnet = {
     url: process.env.TESTNET_ENDPOINT,
     accounts: [process.env.TESTNET_OPERATOR_PRIVATE_KEY],
+    gasPrice: 2500000000000,
+    gas: 15000000,
     timeout: 180000,
   };
 }
@@ -153,13 +155,12 @@ module.exports = {
     timeout: 3600000,
   },
   solidity: {
-    version: "0.8.20",
+    version: "0.8.9",
     settings: {
       optimizer: {
         enabled: true,
         runs: 500,
       },
-      viaIR: true,
     },
   },
   defaultNetwork: "hardhat",
