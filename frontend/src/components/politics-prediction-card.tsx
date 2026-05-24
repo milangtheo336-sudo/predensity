@@ -22,7 +22,8 @@ import {
   useReadContract,
 } from '@buidlerlabs/hashgraph-react-wallets';
 
-import PoliticsPredictionMarketABI from '../../abi/PoliticsPredictionMarket.json';
+// PoliticsPredictionMarketABI removed -- now using CLOB system
+const PoliticsPredictionMarketABI = { abi: [] as any[] };
 import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
 import { useUser } from '@clerk/nextjs';
 import { api } from '../../convex/_generated/api';
