@@ -606,13 +606,6 @@ contract CryptoPredictionMarket is Ownable {
         uint256 betId = nextBetId++;
         uint256 bucket = bucketIndex(targetTimestamp);
 
-        // Record entry band weight BEFORE adding this bet's weight
-        {
-            uint256 band = bandIndex(priceMin, priceMax);
-            bets[betId].entryBandWeight = bandWeights[bucket][band];
-            bandWeights[bucket][band] += weight;
-        }
-
         bets[betId].bettor = bettor;
         bets[betId].targetTimestamp = targetTimestamp;
         bets[betId].priceMin = priceMin;
