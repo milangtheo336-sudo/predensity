@@ -29,8 +29,13 @@ export default function AuthCallback() {
         // Finish the OAuth flow
         const result = await magic.oauth2.getRedirectResult();
         
-        // Clear the OAuth flag
+        // Clear the OAuth flag and timeout
         sessionStorage.removeItem('magic-oauth-initiated');
+        const timeoutId = sessionStorage.getItem('magic-oauth-timeout');
+        if (timeoutId) {
+          clearTimeout(parseInt(timeoutId));
+          sessionStorage.removeItem('magic-oauth-timeout');
+        }
         const returnUrl = sessionStorage.getItem('magic-oauth-return-url') || '/markets';
         sessionStorage.removeItem('magic-oauth-return-url');
         
@@ -74,6 +79,22 @@ export default function AuthCallback() {
         });
 
         const data = await response.json();
+        
+        // Auto-associate USDC token for new users
+        if (response.ok && response.status !== 409) {
+          try {
+            const { associateToken } = await import('@/lib/magic');
+            const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
+            const usdcTokenId = network === 'mainnet' ? '0.0.456858' : '0.0.8229951';
+            
+            console.log('[auth/callback] Auto-associating USDC token...');
+            await associateToken(usdcTokenId);
+            console.log('[auth/callback] USDC token associated successfully');
+          } catch (associateErr) {
+            console.error('[auth/callback] Token association failed:', associateErr);
+            // Don't fail the signup - user can associate later
+          }
+        }
         
         // Whether wallet was created or already exists, set user data
         // Set user data in sessionStorage for immediate UI update
