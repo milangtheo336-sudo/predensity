@@ -63,7 +63,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const backdropClickEnabledRef = useRef(false);
   const walletSignInInProgressRef = useRef(false);
   const router = useRouter();
-  const { login, refreshUser, user } = useMagic();
+  const { login, refreshUser, user, setIsAuthenticating } = useMagic();
   const { setWalletUser, setIsWalletAuthenticating } = useWalletUser();
   const { isConnected } = useWallet();
 
@@ -152,10 +152,21 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setError(''); setIsLoading(true);
+    e.preventDefault();
+    if (isLoading) return; // prevent double submission
+    setError(''); setIsLoading(true);
     try {
       localStorage.setItem('lastUsedAuthMethod', 'email');
+
+      // login() sets isAuthenticating=true → shows "Redirecting..." modal
+      // and triggers the Magic OTP popup. After OTP is verified, refreshUser()
+      // inside login() would normally clear isAuthenticating — but we keep it
+      // alive manually so there's no blank gap before "Setting up..." appears.
       await login(email);
+
+      // Keep "Redirecting..." modal visible while we fetch user info
+      setIsAuthenticating(true);
+
       let attempts = 0; let currentUser = user;
       while ((!currentUser?.issuer || !currentUser?.publicAddress) && attempts < 20) {
         await new Promise(r => setTimeout(r, 500));
@@ -165,6 +176,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
         attempts++;
       }
       if (!currentUser?.issuer || !currentUser?.publicAddress) throw new Error('Failed to get user information. Please try again.');
+
       const didToken = await getDIDToken();
       const res = await fetch('/api/wallet/create', {
         method: 'POST',
@@ -172,12 +184,13 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
         body: JSON.stringify({ userId: currentUser.issuer, email: currentUser.email || email, magicEOAAddress: currentUser.publicAddress }),
       });
       const data = await res.json();
-      const isNewUser = res.ok; // 409 = existing user, 200 = new user
       if (!res.ok && res.status !== 409) throw new Error(data.error || 'Failed to create wallet');
 
-      // Close modal and show the "Setting up your account" overlay
-      // while the slow proxy wallet deployment happens
+      // Close modal — "Redirecting..." is still showing via isAuthenticating
       onClose();
+
+      // Seamless handoff: switch from "Redirecting..." to "Setting up your account..."
+      setIsAuthenticating(false);
       setIsWalletAuthenticating(true);
 
       try {
@@ -194,19 +207,23 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
           if (!vData.exists || !vData.proxyWalletAddress) throw new Error('Proxy wallet not available. Please try logging in again.');
         }
 
-        // Small delay so the overlay doesn't flash off instantly
-        await new Promise(r => setTimeout(r, 400));
+        // Brief pause so the overlay doesn't flash off before onboarding fades in
+        await new Promise(r => setTimeout(r, 300));
 
-        // New user → onboarding, returning user → stay
-        if (isNewUser && !proxyData.alreadyExists) {
+        // New user = proxy wallet was just deployed for the first time
+        const isNewUser = !proxyData.alreadyExists;
+        if (isNewUser) {
           sessionStorage.setItem('predensity-new-user', 'true');
           router.push('/onboarding');
+          // Keep overlay visible a little longer to cover the page transition
+          await new Promise(r => setTimeout(r, 600));
         }
       } finally {
         setIsWalletAuthenticating(false);
       }
     } catch (err) {
       console.error('[auth] Error:', err);
+      setIsAuthenticating(false);
       setIsWalletAuthenticating(false);
       setError(err instanceof Error ? err.message : 'Authentication failed');
       setIsLoading(false);
@@ -499,13 +516,6 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
                     </button>
                   </div>
                 </form>
-
-                {/* Passkey */}
-                <button onClick={handlePasskeyLogin} disabled={isLoading} className="w-full flex items-center gap-3 px-5 py-3.5 bg-[#0a0a0a] hover:bg-[#1a1a1a] text-white border border-blue-500/50 rounded-xl text-[15px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed relative">
-                  {lastUsedMethod === 'passkey' && <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-gray-700 text-gray-300 text-[10px] font-semibold rounded-full border border-white/10">Last used</span>}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#460de3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg>
-                  <span>Passkey</span>
-                </button>
 
                 {/* Continue with wallet */}
                 <button onClick={() => setView('wallets')} disabled={isLoading} className="w-full flex items-center justify-center gap-3 px-5 py-3.5 bg-[#0a0a0a] hover:bg-[#1a1a1a] text-white border border-white/5 rounded-xl text-[15px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed">
