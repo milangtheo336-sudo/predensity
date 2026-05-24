@@ -8,10 +8,10 @@
 
 import { ethers } from 'ethers';
 
-// Custom Hedera provider that disables ENS
-class HederaProvider extends ethers.providers.JsonRpcProvider {
+// Custom Arc provider that disables ENS (Arc doesn't support ENS)
+class ArcProvider extends ethers.providers.JsonRpcProvider {
   async getResolver(name: string): Promise<null> {
-    // Hedera doesn't support ENS, always return null
+    // Arc doesn't support ENS, always return null
     return null;
   }
   
@@ -20,7 +20,7 @@ class HederaProvider extends ethers.providers.JsonRpcProvider {
     if (ethers.utils.isAddress(name)) {
       return name;
     }
-    // Otherwise, Hedera doesn't support ENS
+    // Otherwise, Arc doesn't support ENS
     return null;
   }
 }
@@ -47,31 +47,25 @@ export function getMagic(): any {
       // Dynamic imports to avoid SSR issues
       const { Magic } = require('magic-sdk');
       const { OAuthExtension } = require('@magic-ext/oauth2');
-      const { HederaExtension } = require('@magic-ext/hedera');
-      
-      const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-      
+
       // Detect system theme
       const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      
-      // Initialize Magic with OAuth2 and Hedera extensions + theme
+
+      // Initialize Magic with OAuth2 extension (standard EVM, no Arc extension needed)
       magicInstance = new Magic(publishableKey, {
         extensions: [
           new OAuthExtension(),
-          new HederaExtension({
-            network: network === 'mainnet' ? 'mainnet' : 'testnet'
-          })
         ],
+        network: {
+          rpcUrl: '/api/rpc-proxy',
+          chainId: 5042002, // Arc chain ID
+        },
         locale: 'en_US',
         theme: isDarkMode ? 'dark' : 'light',
       });
-      
+
       if (!magicInstance.oauth2) {
         throw new Error('OAuth2 extension not initialized');
-      }
-      
-      if (!magicInstance.hedera) {
-        throw new Error('Hedera extension not initialized');
       }
     } catch (error) {
       throw error;
@@ -266,20 +260,20 @@ export async function signTypedData(
 
 /**
  * Get Magic provider for direct Web3 calls.
- * Returns a custom provider that connects to Hedera testnet.
+ * Returns a custom provider that connects to Arc testnet.
  */
 export function getMagicProvider(): any {
   const magic = getMagic();
   const magicProvider = (magic as any).rpcProvider;
   
-  // Wrap Magic's provider to use Hedera RPC
+  // Wrap Magic's provider to use Arc RPC
   return new Proxy(magicProvider, {
     get(target, prop) {
       if (prop === 'request') {
         return async (args: any) => {
-          // For network-related calls, use Hedera RPC directly
+          // For network-related calls, use Arc RPC directly
           if (args.method === 'eth_chainId') {
-            return '0x128'; // 296 in hex (Hedera testnet)
+            return '0x4CF5F2'; // 5042002 in hex (Arc)
           }
           if (args.method === 'net_version') {
             return '296';
@@ -295,14 +289,14 @@ export function getMagicProvider(): any {
 
 /**
  * Get ethers signer for transactions.
- * Uses Hedera testnet RPC for network calls.
+ * Uses Arc testnet RPC for network calls.
  */
 export async function getMagicSigner(): Promise<ethers.Signer> {
   const magic = getMagic();
   const magicProvider = (magic as any).rpcProvider;
   
   // Create a Web3Provider that wraps Magic's provider
-  // but intercepts network calls to use Hedera RPC
+  // but intercepts network calls to use Arc RPC
   const customProvider = new Proxy(magicProvider, {
     get(target, prop) {
       if (prop === 'request') {
@@ -314,10 +308,10 @@ export async function getMagicSigner(): Promise<ethers.Signer> {
           if (args.method === 'net_version') {
             return '296';
           }
-          // For contract calls and balance queries, use Hedera RPC
+          // For contract calls and balance queries, use Arc RPC
           if (args.method === 'eth_call' || args.method === 'eth_getBalance' || args.method === 'eth_getTransactionCount') {
-            const hederaProvider = new HederaProvider('https://testnet.hashio.io/api');
-            return await hederaProvider.send(args.method, args.params || []);
+            const arcProvider = new ArcProvider('/api/rpc-proxy');
+            return await arcProvider.send(args.method, args.params || []);
           }
           // For all other calls (signing, etc), use Magic's provider
           return target.request(args);
@@ -415,8 +409,8 @@ export async function waitForTransaction(
   confirmations: number = 1
 ): Promise<any> {
   // Create provider without network config to avoid ENS lookups
-  const hederaProvider = new HederaProvider('https://testnet.hashio.io/api');
-  return await hederaProvider.waitForTransaction(txHash, confirmations);
+  const arcProvider = new ArcProvider('/api/rpc-proxy');
+  return await arcProvider.waitForTransaction(txHash, confirmations);
 }
 
 /**
@@ -433,7 +427,7 @@ export async function getTokenBalance(
   const magic = getMagic();
   const magicProvider = (magic as any).rpcProvider;
   // Create provider without network config to avoid ENS lookups
-  const hederaProvider = new HederaProvider('https://testnet.hashio.io/api');
+  const arcProvider = new ArcProvider('/api/rpc-proxy');
   
   if (!userAddress) {
     // Get user address from Magic provider directly (avoid getAddress() error)
@@ -446,7 +440,7 @@ export async function getTokenBalance(
   }
   
   const tokenAbi = ['function balanceOf(address) view returns (uint256)'];
-  const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, hederaProvider);
+  const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, arcProvider);
   const balance = await tokenContract.balanceOf(userAddress);
   
   return balance.toString();
@@ -455,7 +449,7 @@ export async function getTokenBalance(
 /**
  * Associate USDC token with user's Magic Link wallet.
  * 
- * IMPORTANT: On Hedera, token association MUST be signed by the account owner.
+ * IMPORTANT: On Arc, token association MUST be signed by the account owner.
  * The operator cannot do this on behalf of the user, even during initial setup.
  * 
  * This function is a placeholder. Token association will happen automatically
@@ -484,7 +478,7 @@ export async function associateToken(tokenId: string): Promise<string> {
  * This is still non-custodial - user controls their funds via Magic Link.
  * Token association is just a one-time setup step.
  * 
- * @param tokenId Hedera token ID (e.g., '0.0.8229951')
+ * @param tokenId Arc token ID (e.g., '0.0.8229951')
  * @returns Transaction hash
  */
 export async function associateTokenViaMagic(tokenId: string): Promise<string> {
@@ -498,7 +492,7 @@ export async function associateTokenViaMagic(tokenId: string): Promise<string> {
     }
     
     // Step 2: User signs consent message
-    const consentMessage = `I authorize token association for ${tokenId} on my Hedera account ${userInfo.publicAddress}`;
+    const consentMessage = `I authorize token association for ${tokenId} on my Arc account ${userInfo.publicAddress}`;
     console.log('[associateTokenViaMagic] Requesting user signature for consent...');
     
     const signature = await signMessage(consentMessage);
