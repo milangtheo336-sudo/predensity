@@ -5,10 +5,12 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMagic } from '@/context/MagicContext';
+import { useWalletUser } from '@/context/WalletUserContext';
 
 export function MobileBottomNav() {
   const { user } = useMagic();
-  const isSignedIn = !!user;
+  const { walletUser } = useWalletUser();
+  const isSignedIn = !!user || !!walletUser;
   const [moreOpen, setMoreOpen] = useState(false);
 
   return (
