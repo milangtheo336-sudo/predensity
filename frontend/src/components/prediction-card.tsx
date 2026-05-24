@@ -1562,20 +1562,20 @@ export function PredictionCard({
                 {showDetails && (
                   <div className="mt-2 p-3 bg-gray-100 dark:bg-neutral-900 rounded-lg border border-gray-200 dark:border-[#2a2a2a] space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Sharpness</span>
+                      <span className="text-gray-500">{t.sharpness}</span>
                       <span className="text-gray-800 dark:text-white">{multipliers.isLoading ? '...' : multipliers.sharpness > 0 ? `${multipliers.sharpness.toFixed(2)}x` : '--'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Lead Time</span>
+                      <span className="text-gray-500">{t.leadTime}</span>
                       <span className="text-gray-800 dark:text-white">{multipliers.isLoading ? '...' : multipliers.leadTime > 0 ? `${multipliers.leadTime.toFixed(2)}x` : '--'}</span>
                     </div>
                     <div className="flex justify-between font-medium">
-                      <span className="text-gray-600 dark:text-gray-300">Total Quality</span>
+                      <span className="text-gray-600 dark:text-gray-300">{t.totalQuality}</span>
                       <span className="text-vibrant-purple">{multipliers.isLoading ? '...' : multipliers.betQuality > 0 ? `${multipliers.betQuality.toFixed(2)}x` : '--'}</span>
                     </div>
                     <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 w-full" />
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Est. Fee</span>
+                      <span className="text-gray-500">{t.estFee}</span>
                       <span className="text-gray-800 dark:text-white">
                         {depositAmount && simulationDetails.isValid && simulationDetails.fee !== '0'
                           ? `${parseFloat(ethers.utils.formatUnits(simulationDetails.fee, getStakingCurrency().decimals)).toFixed(4)} ${getStakingCurrency().symbol}`
@@ -1584,7 +1584,7 @@ export function PredictionCard({
                     </div>
                     <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 w-full" />
                     <div className="flex justify-between font-medium">
-                      <span className="text-gray-600 dark:text-gray-300">Est. Profit</span>
+                      <span className="text-gray-600 dark:text-gray-300">{t.estProfit}</span>
                       <span className={(() => {
                         if (estimatedProfit.isLoading || !depositAmount || !simulationDetails.isValid) return 'text-gray-800 dark:text-white';
                         const profitVal = parseFloat(ethers.utils.formatUnits(estimatedProfit.profit, getStakingCurrency().decimals));
