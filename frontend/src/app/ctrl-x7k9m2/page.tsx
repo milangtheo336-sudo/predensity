@@ -974,8 +974,11 @@ function AdminPage() {
   const [clobMarketForm, setClobMarketForm] = useState({
     question: '',
     category: 'politics',
-    outcomeNames: ['Yes', 'No'],
-    imageUrl: '',
+    outcomes: [
+      { name: 'Yes', imageUrl: '' },
+      { name: 'No', imageUrl: '' }
+    ],
+    marketImageUrl: '', // Main market thumbnail
     description: '',
     resolutionTimestamp: '',
   });
@@ -994,17 +997,21 @@ function AdminPage() {
   const [feeData, setFeeData] = useState<Record<string, { fees: string; balance: string; isOwner: boolean; loading: boolean }>>({});
   const [isWithdrawing, setIsWithdrawing] = useState<string | null>(null);
 
-  // Fetch fee data for all deployed contracts
+  // Fetch fee data for Crypto contract only (Legacy contracts have empty ABIs)
   const fetchFeeData = async () => {
     if (!readContract || !isConnected) return;
-    const categories = Object.values(CATEGORIES).filter(c => c.enabled && isCategoryDeployed(c.id));
+    const categories = Object.values(CATEGORIES).filter(c => c.enabled && isCategoryDeployed(c.id) && c.id === Category.CRYPTO);
     const results: Record<string, { fees: string; balance: string; isOwner: boolean; loading: boolean }> = {};
 
     for (const cat of categories) {
+      // Skip fee fetching for CLOB categories (Politics, Sports, Tech) - they don't have legacy contracts
+      if (cat.id !== Category.CRYPTO) {
+        results[cat.id] = { fees: 'N/A (CLOB)', balance: '--', isOwner: false, loading: false };
+        continue;
+      }
+      
       const addr = getContractAddress(cat.id);
-      const abi = cat.id === Category.CRYPTO ? CryptoPredictionMarketABI.abi : 
-                  cat.id === Category.POLITICS ? PoliticsPredictionMarketABI.abi :
-                  cat.id === Category.SPORTS ? SportsPredictionMarketABI.abi : TechnologyPredictionMarketABI.abi;
+      const abi = CryptoPredictionMarketABI.abi;
       try {
         const [fees, owner] = await Promise.all([
           readContract({ address: addr, abi, functionName: 'totalFeesCollected', args: [] }),
@@ -1029,10 +1036,14 @@ function AdminPage() {
   }, [isConnected, isAdmin, readContract]);
 
   const handleWithdrawFees = async (category: Category) => {
+    // Skip withdrawal for CLOB categories - they don't have legacy contracts
+    if (category !== Category.CRYPTO) {
+      toast({ variant: 'destructive', title: 'Not available', description: 'Fee withdrawal only available for Crypto category' });
+      return;
+    }
+    
     const contractId = getContractId(category);
-    const abi = category === Category.CRYPTO ? CryptoPredictionMarketABI.abi :
-                category === Category.POLITICS ? PoliticsPredictionMarketABI.abi :
-                category === Category.SPORTS ? SportsPredictionMarketABI.abi : TechnologyPredictionMarketABI.abi;
+    const abi = CryptoPredictionMarketABI.abi;
     setIsWithdrawing(category);
     try {
       const result = await writeContract({
@@ -1501,7 +1512,14 @@ function AdminPage() {
       if (!res.ok) throw new Error(data.error || 'Failed to create market');
       toast({ title: 'CLOB Market Created', description: `Market ID: ${marketId}` });
       setShowClobMarketModal(false);
-      setClobMarketForm({ question: '', category: 'politics', outcomeNames: ['Yes', 'No'], imageUrl: '', description: '', resolutionTimestamp: '' });
+      setClobMarketForm({ 
+        question: '', 
+        category: 'politics', 
+        outcomes: [{ name: 'Yes', imageUrl: '' }, { name: 'No', imageUrl: '' }], 
+        marketImageUrl: '', 
+        description: '', 
+        resolutionTimestamp: '' 
+      });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Failed to create CLOB market', description: err instanceof Error ? err.message : 'Unknown error' });
     } finally {
@@ -2360,7 +2378,7 @@ function AdminPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {Object.values(CATEGORIES)
-                .filter(cat => cat.enabled && isCategoryDeployed(cat.id))
+                .filter(cat => cat.enabled && isCategoryDeployed(cat.id) && cat.id === Category.CRYPTO)
                 .map(cat => {
                   const info = feeData[cat.id];
                   const feesNum = info ? parseFloat(info.fees) : 0;
@@ -2397,6 +2415,7 @@ function AdminPage() {
         </Card>
 
         {/* CLOB Market Management (Politics, Sports, Tech, International) */}
+        {selectedCategory !== Category.CRYPTO && (
         <Card className="bg-white dark:bg-neutral-950/50 border-gray-200 dark:border-white/10">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -2412,6 +2431,7 @@ function AdminPage() {
             <ClobMarketsDisplay category={selectedCategory} />
           </CardContent>
         </Card>
+        )}
 
         {/* Crypto Market Management - Only for Crypto Category */}
         {selectedCategory === Category.CRYPTO && (
@@ -2439,8 +2459,9 @@ function AdminPage() {
           </Card>
         )}
 
-        {/* Event Creation Section - Only for Politics, Sports, Technology */}
-        {selectedCategory !== Category.CRYPTO && (
+        {/* Event Creation Section - REMOVED: Politics/Sports/Tech now use CLOB system only */}
+        {/* Legacy event creation is only available for Crypto category */}
+        {selectedCategory === Category.CRYPTO && (
           <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -2465,17 +2486,19 @@ function AdminPage() {
           </Card>
         )}
 
-        {/* Events List - Only for Politics, Sports, Technology */}
-        {selectedCategory !== Category.CRYPTO && (
+        {/* Events List - Only for Crypto */}
+        {selectedCategory === Category.CRYPTO && (
           <EventsList category={selectedCategory} />
         )}
 
-        {/* Event Resolution Section - Only for Politics, Sports, Technology */}
-        {selectedCategory !== Category.CRYPTO && (
+        {/* Event Resolution Section - Only for Crypto */}
+        {selectedCategory === Category.CRYPTO && (
           <EventResolutionSection category={selectedCategory} contractId={currentContractId} />
         )}
 
         {/* Controls Card */}
+        {selectedCategory === Category.CRYPTO && (
+          <>
         <Card className="bg-white dark:bg-neutral-950/50 border-white/10">
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -2771,6 +2794,8 @@ function AdminPage() {
             )}
           </CardContent>
         </Card>
+          </>
+        )}
       </main>
 
       {/* Event Creation Modal */}
