@@ -216,3 +216,27 @@
 .animate-ripple {
   animation: ripple 1.8s ease-out infinite;
 }
+
+/* Magic Link Modal Overlay - Remove blur, use semi-transparent overlay */
+#magic-iframe-container {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Magic Link backdrop overlay */
+.magic-backdrop,
+[class*="magic-"] > div[style*="backdrop-filter"],
+div[style*="backdrop-filter: blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Light mode backdrop */
+@media (prefers-color-scheme: light) {
+  .magic-backdrop,
+  [class*="magic-"] > div[style*="backdrop-filter"],
+  div[style*="backdrop-filter: blur"] {
+    background-color: rgba(0, 0, 0, 0.3) !important;
+  }
+}
