@@ -406,7 +406,6 @@ contract CryptoPredictionMarket is Ownable {
         require(bet.bettor == msg.sender, "Not bet owner");
         require(bet.finalized, "Bet not finalized");
         require(!bet.claimed, "Already claimed");
-        require(!bet.exited, "Already exited via DPM");
 
         uint256 bucket = bucketIndex(bet.targetTimestamp);
         BucketInfo storage bucketInfo = buckets[bucket];
@@ -415,11 +414,12 @@ contract CryptoPredictionMarket is Ownable {
         bet.claimed = true;
 
         if (bet.won) {
-            // DPM-adjusted payout: use remaining pool after early exits
-            uint256 remainingPool = bucketInfo.totalStaked - bucketInfo.totalExited;
-            uint256 payout = bucketInfo.totalWinningWeight > 0 ? 
-                (bet.weight * remainingPool) / bucketInfo.totalWinningWeight : 0;
-            
+            // Classic parimutuel payout: winners split the bucket's total stake
+            // pro-rata by their quality-adjusted weight.
+            uint256 payout = bucketInfo.totalWinningWeight > 0
+                ? (bet.weight * bucketInfo.totalStaked) / bucketInfo.totalWinningWeight
+                : 0;
+
             // Reduce obligations as payout is fulfilled
             if (payout <= totalObligations) {
                 totalObligations -= payout;
@@ -428,7 +428,7 @@ contract CryptoPredictionMarket is Ownable {
             }
 
             _transferOut(msg.sender, payout);
-            
+
             emit BetClaimed(betId, msg.sender, payout);
         } else {
             emit BetClaimed(betId, msg.sender, 0);
