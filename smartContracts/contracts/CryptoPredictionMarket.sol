@@ -825,41 +825,6 @@ contract CryptoPredictionMarket is Ownable {
     }
 
     /**
-     * @notice Get DPM exit info for a specific bet.
-     *         Returns the current exit value, fee, net payout, and whether exit is possible.
-     * @param betId The bet to query
-     * @return rawExitValue Exit value before fee
-     * @return exitFee The 0.8% fee that would be deducted
-     * @return netExitPayout What the bettor would actually receive
-     * @return canExit Whether the bet is eligible for early exit
-     * @return exitPoolRemaining How much of the 30% exit cap is still available in this bucket
-     */
-    function getDPMInfo(uint256 betId) external view returns (
-        uint256 rawExitValue,
-        uint256 exitFee,
-        uint256 netExitPayout,
-        bool canExit,
-        uint256 exitPoolRemaining
-    ) {
-        Bet storage bet = bets[betId];
-        uint256 bucket = bucketIndex(bet.targetTimestamp);
-        BucketInfo storage bucketInfo = buckets[bucket];
-
-        rawExitValue = getExitValue(betId);
-        exitFee = (rawExitValue * EXIT_FEE_BPS) / BPS_DENOM;
-        netExitPayout = rawExitValue - exitFee;
-
-        uint256 exitCap = (bucketInfo.totalStaked * MAX_EXIT_RATIO_BPS) / BPS_DENOM;
-        uint256 alreadyExited = bucketInfo.totalExited;
-        exitPoolRemaining = exitCap > alreadyExited ? exitCap - alreadyExited : 0;
-
-        canExit = !bet.finalized 
-            && !bet.exited 
-            && rawExitValue > 0 
-            && netExitPayout <= exitPoolRemaining;
-    }
-
-    /**
      * @notice Get batch processing info for a bucket
      */
     function getBatchInfo(uint256 bucket) external view returns (
