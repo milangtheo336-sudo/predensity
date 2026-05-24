@@ -494,8 +494,10 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
                   )}
                 </button>
 
-                {/* EIP-6963 detected wallets — browser extensions */}
-                {eip6963Wallets.map((w) => (
+                {/* EIP-6963 detected wallets — browser extensions.
+                    Kabila is excluded: it advertises EIP-6963 but rejects EIP-1193
+                    requests and only works via WalletConnect/HederaAdapter. */}
+                {eip6963Wallets.filter(w => !w.info.name.toLowerCase().includes('kabila')).map((w) => (
                   <button
                     key={w.info.uuid}
                     onClick={() => handleEIP6963Connect(w)}
