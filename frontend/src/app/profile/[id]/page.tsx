@@ -1,44 +1,21 @@
-import { Metadata } from 'next';
-import { redirect } from 'next/navigation';
+'use client';
 
-export async function generateMetadata({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-}): Promise<Metadata> {
-  const name = (searchParams.name as string) || 'Trader';
-  const pnl = (searchParams.pnl as string) || '+$0.00';
-  const predictions = (searchParams.predictions as string) || '0';
-  const win = (searchParams.win as string) || '$0.00';
-  const seed = (searchParams.seed as string) || params.id || 'default';
+import { useParams, redirect } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
+import PortfolioPage from '@/app/my-bets/page';
 
-  const ogParams = new URLSearchParams({ name, pnl, predictions, win, seed });
-  const ogImageUrl = `https://predensity.com/api/og?${ogParams.toString()}`;
+export default function PublicProfilePage() {
+  const params = useParams();
+  const profileUserId = params.id as string;
+  const { user, isSignedIn, isLoaded } = useUser();
 
-  const title = `${name} on Predensity | P&L: ${pnl}`;
-  const description = `${predictions} predictions | Biggest win: ${win} | Trade on prediction markets at predensity.com`;
+  // Wait for Clerk to load before deciding
+  if (!isLoaded) return null;
 
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      images: [{ url: ogImageUrl, width: 1200, height: 630 }],
-      siteName: 'Predensity',
-      type: 'profile',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-      images: [ogImageUrl],
-    },
-  };
-}
+  // If viewing own profile, redirect to my-bets
+  if (isSignedIn && user?.id === profileUserId) {
+    redirect('/my-bets');
+  }
 
-export default function ProfilePage() {
-  redirect('/my-bets');
+  return <PortfolioPage publicViewUserId={profileUserId} />;
 }
