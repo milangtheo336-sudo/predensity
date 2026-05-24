@@ -866,6 +866,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
 
   const guestMenuBtnRef = useRef<HTMLButtonElement>(null);
   const profileBtnRef = useRef<HTMLButtonElement>(null);
+  const mobileProfileBtnRef = useRef<HTMLButtonElement>(null);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const profileCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const guestCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -945,7 +946,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                   Deposit
                 </button>
 
-                {/* Profile avatar -- hover to expand dropdown */}
+                {/* Profile avatar -- hover or click to expand dropdown */}
                 <div
                   className="relative"
                   onMouseEnter={() => {
@@ -959,6 +960,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                   <button
                     ref={profileBtnRef}
                     className="flex items-center gap-1"
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   >
                     {user?.imageUrl ? (
                       <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
@@ -1023,7 +1025,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                 }}
               >
                 <button
-                  ref={profileBtnRef}
+                  ref={mobileProfileBtnRef}
                   className="flex items-center gap-1"
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 >
@@ -1064,6 +1066,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
       <GuestHamburgerMenu buttonRef={guestMenuBtnRef} isOpen={guestMenuOpen} onClose={() => setGuestMenuOpen(false)} parentCloseTimer={guestCloseTimer} />
       <ProfileDropdownPortal
         buttonRef={profileBtnRef}
+        mobileButtonRef={mobileProfileBtnRef}
         isOpen={profileDropdownOpen}
         onClose={() => setProfileDropdownOpen(false)}
         parentCloseTimer={profileCloseTimer}
@@ -1085,6 +1088,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
 
 function ProfileDropdownPortal({
   buttonRef,
+  mobileButtonRef,
   isOpen,
   onClose,
   parentCloseTimer,
@@ -1096,6 +1100,7 @@ function ProfileDropdownPortal({
   signOut,
 }: {
   buttonRef: React.RefObject<HTMLButtonElement | null>;
+  mobileButtonRef: React.RefObject<HTMLButtonElement | null>;
   isOpen: boolean;
   onClose: () => void;
   parentCloseTimer: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
@@ -1111,19 +1116,23 @@ function ProfileDropdownPortal({
   const [comingSoonMsg, setComingSoonMsg] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Use whichever button ref is currently visible
+  const activeRef = buttonRef.current?.offsetParent !== null ? buttonRef : mobileButtonRef;
+
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!isOpen) return;
     const handleClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node) &&
-          buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
+          (!buttonRef.current || !buttonRef.current.contains(e.target as Node)) &&
+          (!mobileButtonRef.current || !mobileButtonRef.current.contains(e.target as Node))) {
         onClose();
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [isOpen, onClose, buttonRef]);
+  }, [isOpen, onClose, buttonRef, mobileButtonRef]);
 
   const displayAddress = evmAddress || accountId;
 
@@ -1140,8 +1149,10 @@ function ProfileDropdownPortal({
     setTimeout(() => setComingSoonMsg(null), 2000);
   };
 
-  if (!mounted || !isOpen || !buttonRef.current) return null;
-  const rect = buttonRef.current.getBoundingClientRect();
+  if (!mounted || !isOpen) return null;
+  const activeBtnEl = activeRef.current;
+  if (!activeBtnEl) return null;
+  const rect = activeBtnEl.getBoundingClientRect();
 
   return createPortal(
     <div
