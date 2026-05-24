@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConvexHttpClient } from 'convex/browser';
 import { requireAdmin, rateLimit } from '@/lib/api-auth';
 import { api } from '../../../../../convex/_generated/api';
+import { getServerConvex } from '@/lib/convex-server';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Need 2-20 outcomes' }, { status: 400 });
     }
 
-    await convex.mutation(api.clob.createClobMarket, {
+    await convex.adminMutation(api.clob.createClobMarket, {
       marketId, question, category, outcomeNames, outcomesData, imageUrl, description,
       resolutionTimestamp: Number(resolutionTimestamp),
       team1, team2, candidate, sportType, outcomeTokenAddresses, onChainMarketId,
