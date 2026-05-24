@@ -1505,8 +1505,19 @@ function AdminPage() {
       return;
     }
 
-    const validOutcomes = clobMarketForm.outcomes.filter(o => o.name.trim() !== '');
-    if (validOutcomes.length < 2) {
+    const validOutcomes = clobMarketForm.marketType === 'match'
+      ? [
+          clobMarketForm.outcomes[0] || { name: '', imageUrl: '' },
+          { name: 'Tie', imageUrl: '' },
+          clobMarketForm.outcomes[2] || { name: '', imageUrl: '' },
+        ].filter(o => o.name.trim() !== '')
+      : clobMarketForm.outcomes.filter(o => o.name.trim() !== '');
+
+    if (clobMarketForm.marketType === 'match' && validOutcomes.length < 3) {
+      toast({ variant: 'destructive', title: 'Teams Required', description: 'Enter both team names for a match result market.' });
+      return;
+    }
+    if (clobMarketForm.marketType !== 'match' && validOutcomes.length < 2) {
       toast({ variant: 'destructive', title: 'Outcomes Required', description: 'Provide at least 2 outcomes.' });
       return;
     }
@@ -1539,7 +1550,7 @@ function AdminPage() {
       setShowClobMarketModal(false);
       setClobMarketForm({ 
         question: '', 
-        category: 'politics', 
+        category: selectedCategory.toLowerCase(),
         marketType: 'binary',
         outcomes: [{ name: 'Yes', imageUrl: '' }, { name: 'No', imageUrl: '' }], 
         marketImageUrl: '', 
