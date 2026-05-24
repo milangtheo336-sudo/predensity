@@ -18,6 +18,7 @@ export const createClobMarket = mutation({
     question: v.string(),
     category: v.string(),
     outcomeNames: v.array(v.string()),
+    outcomesData: v.optional(v.array(v.object({ name: v.string(), imageUrl: v.string() }))),
     imageUrl: v.string(),
     description: v.string(),
     resolutionTimestamp: v.number(),
