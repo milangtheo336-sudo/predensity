@@ -63,7 +63,8 @@ export default function CookiePolicyPage() {
               <h3 className="font-semibold mb-2">Performance Cookies</h3>
               <p className="mb-3">
                 Collect information about how you use the Site — pages visited, time spent, navigation patterns — to help
-                us improve performance. We use Vercel Analytics for this purpose.
+                us improve performance. We use Vercel Analytics for this purpose. As the site operator, Predensity is
+                solely responsible for the data collected through these analytics.
               </p>
 
               <h3 className="font-semibold mb-2">Functionality Cookies</h3>
@@ -90,12 +91,6 @@ export default function CookiePolicyPage() {
               <p className="mb-3">
                 You can accept, reject, or remove cookies by adjusting your browser settings. Instructions are typically
                 found in the "Help" menu of your browser (Chrome, Firefox, Safari, Edge).
-              </p>
-              <p className="mb-3">
-                To opt out of Vercel Analytics tracking, visit:{' '}
-                <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-vibrant-purple hover:underline">
-                  vercel.com/docs/analytics/privacy-policy
-                </a>.
               </p>
               <p className="mb-3">
                 Please note: disabling certain cookies may limit the functionality of our Site. Strictly necessary cookies
