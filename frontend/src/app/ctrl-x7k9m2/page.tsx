@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { SignInButton, SignOutButton, useUser } from '@clerk/nextjs';
+import Link from 'next/link';
+import { useMagic } from '@/context/MagicContext';
 import { useMutation, useQuery as useConvexQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import {
@@ -923,8 +924,13 @@ function ClobMarketsDisplay({ category }: { category: Category }) {
 }
 
 function AdminPage() {
-  const { user, isLoaded, isSignedIn } = useUser();
-  const isAdmin = user?.publicMetadata?.role === 'admin';
+  const { user, isLoading, logout } = useMagic();
+  const isSignedIn = !!user;
+  const isLoaded = !isLoading;
+  
+  // Check if user is admin (based on email)
+  const adminEmails = ['mwangihenry336@gmail.com', 'warukirahenry336@gmail.com'];
+  const isAdmin = user && adminEmails.includes(user.email);
 
   // Wallet connection
   const { isConnected } = useWallet();
@@ -1079,7 +1085,7 @@ function AdminPage() {
       ? { marketId: getContractAddress(selectedCategory).toLowerCase() }
       : 'skip'
   );
-  const loading = convexBetsRaw === undefined && isLoaded && isSignedIn && isAdmin;
+  const loading = !!(convexBetsRaw === undefined && isLoaded && isSignedIn && isAdmin);
   const refetch = () => {}; // Convex auto-updates in real time
 
   // Map Convex bets to the Bet interface shape used by the rest of the admin page
@@ -2244,7 +2250,7 @@ function AdminPage() {
           </p>
 
           <Button variant="predensity" className="w-48" asChild>
-            <SignInButton />
+            <Link href="/auth">Sign In</Link>
           </Button>
         </div>
       </div>
@@ -2260,8 +2266,8 @@ function AdminPage() {
           <p className="text-gray-500 dark:text-gray-400">
             You do not have permission to access the admin dashboard.
           </p>
-          <Button variant="predensity" className="w-48" asChild>
-            <SignOutButton />
+          <Button variant="predensity" className="w-48" onClick={() => logout()}>
+            Sign Out
           </Button>
         </div>
       </div>
