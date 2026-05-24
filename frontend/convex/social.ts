@@ -32,33 +32,6 @@ export const getUserProfilesBatch = query({
   },
 });
 
-/**
- * Given a list of comment userAddresses (e.g. "managed:did:ethr:0x..."),
- * returns a map of commentUserAddress -> proxyWalletAddress by looking up
- * the managedWallets table using the userId (issuer).
- * This bridges Magic Link identity (used for comments) with proxy wallet
- * address (used for on-chain bets).
- */
-export const getProxyWalletsByUserIds = query({
-  args: { userAddresses: v.array(v.string()) },
-  handler: async (ctx, args) => {
-    const result: Record<string, string> = {};
-    for (const addr of args.userAddresses) {
-      // Extract userId from "managed:userId" format
-      const userId = addr.startsWith('managed:') ? addr.slice(8) : addr;
-      if (!userId) continue;
-      const wallet = await ctx.db
-        .query("managedWallets")
-        .withIndex("by_user_id", (q) => q.eq("userId", userId))
-        .first();
-      if (wallet?.proxyWalletAddress) {
-        result[addr.toLowerCase()] = wallet.proxyWalletAddress.toLowerCase();
-      }
-    }
-    return result;
-  },
-});
-
 export const updateProfile = mutation({
   args: {
     userAddress: v.string(),
@@ -247,90 +220,5 @@ export const likeComment = mutation({
         likedBy: [...likedBy, args.userAddress],
       });
     }
-  },
-});
-
-// Get user's proxy wallet by userId (issuer)
-export const getProxyWalletByUserId = query({
-  args: { userId: v.string() },
-  handler: async (ctx, args) => {
-    const wallet = await ctx.db
-      .query("managedWallets")
-      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
-      .first();
-    return wallet?.proxyWalletAddress || null;
-  },
-});
-
-// Get profiles for a list of addresses (used in comments, etc)
-export const getProfilesByAddresses = query({
-  args: { addresses: v.array(v.string()) },
-  handler: async (ctx, args) => {
-    const results = [];
-    for (const addr of args.addresses) {
-      const profile = await ctx.db
-        .query("userProfiles")
-        .withIndex("by_address", (q) => q.eq("userAddress", addr.toLowerCase()))
-        .first();
-      if (profile) {
-        results.push(profile);
-      }
-    }
-    return results;
-  },
-});
-
-// Get friends (following) of a user
-export const getFriendsWithProfiles = query({
-  args: { userAddress: v.string() },
-  handler: async (ctx, args) => {
-    const following = await ctx.db
-      .query("follows")
-      .withIndex("by_follower", (q) => q.eq("followerAddress", args.userAddress.toLowerCase()))
-      .collect();
-
-    // Fetch profiles for each friend
-    const results = [];
-    for (const f of following) {
-      const profile = await ctx.db
-        .query("userProfiles")
-        .withIndex("by_address", (q) => q.eq("userAddress", f.followingAddress))
-        .first();
-        
-      const userId = f.followingAddress.startsWith('managed:') ? f.followingAddress.slice(8) : f.followingAddress;
-      let wallet = await ctx.db
-        .query("managedWallets")
-        .withIndex("by_user_id", (q) => q.eq("userId", userId))
-        .first();
-
-      if (!wallet) {
-        // Fallback for mixed-case DIDs stored in managedWallets
-        const allWallets = await ctx.db.query("managedWallets").collect();
-        wallet = allWallets.find(w => w.userId.toLowerCase() === userId.toLowerCase()) || null;
-      }
-
-      results.push({
-        address: f.followingAddress,
-        proxyWalletAddress: wallet?.proxyWalletAddress || wallet?.evmAddress || '',
-        displayName: profile?.displayName || f.followingAddress.slice(0, 6) + '...',
-        avatar: profile?.avatar,
-        followTimestamp: f.timestamp,
-      });
-    }
-    return results;
-  },
-});
-
-// Get email for a wallet address (for sending emails)
-export const getEmailByWalletAddress = query({
-  args: { walletAddress: v.string() },
-  handler: async (ctx, args) => {
-    // Find managedWallet by proxyWalletAddress
-    const wallet = await ctx.db
-      .query("managedWallets")
-      .withIndex("by_proxy_wallet", (q) => q.eq("proxyWalletAddress", args.walletAddress.toLowerCase()))
-      .first();
-    
-    return wallet?.email || null;
   },
 });
