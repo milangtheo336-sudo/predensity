@@ -8,7 +8,7 @@ import { api } from '../../../convex/_generated/api';
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { useWallet, useAccountId } from '@buidlerlabs/hashgraph-react-wallets';
+import { useAccount } from 'wagmi';
 import { User, Shield, Bell, Copy, Check, Trash2, Camera } from 'lucide-react';
 import Avatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
@@ -88,8 +88,7 @@ export default function SettingsPage() {
 
 // Profile Tab for wallet-only users
 function WalletProfileTab({ walletUser }: { walletUser: NonNullable<ReturnType<typeof useWalletUser>['walletUser']> }) {
-  const { isConnected } = useWallet();
-  const { data: accountId } = useAccountId();
+  const { isConnected, address: accountId } = useAccount();
   const [copied, setCopied] = useState(false);
   const [copiedProxy, setCopiedProxy] = useState(false);
   const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
@@ -245,8 +244,7 @@ function WalletProfileTab({ walletUser }: { walletUser: NonNullable<ReturnType<t
 
 // Profile Tab for Magic users
 function ProfileTab({ user }: { user: any }) {
-  const { isConnected } = useWallet();
-  const { data: accountId } = useAccountId();
+  const { isConnected, address: accountId } = useAccount();
   const [bio, setBio] = useState('');
   const [copied, setCopied] = useState(false);
   const [copiedProxy, setCopiedProxy] = useState(false);
