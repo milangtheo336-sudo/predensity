@@ -3,27 +3,23 @@
 /**
  * WalletUserContext
  *
- * Tracks users who signed in via an external wallet (MetaMask, WalletConnect).
+ * Tracks users who signed in via an external wallet (HashPack, MetaMask, Blade, Kabila).
  * Mirrors the shape of MagicContext so the rest of the app can treat both auth paths
  * the same way.
  *
  * Session is stored in sessionStorage under 'wallet-user-cache' so it survives
  * page navigations within the same tab but is cleared when the tab closes.
- *
- * On mount, if the cache exists we restore it immediately. If the wallet library
- * later reports isConnected=false (e.g. user disconnected from the wallet side),
- * the session is cleared automatically via the guard in the Header.
  */
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
 export interface WalletUser {
   /** EVM address (0x…) — acts as the user's identity */
   publicAddress: string;
-  /** Legacy field — same as publicAddress on Arc */
-  accountId: string;
+  /** Hedera account ID (0.0.xxxxx) if resolved, otherwise same as publicAddress */
+  hederaAccountId: string;
   /** Which wallet they used */
-  walletType: 'metamask' | 'walletconnect' | 'rabby' | 'trust';
+  walletType: 'hashpack' | 'metamask' | 'blade' | 'kabila';
   /** userId stored in Convex managedWallets — uses address as the key */
   userId: string;
 }
@@ -31,20 +27,17 @@ export interface WalletUser {
 interface WalletUserContextType {
   walletUser: WalletUser | null;
   isWalletUserLoading: boolean;
-  isWalletAuthenticating: boolean;
   setWalletUser: (user: WalletUser | null) => void;
   clearWalletUser: () => void;
-  setIsWalletAuthenticating: (v: boolean) => void;
 }
 
 const WalletUserContext = createContext<WalletUserContextType | undefined>(undefined);
 
 const CACHE_KEY = 'wallet-user-cache';
 
-export function WalletUserProvider({ children }: { children: ReactNode }) {
+export function WalletUserProvider({ children }: { children: React.ReactNode }) {
   const [walletUser, setWalletUserState] = useState<WalletUser | null>(null);
   const [isWalletUserLoading, setIsWalletUserLoading] = useState(true);
-  const [isWalletAuthenticating, setIsWalletAuthenticating] = useState(false);
 
   // Rehydrate from sessionStorage on mount
   useEffect(() => {
@@ -78,7 +71,7 @@ export function WalletUserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <WalletUserContext.Provider value={{ walletUser, isWalletUserLoading, isWalletAuthenticating, setWalletUser, clearWalletUser, setIsWalletAuthenticating }}>
+    <WalletUserContext.Provider value={{ walletUser, isWalletUserLoading, setWalletUser, clearWalletUser }}>
       {children}
     </WalletUserContext.Provider>
   );
