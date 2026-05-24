@@ -277,10 +277,25 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
   
   const userAddress = user?.publicAddress || '';
   
-  // Fetch proxy wallet address
+  // Fetch proxy wallet address with caching
   useEffect(() => {
     const fetchProxyWallet = async () => {
       if (!userAddress) return;
+      
+      // Check cache first
+      try {
+        const cached = localStorage.getItem(`predensity_proxy_wallet_${userAddress}`);
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (Date.now() - data.timestamp < 86400000) { // 24 hour cache
+            setProxyWalletAddress(data.proxyWallet);
+            setLoadingProxy(false);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('[CryptoDepositView] Cache read error:', e);
+      }
       
       setLoadingProxy(true);
       try {
@@ -288,9 +303,17 @@ function CryptoDepositView({ onBack }: { onBack: () => void }) {
         const data = await response.json();
         if (data.exists && data.proxyWalletAddress) {
           setProxyWalletAddress(data.proxyWalletAddress);
+          // Cache it
+          localStorage.setItem(
+            `predensity_proxy_wallet_${userAddress}`,
+            JSON.stringify({
+              proxyWallet: data.proxyWalletAddress,
+              timestamp: Date.now(),
+            })
+          );
         }
       } catch (error) {
-        console.error('Failed to fetch proxy wallet:', error);
+        console.error('[CryptoDepositView] Failed to fetch proxy wallet:', error);
       } finally {
         setLoadingProxy(false);
       }
@@ -750,10 +773,25 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
   const tokenId = getStakingTokenId();
   const currency = getStakingCurrency();
 
-  // Fetch proxy wallet address
+  // Fetch proxy wallet address with caching
   useEffect(() => {
     const fetchProxyWallet = async () => {
       if (!user?.publicAddress) return;
+      
+      // Check cache first
+      try {
+        const cached = localStorage.getItem(`predensity_proxy_wallet_${user.publicAddress}`);
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (Date.now() - data.timestamp < 86400000) { // 24 hour cache
+            setProxyWalletAddress(data.proxyWallet);
+            setLoadingProxy(false);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('[WalletTransferView] Cache read error:', e);
+      }
       
       setLoadingProxy(true);
       try {
@@ -761,9 +799,17 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
         const data = await response.json();
         if (data.exists && data.proxyWalletAddress) {
           setProxyWalletAddress(data.proxyWalletAddress);
+          // Cache it
+          localStorage.setItem(
+            `predensity_proxy_wallet_${user.publicAddress}`,
+            JSON.stringify({
+              proxyWallet: data.proxyWalletAddress,
+              timestamp: Date.now(),
+            })
+          );
         }
       } catch (error) {
-        console.error('Failed to fetch proxy wallet:', error);
+        console.error('[WalletTransferView] Failed to fetch proxy wallet:', error);
       } finally {
         setLoadingProxy(false);
       }
@@ -842,7 +888,20 @@ function WalletTransferView({ onBack, onClose }: { onBack: () => void; onClose: 
       // Balance updates automatically from blockchain
       setStep('done');
     } catch (err: any) {
-      let errorMessage = err.message || 'Transfer failed';
+      let errorMessage = 'Transfer failed. Please try again.';
+      
+      if (err.message) {
+        if (err.message.includes('User denied') || err.message.includes('cancelled') || err.message.includes('rejected')) {
+          errorMessage = 'You cancelled the transfer.';
+        } else if (err.message.includes('Insufficient')) {
+          errorMessage = 'Insufficient balance in your wallet.';
+        } else if (err.message.includes('Proxy wallet not found')) {
+          errorMessage = err.message;
+        } else if (err.message.length < 150 && !err.message.includes('at ') && !err.message.includes('stack')) {
+          errorMessage = err.message;
+        }
+      }
+      
       setErrorMsg(errorMessage);
       setStep('error');
     }
@@ -1037,7 +1096,21 @@ function WithdrawView({ onBack, onClose }: { onBack: () => void; onClose: () => 
       
       setStatus('success');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Something went wrong');
+      let errorMessage = 'Something went wrong. Please try again.';
+      
+      if (err.message) {
+        if (err.message.includes('User denied') || err.message.includes('cancelled')) {
+          errorMessage = 'You cancelled the transaction.';
+        } else if (err.message.includes('Insufficient')) {
+          errorMessage = err.message;
+        } else if (err.message.includes('Enter a')) {
+          errorMessage = err.message;
+        } else if (err.message.length < 150 && !err.message.includes('at ') && !err.message.includes('stack')) {
+          errorMessage = err.message;
+        }
+      }
+      
+      setErrorMsg(errorMessage);
       setStatus('error');
     } finally {
       setLoading(false);
@@ -1332,21 +1405,56 @@ export function Header({ children }: { children?: React.ReactNode }) {
     };
   }, []);
 
-  // Fetch proxy wallet address for balance display
-  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
+  // Fetch proxy wallet address for balance display with caching
+  const getCachedProxyWallet = (userAddr: string): string | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const cached = localStorage.getItem(`predensity_proxy_wallet_${userAddr}`);
+      if (cached) {
+        const data = JSON.parse(cached);
+        // Cache valid for 24 hours
+        if (Date.now() - data.timestamp < 86400000) {
+          return data.proxyWallet;
+        }
+      }
+    } catch (e) {
+      console.error('[header] Proxy wallet cache read error:', e);
+    }
+    return null;
+  };
+
+  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(() => {
+    return user?.publicAddress ? getCachedProxyWallet(user.publicAddress) : null;
+  });
   
   useEffect(() => {
     const fetchProxyWallet = async () => {
       if (!user?.publicAddress) return;
+      
+      // Check cache first
+      const cached = getCachedProxyWallet(user.publicAddress);
+      if (cached) {
+        setProxyWalletAddress(cached);
+        return;
+      }
       
       try {
         const response = await fetch(`/api/proxy-wallet/create?userAddress=${user.publicAddress}`);
         const data = await response.json();
         if (data.exists && data.proxyWalletAddress) {
           setProxyWalletAddress(data.proxyWalletAddress);
+          // Cache the proxy wallet address
+          localStorage.setItem(
+            `predensity_proxy_wallet_${user.publicAddress}`,
+            JSON.stringify({
+              proxyWallet: data.proxyWalletAddress,
+              timestamp: Date.now(),
+            })
+          );
         }
       } catch (error) {
-        console.error('Failed to fetch proxy wallet:', error);
+        console.error('[header] Failed to fetch proxy wallet:', error);
+        // On error, keep cached value if available
       }
     };
 
