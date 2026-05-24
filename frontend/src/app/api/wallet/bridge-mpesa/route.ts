@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     const transferTx = new ContractExecuteTransaction()
       .setContractId(ContractId.fromString(USDC_TOKEN_ID))
       .setGas(100_000)
-      .setFunction('transfer', Buffer.from(transferData.slice(2), 'hex'))
+      .setFunctionParameters(Buffer.from(transferData.slice(2), 'hex'))
       .freezeWith(client);
 
     const signedTx = await transferTx.sign(operatorKey);
