@@ -194,6 +194,9 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
           if (!vData.exists || !vData.proxyWalletAddress) throw new Error('Proxy wallet not available. Please try logging in again.');
         }
 
+        // Small delay so the overlay doesn't flash off instantly
+        await new Promise(r => setTimeout(r, 400));
+
         // New user → onboarding, returning user → stay
         if (isNewUser && !proxyData.alreadyExists) {
           sessionStorage.setItem('predensity-new-user', 'true');
