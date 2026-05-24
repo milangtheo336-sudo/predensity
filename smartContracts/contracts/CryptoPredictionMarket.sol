@@ -602,26 +602,38 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
     // ==============================================================
 
     /**
-     * @notice Withdraw collected fees (only owner)
+     * @notice Withdraw collected fees to the owner. Bounded by `totalFeesCollected`
+     *         and cannot drain funds owed to winners (`totalObligations`).
+     *         Emits {FeesWithdrawn}. Reentrancy-guarded.
      */
-    function withdrawFees() external onlyOwner {
+    function withdrawFees() external onlyOwner nonReentrant {
         uint256 bal = _contractBalance();
         uint256 available = bal > totalObligations ? bal - totalObligations : 0;
         uint256 amount = totalFeesCollected < available ? totalFeesCollected : available;
         require(amount > 0, "No withdrawable fees");
+
+        // Effects before interaction
         totalFeesCollected -= amount;
-        _transferOut(owner(), amount);
+
+        address recipient = owner();
+        _transferOut(recipient, amount);
+        emit FeesWithdrawn(recipient, amount);
     }
 
     /**
-     * @notice Emergency withdraw surplus only -- cannot touch funds owed to winners
+     * @notice Pause all bet placement, resolution, and claims.
+     *         Only callable by the owner. Use in case of emergency
+     *         (oracle compromise, exploit discovery, etc.).
      */
-    function emergencyWithdraw() external onlyOwner {
-        uint256 bal = _contractBalance();
-        uint256 surplus = bal > totalObligations ? bal - totalObligations : 0;
-        require(surplus > 0, "No surplus to withdraw");
-        totalFeesCollected = 0;
-        _transferOut(owner(), surplus);
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @notice Unpause the contract.
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     /**
