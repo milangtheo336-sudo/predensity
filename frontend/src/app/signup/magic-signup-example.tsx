@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Example Sign-Up Page with Magic Link
+ * Example Sign-Up Page with Magic Link (Replaces Clerk)
  * 
  * This shows how to implement the complete sign-up flow.
  * Copy this logic to your actual signup page.
@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { loginWithEmail } from '@/lib/magic';
+import { loginWithMagic } from '@/lib/magic';
 
 export default function MagicSignUpExample() {
   const [email, setEmail] = useState('');
@@ -25,27 +25,20 @@ export default function MagicSignUpExample() {
     try {
       // Step 1: Authenticate with Magic Link
       setStep('email');
-      const didToken = await loginWithEmail(email);
+      const { address: magicEOAAddress, email: userEmail } = await loginWithMagic(email);
       
-      // Get user info from Magic
-      const { getUserInfo } = await import('@/lib/magic');
-      const userInfo = await getUserInfo();
-      
-      console.log('Magic Link authenticated:', userInfo?.publicAddress);
+      console.log('Magic Link authenticated:', magicEOAAddress);
 
       // Step 2: Create non-custodial wallet
       setStep('creating-wallet');
       const walletResponse = await fetch('/api/wallet/create', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${didToken}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: userInfo?.issuer,
-          email: userInfo?.email,
+          userId: magicEOAAddress, // Use Magic EOA as userId
+          email: userEmail,
           phoneNumber: phoneNumber || undefined,
-          magicEOAAddress: userInfo?.publicAddress,
+          magicEOAAddress,
         }),
       });
 
@@ -55,7 +48,7 @@ export default function MagicSignUpExample() {
       }
 
       const { wallet } = await walletResponse.json();
-      console.log('Proxy wallet created:', (wallet as any).proxyWalletAddress);
+      console.log('Proxy wallet created:', wallet.proxyWalletAddress);
 
       // Step 3: Redirect to dashboard
       router.push('/dashboard');
