@@ -1206,3 +1206,206 @@ export const fixBetAssets = mutation({
     return { fixed, total: bets.length };
   },
 });
+
+
+// ============================================
+// DEPOSIT AUTO-DETECTION (Mirror Node -> Convex)
+// ============================================
+
+// Treasury account ID and USDC token ID from env vars
+const TREASURY_ACCOUNT_ID = process.env.TREASURY_ACCOUNT_ID || "0.0.10394209";
+const USDC_TOKEN_ID = process.env.USDC_TOKEN_ID || (
+  (process.env.HEDERA_NETWORK || "testnet") === "mainnet" ? "0.0.456858" : "0.0.8229951"
+);
+
+// Store processed deposit transaction IDs to avoid double-crediting
+export const recordProcessedDeposit = internalMutation({
+  args: {
+    transactionId: v.string(),
+    senderAccount: v.string(),
+    amount: v.string(),
+    userId: v.optional(v.string()),
+    timestamp: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Check if already processed
+    const existing = await ctx.db
+      .query("mpesaTransactions")
+      .filter((q) => q.eq(q.field("merchantRequestId"), args.transactionId))
+      .first();
+    if (existing) return { credited: false, reason: "already_processed" };
+
+    // Find the managed wallet by EVM address or Hedera account ID
+    const senderLower = args.senderAccount.toLowerCase();
+
+    // Try matching by evmAddress
+    let wallet = await ctx.db
+      .query("managedWallets")
+      .withIndex("by_evm_address", (q) => q.eq("evmAddress", senderLower))
+      .first();
+
+    // Try matching by hederaAccountId
+    if (!wallet) {
+      wallet = await ctx.db
+        .query("managedWallets")
+        .withIndex("by_hedera_id", (q) => q.eq("hederaAccountId", args.senderAccount))
+        .first();
+    }
+
+    if (!wallet) {
+      // Unknown sender -- store as unmatched deposit for manual review
+      await ctx.db.insert("mpesaTransactions", {
+        phoneNumber: "deposit:" + args.senderAccount,
+        type: "deposit",
+        amountKES: 0,
+        amountUSDC: args.amount,
+        merchantRequestId: args.transactionId,
+        status: "unmatched",
+        createdAt: args.timestamp,
+      });
+      return { credited: false, reason: "unknown_sender" };
+    }
+
+    // Credit the wallet
+    const currentBalance = parseFloat(wallet.usdcBalance || "0");
+    const depositAmount = parseFloat(args.amount);
+    const newBalance = (currentBalance + depositAmount).toFixed(6);
+
+    await ctx.db.patch(wallet._id, {
+      usdcBalance: newBalance,
+      lastActivity: Date.now(),
+    });
+
+    // Record the deposit
+    await ctx.db.insert("mpesaTransactions", {
+      phoneNumber: "deposit:" + args.senderAccount,
+      type: "deposit",
+      amountKES: 0,
+      amountUSDC: args.amount,
+      merchantRequestId: args.transactionId,
+      status: "completed",
+      completedAt: Date.now(),
+      createdAt: args.timestamp,
+    });
+
+    // Create notification
+    if (wallet.userId) {
+      await ctx.db.insert("notifications", {
+        userId: wallet.userId,
+        type: "deposit",
+        message: `${args.amount} USDC deposited to your account`,
+        read: false,
+        timestamp: Date.now(),
+      });
+    }
+
+    return { credited: true, amount: args.amount, userId: wallet.userId };
+  },
+});
+
+// Poll mirror node for incoming USDC transfers to the treasury
+export const detectDeposits = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    if (process.env.DISABLE_SYNC === "true") return { detected: 0 };
+
+    const network = process.env.HEDERA_NETWORK || "testnet";
+    const baseUrl = network === "mainnet"
+      ? "https://mainnet.mirrornode.hedera.com"
+      : "https://testnet.mirrornode.hedera.com";
+
+    try {
+      // Fetch recent token transfers to the treasury account
+      // Look at the last 5 minutes of transactions
+      const fiveMinAgo = (Date.now() / 1000 - 300).toFixed(9);
+      const url = `${baseUrl}/api/v1/transactions?account.id=${TREASURY_ACCOUNT_ID}&transactiontype=CRYPTOTRANSFER&timestamp=gt:${fiveMinAgo}&limit=50&order=desc`;
+
+      const res = await fetch(url);
+      if (!res.ok) return { detected: 0, error: `Mirror node returned ${res.status}` };
+
+      const data = await res.json();
+      const transactions = data.transactions || [];
+
+      let detected = 0;
+
+      for (const tx of transactions) {
+        // Look for USDC token transfers where treasury is the receiver
+        const tokenTransfers = tx.token_transfers || [];
+        for (const tt of tokenTransfers) {
+          if (tt.token_id === USDC_TOKEN_ID && tt.account === TREASURY_ACCOUNT_ID && tt.amount > 0) {
+            // Found an incoming USDC transfer to treasury
+            // Find the sender (the account with negative amount for this token)
+            const sender = tokenTransfers.find(
+              (s: any) => s.token_id === USDC_TOKEN_ID && s.amount < 0
+            );
+            if (!sender) continue;
+
+            const amountUsdc = (tt.amount / 1e6).toFixed(6);
+            const txId = tx.transaction_id;
+
+            const result = await ctx.runMutation(internal.sync.recordProcessedDeposit, {
+              transactionId: txId,
+              senderAccount: sender.account,
+              amount: amountUsdc,
+              timestamp: Date.now(),
+            });
+
+            if (result.credited) detected++;
+          }
+        }
+      }
+
+      return { detected };
+    } catch (error) {
+      console.error("[DepositDetect] Error:", error);
+      return { detected: 0, error: String(error) };
+    }
+  },
+});
+
+// Credit a deposit manually (for CEX deposits where sender can't be auto-matched)
+export const creditManualDeposit = mutation({
+  args: {
+    userId: v.string(),
+    transactionId: v.string(),
+    amount: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Check if already processed
+    const existing = await ctx.db
+      .query("mpesaTransactions")
+      .filter((q) => q.eq(q.field("merchantRequestId"), args.transactionId))
+      .first();
+    if (existing) {
+      throw new Error("This transaction has already been processed");
+    }
+
+    const wallet = await ctx.db
+      .query("managedWallets")
+      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+      .first();
+    if (!wallet) throw new Error("No managed wallet found");
+
+    const currentBalance = parseFloat(wallet.usdcBalance || "0");
+    const depositAmount = parseFloat(args.amount);
+    const newBalance = (currentBalance + depositAmount).toFixed(6);
+
+    await ctx.db.patch(wallet._id, {
+      usdcBalance: newBalance,
+      lastActivity: Date.now(),
+    });
+
+    await ctx.db.insert("mpesaTransactions", {
+      phoneNumber: "manual:" + args.userId,
+      type: "deposit",
+      amountKES: 0,
+      amountUSDC: args.amount,
+      merchantRequestId: args.transactionId,
+      status: "completed",
+      completedAt: Date.now(),
+      createdAt: Date.now(),
+    });
+
+    return { credited: true, newBalance };
+  },
+});
