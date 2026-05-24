@@ -8,17 +8,19 @@ import { PredictionCard } from '@/components/prediction-card';
 import { ClobPredictionCard } from '@/components/clob-prediction-card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
 function NotFoundView({ message, onBack }: { message: string; onBack: () => void }) {
+  const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       <Header />
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-lg mx-auto text-center flex flex-col items-center">
           <img src="/500 Internal Server Error-cuate.svg" alt="" className="w-64 h-64 mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Market Not Found</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t.marketNotFound}</h1>
           <p className="text-gray-500 dark:text-gray-400 mb-6">{message}</p>
-          <Button onClick={onBack}><ArrowLeft className="w-4 h-4 mr-2" />Back to Markets</Button>
+          <Button onClick={onBack}><ArrowLeft className="w-4 h-4 mr-2" />{t.backToMarkets}</Button>
         </div>
       </main>
     </div>
