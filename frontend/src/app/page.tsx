@@ -232,7 +232,7 @@ export default function MarketsPage() {
       </div>
 
       {/* TEXT layer — normal flow, scrolls with the page, sits over the video */}
-      <div className={`relative z-[1] -mt-[140px] ${showSidebar ? 'pl-[280px]' : ''}`}>
+      <div className={`relative z-[1] -mt-[125px] ${showSidebar ? 'pl-[280px]' : ''}`}>
         <CategoryHeroText category={activeCategory} />
       </div>
 
