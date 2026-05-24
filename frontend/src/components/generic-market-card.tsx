@@ -377,14 +377,8 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
         </div>
       </div>
 
-      {/* Community sentiment (crypto) / YES-NO bar (event-based) */}
-      {isCrypto ? (
-        <CommunitySentiment
-          marketId={contractAddress}
-          betCount={betCount}
-          convexBets={convexBets}
-        />
-      ) : (
+      {/* YES-NO bar (event-based only) */}
+      {!isCrypto && (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <div className="flex-1 h-2 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden">
