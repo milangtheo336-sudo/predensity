@@ -758,6 +758,7 @@ export function PredictionCard({
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [chartTimeFilter, setChartTimeFilter] = useState<'1d' | '1w' | '1m' | 'all'>('all');
 
   // Non-custodial betting hook
   const { placeBet, isPlacing, isApproving, txHash } = useNonCustodialBetting();
@@ -1310,13 +1311,35 @@ export function PredictionCard({
             </div>
 
             {/* KDE Chart -- full width, breathing room */}
-            <div className="bg-white dark:bg-[#141414] p-4 sm:p-5 overflow-hidden">
+            <div className="bg-white dark:bg-[#141414] rounded-xl overflow-hidden p-4 sm:p-5">
               <KDEChart
                 currentPrice={currentPrice}
                 tokenSymbol={tokenSymbol}
                 contractAddress={contractAddress}
                 showControls={true}
+                hideTimeRange={true}
+                timeFilter={chartTimeFilter}
+                onTimeFilterChange={setChartTimeFilter}
               />
+            </div>
+
+            {/* Volume row with time range buttons -- matches CLOB layout */}
+            <div className="flex items-center justify-end text-xs sm:text-[13px] text-gray-500 dark:text-[#888888] px-4 lg:px-0">
+              <div className="flex items-center gap-1">
+                {(['1d', '1w', '1m', 'all'] as const).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setChartTimeFilter(range)}
+                    className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors ${
+                      chartTimeFilter === range
+                        ? 'text-gray-900 dark:text-white bg-gray-200 dark:bg-[#2a2a2a]'
+                        : 'text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#1c1c1c] bg-transparent dark:bg-transparent'
+                    }`}
+                  >
+                    {range.toUpperCase()}
+                  </button>
+                ))}
+              </div>
             </div>
 
           </div>
