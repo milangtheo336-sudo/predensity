@@ -626,11 +626,33 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     if (!user?.publicAddress) return;
     
     const fetchProxyWallet = async () => {
+      // Check cache first
+      try {
+        const cached = localStorage.getItem(`predensity_proxy_wallet_${user.publicAddress}`);
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (Date.now() - data.timestamp < 86400000) { // 24 hour cache
+            setProxyWalletAddress(data.proxyWallet);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('[my-bets] Cache read error:', e);
+      }
+      
       try {
         const response = await fetch(`/api/proxy-wallet/create?userAddress=${user.publicAddress}`);
         const data = await response.json();
         if (data.exists && data.proxyWalletAddress) {
           setProxyWalletAddress(data.proxyWalletAddress);
+          // Cache it
+          localStorage.setItem(
+            `predensity_proxy_wallet_${user.publicAddress}`,
+            JSON.stringify({
+              proxyWallet: data.proxyWalletAddress,
+              timestamp: Date.now(),
+            })
+          );
         }
       } catch (err) {
         console.error('[my-bets] Failed to fetch proxy wallet:', err);
