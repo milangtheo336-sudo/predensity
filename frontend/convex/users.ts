@@ -163,6 +163,8 @@ export const getManagedWalletByUserId = query({
       userId: wallet.userId,
       email: wallet.email,
       phoneNumber: wallet.phoneNumber,
+      magicEOAAddress: wallet.magicEOAAddress,
+      proxyWalletAddress: wallet.proxyWalletAddress,
       hederaAccountId: wallet.hederaAccountId,
       evmAddress: wallet.evmAddress,
       usdcBalance: wallet.usdcBalance,
