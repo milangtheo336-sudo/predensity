@@ -45,6 +45,7 @@ abstract contract BasePredictionMarket is Ownable {
     uint256 public totalFeesCollected;
     uint256 public totalObligations;  // HBAR reserved for unclaimed winning payouts
     uint256 public nextBetId;
+    uint256 public knownTokenBalance;  // Track actual token balance to prevent fake deposits
 
     // Staking token: address(0) = native HBAR mode, otherwise ERC-20 (e.g., USDC)
     IERC20 public stakingToken;
@@ -472,6 +473,21 @@ abstract contract BasePredictionMarket is Ownable {
         _transferOut(owner(), surplus);
     }
 
+    /**
+     * @notice Associate with a Hedera token (required before receiving HTS tokens like USDC).
+     * On Hedera, contracts must explicitly associate with tokens.
+     * 
+     * Hedera Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
+     */
+    function associateToken(address token) external onlyOwner {
+        // Call HTS associateToken function
+        // Function selector: 0x49146bde (associateToken(address,address))
+        (bool success, ) = address(0x0000000000000000000000000000000000000167).call(
+            abi.encodeWithSelector(0x49146bde, address(this), token)
+        );
+        require(success, "Token association failed");
+    }
+
     // ==============================================================
     // |                    Token Mode Functions                     |
     // ==============================================================
@@ -537,8 +553,13 @@ abstract contract BasePredictionMarket is Ownable {
         require(targetTimestamp > block.timestamp, "Cannot bet on past");
         require(bettor != address(0), "Invalid bettor address");
 
-        // Tokens should already be in this contract (transferred via HTS)
-        // No transfer needed here
+        // SECURITY FIX: Verify that tokens were actually transferred into this contract!
+        uint256 currentBalance = stakingToken.balanceOf(address(this));
+        uint256 newlyReceived = currentBalance - knownTokenBalance;
+        require(newlyReceived >= amount, "Tokens were not transferred");
+        
+        // Update the known balance for the next transaction
+        knownTokenBalance = currentBalance;
 
         // Calculate fee and net stake
         uint256 fee = (amount * FEE_BPS) / BPS_DENOM;
@@ -565,6 +586,8 @@ abstract contract BasePredictionMarket is Ownable {
         if (amount == 0) return;
         if (address(stakingToken) != address(0)) {
             stakingToken.safeTransfer(to, amount);
+            // Keep knownTokenBalance in sync
+            knownTokenBalance = stakingToken.balanceOf(address(this));
         } else {
             (bool success, ) = payable(to).call{value: amount}("");
             require(success, "Transfer failed");
