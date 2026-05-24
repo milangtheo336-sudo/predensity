@@ -15,10 +15,10 @@ const {
 } = require('@hashgraph/sdk');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: path.join(__dirname, '../../frontend/.env.local') });
 
-const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID;
-const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY;
+const OPERATOR_ID = process.env.HEDERA_OPERATOR_ID || process.env.TESTNET_OPERATOR_ID;
+const OPERATOR_KEY = process.env.HEDERA_OPERATOR_KEY || process.env.TESTNET_OPERATOR_PRIVATE_KEY;
 
 async function main() {
   console.log('[deploy-proxy-factory] Starting deployment...');
@@ -71,6 +71,7 @@ async function main() {
   const simpleWalletCreate = new ContractCreateFlow()
     .setBytecode(simpleProxyWalletBytecode)
     .setGas(3000000)
+    .setMaxAutomaticTokenAssociations(-1) // Unlimited auto associations
     .setConstructorParameters(Buffer.from(masterConstructorParams.slice(2), 'hex'));
 
   const simpleWalletResponse = await simpleWalletCreate.execute(client);
@@ -96,6 +97,7 @@ async function main() {
   const factoryCreate = new ContractCreateFlow()
     .setBytecode(proxyWalletFactoryBytecode)
     .setGas(2000000)
+    .setMaxAutomaticTokenAssociations(-1) // Unlimited auto associations
     .setConstructorParameters(Buffer.from(constructorParams.slice(2), 'hex'));
 
   const factoryResponse = await factoryCreate.execute(client);
