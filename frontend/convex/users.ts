@@ -77,9 +77,9 @@ export const createManagedWallet = mutation({
     magicEOAAddress: v.string(),
     proxyWalletAddress: v.string(),
     evmAddress: v.string(),
-    hederaAccountId: v.string(),
+    accountId: v.string(),
     usdcBalance: v.string(),
-    hbarBalance: v.string(),
+    nativeBalance: v.string(),
     isActive: v.boolean(),
     createdAt: v.number(),
     lastActivity: v.number(),
@@ -116,9 +116,9 @@ export const createManagedWallet = mutation({
       magicEOAAddress: args.magicEOAAddress,
       proxyWalletAddress: args.proxyWalletAddress,
       evmAddress: args.evmAddress,
-      hederaAccountId: args.hederaAccountId,
+      accountId: args.accountId,
       usdcBalance: args.usdcBalance,
-      hbarBalance: args.hbarBalance,
+      nativeBalance: args.nativeBalance,
       isActive: args.isActive,
       createdAt: args.createdAt,
       lastActivity: args.lastActivity,
@@ -143,10 +143,10 @@ export const getManagedWallet = query({
       userId: wallet.userId,
       email: wallet.email,
       phoneNumber: wallet.phoneNumber,
-      hederaAccountId: wallet.hederaAccountId,
+      accountId: wallet.accountId,
       evmAddress: wallet.evmAddress,
       usdcBalance: wallet.usdcBalance,
-      hbarBalance: wallet.hbarBalance,
+      nativeBalance: wallet.nativeBalance,
       isActive: wallet.isActive,
       createdAt: wallet.createdAt,
       lastActivity: wallet.lastActivity,
@@ -171,10 +171,10 @@ export const getManagedWalletByUserId = query({
       phoneNumber: wallet.phoneNumber,
       magicEOAAddress: wallet.magicEOAAddress,
       proxyWalletAddress: wallet.proxyWalletAddress,
-      hederaAccountId: wallet.hederaAccountId,
+      accountId: wallet.accountId,
       evmAddress: wallet.evmAddress,
       usdcBalance: wallet.usdcBalance,
-      hbarBalance: wallet.hbarBalance,
+      nativeBalance: wallet.nativeBalance,
       isActive: wallet.isActive,
       createdAt: wallet.createdAt,
       lastActivity: wallet.lastActivity,
@@ -195,10 +195,10 @@ export const getManagedWalletByAddress = query({
 
     return {
       phoneNumber: wallet.phoneNumber,
-      hederaAccountId: wallet.hederaAccountId,
+      accountId: wallet.accountId,
       evmAddress: wallet.evmAddress,
       usdcBalance: wallet.usdcBalance,
-      hbarBalance: wallet.hbarBalance,
+      nativeBalance: wallet.nativeBalance,
       isActive: wallet.isActive,
     };
   },
@@ -212,7 +212,7 @@ export const updateWalletBalance = mutation({
     phoneNumber: v.optional(v.string()),
     userId: v.optional(v.string()),
     usdcBalance: v.optional(v.string()),
-    hbarBalance: v.optional(v.string()),
+    nativeBalance: v.optional(v.string()),
     _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -237,7 +237,7 @@ export const updateWalletBalance = mutation({
 
     const updates: Record<string, string | number> = { lastActivity: Date.now() };
     if (args.usdcBalance !== undefined) updates.usdcBalance = args.usdcBalance;
-    if (args.hbarBalance !== undefined) updates.hbarBalance = args.hbarBalance;
+    if (args.nativeBalance !== undefined) updates.nativeBalance = args.nativeBalance;
 
     await ctx.db.patch(wallet._id, updates);
   },
