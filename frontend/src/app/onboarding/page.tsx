@@ -334,16 +334,6 @@ export default function OnboardingPage() {
   );
 }
 
-const CATEGORIES = [
-  { id: 'crypto', name: 'Crypto', icon: '₿' },
-  { id: 'sports', name: 'Sports', icon: '⚽' },
-  { id: 'politics', name: 'Politics', icon: '🗳' },
-  { id: 'finance', name: 'Finance', icon: '📈' },
-  { id: 'technology', name: 'Technology', icon: '💡' },
-];
-
-const AMOUNTS = ['5 USDC', '15 USDC', '50 USDC'];
-
 const MATCH = {
   home: { name: 'USA', flag: '/us flag .avif' },
   away: { name: 'UK', flag: '/uk flag.avif' },
