@@ -24,53 +24,76 @@ const HERO_CATEGORIES = new Set(['all', 'crypto', 'sports', 'politics', 'technol
 export function CategoryHeroVideo({ category }: CategoryHeroProps) {
   const show = HERO_CATEGORIES.has(category);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [visible, setVisible] = useState(true);
+  const [videoReady, setVideoReady] = useState(false); // true once first frame is decoded
+  const [loadVideo, setLoadVideo] = useState(false);   // true after page is idle
   const prevSrcRef = useRef('');
 
   const src = getVideoSrc(category);
 
-  // Fade out → swap src → fade in when the video source changes
+  // Defer video loading until the browser is idle — page content renders first
   useEffect(() => {
     if (!show) return;
+    const load = () => setLoadVideo(true);
+    if ('requestIdleCallback' in window) {
+      const id = (window as any).requestIdleCallback(load, { timeout: 2000 });
+      return () => (window as any).cancelIdleCallback(id);
+    } else {
+      // Safari fallback
+      const t = setTimeout(load, 300);
+      return () => clearTimeout(t);
+    }
+  }, [show]);
+
+  // Fade out → swap src → fade in when the video source changes (category switch)
+  useEffect(() => {
+    if (!show || !loadVideo) return;
     if (prevSrcRef.current === src) return;
 
     if (prevSrcRef.current === '') {
-      // First mount — no transition needed
       prevSrcRef.current = src;
       return;
     }
 
-    // Fade out
-    setVisible(false);
+    // Fade out, swap, fade in
+    setVideoReady(false);
     const t = setTimeout(() => {
       prevSrcRef.current = src;
       if (videoRef.current) {
         videoRef.current.load();
         videoRef.current.play().catch(() => {});
       }
-      // Fade back in
-      setVisible(true);
-    }, 350);
+    }, 300);
 
     return () => clearTimeout(t);
-  }, [src, show]);
+  }, [src, show, loadVideo]);
 
   if (!show) return null;
 
   return (
     <div className="relative w-full" style={{ height: '320px' }}>
-      <video
-        ref={videoRef}
-        key={src}
-        src={src}
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="metadata"
-        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300"
-        style={{ pointerEvents: 'none', opacity: visible ? 1 : 0 }}
+      {/* Dark placeholder — visible instantly, same colour as the video background */}
+      <div
+        className="absolute inset-0 w-full h-full"
+        style={{ backgroundColor: '#050510' }}
       />
+
+      {/* Video — only injected into DOM after idle, opacity-0 until first frame ready */}
+      {loadVideo && (
+        <video
+          ref={videoRef}
+          key={src}
+          src={src}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          onCanPlay={() => setVideoReady(true)}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
+          style={{ pointerEvents: 'none', opacity: videoReady ? 1 : 0 }}
+        />
+      )}
+
       {/* Overlay fades video to black at bottom */}
       <div
         className="absolute inset-0"
