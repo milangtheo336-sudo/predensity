@@ -2,6 +2,29 @@
 const nextConfig = {
   // Use SWC minifier and enable module transpilation optimizations
   swcMinify: true,
+
+  // Transpile ESM-only packages that cause issues with Next.js bundler
+  transpilePackages: [
+    '@walletconnect/modal',
+    '@walletconnect/sign-client',
+    '@walletconnect/ethereum-provider',
+    'derive-valtio',
+  ],
+
+  webpack: (config) => {
+    // Fix: @walletconnect/ethereum-provider bundles @reown/appkit which requires
+    // valtio/vanilla and valtio/vanilla/utils but the nested copy can't resolve
+    // them through Next.js. Alias all valtio subpaths to the top-level installation.
+    const valtioPath = require.resolve('valtio').replace('/index.js', '');
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'valtio': valtioPath,
+      'valtio/vanilla': require.resolve('valtio/vanilla'),
+      'valtio/vanilla/utils': require.resolve('valtio/vanilla/utils'),
+      'valtio/utils': require.resolve('valtio/utils'),
+    };
+    return config;
+  },
   modularizeImports: {
     'lucide-react': {
       transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
