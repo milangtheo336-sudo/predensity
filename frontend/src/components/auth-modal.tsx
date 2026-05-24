@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMagic } from '@/context/MagicContext';
+import { useWalletUser } from '@/context/WalletUserContext';
 import { getDIDToken, getMagic, getUserInfo } from '@/lib/magic';
-import { useWallet } from '@buidlerlabs/hashgraph-react-wallets';
+import { useWallet, useEvmAddress } from '@buidlerlabs/hashgraph-react-wallets';
 import {
   HashpackConnector,
   MetamaskConnector,
@@ -32,7 +33,9 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const backdropClickEnabledRef = useRef(false);
   const router = useRouter();
   const { login, refreshUser, user } = useMagic();
+  const { setWalletUser } = useWalletUser();
   const { isConnected } = useWallet();
+  const { data: evmAddress } = useEvmAddress();
   
   // Log isConnected changes
   useEffect(() => {
@@ -339,11 +342,89 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       };
       
       const wallet = wallets[walletType];
+
+      // Step 1: Connect the wallet (triggers wallet popup)
       await wallet.connect();
-      
-      // Close modal after successful connection
+
+      // Step 2: Get the EVM address — poll briefly since it may not be
+      // available synchronously right after connect()
+      let address = evmAddress;
+      if (!address) {
+        for (let i = 0; i < 10; i++) {
+          await new Promise(r => setTimeout(r, 300));
+          // evmAddress is reactive; re-read from window.ethereum as fallback
+          if ((window as any).ethereum?.selectedAddress) {
+            address = (window as any).ethereum.selectedAddress;
+            break;
+          }
+        }
+      }
+
+      if (!address) {
+        throw new Error('Could not get wallet address. Please try again.');
+      }
+
+      const normalizedAddress = address.toLowerCase();
+
+      // Step 3: Sign a challenge message to prove ownership
+      const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const message = `Sign in to Predensity\nAddress: ${normalizedAddress}\nNonce: ${nonce}`;
+
+      let signature: string;
+      try {
+        // Use window.ethereum for MetaMask-style wallets; HashPack/Blade/Kabila
+        // also expose personal_sign through their injected provider
+        const provider = (window as any).ethereum;
+        if (!provider) throw new Error('No injected provider found');
+        signature = await provider.request({
+          method: 'personal_sign',
+          params: [message, normalizedAddress],
+        });
+      } catch (signErr: any) {
+        throw new Error(signErr?.message?.includes('User rejected')
+          ? 'Signature rejected. Please approve the sign-in request in your wallet.'
+          : 'Failed to sign message. Please try again.');
+      }
+
+      // Step 4: Create / retrieve user record on the backend
+      const createRes = await fetch('/api/wallet/create-wallet-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: normalizedAddress, signature, nonce, walletType }),
+      });
+      const createData = await createRes.json();
+      if (!createRes.ok) throw new Error(createData.error || 'Failed to create user');
+
+      const { userId, isNewUser } = createData;
+
+      // Step 5: Create proxy wallet (idempotent — safe to call for existing users)
+      const proxyRes = await fetch('/api/proxy-wallet/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userAddress: normalizedAddress }),
+      });
+      const proxyData = await proxyRes.json();
+      if (!proxyRes.ok) throw new Error(proxyData.error || 'Failed to create proxy wallet');
+
+      // Step 6: Persist wallet user in context + sessionStorage
+      setWalletUser({
+        publicAddress: normalizedAddress,
+        hederaAccountId: normalizedAddress,
+        walletType,
+        userId,
+      });
+
+      // Step 7: Mark new wallet users for onboarding
+      if (isNewUser) {
+        sessionStorage.setItem('predensity-new-user', 'true');
+      }
+
       onClose();
       setView('main');
+
+      if (isNewUser) {
+        router.push('/onboarding');
+      }
     } catch (err) {
       console.error(`[auth-modal] ${walletType} connection error:`, err);
       setError(err instanceof Error ? err.message : `Failed to connect ${walletType}`);
