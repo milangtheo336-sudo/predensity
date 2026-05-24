@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Example Sign-Up Page with Magic Link (Replaces Clerk)
+ * Example Sign-Up Page with Magic Link
  * 
  * This shows how to implement the complete sign-up flow.
  * Copy this logic to your actual signup page.
