@@ -55,7 +55,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="twitter:description" content="Trade on future events across crypto, politics, sports, and technology. Powered by Hedera." />
       </head>
       <body className={`${appFont.variable} font-sans`} style={{ backgroundColor: '#000' }}>
-        {/* Inline splash screen visible before JS hydrates */}
+        {/* Inline splash screen — visible before JS hydrates, animated so it never looks frozen */}
+        <style
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: `
+              @keyframes splash-pulse {
+                0%, 100% { opacity: 1; transform: scale(1); }
+                50% { opacity: 0.55; transform: scale(0.96); }
+              }
+              @keyframes splash-fadein {
+                from { opacity: 0; transform: translateY(10px); }
+                to   { opacity: 1; transform: translateY(0); }
+              }
+              @keyframes splash-spinner {
+                to { transform: rotate(360deg); }
+              }
+              #splash-logo { animation: splash-pulse 1.6s ease-in-out infinite; }
+              #splash-name  { animation: splash-fadein 0.5s ease 0.15s both; }
+              #splash-spin  {
+                width: 28px; height: 28px; margin-top: 24px;
+                border: 2.5px solid rgba(124,58,237,0.25);
+                border-top-color: #7c3aed;
+                border-radius: 50%;
+                animation: splash-spinner 0.9s linear infinite;
+              }
+            `,
+          }}
+        />
         <div
           id="splash"
           suppressHydrationWarning
@@ -68,14 +95,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            transition: 'opacity 0.4s ease',
+            transition: 'opacity 0.5s ease',
           }}
         >
-          <img id="splash-logo-dark" src="/predensity-logo.png" alt="" width={64} height={64} style={{ marginBottom: 20 }} />
-          <img id="splash-logo-light" src="/white the loading predensity logo.png" alt="" width={64} height={64} style={{ marginBottom: 20, display: 'none' }} />
-          <span id="splash-text" style={{ color: '#ffffff', fontSize: 24, fontWeight: 600, letterSpacing: 2 }}>
+          <img id="splash-logo" src="/predensity-logo.png" alt="" width={72} height={72} style={{ marginBottom: 16 }} />
+          <span id="splash-name" style={{ color: '#ffffff', fontSize: 22, fontWeight: 600, letterSpacing: 3 }}>
             predensity
           </span>
+          <div id="splash-spin" />
         </div>
         <script
           dangerouslySetInnerHTML={{
@@ -84,20 +111,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 var theme = localStorage.getItem('theme');
                 var isLight = theme === 'light' || (!theme && window.matchMedia('(prefers-color-scheme: light)').matches);
                 var s = document.getElementById('splash');
-                if (s && isLight) {
+                var logo = document.getElementById('splash-logo');
+                var name = document.getElementById('splash-name');
+                var spin = document.getElementById('splash-spin');
+                if (isLight && s) {
                   s.style.backgroundColor = '#ffffff';
-                  var darkLogo = document.getElementById('splash-logo-dark');
-                  var lightLogo = document.getElementById('splash-logo-light');
-                  var txt = document.getElementById('splash-text');
-                  if (darkLogo) darkLogo.style.display = 'none';
-                  if (lightLogo) lightLogo.style.display = 'block';
-                  if (txt) txt.style.color = '#000000';
+                  if (logo) logo.src = '/white the loading predensity logo.png';
+                  if (name) name.style.color = '#000000';
+                  if (spin) { spin.style.borderColor = 'rgba(124,58,237,0.18)'; spin.style.borderTopColor = '#7c3aed'; }
                 }
+                var removed = false;
                 function removeSplash() {
-                  if (s) { s.style.opacity = '0'; setTimeout(function() { s.remove(); }, 400); }
+                  if (removed) return;
+                  removed = true;
+                  if (s) {
+                    s.style.opacity = '0';
+                    setTimeout(function() { if (s && s.parentNode) s.remove(); }, 520);
+                  }
                 }
-                if (document.readyState === 'complete') { removeSplash(); }
-                else { window.addEventListener('load', removeSplash); }
+                /* Minimum display time = 900ms so it never flickers */
+                var minTimer = setTimeout(function() {
+                  if (document.readyState === 'complete') removeSplash();
+                  else window.addEventListener('load', removeSplash, { once: true });
+                }, 900);
+                /* Safety cap — remove after 4s regardless */
+                setTimeout(removeSplash, 4000);
               })();
             `,
           }}
