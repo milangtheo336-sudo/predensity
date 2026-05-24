@@ -12,27 +12,35 @@ const nextConfig = {
   ],
 
   webpack: (config, { isServer }) => {
-    // Fix: @walletconnect/ethereum-provider bundles @reown/appkit which requires
-    // valtio/vanilla* but the nested copy can't resolve through Next.js.
-    // Stub out the entire broken @reown/appkit package so it never tries to load.
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      // Point all valtio imports to the top-level installation
-      'valtio': require.resolve('valtio'),
-      'valtio/vanilla': require.resolve('valtio/vanilla'),
-      'valtio/vanilla/utils': require.resolve('valtio/vanilla/utils'),
-      'valtio/utils': require.resolve('valtio/utils'),
-      // Stub out the nested @reown/appkit that lives inside @walletconnect/ethereum-provider
-      // This package is only needed for WalletConnect's own UI modal which we don't use
-      '@walletconnect/ethereum-provider/node_modules/@reown/appkit': false,
-      '@walletconnect/ethereum-provider/node_modules/@reown/appkit-controllers': false,
-    };
+    // Fix: @walletconnect/ethereum-provider has a nested copy of @reown/appkit
+    // which requires valtio/vanilla* but can't resolve it through Next.js.
+    // We use NormalModuleReplacementPlugin to intercept any require of valtio
+    // subpaths from within the nested node_modules and redirect to the top-level.
+    const path = require('path');
+    const valtioRoot = path.dirname(require.resolve('valtio/package.json'));
 
-    // Also resolve the nested valtio to the top-level one via modules
-    config.resolve.modules = [
-      ...(config.resolve.modules || []),
-      'node_modules',
-    ];
+    config.plugins.push(
+      new (require('webpack').NormalModuleReplacementPlugin)(
+        /valtio\/vanilla(\/utils)?$/,
+        (resource) => {
+          if (resource.request === 'valtio/vanilla') {
+            resource.request = path.join(valtioRoot, 'vanilla.js');
+          } else if (resource.request === 'valtio/vanilla/utils') {
+            resource.request = path.join(valtioRoot, 'vanilla', 'utils.js');
+          }
+        }
+      )
+    );
+
+    config.plugins.push(
+      new (require('webpack').NormalModuleReplacementPlugin)(
+        /derive-valtio/,
+        (resource) => {
+          // derive-valtio also needs valtio/vanilla — handled by the above plugin
+          // but we also need to ensure derive-valtio itself resolves
+        }
+      )
+    );
 
     return config;
   },
