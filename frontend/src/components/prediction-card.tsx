@@ -25,7 +25,7 @@ import {
 
 import { useQuery as useConvexQuery, useMutation } from 'convex/react';
 import { useMagic } from '@/context/MagicContext';
-import { getMagic } from '@/lib/magic';
+import { getMagic, getUserInfo } from '@/lib/magic';
 import { api } from '../../convex/_generated/api';
 import BoringAvatar from 'boring-avatars';
 import { getAvatarPalette } from '@/lib/utils';
@@ -615,8 +615,29 @@ export function PredictionCard({
   const { user } = useMagic();
   const isSignedIn = !!user;
   
-  // Read balance from blockchain (non-custodial)
-  const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(user?.publicAddress);
+  // Get proxy wallet address
+  const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (!user?.publicAddress) return;
+    
+    const fetchProxyWallet = async () => {
+      try {
+        const response = await fetch(`/api/proxy-wallet/create?userAddress=${user.publicAddress}`);
+        const data = await response.json();
+        if (data.exists && data.proxyWalletAddress) {
+          setProxyWalletAddress(data.proxyWalletAddress);
+        }
+      } catch (err) {
+        console.error('[prediction-card] Failed to fetch proxy wallet:', err);
+      }
+    };
+    
+    fetchProxyWallet();
+  }, [user?.publicAddress]);
+  
+  // Read balance from blockchain (non-custodial) - use proxy wallet address
+  const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(proxyWalletAddress || undefined);
   
   // Still query managed wallet for user info (but not balance)
   const managedWallet = useConvexQuery(
@@ -883,12 +904,11 @@ export function PredictionCard({
         return;
       }
       
-      // Test if we can get accounts
-      const magicProvider = (magic as any).rpcProvider;
-      const accounts = await magicProvider.request({ method: 'eth_accounts' });
-      console.log('[handlePlaceBet] Magic Link accounts:', accounts);
+      // Get user info (works with Hedera extension)
+      const userInfo = await getUserInfo();
+      console.log('[handlePlaceBet] Magic Link user info:', userInfo);
       
-      if (!accounts || accounts.length === 0) {
+      if (!userInfo || !userInfo.publicAddress) {
         setBetError('Magic Link wallet not ready. Please refresh the page and try again.');
         return;
       }
@@ -915,21 +935,145 @@ export function PredictionCard({
         userId: user.issuer,
       });
       
-      // User signs transaction with Magic Link
-      const result = await placeBet(
-        Category.CRYPTO,
-        startUnix,
-        minStr,
-        maxStr,
-        depositAmount,
-        tokenSymbol,
-        user.issuer
-      );
+      // Get user info for proxy wallet
+      const userInfo = await getUserInfo();
+      if (!userInfo?.publicAddress) {
+        throw new Error('No user address found');
+      }
+      
+      // FALLBACK: Check if proxy wallet exists (should already exist from auth)
+      // This is a safety net in case proxy wallet creation failed during login
+      console.log('[handlePlaceBet] Checking for proxy wallet (fallback check)...');
+      const checkResponse = await fetch(`/api/proxy-wallet/create?userAddress=${userInfo.publicAddress}`);
+      const checkData = await checkResponse.json();
+      
+      let walletAddress = checkData.proxyWalletAddress;
+      
+      // FALLBACK: If no proxy wallet, create one (should rarely happen)
+      if (!checkData.exists) {
+        console.log('[handlePlaceBet] FALLBACK: Creating proxy wallet (should have been created during auth)...');
+        setBetError('First time: Setting up your wallet...');
+        
+        const createResponse = await fetch('/api/proxy-wallet/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userAddress: userInfo.publicAddress }),
+        });
+        
+        if (!createResponse.ok) {
+          throw new Error('Failed to create proxy wallet');
+        }
+        
+        const createData = await createResponse.json();
+        walletAddress = createData.proxyWalletAddress;
+        
+        if (!walletAddress) {
+          // Proxy wallet created but address not yet available
+          // Wait and retry
+          console.log('[handlePlaceBet] Proxy wallet created, waiting for address...');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          // Retry fetching
+          const retryResponse = await fetch(`/api/proxy-wallet/create?userAddress=${userInfo.publicAddress}`);
+          const retryData = await retryResponse.json();
+          walletAddress = retryData.proxyWalletAddress;
+          
+          if (!walletAddress) {
+            throw new Error('Proxy wallet created but address not available yet. Please refresh and try again.');
+          }
+        }
+        
+        console.log('[handlePlaceBet] FALLBACK: Proxy wallet created:', walletAddress);
+        
+        // With proxy wallet, user needs to transfer USDC to the proxy wallet first
+        // The proxy wallet will then use that USDC for betting
+        setBetError(`Please transfer ${depositAmount} USDC to your proxy wallet: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`);
+        
+        // Check if proxy wallet has enough USDC balance
+        const balanceCallData = {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_call',
+          params: [
+            {
+              to: '0x00000000000000000000000000000000007d943f', // USDC
+              data: '0x70a08231' + walletAddress.slice(2).padStart(64, '0'), // balanceOf(address)
+            },
+            'latest',
+          ],
+        };
+
+        const balanceResponse = await fetch('https://testnet.hashio.io/api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(balanceCallData),
+        });
+
+        const balanceResult = await balanceResponse.json();
+        const balance = parseInt(balanceResult.result, 16) / 1e6; // USDC has 6 decimals
+        
+        console.log('[handlePlaceBet] Proxy wallet USDC balance:', balance);
+        
+        if (balance < parseFloat(depositAmount)) {
+          throw new Error(`Insufficient USDC in proxy wallet. Please transfer ${depositAmount} USDC to ${walletAddress}`);
+        }
+        
+        console.log('[handlePlaceBet] Proxy wallet has sufficient balance');
+        setBetError(null);
+      }
+      
+      // Place bet via proxy wallet (user signs message, backend executes)
+      console.log('[handlePlaceBet] Placing bet via proxy wallet...');
+      setBetError('Signing bet...');
+      
+      // Create short, readable message to sign
+      const message = `Bet ${depositAmount} USDC on ${tokenSymbol} for ${new Date(startUnix * 1000).toLocaleString()}`;
+      
+      // Sign message with Magic Link (no popup, uses personal_sign)
+      const { signMessage } = await import('@/lib/magic');
+      const signature = await signMessage(message);
+      
+      console.log('[handlePlaceBet] Message signed, submitting bet...');
+      setBetError('Placing bet...');
+      
+      // Submit to backend
+      const betResponse = await fetch('/api/proxy-wallet/place-bet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userAddress: userInfo.publicAddress,
+          proxyWalletAddress: walletAddress,
+          signature,
+          message,
+          category: 'crypto', // lowercase for backend
+          targetTimestamp: startUnix,
+          priceMin: minStr,
+          priceMax: maxStr,
+          stakeUsdc: depositAmount,
+          asset: tokenSymbol,
+          userId: user.issuer,
+        }),
+      });
+      
+      if (!betResponse.ok) {
+        const error = await betResponse.json();
+        throw new Error(error.error || 'Failed to place bet');
+      }
+      
+      const result = await betResponse.json();
       
       console.log('[handlePlaceBet] Bet placed successfully:', result);
+      
+      // Immediately update balance optimistically (subtract bet amount)
+      if (typeof window !== 'undefined' && (window as any).adjustBalance) {
+        console.log('[handlePlaceBet] Updating balance immediately (optimistic)');
+        (window as any).adjustBalance(-parseFloat(depositAmount));
+      }
+      
       setTransactionId(result.txHash);
       setIsBetPlaced(true);
       setIsPlacingBet(false);
+      setBetError(null);
     } catch (err) {
       console.error('[handlePlaceBet] Error placing bet:', err);
       setIsPlacingBet(false);
