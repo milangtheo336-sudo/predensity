@@ -1,6 +1,5 @@
 ﻿
 export const dynamic = 'force-dynamic';
-import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/api-auth';
 
 // Simple contact form handler -- logs the support request server-side.
@@ -40,5 +39,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
   }
 }
-
 
