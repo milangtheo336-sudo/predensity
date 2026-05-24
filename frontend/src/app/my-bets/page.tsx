@@ -1,8 +1,6 @@
 'use client';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import {
-  useEvmAddress,
-} from '@buidlerlabs/hashgraph-react-wallets';
+import { useAccount } from 'wagmi';
 import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
 import { useMagic } from '@/context/MagicContext';
 import { useWalletUser } from '@/context/WalletUserContext';
@@ -625,7 +623,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   const isSignedIn = !!user || !!walletUser;
   const effectivePublicAddress = user?.publicAddress ?? walletUser?.publicAddress ?? null;
   const effectiveIssuer = user?.issuer ?? walletUser?.userId ?? null;
-  const { data: evmAddress } = useEvmAddress();
+  const { address: evmAddress } = useAccount();
   
   // Get proxy wallet address
   const [proxyWalletAddress, setProxyWalletAddress] = useState<string | null>(null);
