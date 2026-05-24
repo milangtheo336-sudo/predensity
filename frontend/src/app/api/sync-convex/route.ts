@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿
+export const dynamic = 'force-dynamic';
 import { requireAuth, rateLimit } from '@/lib/api-auth';
 
 // Manual sync trigger endpoint.
@@ -46,3 +47,4 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
+
