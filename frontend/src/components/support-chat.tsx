@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, ArrowLeft, Check, Home, MessageSquare, MoreHorizontal, Download, Maximize2, Minimize2 } from 'lucide-react';
-import { useMagic } from '@/context/MagicContext';
+import { useUser } from '@clerk/nextjs';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -81,7 +81,7 @@ function renderInline(text: string): React.ReactNode[] {
     }
     if (match[2]) {
       // **bold**
-      parts.push(<strong key={`b${match.index}`} className="font-semibold text-gray-900 dark:text-white">{match[2]}</strong>);
+      parts.push(<strong key={`b${match.index}`} className="font-semibold text-white">{match[2]}</strong>);
     } else if (match[3]) {
       // *italic*
       parts.push(<em key={`i${match.index}`}>{match[3]}</em>);
@@ -111,7 +111,7 @@ export function SupportChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { user } = useMagic();
+  const { user } = useUser();
 
   // Listen for external open requests (from profile dropdown)
   useEffect(() => {
@@ -120,7 +120,7 @@ export function SupportChat() {
     return () => window.removeEventListener('open-support-chat', handleOpen);
   }, []);
 
-  const displayName = user?.email?.split('@')[0] || 'there';
+  const displayName = user?.firstName || user?.username || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'there';
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -221,7 +221,7 @@ export function SupportChat() {
   }
 
   return (
-    <div className={`fixed rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 transition-all duration-300 ${
+    <div className={`fixed rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden border border-neutral-800 bg-neutral-950 transition-all duration-300 ${
       expanded
         ? 'bottom-0 right-0 w-full h-full sm:bottom-4 sm:right-4 sm:w-[520px] sm:h-[700px] sm:rounded-2xl rounded-none'
         : 'bottom-6 right-6 w-[380px] h-[560px]'
@@ -231,11 +231,11 @@ export function SupportChat() {
       {view === 'chat' && (
         <>
           {/* Chat header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800 bg-neutral-950">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => { setView('tabs'); setTab('messages'); }}
-                className="text-gray-400 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                className="text-neutral-400 hover:text-white transition-colors"
                 aria-label="Back"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -244,10 +244,10 @@ export function SupportChat() {
                 <div className="w-8 h-8 rounded-full bg-vibrant-purple flex items-center justify-center">
                   <span className="text-white text-xs font-bold">P</span>
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-neutral-950" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-neutral-950" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">Predensity Bot</p>
+                <p className="text-sm font-semibold text-white">Predensity Bot</p>
                 <p className="text-[10px] text-green-400">Active</p>
               </div>
             </div>
@@ -256,16 +256,16 @@ export function SupportChat() {
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
-                  className="text-gray-400 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white transition-colors p-1 rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
+                  className="text-neutral-400 hover:text-white transition-colors p-1 rounded-md hover:bg-neutral-800"
                   aria-label="More options"
                 >
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-xl z-50 py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl z-50 py-1 animate-in fade-in-0 zoom-in-95 duration-100">
                     <button
                       onClick={toggleExpand}
-                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors text-left"
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-neutral-800 transition-colors text-left"
                     >
                       {expanded ? <Minimize2 className="w-4 h-4 text-vibrant-purple" /> : <Maximize2 className="w-4 h-4 text-vibrant-purple" />}
                       {expanded ? 'Collapse window' : 'Expand window'}
@@ -273,7 +273,7 @@ export function SupportChat() {
                     <button
                       onClick={downloadTranscript}
                       disabled={messages.length === 0}
-                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-neutral-800 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Download className="w-4 h-4 text-vibrant-purple" />
                       Download transcript
@@ -283,7 +283,7 @@ export function SupportChat() {
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-gray-400 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white transition-colors p-1"
+                className="text-neutral-400 hover:text-white transition-colors p-1"
                 aria-label="Close chat"
               >
                 <X className="w-5 h-5" />
@@ -304,7 +304,7 @@ export function SupportChat() {
                   className={`max-w-[75%] px-3.5 py-2.5 text-sm leading-relaxed ${
                     msg.role === 'user'
                       ? 'bg-vibrant-purple text-white rounded-2xl rounded-br-md'
-                      : 'bg-gray-100 dark:bg-neutral-800/60 text-gray-900 dark:text-neutral-100 rounded-2xl rounded-bl-md'
+                      : 'bg-neutral-800/60 text-neutral-100 rounded-2xl rounded-bl-md'
                   }`}
                 >
                   {msg.role === 'assistant' ? (
@@ -325,11 +325,11 @@ export function SupportChat() {
                 <div className="w-6 h-6 rounded-full bg-vibrant-purple flex items-center justify-center mr-2 mt-1 flex-shrink-0">
                   <span className="text-white text-[10px] font-bold">P</span>
                 </div>
-                <div className="bg-gray-100 dark:bg-neutral-800/60 px-3.5 py-2.5 rounded-2xl rounded-bl-md">
+                <div className="bg-neutral-800/60 px-3.5 py-2.5 rounded-2xl rounded-bl-md">
                   <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-neutral-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-neutral-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-neutral-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
@@ -341,14 +341,14 @@ export function SupportChat() {
           <div className="px-4 py-1">
             <button
               onClick={() => setView('contact')}
-              className="text-xs text-gray-400 dark:text-neutral-500 hover:text-vibrant-purple transition-colors"
+              className="text-xs text-neutral-500 hover:text-vibrant-purple transition-colors"
             >
               Not getting the help you need? Contact support
             </button>
           </div>
 
           {/* Input */}
-          <div className="px-4 py-3 border-t border-gray-200 dark:border-neutral-800">
+          <div className="px-4 py-3 border-t border-neutral-800">
             <form
               onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
               className="flex gap-2"
@@ -359,7 +359,7 @@ export function SupportChat() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask a question..."
-                className="flex-1 px-3 py-2 rounded-lg bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+                className="flex-1 px-3 py-2 rounded-lg bg-neutral-900 border border-neutral-700 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
                 disabled={loading}
               />
               <button
@@ -378,20 +378,20 @@ export function SupportChat() {
       {/* Contact view */}
       {view === 'contact' && (
         <>
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-neutral-800">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setView(messages.length > 0 ? 'chat' : 'tabs')}
-                className="text-gray-400 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                className="text-neutral-400 hover:text-white transition-colors"
                 aria-label="Back"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">Contact Support</p>
+              <p className="text-sm font-semibold text-white">Contact Support</p>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-gray-400 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              className="text-neutral-400 hover:text-white transition-colors"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
@@ -407,24 +407,24 @@ export function SupportChat() {
           {tab === 'home' && (
             <>
               {/* Hero gradient header */}
-              <div className="relative px-5 pt-5 pb-8 dark:bg-neutral-950">
+              <div className="relative px-5 pt-5 pb-8 bg-gradient-to-b from-vibrant-purple via-vibrant-purple/80 to-neutral-950">
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
-                  className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center text-gray-400 dark:text-white/80 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/20 rounded-full transition-colors"
+                  className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 rounded-full transition-colors"
                   aria-label="Close"
                 >
                   <X className="w-5 h-5" />
                 </button>
                 <div className="relative mb-4">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-white/20 backdrop-blur flex items-center justify-center">
-                    <span className="text-gray-900 dark:text-white text-sm font-bold">P</span>
+                  <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">P</span>
                   </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white dark:border-neutral-950" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-vibrant-purple" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                <h2 className="text-xl font-bold text-white mb-1">
                   Hi {displayName}
                 </h2>
-                <p className="text-base text-gray-500 dark:text-white/80">How can we help?</p>
+                <p className="text-base text-white/80">How can we help?</p>
               </div>
 
               {/* Content cards */}
@@ -433,22 +433,22 @@ export function SupportChat() {
                 {messages.length > 0 && (
                   <button
                     onClick={() => { setView('chat'); }}
-                    className="w-full bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl p-3.5 text-left hover:bg-gray-100 dark:hover:bg-neutral-800/80 transition-colors"
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-3.5 text-left hover:bg-neutral-800/80 transition-colors"
                   >
-                    <p className="text-xs font-medium text-gray-400 dark:text-neutral-400 mb-2">Recent message</p>
+                    <p className="text-xs font-medium text-neutral-400 mb-2">Recent message</p>
                     <div className="flex items-center gap-3">
                       <div className="relative flex-shrink-0">
                         <div className="w-9 h-9 rounded-full bg-vibrant-purple flex items-center justify-center">
                           <span className="text-white text-xs font-bold">P</span>
                         </div>
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-50 dark:border-neutral-900" />
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-neutral-900" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">Predensity Bot</p>
-                          <span className="text-[10px] text-gray-400 dark:text-neutral-500">{getTimeSince()}</span>
+                          <p className="text-sm font-medium text-white">Predensity Bot</p>
+                          <span className="text-[10px] text-neutral-500">{getTimeSince()}</span>
                         </div>
-                        <p className="text-xs text-gray-400 dark:text-neutral-400 truncate">
+                        <p className="text-xs text-neutral-400 truncate">
                           {lastBotMsg || 'Start a conversation...'}
                         </p>
                       </div>
@@ -459,20 +459,20 @@ export function SupportChat() {
                 {/* Ask a question card */}
                 <button
                   onClick={startChat}
-                  className="w-full bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl p-4 text-left hover:bg-gray-100 dark:hover:bg-neutral-800/80 transition-colors"
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-left hover:bg-neutral-800/80 transition-colors"
                 >
-                  <p className="text-sm text-gray-900 dark:text-white">Have an issue or a question?</p>
+                  <p className="text-sm text-white">Have an issue or a question?</p>
                 </button>
 
                 {/* Contact support card */}
                 <button
                   onClick={() => setView('contact')}
-                  className="w-full bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl p-4 text-left hover:bg-gray-100 dark:hover:bg-neutral-800/80 transition-colors flex items-center gap-3"
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-left hover:bg-neutral-800/80 transition-colors flex items-center gap-3"
                 >
                   <div className="w-8 h-8 rounded-lg bg-vibrant-purple/20 flex items-center justify-center flex-shrink-0">
                     <MessageSquare className="w-4 h-4 text-vibrant-purple" />
                   </div>
-                  <p className="text-sm text-gray-900 dark:text-white">Contact the team directly</p>
+                  <p className="text-sm text-white">Contact the team directly</p>
                 </button>
               </div>
             </>
@@ -481,11 +481,11 @@ export function SupportChat() {
           {tab === 'messages' && (
             <>
               {/* Messages tab header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-neutral-800">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">Messages</p>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
+                <p className="text-sm font-semibold text-white">Messages</p>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="text-gray-400 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                  className="text-neutral-400 hover:text-white transition-colors"
                   aria-label="Close"
                 >
                   <X className="w-5 h-5" />
@@ -495,11 +495,11 @@ export function SupportChat() {
               <div className="flex-1 overflow-y-auto">
                 {messages.length === 0 ? (
                   <div className="flex-1 flex flex-col items-center justify-center px-6 text-center h-full pt-20">
-                    <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-neutral-800 flex items-center justify-center mb-3">
-                      <MessageSquare className="w-5 h-5 text-gray-400 dark:text-neutral-500" />
+                    <div className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center mb-3">
+                      <MessageSquare className="w-5 h-5 text-neutral-500" />
                     </div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">No messages</p>
-                    <p className="text-xs text-gray-400 dark:text-neutral-400 mb-4">Messages from the team will be shown here</p>
+                    <p className="text-sm font-medium text-white mb-1">No messages</p>
+                    <p className="text-xs text-neutral-400 mb-4">Messages from the team will be shown here</p>
                     <button
                       onClick={startChat}
                       className="px-5 py-2 bg-vibrant-purple hover:bg-vibrant-purple/90 text-white rounded-lg text-sm font-medium transition-colors"
@@ -511,21 +511,21 @@ export function SupportChat() {
                   <div className="p-3">
                     <button
                       onClick={() => setView('chat')}
-                      className="w-full bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl p-3.5 text-left hover:bg-gray-100 dark:hover:bg-neutral-800/80 transition-colors"
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-3.5 text-left hover:bg-neutral-800/80 transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <div className="relative flex-shrink-0">
                           <div className="w-9 h-9 rounded-full bg-vibrant-purple flex items-center justify-center">
                             <span className="text-white text-xs font-bold">P</span>
                           </div>
-                          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-50 dark:border-neutral-900" />
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-neutral-900" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">Predensity Bot</p>
-                            <span className="text-[10px] text-gray-400 dark:text-neutral-500">{getTimeSince()}</span>
+                            <p className="text-sm font-medium text-white">Predensity Bot</p>
+                            <span className="text-[10px] text-neutral-500">{getTimeSince()}</span>
                           </div>
-                          <p className="text-xs text-gray-400 dark:text-neutral-400 truncate">{lastBotMsg}</p>
+                          <p className="text-xs text-neutral-400 truncate">{lastBotMsg}</p>
                         </div>
                       </div>
                     </button>
@@ -536,11 +536,11 @@ export function SupportChat() {
           )}
 
           {/* Bottom tab bar */}
-          <div className="flex border-t border-gray-200 dark:border-neutral-800">
+          <div className="flex border-t border-neutral-800">
             <button
               onClick={() => setTab('home')}
               className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
-                tab === 'home' ? 'text-vibrant-purple' : 'text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300'
+                tab === 'home' ? 'text-vibrant-purple' : 'text-neutral-500 hover:text-neutral-300'
               }`}
             >
               <Home className="w-5 h-5" />
@@ -549,7 +549,7 @@ export function SupportChat() {
             <button
               onClick={() => setTab('messages')}
               className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
-                tab === 'messages' ? 'text-vibrant-purple' : 'text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300'
+                tab === 'messages' ? 'text-vibrant-purple' : 'text-neutral-500 hover:text-neutral-300'
               }`}
             >
               <MessageSquare className="w-5 h-5" />
@@ -591,8 +591,8 @@ function ContactSupportView() {
         <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mb-4">
           <Check className="w-6 h-6 text-green-400" />
         </div>
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Message sent</h3>
-        <p className="text-xs text-gray-400 dark:text-neutral-400">
+        <h3 className="text-base font-semibold text-white mb-1">Message sent</h3>
+        <p className="text-xs text-neutral-400">
           Our team has received your message and will get back to you soon.
         </p>
       </div>
@@ -601,18 +601,18 @@ function ContactSupportView() {
 
   return (
     <div className="flex-1 flex flex-col px-4 py-4">
-      <p className="text-xs text-gray-400 dark:text-neutral-400 mb-4">
+      <p className="text-xs text-neutral-400 mb-4">
         Describe your issue and our team will follow up via email.
       </p>
 
-      <label htmlFor="reason" className="text-xs font-medium text-gray-400 dark:text-neutral-400 mb-1">
+      <label htmlFor="reason" className="text-xs font-medium text-neutral-400 mb-1">
         Reason
       </label>
       <select
         id="reason"
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 text-sm text-gray-900 dark:text-white mb-3 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+        className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-neutral-700 text-sm text-white mb-3 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
       >
         <option value="">Select a reason...</option>
         <option value="Deposit issue">Deposit issue</option>
@@ -624,7 +624,7 @@ function ContactSupportView() {
         <option value="Other">Other</option>
       </select>
 
-      <label htmlFor="details" className="text-xs font-medium text-gray-400 dark:text-neutral-400 mb-1">
+      <label htmlFor="details" className="text-xs font-medium text-neutral-400 mb-1">
         Details
       </label>
       <textarea
@@ -633,7 +633,7 @@ function ContactSupportView() {
         onChange={(e) => setDetails(e.target.value)}
         placeholder="Describe your issue..."
         rows={4}
-        className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 text-sm text-gray-900 dark:text-white resize-none mb-4 placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
+        className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-neutral-700 text-sm text-white resize-none mb-4 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-vibrant-purple"
       />
 
       <button
