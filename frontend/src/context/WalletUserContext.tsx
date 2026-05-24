@@ -27,8 +27,10 @@ export interface WalletUser {
 interface WalletUserContextType {
   walletUser: WalletUser | null;
   isWalletUserLoading: boolean;
+  isWalletAuthenticating: boolean;
   setWalletUser: (user: WalletUser | null) => void;
   clearWalletUser: () => void;
+  setIsWalletAuthenticating: (v: boolean) => void;
 }
 
 const WalletUserContext = createContext<WalletUserContextType | undefined>(undefined);
