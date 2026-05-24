@@ -24,6 +24,9 @@ interface KDEChartProps {
   onZoomChange?: (transform: d3.ZoomTransform) => void;
   initialTransform?: d3.ZoomTransform;
   showControls?: boolean;
+  hideTimeRange?: boolean;
+  timeFilter?: TimeRangeFilter;
+  onTimeFilterChange?: (filter: TimeRangeFilter) => void;
   tokenSymbol?: string;
   contractAddress?: string;
 }
@@ -162,6 +165,9 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
       onZoomChange,
       initialTransform,
       showControls = true,
+      hideTimeRange = false,
+      timeFilter: externalTimeFilter,
+      onTimeFilterChange,
       tokenSymbol = 'HBAR',
       contractAddress,
     },
@@ -550,6 +556,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
 
     return (
       <div className={cn('w-full', className)}>
+        {!hideTimeRange && (
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <span className="text-sm text-gray-500 dark:text-neutral-400 font-medium mr-auto">
             Community Forecast
@@ -571,6 +578,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
             ))}
           </div>
         </div>
+        )}
         {/* Chart area -- uses fixed height by default, inherits from parent className if set */}
         <div className="relative">
           <div ref={chartContainerRef} className={cn('w-full', className?.includes('h-full') ? 'h-[calc(100%-3rem)]' : 'h-64 sm:h-80')} />
