@@ -368,8 +368,12 @@ async function matchOrders(ctx: any, marketId: string, outcomeIndex: number) {
 
     if (buy.price < sell.price) break; // No more matches possible
 
-    // Don't match user with themselves
+    // Don't match user with themselves.
+    // Advance BOTH indices so we don't loop forever when the same user
+    // has the best bid AND best ask — the next candidate on either side
+    // might cross with the other.
     if (buy.userId === sell.userId) {
+      buyIdx++;
       sellIdx++;
       continue;
     }
@@ -428,6 +432,24 @@ async function matchOrders(ctx: any, marketId: string, outcomeIndex: number) {
       await ctx.db.patch(makerWallet._id, {
         usdcBalance: (balance + makerRebate).toFixed(6),
       });
+    }
+
+    // Refund buyer the price-improvement difference.
+    // On order placement the full (buy.price × fillQty / 100) was reserved.
+    // The trade executes at fillPrice (≤ buy.price), so return the delta.
+    const priceDiff = buy.price - fillPrice; // cents
+    if (priceDiff > 0) {
+      const refundUsdc = (priceDiff * fillQty) / 100;
+      const buyerWalletForRefund = await ctx.db
+        .query("managedWallets")
+        .withIndex("by_user_id", (q: any) => q.eq("userId", buy.userId))
+        .first();
+      if (buyerWalletForRefund) {
+        const bal = parseFloat(buyerWalletForRefund.usdcBalance || "0");
+        await ctx.db.patch(buyerWalletForRefund._id, {
+          usdcBalance: (bal + refundUsdc).toFixed(6),
+        });
+      }
     }
 
     // Update buyer: give shares
