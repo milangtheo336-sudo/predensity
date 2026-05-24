@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { LANGUAGES } from '@/lib/i18n/translations';
 import { cn } from '@/lib/utils';
@@ -15,9 +16,13 @@ export function MobileBottomNav() {
   const { user } = useMagic();
   const { walletUser } = useWalletUser();
   const isSignedIn = !!user || !!walletUser;
+  const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const [langSheetOpen, setLangSheetOpen] = useState(false);
   const currentLangMeta = LANGUAGES.find(l => l.code === lang);
+
+  const HIDDEN_PATHS = ['/auth/callback', '/auth', '/onboarding'];
+  if (HIDDEN_PATHS.some(p => pathname?.startsWith(p))) return null;
 
   return (
     <>
