@@ -167,7 +167,8 @@ function PnlSparkline({ data, color }: { data: number[]; color: string }) {
       <div className="w-full h-24 rounded-lg bg-gray-100 dark:bg-neutral-900/50 flex items-center justify-center relative">
         <span className="text-xs text-gray-400 dark:text-neutral-600">No activity yet</span>
         <div className="absolute top-2 right-3 flex items-center gap-2 pointer-events-none select-none opacity-15">
-          <Image src="/predensity-logo.png" alt="" width={50} height={30} className="rounded-sm" />
+          <Image src="/predensity-logo.png" alt="" width={50} height={30} className="rounded-sm hidden dark:block" />
+          <Image src="/white the loading predensity logo.png" alt="" width={50} height={30} className="rounded-sm dark:hidden" />
           <span className="text-xl text-gray-900 dark:text-white font-semibold tracking-wide">Predensity</span>
         </div>
       </div>
@@ -217,7 +218,8 @@ function PnlSparkline({ data, color }: { data: number[]; color: string }) {
       </svg>
       {/* Watermark -- top right, subtle with logo */}
       <div className="absolute top-2 right-3 flex items-center gap-2 pointer-events-none select-none opacity-15">
-        <Image src="/predensity-logo.png" alt="" width={50} height={30} className="rounded-sm" />
+        <Image src="/predensity-logo.png" alt="" width={50} height={30} className="rounded-sm hidden dark:block" />
+        <Image src="/white the loading predensity logo.png" alt="" width={50} height={30} className="rounded-sm dark:hidden" />
         <span className="text-2xl text-gray-900 dark:text-white font-semibold tracking-wide">Predensity</span>
       </div>
     </div>
