@@ -92,36 +92,40 @@ export function MatchComments({ matchId, className }: MatchCommentsProps) {
   };
 
   return (
-    <div className={`space-y-4 ${className}`}>
-      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Ideas & Discussion</h3>
+    <div className={`space-y-6 ${className}`}>
+      {/* Hide the redundant "Ideas & Discussion" title since we have tabs now */}
+      {/* <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Ideas & Discussion</h3> */}
 
       {/* Comment input */}
-      <div className="space-y-2">
-        <div className="flex gap-2">
-          <textarea
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            placeholder={isSignedIn ? "Share your prediction..." : "Sign in to comment"}
+            placeholder={isSignedIn ? "What's your prediction?" : "Sign in to comment"}
             disabled={!isSignedIn}
-            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-white placeholder-gray-400 disabled:opacity-50"
-            rows={3}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSubmitComment();
+            }}
+            className="flex-1 px-4 py-3 rounded-xl border border-[#2a2a2a] bg-[#111111] focus:bg-[#1a1a1a] text-sm text-white placeholder-[#5a5a5a] focus:outline-none focus:border-[#3a3a3a] transition-all disabled:opacity-50"
           />
+          <button
+            onClick={handleSubmitComment}
+            disabled={!isSignedIn || !newComment.trim() || submittingComment}
+            className="px-6 py-3 rounded-xl bg-[#2d1b5e] hover:bg-[#3d2580] disabled:opacity-50 text-[#9b8bc7] hover:text-[#b4a6db] text-sm font-medium transition-colors"
+          >
+            Post
+          </button>
         </div>
-        <button
-          onClick={handleSubmitComment}
-          disabled={!isSignedIn || !newComment.trim() || submittingComment}
-          className="px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-medium transition-colors"
-        >
-          Post
-        </button>
         {!isSignedIn && (
-          <p className="text-xs text-gray-400">Sign in to share your ideas</p>
+          <p className="text-xs text-gray-500 px-2">Sign in to share your ideas</p>
         )}
       </div>
 
       {/* Comments list */}
       {!comments || comments.length === 0 ? (
-        <div className="py-8 text-center text-sm text-gray-500">No ideas yet. Be the first to comment!</div>
+        <div className="py-12 text-center text-[13px] text-[#737373]">No ideas yet. Be the first one to comment.</div>
       ) : (
         <div className="divide-y divide-gray-100 dark:divide-white/[0.04] space-y-3">
           {comments.filter((c: any) => !c.parentId).map((comment: any) => {
