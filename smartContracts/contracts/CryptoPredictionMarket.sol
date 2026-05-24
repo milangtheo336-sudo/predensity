@@ -427,7 +427,7 @@ contract CryptoPredictionMarket is Ownable2Step, Pausable, ReentrancyGuard {
      * @return processedCount Number of bets processed in this batch
      * @return winningWeight Total winning weight added in this batch
      */
-    function processBatch(uint256 bucket) external returns (uint256 processedCount, uint256 winningWeight) {
+    function processBatch(uint256 bucket) external whenNotPaused returns (uint256 processedCount, uint256 winningWeight) {
         BucketInfo storage bucketInfo = buckets[bucket];
         require(!bucketInfo.aggregationComplete, "Aggregation already complete");
         
