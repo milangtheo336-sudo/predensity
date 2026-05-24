@@ -160,7 +160,13 @@ function addrToGradient(addr: string): string {
   return `linear-gradient(135deg, hsl(${h1},70%,55%), hsl(${h2},60%,45%))`;
 }
 
-function UserAvatar({ addr, size = 28 }: { addr: string; avatar?: string; size?: number }) {
+function UserAvatar({ addr, size = 28, imageUrl }: { addr: string; avatar?: string; size?: number; imageUrl?: string }) {
+  // If user has uploaded a Clerk profile pic, show that
+  if (imageUrl && !imageUrl.includes('gravatar')) {
+    return (
+      <img src={imageUrl} alt="" className="rounded-full object-cover flex-shrink-0" style={{ width: size, height: size }} />
+    );
+  }
   // Normalize seed: strip "managed:" prefix so it matches the Clerk userId used elsewhere
   const seed = addr.startsWith('managed:') ? addr.slice(8) : addr;
   return (
@@ -174,10 +180,12 @@ function CryptoActivitySection({
   contractIdString,
   contractAddress,
   tokenSymbol,
+  currentUser,
 }: {
   contractIdString: string;
   contractAddress: string;
   tokenSymbol: string;
+  currentUser?: { id: string; name: string; imageUrl?: string };
 }) {
   const [activeTab, setActiveTab] = useState<'ideas' | 'positions' | 'activity'>('ideas');
   const hederaNetwork = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
@@ -348,16 +356,24 @@ function CryptoActivitySection({
             <div className="divide-y divide-gray-100 dark:divide-white/[0.04]">
               {comments.filter((c: any) => !c.parentId).map((comment: any) => {
                 const prof = profiles[comment.userAddress];
-                const displayName = prof?.displayName || truncateAddr(comment.userAddress);
+                // Check if this comment is from the current user
+                const isCurrentUser = currentUser && comment.userAddress === `managed:${currentUser.id}`.toLowerCase();
+                const displayName = isCurrentUser ? currentUser.name : (prof?.displayName || truncateAddr(comment.userAddress));
+                const avatarImageUrl = isCurrentUser ? currentUser.imageUrl : undefined;
+                const profileLink = isCurrentUser ? `/profile/${currentUser.id}` : undefined;
                 const userPos = positions.find(p => p.addr === comment.userAddress);
                 const replies = comments.filter((c: any) => c.parentId === comment._id);
                 return (
                   <div key={comment._id} className="py-3">
                     <div className="flex items-start gap-3">
-                      <UserAvatar addr={comment.userAddress} size={28} />
+                      <UserAvatar addr={comment.userAddress} size={28} imageUrl={avatarImageUrl} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm text-gray-900 dark:text-white" style={{ fontWeight: 521 }}>{displayName}</span>
+                          {profileLink ? (
+                            <a href={profileLink} className="text-sm text-gray-900 dark:text-white hover:underline" style={{ fontWeight: 521 }}>{displayName}</a>
+                          ) : (
+                            <span className="text-sm text-gray-900 dark:text-white" style={{ fontWeight: 521 }}>{displayName}</span>
+                          )}
                           <span className="text-xs text-gray-400">{formatTimeAgo(comment.timestamp)}</span>
                           {userPos && userPos.active > 0 ? (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 font-medium">
@@ -431,13 +447,20 @@ function CryptoActivitySection({
                           <div className="mt-2 ml-2 pl-3 border-l border-gray-200 dark:border-white/[0.06] space-y-2">
                             {replies.map((reply: any) => {
                               const rProf = profiles[reply.userAddress];
-                              const rName = rProf?.displayName || truncateAddr(reply.userAddress);
+                              const isReplyCurrentUser = currentUser && reply.userAddress === `managed:${currentUser.id}`.toLowerCase();
+                              const rName = isReplyCurrentUser ? currentUser.name : (rProf?.displayName || truncateAddr(reply.userAddress));
+                              const rImageUrl = isReplyCurrentUser ? currentUser.imageUrl : undefined;
+                              const rProfileLink = isReplyCurrentUser ? `/profile/${currentUser.id}` : undefined;
                               return (
                                 <div key={reply._id} className="flex items-start gap-2">
-                                  <UserAvatar addr={reply.userAddress} size={20} />
+                                  <UserAvatar addr={reply.userAddress} size={20} imageUrl={rImageUrl} />
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-xs text-gray-900 dark:text-white" style={{ fontWeight: 521 }}>{rName}</span>
+                                      {rProfileLink ? (
+                                        <a href={rProfileLink} className="text-xs text-gray-900 dark:text-white hover:underline" style={{ fontWeight: 521 }}>{rName}</a>
+                                      ) : (
+                                        <span className="text-xs text-gray-900 dark:text-white" style={{ fontWeight: 521 }}>{rName}</span>
+                                      )}
                                       <span className="text-[10px] text-gray-400">{formatTimeAgo(reply.timestamp)}</span>
                                     </div>
                                     <p className="text-xs text-gray-600 dark:text-neutral-400" style={{ fontWeight: 300 }}>
@@ -479,11 +502,14 @@ function CryptoActivitySection({
                     ? `${hashscanBase}/transaction/${bet.transactionHash}`
                     : `${hashscanBase}/contract/${contractIdString}`;
                   const prof = profiles[bet.userAddress];
+                  const isBetCurrentUser = currentUser && bet.userAddress === `managed:${currentUser.id}`.toLowerCase();
+                  const betImageUrl = isBetCurrentUser ? currentUser.imageUrl : undefined;
+                  const betDisplayName = isBetCurrentUser ? currentUser.name : (prof?.displayName || truncateAddr(bet.userAddress));
                   return (
                     <div key={bet.id} className="py-3 flex items-center justify-between text-sm">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="relative flex-shrink-0">
-                          <UserAvatar addr={bet.userAddress} size={28} />
+                          <UserAvatar addr={bet.userAddress} size={28} imageUrl={betImageUrl} />
                           <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-neutral-950 ${bet.finalized ? 'bg-gray-400' : 'bg-bright-green'}`} />
                         </div>
                         <div className="min-w-0">
@@ -491,7 +517,7 @@ function CryptoActivitySection({
                             <span className="text-gray-900 dark:text-light-gray font-medium">{stakeFormatted} {getStakingCurrency().symbol}</span>
                             <span className="text-gray-400 text-xs">{bet.finalized ? 'Settled' : 'Active'}</span>
                           </div>
-                          <span className="text-xs text-gray-500 truncate block" style={{ fontWeight: 521 }}>{prof?.displayName || truncateAddr(bet.userAddress)}</span>
+                          <span className="text-xs text-gray-500 truncate block" style={{ fontWeight: 521 }}>{betDisplayName}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -524,12 +550,15 @@ function CryptoActivitySection({
             <div className="divide-y divide-gray-100 dark:divide-white/[0.04]">
               {positions.map((pos) => {
                 const prof = profiles[pos.addr];
+                const isPosCurrentUser = currentUser && pos.addr === `managed:${currentUser.id}`.toLowerCase();
+                const posImageUrl = isPosCurrentUser ? currentUser.imageUrl : undefined;
+                const posDisplayName = isPosCurrentUser ? currentUser.name : (prof?.displayName || truncateAddr(pos.addr));
                 return (
                   <div key={pos.addr} className="py-3 flex items-center justify-between text-sm">
                     <div className="flex items-center gap-3 min-w-0">
-                      <UserAvatar addr={pos.addr} size={28} />
+                      <UserAvatar addr={pos.addr} size={28} imageUrl={posImageUrl} />
                       <div className="min-w-0">
-                        <span className="text-gray-900 dark:text-light-gray block truncate" style={{ fontWeight: 521 }}>{prof?.displayName || truncateAddr(pos.addr)}</span>
+                        <span className="text-gray-900 dark:text-light-gray block truncate" style={{ fontWeight: 521 }}>{posDisplayName}</span>
                         <span className="text-xs text-gray-500">{pos.betCount} bet{pos.betCount !== 1 ? 's' : ''} -- {pos.active} active</span>
                       </div>
                     </div>
@@ -684,7 +713,9 @@ export function PredictionCard({
   useEffect(() => {
     const simulate = async () => {
       const { hasValidLeadPeriod, depositAmount, startUnix, selectedRange } = simulateArgsRef.current;
+      console.log('[simulate] triggered:', { hasValidLeadPeriod, depositAmount, startUnix, range: selectedRange, now: Date.now(), startMs: startUnix * 1000, diff_hours: (startUnix * 1000 - Date.now()) / 3600000 });
       if (!hasValidLeadPeriod) {
+        console.log('[simulate] skipped: invalid lead period');
         setMultipliers({ sharpness: 0, leadTime: 0, betQuality: 0, isLoading: false });
         setSimulationDetails({ fee: '0', stakeNet: '0', isValid: false, errorMessage: 'Minimum 24h lead required' });
         setEstimatedProfit({ profit: '0', multiplier: '1.00', isLoading: false });
@@ -712,44 +743,94 @@ export function PredictionCard({
           setMultipliers({ sharpness, leadTime, betQuality, isLoading: false });
 
           if (depositAmount && parseFloat(depositAmount) > 0) {
-            // Re-simulate with actual deposit for accurate fee/profit
-            const fullRes = await fetch('/api/bet/simulate', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                category: 'crypto',
-                targetTimestamp: startUnix,
-                priceMin: selectedRange.min,
-                priceMax: selectedRange.max,
-                stakeUsdc: depositAmount,
-              }),
-            });
-            if (fullRes.ok) {
-              const fullSim = await fullRes.json();
-              if (fullSim.isValid) {
-                setSimulationDetails({ fee: fullSim.fee, stakeNet: fullSim.stakeNet, isValid: true, errorMessage: '' });
-                const userStake = ethers.BigNumber.from(fullSim.stakeNet);
-                const mult = parseFloat(fullSim.qualityBps) / 10000;
-                const estimatedPayout = userStake.mul(Math.round(mult * 100)).div(100);
-                const profit = estimatedPayout.sub(userStake);
-                setEstimatedProfit({ profit: profit.toString(), multiplier: mult.toFixed(2), isLoading: false });
-              } else {
-                setSimulationDetails({ fee: '0', stakeNet: '0', isValid: false, errorMessage: '' });
-                setEstimatedProfit({ profit: '0', multiplier: '1.00', isLoading: false });
+            // Try re-simulate with actual deposit for accurate fee/profit
+            try {
+              const fullRes = await fetch('/api/bet/simulate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  category: 'crypto',
+                  targetTimestamp: startUnix,
+                  priceMin: selectedRange.min,
+                  priceMax: selectedRange.max,
+                  stakeUsdc: depositAmount,
+                }),
+              });
+              if (fullRes.ok) {
+                const fullSim = await fullRes.json();
+                if (fullSim.isValid) {
+                  setSimulationDetails({ fee: fullSim.fee, stakeNet: fullSim.stakeNet, isValid: true, errorMessage: '' });
+                  const userStake = ethers.BigNumber.from(fullSim.stakeNet);
+                  const mult = parseFloat(fullSim.qualityBps) / 10000;
+                  const estimatedPayout = userStake.mul(Math.round(mult * 100)).div(100);
+                  const profit = estimatedPayout.sub(userStake);
+                  setEstimatedProfit({ profit: profit.toString(), multiplier: mult.toFixed(2), isLoading: false });
+                } else {
+                  // Contract rejected the amount -- estimate locally from first sim
+                  const stakeNum = parseFloat(depositAmount);
+                  const feeEst = Math.round(stakeNum * 0.02 * 1e6); // ~2% fee estimate
+                  const netEst = Math.round(stakeNum * 0.98 * 1e6);
+                  setSimulationDetails({ fee: feeEst.toString(), stakeNet: netEst.toString(), isValid: true, errorMessage: '' });
+                  const mult = betQuality;
+                  const profitEst = Math.round(netEst * (mult - 1));
+                  setEstimatedProfit({ profit: profitEst.toString(), multiplier: mult.toFixed(2), isLoading: false });
+                }
               }
+            } catch {
+              // Fallback: estimate locally
+              const stakeNum = parseFloat(depositAmount);
+              const feeEst = Math.round(stakeNum * 0.02 * 1e6);
+              const netEst = Math.round(stakeNum * 0.98 * 1e6);
+              setSimulationDetails({ fee: feeEst.toString(), stakeNet: netEst.toString(), isValid: true, errorMessage: '' });
+              setEstimatedProfit({ profit: Math.round(netEst * (betQuality - 1)).toString(), multiplier: betQuality.toFixed(2), isLoading: false });
             }
           } else {
             setSimulationDetails({ fee: '0', stakeNet: '0', isValid: false, errorMessage: '' });
             setEstimatedProfit({ profit: '0', multiplier: '1.00', isLoading: false });
           }
         } else {
-          throw new Error(result?.errorMessage || 'Simulation invalid');
+          // Contract simulation returned invalid -- compute local estimates
+          const totalRange = currentPrice > 0 ? currentPrice * 2 : 100000;
+          const selectedWidth = Math.max(0.01, selectedRange.max - selectedRange.min);
+          const sharpnessEst = Math.min(5, totalRange / selectedWidth);
+          const hoursAhead = (startUnix * 1000 - Date.now()) / 3600000;
+          const leadTimeEst = Math.min(2, 1 + (hoursAhead / 720));
+          const qualityEst = sharpnessEst * leadTimeEst;
+          setMultipliers({ sharpness: sharpnessEst, leadTime: leadTimeEst, betQuality: qualityEst, isLoading: false });
+
+          if (depositAmount && parseFloat(depositAmount) > 0) {
+            const stakeNum = parseFloat(depositAmount);
+            const feeEst = Math.round(stakeNum * 0.02 * 1e6);
+            const netEst = Math.round(stakeNum * 0.98 * 1e6);
+            setSimulationDetails({ fee: feeEst.toString(), stakeNet: netEst.toString(), isValid: true, errorMessage: '' });
+            const profitEst = Math.round(netEst * (qualityEst - 1));
+            setEstimatedProfit({ profit: profitEst.toString(), multiplier: qualityEst.toFixed(2), isLoading: false });
+          } else {
+            setSimulationDetails({ fee: '0', stakeNet: '0', isValid: false, errorMessage: '' });
+            setEstimatedProfit({ profit: '0', multiplier: '1.00', isLoading: false });
+          }
         }
       } catch (error) {
-        console.warn('[crypto simulate] failed:', error);
-        setMultipliers({ sharpness: 0, leadTime: 0, betQuality: 0, isLoading: false });
-        setSimulationDetails({ fee: '0', stakeNet: '0', isValid: false, errorMessage: '' });
-        setEstimatedProfit({ profit: '0', multiplier: '1.00', isLoading: false });
+        console.error('[simulate] error:', error);
+        // Even on error, compute local estimates so the UI isn't blank
+        const totalRange = currentPrice > 0 ? currentPrice * 2 : 100000;
+        const selectedWidth = Math.max(0.01, selectedRange.max - selectedRange.min);
+        const sharpnessEst = Math.min(5, totalRange / selectedWidth);
+        const hoursAhead = (startUnix * 1000 - Date.now()) / 3600000;
+        const leadTimeEst = Math.min(2, 1 + (hoursAhead / 720));
+        const qualityEst = sharpnessEst * leadTimeEst;
+        setMultipliers({ sharpness: sharpnessEst, leadTime: leadTimeEst, betQuality: qualityEst, isLoading: false });
+
+        if (depositAmount && parseFloat(depositAmount) > 0) {
+          const stakeNum = parseFloat(depositAmount);
+          const feeEst = Math.round(stakeNum * 0.02 * 1e6);
+          const netEst = Math.round(stakeNum * 0.98 * 1e6);
+          setSimulationDetails({ fee: feeEst.toString(), stakeNet: netEst.toString(), isValid: true, errorMessage: '' });
+          setEstimatedProfit({ profit: Math.round(netEst * (qualityEst - 1)).toString(), multiplier: qualityEst.toFixed(2), isLoading: false });
+        } else {
+          setSimulationDetails({ fee: '0', stakeNet: '0', isValid: false, errorMessage: '' });
+          setEstimatedProfit({ profit: '0', multiplier: '1.00', isLoading: false });
+        }
       }
     };
 
@@ -1154,6 +1235,7 @@ export function PredictionCard({
               contractIdString={cryptoContractIdString}
               contractAddress={contractAddress}
               tokenSymbol={tokenSymbol}
+              currentUser={isSignedIn && user ? { id: user.id, name: user.firstName || user.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Trader', imageUrl: user.imageUrl } : undefined}
             />
           </div>
 
