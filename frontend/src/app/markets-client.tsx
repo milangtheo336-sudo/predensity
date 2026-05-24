@@ -139,10 +139,13 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets, ini
   const [sidebarSelection, setSidebarSelection] = useState<SidebarSelection | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // Live queries — fall back to server-fetched initial data until Convex connects
+  // Live queries — undefined means still loading, null means loaded but empty
   const liveEvents = useQuery(api.events.getEvents, {});
   const liveCrypto = useQuery(api.events.getCryptoMarkets, {});
   const liveClob = useQuery(api.clob.getClobMarkets, {});
+
+  // Show skeletons while Convex hasn't responded yet
+  const isLoading = liveEvents === undefined || liveCrypto === undefined || liveClob === undefined;
 
   const convexEvents = liveEvents ?? initialEvents;
   const cryptoMarkets = liveCrypto ?? initialCryptoMarkets;
@@ -275,7 +278,28 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets, ini
           </div>
 
           <div className="flex-1">
-            {filteredMarkets.length > 0 ? (
+            {isLoading ? (
+              /* Skeleton cards while Convex connects — same grid, same card shape, no layout shift */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-2xl bg-neutral-900 border border-neutral-800 overflow-hidden animate-pulse"
+                  >
+                    <div className="h-24 bg-neutral-800" />
+                    <div className="p-3 flex flex-col gap-2">
+                      <div className="h-3 bg-neutral-700 rounded w-4/5" />
+                      <div className="h-3 bg-neutral-700 rounded w-3/5" />
+                      <div className="h-2.5 bg-neutral-800 rounded w-2/5 mt-1" />
+                      <div className="flex gap-2 mt-2">
+                        <div className="h-8 bg-neutral-800 rounded-lg flex-1" />
+                        <div className="h-8 bg-neutral-800 rounded-lg flex-1" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredMarkets.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredMarkets.map((market) => (
                   <GenericMarketCard key={market.id} market={market} onClick={() => handleMarketClick(market)} />
