@@ -94,7 +94,7 @@ export function isCategoryDeployed(category: Category): boolean {
 // On-chain bucket index = Math.floor((targetTimestamp - startTimestamp) / 86400)
 // Reads from env vars on Vercel (mainnet), defaults to testnet for local dev
 export const CONTRACT_START_TIMESTAMPS: Record<string, number> = {
-  [Category.CRYPTO]: Number(process.env.NEXT_PUBLIC_CRYPTO_START_TIMESTAMP) || 1773940168,
+  [Category.CRYPTO]: Number(process.env.NEXT_PUBLIC_CRYPTO_START_TIMESTAMP) || 1777537604,
   [Category.POLITICS]: Number(process.env.NEXT_PUBLIC_POLITICS_START_TIMESTAMP) || 1773586860,
   [Category.SPORTS]: Number(process.env.NEXT_PUBLIC_SPORTS_START_TIMESTAMP) || 1773586872,
   [Category.TECHNOLOGY]: Number(process.env.NEXT_PUBLIC_TECH_START_TIMESTAMP) || 1773586888,
