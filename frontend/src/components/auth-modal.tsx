@@ -232,23 +232,10 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
         throw new Error(data.error || 'Failed to create wallet');
       }
 
-      // Step 6: Auto-associate USDC token (new users only)
-      // This eliminates friction - user can immediately receive USDC
-      try {
-        const { associateToken } = await import('@/lib/magic');
-        const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-        const usdcTokenId = network === 'mainnet' ? '0.0.456858' : '0.0.8229951';
-        
-        console.log('[auth] Auto-associating USDC token...');
-        await associateToken(usdcTokenId);
-        console.log('[auth] USDC token associated successfully');
-      } catch (associateErr) {
-        console.error('[auth] Token association failed:', associateErr);
-        // Don't fail the signup - user can associate later
-        // Show a non-blocking warning
-        setError('Account created, but token association failed. You may need to associate USDC manually.');
-        setTimeout(() => setError(''), 5000);
-      }
+      // Step 6: Skip auto-association for now
+      // Token association on Hedera MUST be signed by the account owner
+      // We'll handle this when user first tries to deposit
+      console.log('[auth] Wallet created successfully. Token will be associated on first deposit.');
 
       // Success - close modal
       console.log('[auth] Login successful, closing modal');
