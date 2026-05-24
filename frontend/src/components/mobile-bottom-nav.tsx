@@ -194,7 +194,7 @@ export function MobileBottomNav() {
                 >
                   <span className="text-2xl w-8 flex-shrink-0">{l.flag}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-base font-medium leading-tight">{l.nativeName}</div>
+                    <div className="text-base font-bold leading-tight">{l.nativeName}</div>
                     <div className="text-sm text-white/40 leading-tight">{l.name}</div>
                   </div>
                   {lang === l.code && (
