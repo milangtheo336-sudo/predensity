@@ -1,6 +1,6 @@
 # Contract Reading Hooks
 
-Production-ready React hooks for interacting with deployed Hedera prediction market contracts.
+Production-ready React hooks for interacting with deployed Arc prediction market contracts.
 
 ## Available Hooks
 
