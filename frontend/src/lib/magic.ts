@@ -114,9 +114,22 @@ export async function getUserInfo(): Promise<{
   if (!loggedIn) return null;
   
   const metadata = await magic.user.getInfo();
+  
+  // If publicAddress is not in metadata, get it from eth_accounts
+  let publicAddress = (metadata as any).publicAddress;
+  if (!publicAddress) {
+    try {
+      const provider = (magic as any).rpcProvider;
+      const accounts = await provider.request({ method: 'eth_accounts' });
+      publicAddress = accounts[0];
+    } catch (error) {
+      console.error('[getUserInfo] Failed to get publicAddress:', error);
+    }
+  }
+  
   return {
     email: (metadata as any).email!,
-    publicAddress: (metadata as any).publicAddress!,
+    publicAddress: publicAddress!,
     issuer: (metadata as any).issuer!,
   };
 }
@@ -346,23 +359,52 @@ export async function getTokenBalance(
 }
 
 /**
- * Approve token spending for a contract.
+ * Associate USDC token with user's Magic Link wallet.
+ * User must sign this transaction via Magic Link.
  * 
- * @param tokenAddress ERC-20 token address
- * @param spenderAddress Contract address to approve
- * @param amount Amount to approve (in smallest unit)
+ * On Hedera, accounts must explicitly associate with tokens before receiving them.
+ * This transaction MUST be signed by the account owner (Magic Link wallet).
+ * 
+ * @param tokenId USDC token ID (e.g., '0.0.8229951' for testnet)
  * @returns Transaction hash
  */
-export async function approveToken(
-  tokenAddress: string,
-  spenderAddress: string,
-  amount: string
-): Promise<string> {
-  const signer = await getMagicSigner();
+export async function associateToken(tokenId: string): Promise<string> {
+  const magic = getMagic();
+  const provider = (magic as any).rpcProvider;
   
-  const tokenAbi = ['function approve(address spender, uint256 amount) returns (bool)'];
-  const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, signer);
+  // Get user's address
+  const accounts = await provider.request({ method: 'eth_accounts' });
+  const userAddress = accounts[0];
   
-  const tx = await tokenContract.approve(spenderAddress, amount);
-  return tx.hash;
+  if (!userAddress) {
+    throw new Error('No account found. Please log in.');
+  }
+  
+  console.log('[associateToken] Associating token', tokenId, 'with address', userAddress);
+  
+  // Call backend to handle token association
+  // Backend will build the transaction and return it for user to sign
+  const didToken = await getDIDToken();
+  
+  const response = await fetch('/api/wallet/associate-token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${didToken}`,
+    },
+    body: JSON.stringify({
+      tokenId,
+      userAddress,
+    }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Token association failed');
+  }
+  
+  const data = await response.json();
+  console.log('[associateToken] Token association successful:', data.transactionId);
+  
+  return data.transactionId;
 }
