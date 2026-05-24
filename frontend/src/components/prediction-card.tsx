@@ -88,7 +88,7 @@ function CryptoMarketInfoSection({
   const [expanded, setExpanded] = useState(false);
 
   const network = (process.env.NEXT_PUBLIC_NETWORK || 'testnet').toLowerCase();
-  const explorerBase = network === 'mainnet' ? 'https://explorer.arc.io' : 'https://testnet-explorer.arc.io';
+  const explorerBase = process.env.NEXT_PUBLIC_EXPLORER_URL || (network === 'mainnet' ? 'https://arcscan.app' : 'https://testnet.arcscan.app');
   const resolverUrl = `${explorerBase}/address/${contractAddress}`;
   const truncatedAddress = contractAddress.slice(0, 6) + '...' + contractAddress.slice(-4);
 
@@ -189,7 +189,7 @@ function CryptoActivitySection({
 }) {
   const [activeTab, setActiveTab] = useState<'ideas' | 'positions' | 'activity'>('ideas');
   const network = (process.env.NEXT_PUBLIC_NETWORK || 'testnet').toLowerCase();
-  const explorerBase = network === 'mainnet' ? 'https://explorer.arc.io' : 'https://testnet-explorer.arc.io';
+  const explorerBase = process.env.NEXT_PUBLIC_EXPLORER_URL || (network === 'mainnet' ? 'https://arcscan.app' : 'https://testnet.arcscan.app');
 
   const { user } = useMagic();
   const { walletUser } = useWalletUser();
@@ -582,7 +582,7 @@ function CryptoActivitySection({
                   const stakeFormatted = (parseFloat(bet.stake) / 1e6).toFixed(2);
                   const hasTxHash = bet.transactionHash && bet.transactionHash.length > 0;
                   const txUrl = hasTxHash
-                    ? `${explorerBase}/transaction/${bet.transactionHash}`
+                    ? `${explorerBase}/tx/${bet.transactionHash}`
                     : `${explorerBase}/contract/${contractIdString}`;
                   const prof = profiles[bet.userAddress];
                   const isBetCurrentUser = currentUser && bet.userAddress === `managed:${currentUser.id}`.toLowerCase();
@@ -1504,13 +1504,13 @@ export function PredictionCard({
               {/* Price Range -- inline with PriceRangeSelector */}
               <div className="mb-5">
                 <span className="text-xs text-gray-500 font-medium block mb-2">{t.priceRangeUSD}</span>
-                {priceLoading || !currentPrice ? (
+                {priceLoading && !currentPrice && !priceError ? (
                   <div className="h-32 bg-gray-100 dark:bg-neutral-900 rounded-lg animate-pulse" />
                 ) : (
                   <PriceRangeSelector
-                    minPrice={Math.max(0.01, currentPrice * 0.5)}
-                    maxPrice={currentPrice * 2}
-                    currentPrice={currentPrice}
+                    minPrice={Math.max(0.01, (currentPrice || 1) * 0.5)}
+                    maxPrice={(currentPrice || 1) * 2}
+                    currentPrice={currentPrice || 0}
                     totalBets={0}
                     selectedDate={resolutionDate}
                     onRangeChange={handleRangeChange}
@@ -1661,7 +1661,7 @@ export function PredictionCard({
         success={betPlacingSuccess}
       />
       <BetPlacedModal isOpen={isBetPlaced} onClose={() => { setIsBetPlaced(false); setTransactionId(null); setDepositAmount(''); }} onViewExplorer={() => {
-        const url = (process.env.NEXT_PUBLIC_NETWORK || 'testnet').toLowerCase() === 'mainnet' ? 'https://explorer.arc.io' : 'https://testnet-explorer.arc.io';
+        const url = process.env.NEXT_PUBLIC_EXPLORER_URL || ((process.env.NEXT_PUBLIC_NETWORK || 'testnet').toLowerCase() === 'mainnet' ? 'https://arcscan.app' : 'https://testnet.arcscan.app');
         window.open(transactionId ? `${url}/tx/${transactionId}` : url, '_blank');
       }} />
     </div>
