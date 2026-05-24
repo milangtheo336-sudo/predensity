@@ -1218,6 +1218,36 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const guestCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifBtnRef = useRef<HTMLButtonElement>(null);
+  const authModalOpeningRef = useRef(false);
+  
+  // Log when authModalOpen changes
+  useEffect(() => {
+    console.log('[header] authModalOpen changed to:', authModalOpen);
+  }, [authModalOpen]);
+  
+  // Handler to open auth modal (only if not already logged in)
+  const handleOpenAuthModal = useCallback(() => {
+    console.log('[header] Opening auth modal, user:', user, 'already opening:', authModalOpeningRef.current, 'modal state:', authModalOpen);
+    
+    // Prevent multiple rapid calls
+    if (authModalOpeningRef.current || authModalOpen) {
+      console.log('[header] Modal already opening or open, ignoring duplicate call');
+      return;
+    }
+    
+    if (user) {
+      console.log('[header] User already logged in, not opening modal');
+      return;
+    }
+    
+    authModalOpeningRef.current = true;
+    setAuthModalOpen(true);
+    
+    // Reset the flag after a short delay
+    setTimeout(() => {
+      authModalOpeningRef.current = false;
+    }, 1000);
+  }, [user, authModalOpen]);
   const mobileNotifBtnRef = useRef<HTMLButtonElement>(null);
   const notifPanelRef = useRef<HTMLDivElement>(null);
 
@@ -1586,7 +1616,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
               <>
                 <Button 
                   ref={authLoginBtnRef} 
-                  onClick={() => setAuthModalOpen(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleOpenAuthModal();
+                  }}
                   variant="ghost" 
                   size="sm" 
                   className="text-sm text-gray-300 hover:text-white flex items-center gap-1.5"
@@ -1596,7 +1630,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
                 </Button>
                 <Button 
                   ref={authSignupBtnRef} 
-                  onClick={() => setAuthModalOpen(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleOpenAuthModal();
+                  }}
                   size="sm" 
                   className="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg px-5 py-2 flex items-center gap-1.5"
                 >
@@ -1746,7 +1784,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
             {!isSignedIn && mounted && (
               <>
                 <Button 
-                  onClick={() => setAuthModalOpen(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleOpenAuthModal();
+                  }}
                   variant="ghost" 
                   size="sm" 
                   className="text-xs text-gray-300 hover:text-white flex items-center gap-1"
@@ -1755,7 +1797,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
                   Log in
                 </Button>
                 <Button 
-                  onClick={() => setAuthModalOpen(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleOpenAuthModal();
+                  }}
                   size="sm" 
                   className="bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg px-3 py-1.5 flex items-center gap-1"
                 >
