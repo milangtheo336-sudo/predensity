@@ -19,9 +19,17 @@ interface AuthModalProps {
 
 type AuthView = 'main' | 'wallets';
 
+interface SigningWalletInfo {
+  name: string;
+  /** Either a URL string (EIP-6963 data: URI or /public path) or a JSX element */
+  logoSrc?: string;
+  logoElement?: React.ReactNode;
+}
+
 export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [signingWallet, setSigningWallet] = useState<SigningWalletInfo | null>(null);
   const [error, setError] = useState('');
   const [view, setView] = useState<AuthView>('main');
   const [lastUsedMethod, setLastUsedMethod] = useState<string | null>(null);
@@ -30,7 +38,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const backdropClickEnabledRef = useRef(false);
   const router = useRouter();
   const { login, refreshUser, user } = useMagic();
-  const { setWalletUser, setIsWalletAuthenticating, setSigningWallet } = useWalletUser();
+  const { setWalletUser, setIsWalletAuthenticating } = useWalletUser();
   const { isConnected } = useWallet();
 
   // HashPack connector hooks (Hedera-native, not EIP-6963)
@@ -209,12 +217,9 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       const normalizedAddress = address.toLowerCase();
       const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
       const message = `Sign in to Predensity\nAddress: ${normalizedAddress}\nNonce: ${nonce}`;
-
-      // Show "Requesting Signature" overlay while waiting for user to approve
-      setSigningWallet({ name: 'HashPack', icon: '/hashpack.jpg' });
-
       let signerSignature: any;
       try {
+        setSigningWallet({ name: 'HashPack', logoSrc: '/hashpack.jpg' });
         signerSignature = await signHashpack(message);
       } catch (signErr: any) {
         const msg = (signErr?.message || '').toLowerCase();
@@ -222,18 +227,14 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
           throw new Error('Signature cancelled. Please approve the sign-in request in HashPack.');
         }
         throw new Error('Failed to sign message. Please try again.');
-      } finally {
-        setSigningWallet(null);
       }
-
       const sigBytes = signerSignature?._signerSignature?.signature || signerSignature?.signature || signerSignature;
       const signature = typeof sigBytes === 'string' ? sigBytes : ('0x' + Buffer.from(sigBytes).toString('hex'));
       await finishWalletSignIn(normalizedAddress, signature, nonce, 'hashpack');
     } catch (err) {
       console.error('[auth-modal] HashPack error:', err);
-      setSigningWallet(null);
       setError(err instanceof Error ? err.message : 'Failed to connect HashPack');
-    } finally { setIsLoading(false); }
+    } finally { setIsLoading(false); setSigningWallet(null); }
   };
 
   // ---------------------------------------------------------------------------
@@ -254,6 +255,12 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
 
       let signature: string;
       try {
+        setSigningWallet({ name: 'WalletConnect', logoElement: (
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <rect width="40" height="40" rx="10" fill="#3B99FC"/>
+            <path d="M11.5 17.2c4.7-4.6 12.3-4.6 17 0l.6.5a.6.6 0 010 .9l-2 2a.3.3 0 01-.4 0l-.8-.8c-3.3-3.2-8.6-3.2-11.9 0l-.8.8a.3.3 0 01-.4 0l-2-2a.6.6 0 010-.9l.7-.5zm21 3.9l1.8 1.7a.6.6 0 010 .9l-8 7.8a.6.6 0 01-.8 0l-5.7-5.5a.15.15 0 00-.2 0l-5.7 5.5a.6.6 0 01-.8 0l-8-7.8a.6.6 0 010-.9l1.8-1.7a.6.6 0 01.8 0l5.7 5.5c.1.1.2.1.2 0l5.7-5.5a.6.6 0 01.8 0l5.7 5.5c.1.1.2.1.2 0l5.7-5.5a.6.6 0 01.8 0z" fill="white"/>
+          </svg>
+        )});
         signature = await signWithWalletConnect(session, message);
       } catch (signErr: any) {
         const msg = (signErr?.message || '').toLowerCase();
@@ -269,7 +276,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       if (err?.message?.includes('Modal closed') || err?.message?.includes('User closed')) return;
       console.error('[auth-modal] WalletConnect error:', err);
       setError(err instanceof Error ? err.message : 'Failed to connect wallet');
-    } finally { setIsLoading(false); }
+    } finally { setIsLoading(false); setSigningWallet(null); }
   };
   const handleEIP6963Connect = async (providerDetail: EIP6963ProviderDetail) => {
     setIsLoading(true); setError('');
@@ -283,6 +290,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       const message = `Sign in to Predensity\nAddress: ${normalizedAddress}\nNonce: ${nonce}`;
       let signature: string;
       try {
+        setSigningWallet({ name: providerDetail.info.name, logoSrc: providerDetail.info.icon });
         signature = await provider.request({ method: 'personal_sign', params: [message, normalizedAddress] });
       } catch (signErr: any) {
         const msg = (signErr?.message || '').toLowerCase();
@@ -295,7 +303,7 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
     } catch (err) {
       console.error(`[auth-modal] EIP-6963 (${providerDetail.info.name}) error:`, err);
       setError(err instanceof Error ? err.message : `Failed to connect ${providerDetail.info.name}`);
-    } finally { setIsLoading(false); }
+    } finally { setIsLoading(false); setSigningWallet(null); }
   };
 
   // ---------------------------------------------------------------------------
@@ -312,8 +320,34 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
         }}
       />
 
-      {/* Loading Overlay */}
-      {isLoading && (
+      {/* Signing Wallet Modal — shown while waiting for wallet signature */}
+      {signingWallet && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md">
+          <div className="bg-[#111318] border border-white/10 rounded-3xl p-10 flex flex-col items-center gap-6 w-[320px] shadow-2xl">
+            {/* Wallet logo */}
+            <div className="w-24 h-24 rounded-3xl overflow-hidden flex items-center justify-center bg-[#1a1f2e] shadow-lg">
+              {signingWallet.logoElement ? (
+                signingWallet.logoElement
+              ) : signingWallet.logoSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={signingWallet.logoSrc} alt={signingWallet.name} className="w-full h-full object-contain" />
+              ) : null}
+            </div>
+            {/* Wallet name */}
+            <p className="text-white text-xl font-bold">{signingWallet.name}</p>
+            {/* Message */}
+            <div className="text-center space-y-1">
+              <p className="text-white text-lg font-semibold">Requesting Signature</p>
+              <p className="text-gray-400 text-sm">Please sign to connect.</p>
+            </div>
+            {/* Subtle spinner */}
+            <div className="w-8 h-8 rounded-full border-2 border-white/10 border-t-white/60 animate-spin" />
+          </div>
+        </div>
+      )}
+
+      {/* Generic Loading Overlay — email / OAuth / passkey flows */}
+      {isLoading && !signingWallet && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md">
           <div className="flex flex-col items-center gap-6">
             <div className="relative">
