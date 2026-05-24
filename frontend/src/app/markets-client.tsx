@@ -11,15 +11,37 @@ import { CategoryHeroVideo, CategoryHeroText } from '@/components/category-hero'
 import { CategoryTabs } from '@/components/category-tabs';
 import { MarketFilters } from '@/components/market-filters';
 import { GenericMarketCard } from '@/components/generic-market-card';
+import { ChallengeCard } from '@/components/challenge-card';
 import { MarketsSidebar, SidebarSelection } from '@/components/markets-sidebar';
 import { FINANCE_TAXONOMY } from '@/lib/types/finance';
+import { Search, ListFilter, SlidersHorizontal } from 'lucide-react';
+import { MarketCard, Category, MarketStatus, CATEGORIES, SortOption } from '@/lib/types/categories';
 import { SPORT_TAXONOMY } from '@/lib/types/sports';
-import {
-  Category,
-  MarketStatus,
-  SortOption,
-  MarketCard,
-} from '@/lib/types/categories';
+
+const truncateAddrLocal = (addr: string) => {
+  if (!addr) return '';
+  if (addr.startsWith('managed:')) {
+    const rest = addr.slice(8);
+    return `${rest.slice(0, 6)}...${rest.slice(-4)}`;
+  }
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+};
+
+function getGameImageUrl(title: string | undefined): string {
+  if (!title) return '/sports category/esport.avif';
+  const t = title.toLowerCase();
+  if (t.includes('mortal kombat') || t.includes('mortal combat')) return '/sports category/mortal kombat.jpg';
+  if (t.includes('fifa') || t.includes('fc24')) return '/sports category/fifa.png';
+  if (t.includes('nba')) return '/sports category/NBA2k.jpg';
+  if (t.includes('call of duty') || t.includes('cod')) return '/sports category/call of duty.jpg';
+  if (t.includes('fortnite')) return '/sports category/fortnite.jpg';
+  if (t.includes('free fire')) return '/sports category/free fire.jpg';
+  if (t.includes('chess')) return '/sports category/chess.jpg';
+  if (t.includes('snooker')) return '/sports category/snookers.jpg';
+  if (t.includes('efootball')) return '/sports category/efootball.png';
+  if (t.includes('madden') || t.includes('nfl')) return '/sports category/nflmaiden.png';
+  return '/sports category/esport.avif';
+}
 
 interface Props {
   initialEvents: any[];
@@ -80,8 +102,8 @@ function buildMarkets(
       .map((match) => ({
         id: match.matchId,
         category: Category.SPORTS,
-        question: match.gameTitle || `${match.playerA} vs ${match.playerB}`,
-        description: match.gameTagline || `${match.gameMode || ''} on ${match.platform || ''}`,
+        question: match.gameTitle || '1v1 Challenge',
+        description: `${truncateAddrLocal(match.playerA)} vs ${truncateAddrLocal(match.playerB)}`,
         icon: 'S',
         targetTimestamp: match.startTime,
         totalVolume: String(match.totalPool || 0),
@@ -89,9 +111,10 @@ function buildMarkets(
         priceMin: '',
         priceMax: '',
         status: match.status === 'open' ? 'open' : 'closed',
-        imageUrl: '',
+        imageUrl: getGameImageUrl(match.gameTitle),
         sport: 'esports',
         league: match.league,
+        challengeData: match,
       }));
     markets.push(...challengeCards);
   }
@@ -300,16 +323,21 @@ export default function MarketsClient({ initialEvents, initialCryptoMarkets }: P
                   </div>
                 ))}
               </div>
-            ) : filteredMarkets.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredMarkets.map((market) => (
-                  <GenericMarketCard key={market.id} market={market} onClick={() => handleMarketClick(market)} />
-                ))}
-              </div>
             ) : (
-              <div className="text-center py-12">
-                <p className="text-gray-400 text-lg">{t.noMarketsFound}</p>
-                <p className="text-gray-500 text-sm mt-2">{t.tryAdjusting}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredMarkets.length === 0 ? (
+                  <div className="text-gray-500 py-12 text-center border border-gray-200 dark:border-neutral-800 rounded-xl bg-gray-50 dark:bg-[#111111]">
+                    No markets found matching your filters.
+                  </div>
+                ) : (
+                  filteredMarkets.map((market) => (
+                    market.challengeData ? (
+                      <ChallengeCard key={market.id} market={market} onClick={() => handleMarketClick(market)} />
+                    ) : (
+                      <GenericMarketCard key={market.id} market={market} onClick={() => handleMarketClick(market)} />
+                    )
+                  ))
+                )}
               </div>
             )}
           </div>
