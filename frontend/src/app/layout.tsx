@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus_Jakarta_Sans } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { MobileBottomNav } from '@/components/mobile-bottom-nav';
@@ -9,11 +9,12 @@ import ContextProvider from '../../context';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { MagicProvider } from '@/context/MagicContext';
 import { WalletUserProvider } from '@/context/WalletUserContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 import { Analytics } from '@vercel/analytics/react';
 import { useEffect } from 'react';
 
 
-const appFont = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-app' });
+const appFont = Inter({ subsets: ['latin'], variable: '--font-app', weight: ['300', '400', '500', '600', '700', '800', '900'] });
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -104,6 +105,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <MagicProvider>
           <WalletUserProvider>
           <ConvexProvider client={convex}>
+            <LanguageProvider>
               <ContextProvider>
                 <ThemeProvider
                   attribute="class"
@@ -117,6 +119,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <Analytics />
                 </ThemeProvider>
               </ContextProvider>
+            </LanguageProvider>
           </ConvexProvider>
           </WalletUserProvider>
         </MagicProvider>
