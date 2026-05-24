@@ -6,8 +6,21 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
 import { sendTransaction, waitForTransaction, approveToken, getTokenBalance } from '@/lib/magic';
-import { CONTRACT_IDS, CONTRACT_ADDRESSES, STAKING_TOKEN_IDS, STAKING_MODE } from '@/lib/contracts/contract-config';
+import { CONTRACT_IDS, CONTRACT_ADDRESSES, STAKING_TOKEN_CONFIG, STAKING_MODE } from '@/lib/contracts/contract-config';
 import { Category } from '@/lib/types/categories';
+
+// Custom Hedera provider that disables ENS (same as in magic.ts)
+class HederaProvider extends ethers.providers.JsonRpcProvider {
+  async getResolver(name: string): Promise<null> {
+    return null;
+  }
+  async resolveName(name: string): Promise<string | null> {
+    if (ethers.utils.isAddress(name)) {
+      return name;
+    }
+    return null;
+  }
+}
 
 // ABI for placeBetWithToken function
 const PLACE_BET_ABI = new ethers.utils.Interface([
@@ -46,14 +59,14 @@ export function useNonCustodialBetting() {
 
       const contractId = CONTRACT_IDS[category];
       const contractAddress = CONTRACT_ADDRESSES[category];
-      const tokenId = STAKING_TOKEN_IDS[STAKING_MODE];
+      const tokenAddress = STAKING_TOKEN_CONFIG[STAKING_MODE]; // Use EVM address format
 
-      if (!contractId || !contractAddress || !tokenId) {
-        console.error('[placeBet] Contract not configured:', { contractId, contractAddress, tokenId });
+      if (!contractId || !contractAddress || !tokenAddress) {
+        console.error('[placeBet] Contract not configured:', { contractId, contractAddress, tokenAddress });
         throw new Error('Contract not configured for this category');
       }
 
-      console.log('[placeBet] Contract config:', { contractId, contractAddress, tokenId });
+      console.log('[placeBet] Contract config:', { contractId, contractAddress, tokenAddress });
 
       // Convert stake to token units (6 decimals for USDC)
       const tokenAmount = ethers.utils.parseUnits(stakeUsdc, 6);
@@ -92,7 +105,7 @@ export function useNonCustodialBetting() {
 
       // Check token balance
       console.log('[placeBet] Checking token balance...');
-      const balance = await getTokenBalance(tokenId);
+      const balance = await getTokenBalance(tokenAddress);
       console.log('[placeBet] Token balance:', ethers.utils.formatUnits(balance, 6), 'USDC');
       
       if (ethers.BigNumber.from(balance).lt(tokenAmount)) {
@@ -103,8 +116,9 @@ export function useNonCustodialBetting() {
       console.log('[placeBet] Checking token allowance...');
       const tokenAbi = ['function allowance(address owner, address spender) view returns (uint256)'];
       
-      const provider = new ethers.providers.Web3Provider(magicProvider);
-      const tokenContract = new ethers.Contract(tokenId, tokenAbi, provider);
+      // Use Hedera provider directly to avoid ENS issues
+      const hederaProvider = new HederaProvider('https://testnet.hashio.io/api');
+      const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, hederaProvider);
       const allowance = await tokenContract.allowance(userAddress, contractAddress);
       console.log('[placeBet] Current allowance:', ethers.utils.formatUnits(allowance, 6), 'USDC');
 
@@ -115,7 +129,7 @@ export function useNonCustodialBetting() {
         
         // Approve a large amount to avoid future approvals (1M USDC)
         const approvalAmount = ethers.utils.parseUnits('1000000', 6);
-        const approveTxHash = await approveToken(tokenId, contractAddress, approvalAmount.toString());
+        const approveTxHash = await approveToken(tokenAddress, contractAddress, approvalAmount.toString());
         
         console.log('[placeBet] Approval transaction:', approveTxHash);
         await waitForTransaction(approveTxHash, 1);
