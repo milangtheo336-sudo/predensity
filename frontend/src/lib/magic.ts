@@ -27,107 +27,6 @@ class HederaProvider extends ethers.providers.JsonRpcProvider {
 
 // Singleton instance
 let magicInstance: any = null;
-let blurRemoverInitialized = false;
-
-/**
- * Initialize MutationObserver to remove blur effects from Magic Link modal.
- * This runs once and watches for Magic Link modal elements being added to the DOM.
- */
-function initializeBlurRemover() {
-  if (blurRemoverInitialized || typeof window === 'undefined') return;
-  blurRemoverInitialized = true;
-
-  // Function to aggressively remove blur and backdrop from an element
-  const removeBlur = (element: HTMLElement) => {
-    if (!element || !element.style) return;
-    
-    // Remove all blur and filter effects
-    element.style.backdropFilter = 'none';
-    element.style.webkitBackdropFilter = 'none';
-    element.style.filter = 'none';
-    element.style.webkitFilter = 'none';
-    
-    // If this is a backdrop/overlay element, make it transparent or remove it
-    const computedStyle = window.getComputedStyle(element);
-    const isBackdrop = 
-      computedStyle.position === 'fixed' &&
-      (computedStyle.backdropFilter !== 'none' || 
-       computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' ||
-       element.style.backdropFilter ||
-       element.style.backgroundColor);
-    
-    if (isBackdrop && !element.querySelector('iframe')) {
-      // This is likely a backdrop element without the actual modal
-      // Make it completely transparent
-      element.style.backgroundColor = 'transparent';
-      element.style.background = 'transparent';
-    }
-  };
-
-  // Aggressively scan and remove blur from all elements
-  const removeBlurFromAll = () => {
-    // Target all divs that could be Magic Link elements
-    const allDivs = document.querySelectorAll('body > div');
-    allDivs.forEach((div) => {
-      const element = div as HTMLElement;
-      const style = window.getComputedStyle(element);
-      
-      // Check if this is a fixed/absolute positioned element (likely modal/backdrop)
-      if (style.position === 'fixed' || style.position === 'absolute') {
-        removeBlur(element);
-        
-        // Also check all children
-        const children = element.querySelectorAll('*');
-        children.forEach((child) => removeBlur(child as HTMLElement));
-      }
-    });
-    
-    // Also target any iframes
-    const iframes = document.querySelectorAll('iframe');
-    iframes.forEach((iframe) => {
-      const parent = iframe.parentElement;
-      if (parent) removeBlur(parent);
-    });
-  };
-
-  // Watch for any DOM changes
-  const observer = new MutationObserver((mutations) => {
-    let shouldCheck = false;
-    
-    mutations.forEach((mutation) => {
-      // Check if nodes were added
-      if (mutation.addedNodes.length > 0) {
-        shouldCheck = true;
-      }
-      
-      // Check if style attribute changed
-      if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-        const element = mutation.target as HTMLElement;
-        if (element.style) {
-          removeBlur(element);
-        }
-      }
-    });
-    
-    if (shouldCheck) {
-      removeBlurFromAll();
-    }
-  });
-
-  // Start observing
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['style', 'class'],
-  });
-
-  // Run immediately
-  removeBlurFromAll();
-  
-  // Also run on a fast interval to catch any changes
-  setInterval(removeBlurFromAll, 50);
-}
 
 /**
  * Get Magic instance (singleton).
@@ -174,9 +73,6 @@ export function getMagic(): any {
       if (!magicInstance.hedera) {
         throw new Error('Hedera extension not initialized');
       }
-
-      // Initialize blur remover
-      initializeBlurRemover();
     } catch (error) {
       throw error;
     }
