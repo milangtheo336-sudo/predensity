@@ -312,7 +312,7 @@ function CryptoActivitySection({
       .sort((a, b) => b.totalStake - a.totalStake);
   }, [allBets]);
 
-  // Fast O(1) position lookup by address (lowercased) — used for comment badges
+  // Fast O(1) position lookup by address (lowercased) â€” used for comment badges
   const positionsByAddr = useMemo(() => {
     const m = new Map<string, { totalStake: number; betCount: number; active: number }>();
     for (const p of positions) m.set(p.addr, p);
@@ -594,7 +594,7 @@ function CryptoActivitySection({
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-gray-900 dark:text-light-gray font-medium">{stakeFormatted} {getStakingCurrency().symbol}</span>
+                            <span className="text-gray-900 dark:text-white font-medium">{stakeFormatted} {getStakingCurrency().symbol}</span>
                             <span className="text-gray-400 text-xs">{bet.finalized ? 'Settled' : 'Active'}</span>
                           </div>
                           {betProfileLink ? (
@@ -645,14 +645,14 @@ function CryptoActivitySection({
                       <UserAvatar addr={pos.addr} size={28} imageUrl={posImageUrl} />
                       <div className="min-w-0">
                         {posProfileLink ? (
-                          <a href={posProfileLink} className="text-gray-900 dark:text-light-gray block truncate hover:underline" style={{ fontWeight: 521 }}>{posDisplayName}</a>
+                          <a href={posProfileLink} className="text-gray-900 dark:text-white block truncate hover:underline" style={{ fontWeight: 521 }}>{posDisplayName}</a>
                         ) : (
-                          <span className="text-gray-900 dark:text-light-gray block truncate" style={{ fontWeight: 521 }}>{posDisplayName}</span>
+                          <span className="text-gray-900 dark:text-white block truncate" style={{ fontWeight: 521 }}>{posDisplayName}</span>
                         )}
                         <span className="text-xs text-gray-500">{pos.betCount} bet{pos.betCount !== 1 ? 's' : ''} -- {pos.active} active</span>
                       </div>
                     </div>
-                    <span className="text-gray-900 dark:text-light-gray font-medium text-sm flex-shrink-0">
+                    <span className="text-gray-900 dark:text-white font-medium text-sm flex-shrink-0">
                       {pos.totalStake.toFixed(2)} {getStakingCurrency().symbol}
                     </span>
                   </div>
@@ -1225,13 +1225,36 @@ export function PredictionCard({
           <div className="lg:col-span-8 space-y-6 order-1 lg:order-none">
 
             {/* Sticky header */}
-            <div className="sticky top-0 z-20 bg-white dark:bg-black pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-gray-200 dark:border-white/[0.06]">
-              {/* Top row: category badge + time remaining */}
-              <div className="flex items-center justify-between pt-2 mb-3">
-                <span className="bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.06] text-gray-600 dark:text-gray-300 text-xs font-medium px-3 py-1 rounded">
-                  Crypto
-                </span>
-                <div className="flex items-center gap-1">
+            <div className="sticky top-0 z-20 bg-white dark:bg-[#141414] pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-gray-200 dark:border-[#2a2a2a]">
+              {/* Header: logo + badge + title + share -- matches CLOB layout */}
+              <div className="flex gap-3 items-start pt-2 mb-3">
+                <Image src={tokenLogo} alt={tokenName} width={40} height={40} className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-[#2a2a2a] text-gray-600 dark:text-gray-300 text-xs font-medium px-2.5 py-0.5 rounded capitalize">
+                      Crypto
+                    </span>
+                    <span className="text-gray-500 dark:text-gray-400 text-xs flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Resolves in {timeRemaining}
+                    </span>
+                  </div>
+                  <h1 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 dark:text-white leading-tight truncate">
+                    Predict {tokenSymbol} Price
+                  </h1>
+                  <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                    {tokenName} --
+                    <HbarPriceDisplay
+                      price={currentPrice}
+                      isLoading={priceLoading}
+                      error={priceError}
+                      isStale={isStale}
+                      retryFetch={retryFetch}
+                      size="sm"
+                      showIcon={false}
+                    />
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1249,7 +1272,7 @@ export function PredictionCard({
                     onClick={(e) => {
                       e.stopPropagation();
                       const url = `${window.location.origin}/markets/crypto-${tokenSymbol.toLowerCase()}`;
-                      const text = `Predict ${tokenSymbol} price on Predensity\n\nCurrent price: $${currentPrice > 0 ? currentPrice.toFixed(2) : '...'}\n\n${url}`;
+                      const text = `Predict ${tokenSymbol} price on Predensity\n\nCurrent price: ${currentPrice > 0 ? currentPrice.toFixed(2) : '...'}\n\n${url}`;
                       window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
                     }}
                     className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
@@ -1261,7 +1284,7 @@ export function PredictionCard({
                     onClick={(e) => {
                       e.stopPropagation();
                       const url = `${window.location.origin}/markets/crypto-${tokenSymbol.toLowerCase()}`;
-                      const text = `Predict *${tokenSymbol}* price on Predensity\n\nCurrent price: $${currentPrice > 0 ? currentPrice.toFixed(2) : '...'}\n\n${url}`;
+                      const text = `Predict *${tokenSymbol}* price on Predensity\n\nCurrent price: ${currentPrice > 0 ? currentPrice.toFixed(2) : '...'}\n\n${url}`;
                       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
                     }}
                     className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
@@ -1269,39 +1292,14 @@ export function PredictionCard({
                   >
                     <Share2 className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-gray-500 dark:text-gray-400 text-sm flex items-center gap-1.5 ml-1">
-                    <Clock className="w-3.5 h-3.5" /> Resolves in {timeRemaining}
-                  </span>
                 </div>
               </div>
 
-              {/* Token identity: logo + name + live price */}
-              <div className="flex gap-3 items-center mb-3">
-                <Image src={tokenLogo} alt={tokenName} width={40} height={40} className="rounded-lg border border-gray-200 dark:border-white/[0.06] flex-shrink-0" />
-                <div className="min-w-0">
-                  <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-light-gray leading-tight truncate">
-                    Predict {tokenSymbol} Price
-                  </h1>
-                  <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                    {tokenName} --
-                    <HbarPriceDisplay
-                      price={currentPrice}
-                      isLoading={priceLoading}
-                      error={priceError}
-                      isStale={isStale}
-                      retryFetch={retryFetch}
-                      size="sm"
-                      showIcon={false}
-                    />
-                  </p>
-                </div>
-              </div>
-
-              {/* Live price highlight bar */}
+              {/* Live price bar */}
               <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
                 <div className="flex items-baseline gap-2">
                   <span className="text-gray-500">Current Price</span>
-                  <span className="text-lg font-bold text-gray-900 dark:text-light-gray">
+                  <span className="text-lg font-bold text-gray-900 dark:text-white">
                     ${currentPrice > 0 ? currentPrice.toFixed(priceDecimals > 4 ? 4 : priceDecimals) : '...'}
                   </span>
                 </div>
@@ -1312,7 +1310,7 @@ export function PredictionCard({
             </div>
 
             {/* KDE Chart -- full width, breathing room */}
-            <div className="bg-white dark:bg-black border-b border-gray-200 dark:border-white/10 p-4 sm:p-5 overflow-hidden">
+            <div className="bg-white dark:bg-[#141414] p-4 sm:p-5 overflow-hidden">
               <KDEChart
                 currentPrice={currentPrice}
                 tokenSymbol={tokenSymbol}
@@ -1324,8 +1322,8 @@ export function PredictionCard({
           </div>
 
           {/* TRADING PANEL -- order-2 on mobile (right after chart), stays in right column on desktop */}
-          <div className="order-2 lg:order-none lg:col-span-4 lg:row-span-2 relative z-10">
-            <div className="lg:sticky lg:top-20 bg-gray-50 dark:bg-neutral-950 border border-gray-200 dark:border-white/[0.06] rounded-lg p-5 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto relative">
+          <div className="order-2 lg:order-none lg:col-span-4 lg:row-span-2">
+            <div className="lg:sticky lg:top-20 z-10 bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2a2a2a] rounded-lg p-5 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
 
               {/* Resolution Date/Time Picker -- compact timeline style */}
               <div className="mb-5">
@@ -1364,7 +1362,7 @@ export function PredictionCard({
                 </div>
 
                 {/* Compact date + time row */}
-                <div className="flex items-center gap-2 bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.06] rounded-lg px-2 py-1.5">
+                <div className="flex items-center gap-2 bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-[#2a2a2a] rounded-lg px-2 py-1.5">
                   {/* Date stepper */}
                   <button
                     onClick={decrementDate}
@@ -1372,7 +1370,7 @@ export function PredictionCard({
                   >
                     <Minus className="w-3 h-3" />
                   </button>
-                  <span className="text-sm font-bold text-gray-900 dark:text-light-gray min-w-[72px] text-center">
+                  <span className="text-sm font-bold text-gray-900 dark:text-white min-w-[72px] text-center">
                     {formatMonth(resolutionDate)} {resolutionDate.getDate()}
                   </span>
                   <button
@@ -1392,7 +1390,7 @@ export function PredictionCard({
                   >
                     <Minus className="w-3 h-3" />
                   </button>
-                  <span className="text-sm font-bold text-gray-900 dark:text-light-gray min-w-[44px] text-center">
+                  <span className="text-sm font-bold text-gray-900 dark:text-white min-w-[44px] text-center">
                     {resolutionTime}
                   </span>
                   <button
@@ -1442,7 +1440,7 @@ export function PredictionCard({
               </div>
 
               {/* Amount Input */}
-              <div className="mb-5 border border-gray-200 dark:border-white/[0.06] rounded-lg overflow-hidden focus-within:border-vibrant-purple transition-colors bg-gray-50 dark:bg-neutral-900">
+              <div className="mb-5 border border-gray-200 dark:border-[#2a2a2a] rounded-lg overflow-hidden focus-within:border-vibrant-purple transition-colors bg-gray-50 dark:bg-neutral-900">
                 <div className="flex items-center p-1">
                   <div className="flex-1">
                     <input
@@ -1454,7 +1452,7 @@ export function PredictionCard({
                         const v = e.target.value;
                         if (v === '' || /^[0-9]*\.?[0-9]*$/.test(v)) setDepositAmount(v);
                       }}
-                      className="w-full bg-transparent text-2xl font-bold text-gray-900 dark:text-light-gray px-3 py-2.5 outline-none"
+                      className="w-full bg-transparent text-2xl font-bold text-gray-900 dark:text-white px-3 py-2.5 outline-none"
                     />
                   </div>
                   <div className="flex items-center pr-3 gap-2">
@@ -1480,14 +1478,14 @@ export function PredictionCard({
                 </button>
 
                 {showDetails && (
-                  <div className="mt-2 p-3 bg-gray-100 dark:bg-neutral-900 rounded-lg border border-gray-200 dark:border-white/[0.06] space-y-2 text-sm">
+                  <div className="mt-2 p-3 bg-gray-100 dark:bg-neutral-900 rounded-lg border border-gray-200 dark:border-[#2a2a2a] space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Sharpness</span>
-                      <span className="text-gray-800 dark:text-light-gray">{multipliers.isLoading ? '...' : multipliers.sharpness > 0 ? `${multipliers.sharpness.toFixed(2)}x` : '--'}</span>
+                      <span className="text-gray-800 dark:text-white">{multipliers.isLoading ? '...' : multipliers.sharpness > 0 ? `${multipliers.sharpness.toFixed(2)}x` : '--'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Lead Time</span>
-                      <span className="text-gray-800 dark:text-light-gray">{multipliers.isLoading ? '...' : multipliers.leadTime > 0 ? `${multipliers.leadTime.toFixed(2)}x` : '--'}</span>
+                      <span className="text-gray-800 dark:text-white">{multipliers.isLoading ? '...' : multipliers.leadTime > 0 ? `${multipliers.leadTime.toFixed(2)}x` : '--'}</span>
                     </div>
                     <div className="flex justify-between font-medium">
                       <span className="text-gray-600 dark:text-gray-300">Total Quality</span>
@@ -1496,7 +1494,7 @@ export function PredictionCard({
                     <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 w-full" />
                     <div className="flex justify-between">
                       <span className="text-gray-500">Est. Fee</span>
-                      <span className="text-gray-800 dark:text-light-gray">
+                      <span className="text-gray-800 dark:text-white">
                         {depositAmount && simulationDetails.isValid && simulationDetails.fee !== '0'
                           ? `${parseFloat(ethers.utils.formatUnits(simulationDetails.fee, getStakingCurrency().decimals)).toFixed(4)} ${getStakingCurrency().symbol}`
                           : `0.0000 ${getStakingCurrency().symbol}`}
@@ -1506,9 +1504,9 @@ export function PredictionCard({
                     <div className="flex justify-between font-medium">
                       <span className="text-gray-600 dark:text-gray-300">Est. Profit</span>
                       <span className={(() => {
-                        if (estimatedProfit.isLoading || !depositAmount || !simulationDetails.isValid) return 'text-gray-800 dark:text-light-gray';
+                        if (estimatedProfit.isLoading || !depositAmount || !simulationDetails.isValid) return 'text-gray-800 dark:text-white';
                         const profitVal = parseFloat(ethers.utils.formatUnits(estimatedProfit.profit, getStakingCurrency().decimals));
-                        return profitVal > 0 ? 'text-bright-green' : profitVal < 0 ? 'text-red-400' : 'text-gray-800 dark:text-light-gray';
+                        return profitVal > 0 ? 'text-bright-green' : profitVal < 0 ? 'text-red-400' : 'text-gray-800 dark:text-white';
                       })()}>
                         {estimatedProfit.isLoading
                           ? '...'
@@ -1548,13 +1546,6 @@ export function PredictionCard({
               </div>
 
               {/* Market Details removed for mainnet -- internal info not user-facing */}
-              <BetPlacingModal 
-                isOpen={isPlacingBet} 
-                onClose={() => { setIsPlacingBet(false); setBetError(null); }}
-                amount={depositAmount}
-                priceRange={currentPriceRange}
-                asset={tokenSymbol}
-              />
             </div>
           </div>
 
@@ -1577,6 +1568,7 @@ export function PredictionCard({
         </div>
       </div>
 
+      <BetPlacingModal isOpen={isPlacingBet} onClose={() => { setIsPlacingBet(false); setBetError(null); }} />
       <BetPlacedModal isOpen={isBetPlaced} onClose={() => { setIsBetPlaced(false); setTransactionId(null); setDepositAmount(''); }} onViewExplorer={() => {
         const url = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase() === 'mainnet' ? 'https://hashscan.io/mainnet' : 'https://hashscan.io/testnet';
         window.open(transactionId ? `${url}/transaction/${transactionId}` : url, '_blank');
