@@ -1,5 +1,3 @@
-﻿
-export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { api } from '../../../../../../convex/_generated/api';
 import { requireAdmin, rateLimit } from '@/lib/api-auth';
@@ -48,5 +46,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-
