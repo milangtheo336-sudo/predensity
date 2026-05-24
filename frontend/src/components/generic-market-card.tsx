@@ -24,140 +24,91 @@ interface GenericMarketCardProps {
   onClick?: () => void;
 }
 
-function CommunitySentiment({
-  marketId,
-  betCount,
-  convexBets,
-}: {
-  marketId: string;
-  betCount: number;
-  convexBets: any[] | undefined;
-}) {
-  const [hoveredDir, setHoveredDir] = useState<'bullish' | 'bearish' | null>(null);
-  const sentimentData = useConvexQuery(api.sentiment.getSentiment, { marketId });
-  const recordSentiment = useConvexMutation(api.sentiment.recordSentiment);
+function CryptoSparkline({ convexBets }: { convexBets: any[] | undefined }) {
+  const W = 300;
+  const H = 64;
+  const PAD = 4;
 
-  // Derive bullish/bearish direction from bets using midpoint vs median
-  const { bullishBets, bearishBets } = useMemo(() => {
-    const active = (convexBets || []).filter((b: any) => b.status !== 'failed');
-    if (active.length === 0) return { bullishBets: 0, bearishBets: 0 };
+  const { points, isBullish } = useMemo(() => {
+    const active = (convexBets || [])
+      .filter((b: any) => b.status !== 'failed')
+      .sort((a: any, b: any) => a.timestamp - b.timestamp);
+
+    if (active.length < 2) {
+      // flat line at midpoint
+      return {
+        points: Array.from({ length: 10 }, (_, i) => ({ x: (i / 9) * W, y: H / 2 })),
+        isBullish: true,
+      };
+    }
+
+    // Running average of bet midpoints over time
     const midpoints = active.map((b: any) => (parseFloat(b.priceMin) + parseFloat(b.priceMax)) / 2);
-    const sorted = [...midpoints].sort((a, b) => a - b);
-    const median = sorted[Math.floor(sorted.length / 2)];
-    const bull = midpoints.filter((m) => m >= median).length;
-    const bear = midpoints.filter((m) => m < median).length;
-    return { bullishBets: bull, bearishBets: bear };
+    const window = Math.max(1, Math.floor(midpoints.length / 20));
+    const smoothed: number[] = [];
+    for (let i = 0; i < midpoints.length; i++) {
+      const slice = midpoints.slice(Math.max(0, i - window), i + 1);
+      smoothed.push(slice.reduce((s, v) => s + v, 0) / slice.length);
+    }
+
+    const minV = Math.min(...smoothed);
+    const maxV = Math.max(...smoothed);
+    const range = maxV - minV || 1;
+
+    const pts = smoothed.map((v, i) => ({
+      x: PAD + (i / (smoothed.length - 1)) * (W - PAD * 2),
+      // invert Y: higher price = higher on chart
+      y: PAD + (1 - (v - minV) / range) * (H - PAD * 2),
+    }));
+
+    // bullish = last value above median midpoint
+    const median = [...midpoints].sort((a, b) => a - b)[Math.floor(midpoints.length / 2)];
+    const lastMid = midpoints[midpoints.length - 1];
+
+    return { points: pts, isBullish: lastMid >= median };
   }, [convexBets]);
 
-  const bullishClicks = sentimentData?.bullishVotes ?? 0;
-  const bearishClicks = sentimentData?.bearishVotes ?? 0;
-  const totalBull = bullishBets + bullishClicks;
-  const totalBear = bearishBets + bearishClicks;
-  const totalVotes = betCount + (sentimentData?.totalVotes ?? 0);
-  const totalForPct = totalBull + totalBear;
-  const bullPct = totalForPct > 0 ? Math.round((totalBull / totalForPct) * 100) : 50;
-  const bearPct = 100 - bullPct;
+  // Build smooth SVG path via cubic bezier
+  const linePath = points.reduce((d, pt, i) => {
+    if (i === 0) return `M ${pt.x},${pt.y}`;
+    const prev = points[i - 1];
+    const cpx = (prev.x + pt.x) / 2;
+    return `${d} C ${cpx},${prev.y} ${cpx},${pt.y} ${pt.x},${pt.y}`;
+  }, '');
 
-  const handleVote = (e: React.MouseEvent, direction: 'bullish' | 'bearish') => {
-    e.stopPropagation();
-    recordSentiment({ marketId, direction });
-  };
+  // Close path for area fill (go to bottom-right then bottom-left)
+  const areaPath = `${linePath} L ${points[points.length - 1].x},${H} L ${points[0].x},${H} Z`;
 
-  const formatVotes = (n: number) =>
-    n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`;
-
-  // Gauge needle: rotates from -90deg (0% bull) to +90deg (100% bull), 0deg = 50%
-  const needleRotation = (bullPct / 100) * 180 - 90;
+  const color = isBullish ? '#22c55e' : '#ef4444';
+  const gradId = `spark-grad-${isBullish ? 'bull' : 'bear'}`;
 
   return (
-    <div className="flex flex-col gap-2 px-1" onClick={(e) => e.stopPropagation()}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          {/* Gauge icon with animated needle */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18" height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="flex-shrink-0 text-gray-400 dark:text-neutral-500"
-          >
-            {/* gauge arc */}
-            <path d="M3.34 19a10 10 0 1 1 17.32 0" />
-            {/* needle — rotates around pivot (12,14) */}
-            <path
-              d="m12 14 4-4"
-              style={{
-                transformOrigin: '12px 14px',
-                transform: `rotate(${needleRotation}deg)`,
-                transition: 'transform 0.5s ease',
-                stroke: bullPct >= 50 ? '#22c55e' : '#ef4444',
-              }}
-            />
-          </svg>
-          <span className="text-[11px] font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
-            Community sentiment
-          </span>
-        </div>
-        <span className="text-[11px] text-gray-400 dark:text-neutral-500">
-          {formatVotes(totalVotes)} votes
-        </span>
-      </div>
-
-      {/* Progress bar */}
-      <div className="relative h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-neutral-800 flex">
-        <div
-          className="h-full bg-green-500 rounded-l-full"
-          style={{
-            width: `${bullPct}%`,
-            transform: hoveredDir === 'bullish' ? 'scaleY(1.5)' : 'scaleY(1)',
-            transformOrigin: 'center',
-            transition: 'width 0.5s ease-out, transform 0.15s ease',
-          }}
+    <div className="w-full overflow-hidden rounded-lg" style={{ height: H }}>
+      <svg
+        width="100%"
+        height={H}
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        className="block"
+      >
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.45" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.03" />
+          </linearGradient>
+        </defs>
+        {/* area fill */}
+        <path d={areaPath} fill={`url(#${gradId})`} />
+        {/* line */}
+        <path
+          d={linePath}
+          fill="none"
+          stroke={color}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"
         />
-        <div
-          className="h-full bg-red-500 rounded-r-full flex-1"
-          style={{
-            transform: hoveredDir === 'bearish' ? 'scaleY(1.5)' : 'scaleY(1)',
-            transformOrigin: 'center',
-            transition: 'transform 0.15s ease',
-          }}
-        />
-      </div>
-
-      {/* Pct labels */}
-      <div className="flex items-center justify-between text-[11px] font-medium">
-        <span className="text-green-500 flex items-center gap-1">
-          <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.8} /> {bullPct}%
-        </span>
-        <span className="text-red-500 flex items-center gap-1">
-          {bearPct}% <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.8} />
-        </span>
-      </div>
-
-      {/* Buttons */}
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onMouseEnter={() => setHoveredDir('bullish')}
-          onMouseLeave={() => setHoveredDir(null)}
-          onClick={(e) => handleVote(e, 'bullish')}
-          className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-green-500/60 text-green-500 text-xs font-semibold hover:bg-green-500/10 active:scale-95 transition-all duration-150"
-        >
-          <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.8} /> Bullish
-        </button>
-        <button
-          onMouseEnter={() => setHoveredDir('bearish')}
-          onMouseLeave={() => setHoveredDir(null)}
-          onClick={(e) => handleVote(e, 'bearish')}
-          className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-red-500/60 text-red-500 text-xs font-semibold hover:bg-red-500/10 active:scale-95 transition-all duration-150"
-        >
-          <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.8} /> Bearish
-        </button>
-      </div>
+      </svg>
     </div>
   );
 }
