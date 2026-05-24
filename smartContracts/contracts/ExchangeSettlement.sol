@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
  *         1. Operator mode: operator submits matched trades (for managed wallet users)
  *         2. Signature mode: EIP-712 signed intents verified on-chain (for wallet users)
  *
- *         Uses HTS pre-compiles for atomic token swaps on Hedera.
+ *         Uses HTS pre-compiles for atomic token swaps on Arc.
  */
 
 // ERC-20 interface
@@ -25,7 +25,7 @@ interface IERC20 {
 }
 
 // HTS pre-compile for token transfers
-interface IHederaTokenService {
+interface ITokenService {
     function transferToken(
         address token,
         address sender,
@@ -123,7 +123,7 @@ contract ExchangeSettlement is Ownable, ReentrancyGuard, Pausable, EIP712 {
         uint256 fee = (usdcAmount * feeBps) / BPS_DENOM;
         totalFees += fee;
 
-        IHederaTokenService hts = IHederaTokenService(HTS_PRECOMPILE);
+        ITokenService hts = ITokenService(HTS_PRECOMPILE);
 
         // Transfer outcome tokens: seller -> buyer
         int64 rc1 = hts.transferToken(
@@ -227,7 +227,7 @@ contract ExchangeSettlement is Ownable, ReentrancyGuard, Pausable, EIP712 {
         uint256 fee = (usdcAmount * feeBps) / BPS_DENOM;
         totalFees += fee;
 
-        IHederaTokenService hts = IHederaTokenService(HTS_PRECOMPILE);
+        ITokenService hts = ITokenService(HTS_PRECOMPILE);
 
         // Outcome tokens: seller -> buyer
         require(hts.transferToken(
@@ -298,10 +298,10 @@ contract ExchangeSettlement is Ownable, ReentrancyGuard, Pausable, EIP712 {
     }
 
     /**
-     * @notice Associate with a Hedera token (required before receiving HTS tokens like USDC fees).
-     * On Hedera, contracts must explicitly associate with tokens.
+     * @notice Associate with a Arc token (required before receiving HTS tokens like USDC fees).
+     * On Arc, contracts must explicitly associate with tokens.
      * 
-     * Hedera Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
+     * Arc Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
      */
     function associateToken(address token) external onlyOwner {
         // Call HTS associateToken function
