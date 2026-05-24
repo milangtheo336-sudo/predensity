@@ -907,61 +907,40 @@ function WalletTransferView({ onBack, onClose, eip6963Provider }: { onBack: () =
     return () => { cancelled = true; };
   }, [accountId, tokenId, currency.decimals, step]);
 
-  // Fetch USDC balance via Hedera mirror node for EIP-6963 wallets (MetaMask, Rabby, etc.)
-  // Step 1: resolve EVM address → Hedera account ID via /api/v1/accounts/{evmAddr}
-  // Step 2: query token balance with that account ID
+  // Fetch USDC balance via eth_call → balanceOf for EIP-6963 wallets (MetaMask on Hedera Testnet).
+  // MetaMask holds USDC as ERC-20 (not HTS-associated), so mirror node token queries return empty.
+  // We call balanceOf(address) directly via the wallet's own Hedera RPC.
   useEffect(() => {
-    if (!eip6963Provider || !tokenId) return;
+    if (!eip6963Provider) return;
+    const tokenAddress = getStakingTokenAddress(); // e.g. 0x00000000000000000000000000000000007d943f
+    if (!tokenAddress || tokenAddress === '0x0000000000000000000000000000000000000000') return;
     let cancelled = false;
     const fetchEip6963Balance = async () => {
       try {
         const accounts: string[] = await eip6963Provider.request({ method: 'eth_accounts' });
         if (!accounts.length || cancelled) return;
-        // Mirror node requires full lowercase 42-char 0x address
-        const evmAddr = accounts[0].toLowerCase();
-        console.log('[WalletTransferView] Fetching balance for EVM address:', evmAddr);
-        const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet').toLowerCase();
-        const base = network === 'mainnet'
-          ? 'https://mainnet.mirrornode.hedera.com'
-          : 'https://testnet.mirrornode.hedera.com';
-
-        // Step 1: resolve EVM address to Hedera account ID
-        const accountUrl = `${base}/api/v1/accounts/${evmAddr}`;
-        console.log('[WalletTransferView] Account lookup URL:', accountUrl);
-        const accountRes = await fetch(accountUrl);
-        const accountData = await accountRes.json();
-        console.log('[WalletTransferView] Account lookup response:', accountData);
-        if (!accountRes.ok || cancelled) return;
-        const hederaAccountId: string | undefined = accountData?.account; // e.g. "0.0.12345"
-        if (!hederaAccountId || cancelled) {
-          console.log('[WalletTransferView] No Hedera account found for EVM address — balance stays null');
-          return;
-        }
-
-        // Step 2: fetch token balance with the Hedera account ID
-        const balUrl = `${base}/api/v1/tokens/${tokenId}/balances?account.id=${hederaAccountId}&limit=1`;
-        console.log('[WalletTransferView] Balance URL:', balUrl);
-        const balRes = await fetch(balUrl);
-        const balData = await balRes.json();
-        console.log('[WalletTransferView] Balance response:', JSON.stringify(balData));
-        if (!balRes.ok || cancelled) return;
-        const entry = balData?.balances?.[0];
-        if (entry && !cancelled) {
-          const bal = Number(entry.balance) / Math.pow(10, currency.decimals);
-          console.log('[WalletTransferView] USDC balance:', bal);
+        const userAddr = accounts[0];
+        // balanceOf(address) selector = 0x70a08231, argument padded to 32 bytes
+        const data = '0x70a08231' + userAddr.slice(2).toLowerCase().padStart(64, '0');
+        const result: string = await eip6963Provider.request({
+          method: 'eth_call',
+          params: [{ to: tokenAddress, data }, 'latest'],
+        });
+        if (cancelled) return;
+        if (result && result !== '0x' && result !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
+          const bal = Number(BigInt(result)) / Math.pow(10, currency.decimals);
           setWalletUsdcBalance(bal.toFixed(2));
-        }
-        else if (!cancelled) {
-          // No token entry = 0 balance (account exists but hasn't associated this token)
+        } else {
           setWalletUsdcBalance('0.00');
         }
       } catch (e) {
-        console.error('[WalletTransferView] EIP-6963 mirror-node balance fetch error:', e);
+        console.error('[WalletTransferView] EIP-6963 balanceOf error:', e);
+        setWalletUsdcBalance('0.00');
       }
     };
     fetchEip6963Balance();
     return () => { cancelled = true; };
-  }, [eip6963Provider, tokenId, currency.decimals, step]);
+  }, [eip6963Provider, currency.decimals, step]);
 
   const handleTransfer = async () => {
     if (!amount) return;
