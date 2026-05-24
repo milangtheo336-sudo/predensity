@@ -2,7 +2,6 @@
 
 import { useQuery as useConvexQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { useLanguage } from '@/context/LanguageContext';
 
 import React, {
   useEffect,
@@ -15,6 +14,7 @@ import React, {
 } from 'react';
 import * as d3 from 'd3';
 import { cn, formatPriceByAsset } from '@/lib/utils';
+import { Maximize2 } from 'lucide-react';
 import { KDEChartModal } from './kde-chart-modal';
 import { useTheme } from 'next-themes';
 
@@ -25,9 +25,6 @@ interface KDEChartProps {
   onZoomChange?: (transform: d3.ZoomTransform) => void;
   initialTransform?: d3.ZoomTransform;
   showControls?: boolean;
-  hideTimeRange?: boolean;
-  timeFilter?: TimeRangeFilter;
-  onTimeFilterChange?: (filter: TimeRangeFilter) => void;
   tokenSymbol?: string;
   contractAddress?: string;
 }
@@ -104,7 +101,7 @@ function buildTimelineData(
       const placedTs = parseInt(b.timestamp) || targetTs;
       return { mid, stake, targetTs, placedTs, minP, maxP };
     })
-    .filter((b) => b.targetTs <= maxTime)
+    .filter((b) => b.targetTs > now && b.targetTs <= maxTime)
     .sort((a, b) => a.placedTs - b.placedTs);
 
   if (bets.length === 0) return { timeline: [], scatter: [] };
@@ -166,15 +163,11 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
       onZoomChange,
       initialTransform,
       showControls = true,
-      hideTimeRange = false,
-      timeFilter: externalTimeFilter,
-      onTimeFilterChange,
       tokenSymbol = 'HBAR',
       contractAddress,
     },
     ref
   ) => {
-    const { t } = useLanguage();
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== 'light';
     const colors = useMemo(() => getThemeColors(isDark), [isDark]);
@@ -206,12 +199,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
     const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
     const svgRef = useRef<d3.Selection<SVGSVGElement, unknown, null, undefined> | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [internalTimeFilter, setInternalTimeFilter] = useState<TimeRangeFilter>('all');
-    const timeFilter = externalTimeFilter ?? internalTimeFilter;
-    const setTimeFilter = (f: TimeRangeFilter) => {
-      setInternalTimeFilter(f);
-      onTimeFilterChange?.(f);
-    };
+    const [timeFilter, setTimeFilter] = useState<TimeRangeFilter>('all');
 
     const handleZoomIn = useCallback(() => {
       if (svgRef.current && zoomRef.current) {
@@ -249,7 +237,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
           .attr('class', 'flex items-center justify-center h-full');
         emptyDiv.append('span')
           .attr('class', `text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`)
-          .text(t.noPredictionsYet);
+          .text('No predictions yet. Place a bet to see the community forecast.');
         return;
       }
 
@@ -565,9 +553,8 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
       <div className={cn('w-full', className)}>
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <span className="text-sm text-gray-500 dark:text-neutral-400 font-medium mr-auto">
-            {t.communityForecast}
+            Community Forecast
           </span>
-          {!hideTimeRange && (
           <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-neutral-900 rounded-lg p-0.5">
             {timeRangeOptions.map((opt) => (
               <button
@@ -584,16 +571,22 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
               </button>
             ))}
           </div>
+          {showControls && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-300 dark:border-neutral-600 text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+              aria-label="Expand chart"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
           )}
         </div>
         {/* Chart area -- uses fixed height by default, inherits from parent className if set */}
-        <div className="relative">
-          <div ref={chartContainerRef} className={cn('w-full', className?.includes('h-full') ? 'h-[calc(100%-3rem)]' : 'h-64 sm:h-80')} />
-          {/* Predensity watermark -- top-right corner, overlaid on chart */}
-          <div className="absolute top-2 right-3 flex items-center gap-2 opacity-15 pointer-events-none select-none">
-            <img src="/predensity-logo.png" alt="" width={50} height={30} className="hidden dark:block" />
-            <img src="/white the loading predensity logo.png" alt="" width={50} height={30} className="dark:hidden" />
-            <span className="text-xl font-semibold tracking-wide text-gray-900 dark:text-white">Predensity</span>
+        <div ref={chartContainerRef} className={cn('w-full relative', className?.includes('h-full') ? 'h-[calc(100%-3rem)]' : 'h-64 sm:h-80')}>
+          {/* Predensity watermark -- top right of chart */}
+          <div className="absolute top-2 right-3 flex items-center gap-1.5 opacity-20 pointer-events-none select-none z-10">
+            <img src="/predensity-logo.png" alt="" width={16} height={16} />
+            <span className="text-xs font-medium text-gray-400">Predensity</span>
           </div>
         </div>
 
