@@ -3,15 +3,18 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useParams, redirect } from 'next/navigation';
 import { useMagic } from '@/context/MagicContext';
+import { useWalletUser } from '@/context/WalletUserContext';
 import { Loader2 } from 'lucide-react';
 import { Header } from '@/components/header';
 
 export default function PublicProfilePage() {
   const params = useParams();
-  const profileUserId = params.id as string;
-  const { user, isLoading } = useMagic();
-  const isSignedIn = !!user;
-  const isLoaded = !isLoading;
+  const profileUserId = decodeURIComponent(params.id as string);
+  const { user, isLoading: isMagicLoading } = useMagic();
+  const { walletUser, isWalletUserLoading } = useWalletUser();
+  const effectiveIssuer = user?.issuer || walletUser?.userId;
+  const isSignedIn = !!effectiveIssuer;
+  const isLoaded = !isMagicLoading && !isWalletUserLoading;
 
   if (!isLoaded) {
     return (
@@ -25,7 +28,7 @@ export default function PublicProfilePage() {
   }
 
   // If viewing own profile, redirect to my-bets
-  if (isSignedIn && user?.issuer === profileUserId) {
+  if (isSignedIn && effectiveIssuer === profileUserId) {
     redirect('/my-bets');
   }
 
