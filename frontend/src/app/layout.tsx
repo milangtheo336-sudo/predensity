@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         >
           <img src="/predensity-logo.png" alt="" width={64} height={64} style={{ marginBottom: 20 }} />
-          <span style={{ color: '#7c3aed', fontSize: 24, fontWeight: 600, letterSpacing: 2 }}>
+          <span style={{ color: '#ffffff', fontSize: 24, fontWeight: 600, letterSpacing: 2 }}>
             predensity
           </span>
         </div>
