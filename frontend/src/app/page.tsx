@@ -323,8 +323,26 @@ export default function MarketsPage() {
 
           <div className="flex-1">
           {loading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-400 text-lg">{t.loadingMarkets}</p>
+            /* Skeleton cards — same grid & shape as real cards so no layout shift */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl bg-neutral-900 border border-neutral-800 overflow-hidden animate-pulse"
+                  style={{ height: 220 }}
+                >
+                  {/* image placeholder */}
+                  <div className="h-24 bg-neutral-800" />
+                  <div className="p-3 flex flex-col gap-2">
+                    <div className="h-3 bg-neutral-700 rounded w-3/4" />
+                    <div className="h-3 bg-neutral-700 rounded w-1/2" />
+                    <div className="flex gap-2 mt-2">
+                      <div className="h-7 bg-neutral-800 rounded-lg flex-1" />
+                      <div className="h-7 bg-neutral-800 rounded-lg flex-1" />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <>
