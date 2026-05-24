@@ -7,16 +7,17 @@
  */
 
 import { Magic } from 'magic-sdk';
+import { OAuthExtension } from '@magic-ext/oauth2';
 import { HederaExtension } from '@magic-ext/hedera';
 import { ethers } from 'ethers';
 
 // Singleton instance
-let magicInstance: Magic<HederaExtension[]> | null = null;
+let magicInstance: any = null;
 
 /**
  * Get Magic instance (singleton).
  */
-export function getMagic(): Magic<HederaExtension[]> {
+export function getMagic(): any {
   if (typeof window === 'undefined') {
     throw new Error('Magic can only be used in browser');
   }
@@ -24,11 +25,12 @@ export function getMagic(): Magic<HederaExtension[]> {
   if (!magicInstance) {
     magicInstance = new Magic(process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY!, {
       extensions: [
+        new OAuthExtension(),
         new HederaExtension({
           network: 'testnet',
         }),
       ],
-    }) as Magic<HederaExtension[]>;
+    });
   }
 
   return magicInstance;
