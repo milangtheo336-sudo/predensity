@@ -5,16 +5,18 @@ import { HWBridgeProvider } from '@buidlerlabs/hashgraph-react-wallets';
 import {
   HashpackConnector,
   BladeConnector,
-  MetamaskConnector,
-  HWCConnector,
+  KabilaConnector,
 } from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { hederaChain } from '../config';
 
+// Only Hedera-native connectors — EVM wallets (MetaMask, Rabby, etc.) are
+// handled via EIP-6963 directly in auth-modal, no library connector needed.
+// MetamaskConnector and HWCConnector are excluded because they pull in
+// @walletconnect/ethereum-provider → @reown/appkit → valtio (broken in Next.js 14).
 const connectors = [
   HashpackConnector,
   BladeConnector,
-  MetamaskConnector,
-  HWCConnector,
+  KabilaConnector,
 ];
 
 const metadata = {
