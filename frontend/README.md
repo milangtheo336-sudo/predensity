@@ -6,7 +6,6 @@ A Next.js-based prediction market platform with non-custodial wallet integration
 
 - Non-custodial authentication with Magic Link (Google OAuth + Email)
 - Multi-category prediction markets (Crypto, Politics, Sports, Technology)
-- CLOB (Central Limit Order Book) trading system
 - Real-time market data with Convex
 - Arc blockchain integration (EVM-compatible L1)
 - M-Pesa payment integration (Kenya)
