@@ -6,9 +6,9 @@ import { useMagic } from '@/context/MagicContext';
 import { useWalletUser } from '@/context/WalletUserContext';
 import { getDIDToken, getMagic, getUserInfo } from '@/lib/magic';
 import { useWallet, useEvmAddress, useAuthSignature } from '@buidlerlabs/hashgraph-react-wallets';
-import { HashpackConnector, HWCConnector } from '@buidlerlabs/hashgraph-react-wallets/connectors';
+import { HashpackConnector } from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { useEIP6963Wallets, EIP6963ProviderDetail } from '@/hooks/useEIP6963Wallets';
-import { getWalletConnectModal } from '@/lib/walletconnect-modal';
+import { connectWithWalletConnect, signWithWalletConnect } from '@/lib/walletconnect-modal';
 import Image from 'next/image';
 
 interface AuthModalProps {
@@ -37,11 +37,6 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   const hashpackWallet = useWallet(HashpackConnector);
   const hashpackEvmAddress = useEvmAddress({ connector: HashpackConnector });
   const { signAuth: signHashpack } = useAuthSignature(HashpackConnector);
-
-  // WalletConnect (HWC) — handles browser extensions + QR code for mobile wallets
-  const hwcWallet = useWallet(HWCConnector);
-  const hwcEvmAddress = useEvmAddress({ connector: HWCConnector });
-  const { signAuth: signHWC } = useAuthSignature(HWCConnector);
 
   // EIP-6963: auto-discovers every EVM wallet extension installed in the browser
   const eip6963Wallets = useEIP6963Wallets();
@@ -224,42 +219,36 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
   };
 
   // ---------------------------------------------------------------------------
-  // WalletConnect via HWCConnector — shows QR code modal or connects browser
-  // extension wallets (MetaMask, Rabby, Coinbase, etc.) + mobile wallets
+  // WalletConnect — QR code modal + wallet search (300+ wallets)
+  // Separate from EIP-6963: this handles mobile wallets and any WC-compatible wallet
   // ---------------------------------------------------------------------------
   const handleWalletConnectConnect = async () => {
     setIsLoading(true); setError('');
     try {
       localStorage.setItem('lastUsedAuthMethod', 'walletconnect');
 
-      // Opens the WalletConnect modal (QR code + injected wallet list)
-      await hwcWallet.connect();
+      // Opens QR code modal — user scans with their mobile wallet or selects from list
+      const session = await connectWithWalletConnect();
+      const normalizedAddress = session.address.toLowerCase();
 
-      // After user approves in their wallet, fetch the EVM address
-      const addressResult = await hwcEvmAddress.refetch();
-      const address = addressResult.data;
-      if (!address) throw new Error('Could not get wallet address. Please try again.');
-
-      const normalizedAddress = address.toLowerCase();
       const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
       const message = `Sign in to Predensity\nAddress: ${normalizedAddress}\nNonce: ${nonce}`;
 
-      let signerSignature: any;
+      let signature: string;
       try {
-        signerSignature = await signHWC(message);
+        signature = await signWithWalletConnect(session, message);
       } catch (signErr: any) {
         const msg = (signErr?.message || '').toLowerCase();
-        if (msg.includes('refused') || msg.includes('rejected') || msg.includes('cancel') || msg.includes('denied')) {
+        if (msg.includes('rejected') || msg.includes('denied') || msg.includes('cancel') || msg.includes('refused')) {
           throw new Error('Signature cancelled. Please approve the sign-in request in your wallet.');
         }
         throw new Error('Failed to sign message. Please try again.');
       }
 
-      const sigBytes = signerSignature?._signerSignature?.signature || signerSignature?.signature || signerSignature;
-      const signature = typeof sigBytes === 'string' ? sigBytes : ('0x' + Buffer.from(sigBytes).toString('hex'));
-
       await finishWalletSignIn(normalizedAddress, signature, nonce, 'metamask');
-    } catch (err) {
+    } catch (err: any) {
+      // User closed the modal — not an error worth showing
+      if (err?.message?.includes('Modal closed') || err?.message?.includes('User closed')) return;
       console.error('[auth-modal] WalletConnect error:', err);
       setError(err instanceof Error ? err.message : 'Failed to connect wallet');
     } finally { setIsLoading(false); }
