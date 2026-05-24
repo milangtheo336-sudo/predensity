@@ -982,6 +982,134 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
   const selectedOutcomeData = outcomes[selectedOutcome];
 
+  // Shared Order book / Probability / Open Orders / Positions tab panel.
+  // Previously only the generic multi-outcome branch rendered this; we lift
+  // it here so the Yes/No binary and Win/Tie/Win match layouts can show the
+  // same detail view below their button row.
+  const renderOutcomeTabs = (i: number, o: OutcomePrice) => (
+    <div onClick={(e) => e.stopPropagation()}>
+      {/* Tabs */}
+      <div className="flex gap-0 border-t border-b border-gray-200 dark:border-[#2a2a2a]">
+        <button
+          onClick={() => setOutcomeTab('orderbook')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+            outcomeTab === 'orderbook'
+              ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
+              : 'text-gray-500 dark:text-[#888888] border-transparent hover:text-gray-700 dark:hover:text-[#cccccc]'
+          }`}
+        >
+          <Book size={16} weight="regular" />
+          Order book
+        </button>
+        <button
+          onClick={() => setOutcomeTab('probability')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+            outcomeTab === 'probability'
+              ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
+              : 'text-gray-500 dark:text-[#888888] border-transparent hover:text-gray-700 dark:hover:text-[#cccccc]'
+          }`}
+        >
+          <ChartLine size={16} weight="regular" />
+          Probability
+        </button>
+        <button
+          onClick={() => setOutcomeTab('orders')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+            outcomeTab === 'orders'
+              ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
+              : 'text-gray-500 dark:text-[#888888] border-transparent hover:text-gray-700 dark:hover:text-[#cccccc]'
+          }`}
+        >
+          <Hourglass size={16} weight="regular" />
+          Open Orders
+        </button>
+        <button
+          onClick={() => setOutcomeTab('positions')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+            outcomeTab === 'positions'
+              ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
+              : 'text-gray-500 dark:text-[#888888] border-transparent hover:text-gray-700 dark:hover:text-[#cccccc]'
+          }`}
+        >
+          <Briefcase size={16} weight="regular" />
+          Positions
+        </button>
+      </div>
+
+      {/* Tab content */}
+      <div className="p-3.5">
+        {outcomeTab === 'orderbook' && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-bold text-gray-900 dark:text-white">Order Book</span>
+            </div>
+            <div className="flex w-fit mb-3 bg-gray-200 dark:bg-[#1a1a1a] rounded-full p-0.5 border border-gray-200 dark:border-[#2a2a2a]">
+              <button
+                onClick={() => { setOrderBookSide('yes'); setOrderSide('buy'); }}
+                className={`px-6 py-1.5 text-xs font-bold rounded-full transition-colors ${orderBookSide === 'yes' ? 'bg-gray-300 dark:bg-[#2a2a2a] text-gray-900 dark:text-white' : 'text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-white'}`}
+              >
+                YES
+              </button>
+              <button
+                onClick={() => { setOrderBookSide('no'); setOrderSide('sell'); }}
+                className={`px-6 py-1.5 text-xs font-bold rounded-full transition-colors ${orderBookSide === 'no' ? 'bg-gray-300 dark:bg-[#2a2a2a] text-gray-900 dark:text-white' : 'text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-white'}`}
+              >
+                NO
+              </button>
+            </div>
+            <div className="text-xs">
+              <div className="grid grid-cols-3 text-[11px] font-semibold text-gray-500 dark:text-[#888888] pb-1.5 border-b border-gray-200 dark:border-[#2a2a2a] mb-1">
+                <span>Price</span>
+                <span className="text-center">Contracts</span>
+                <span className="text-right">Total</span>
+              </div>
+              <OrderBookView marketId={marketId} outcomeIndex={i} side={orderBookSide} />
+            </div>
+          </div>
+        )}
+        {outcomeTab === 'probability' && (
+          <div className="min-h-[280px]">
+            <PriceChart marketId={marketId} outcomes={[o]} timeRange={chartTimeRange} setTimeRange={setChartTimeRange} />
+          </div>
+        )}
+        {outcomeTab === 'orders' && (
+          <div className="text-xs text-gray-500 dark:text-[#888888] text-center py-4">
+            {userOrders && userOrders.filter((ord: any) => ord.outcomeIndex === i && ord.status === 'open').length > 0 ? (
+              <div className="space-y-2">
+                {userOrders.filter((ord: any) => ord.outcomeIndex === i && ord.status === 'open').map((ord: any) => (
+                  <div key={ord._id} className="flex items-center justify-between text-xs bg-gray-100 dark:bg-[#1c1c1c] p-2 rounded">
+                    <span className={ord.side === 'buy' ? 'text-[#3fdc8c]' : 'text-[#ff6b35]'}>{ord.side.toUpperCase()}</span>
+                    <span className="text-gray-900 dark:text-white">{ord.price}c × {ord.quantity}</span>
+                    <button onClick={() => handleCancelOrder(ord._id)} className="text-[#ff6b35] hover:text-[#ff8555]">Cancel</button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              'No open orders'
+            )}
+          </div>
+        )}
+        {outcomeTab === 'positions' && (
+          <div className="text-xs text-gray-500 dark:text-[#888888] text-center py-4">
+            {marketPositions && marketPositions.filter((pos: any) => pos.outcomeIndex === i).length > 0 ? (
+              <div className="space-y-2">
+                {marketPositions.filter((pos: any) => pos.outcomeIndex === i).map((pos: any) => (
+                  <div key={pos._id} className="flex items-center justify-between text-xs bg-gray-100 dark:bg-[#1c1c1c] p-2 rounded">
+                    <span className="text-gray-900 dark:text-white">Shares: {pos.shares}</span>
+                    <span className="text-gray-900 dark:text-white">Avg: {pos.averagePrice}c</span>
+                    <span className="text-gray-900 dark:text-white">Cost: ${pos.costBasis.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              'No positions'
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -1106,6 +1234,10 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                       No {outcomes[1].price}¢
                     </button>
                   </div>
+                  {/* Shared detail tabs for the currently selected outcome */}
+                  {!market.resolved && outcomes[selectedOutcome] && (
+                    renderOutcomeTabs(selectedOutcome, outcomes[selectedOutcome])
+                  )}
                 </div>
               ) : outcomes.length === 3 && outcomes[1]?.name?.toLowerCase() === 'tie' ? (
                 /* Match result: Team A / Tie / Team B */
@@ -1136,6 +1268,10 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                       );
                     })}
                   </div>
+                  {/* Shared detail tabs for the currently selected outcome */}
+                  {!market.resolved && outcomes[selectedOutcome] && (
+                    renderOutcomeTabs(selectedOutcome, outcomes[selectedOutcome])
+                  )}
                 </div>
               ) : (
               /* Multi-outcome cards */
@@ -1256,144 +1392,8 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
                         </div>
                       )}
 
-                      {/* Expanded content */}
-                      {isExpanded && !isEliminated && !market.resolved && (
-                        <div onClick={(e) => e.stopPropagation()}>
-                          {/* Tabs */}
-                          <div className="flex gap-0 border-t border-b border-gray-200 dark:border-[#2a2a2a]">
-                            <button
-                              onClick={() => setOutcomeTab('orderbook')}
-                              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-                                outcomeTab === 'orderbook'
-                                  ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                                  : 'text-gray-500 dark:text-[#888888] border-transparent hover:text-gray-700 dark:hover:text-[#cccccc]'
-                              }`}
-                            >
-                              <Book size={16} weight="regular" />
-                              Order book
-                            </button>
-                            <button
-                              onClick={() => setOutcomeTab('probability')}
-                              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-                                outcomeTab === 'probability'
-                                  ? 'text-gray-900 dark:text-white border-white'
-                                  : 'text-gray-500 dark:text-[#888888] border-transparent hover:text-[#cccccc]'
-                              }`}
-                            >
-                              <ChartLine size={16} weight="regular" />
-                              Probability
-                            </button>
-                            <button
-                              onClick={() => setOutcomeTab('orders')}
-                              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-                                outcomeTab === 'orders'
-                                  ? 'text-gray-900 dark:text-white border-white'
-                                  : 'text-gray-500 dark:text-[#888888] border-transparent hover:text-[#cccccc]'
-                              }`}
-                            >
-                              <Hourglass size={16} weight="regular" />
-                              Open Orders
-                            </button>
-                            <button
-                              onClick={() => setOutcomeTab('positions')}
-                              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-                                outcomeTab === 'positions'
-                                  ? 'text-gray-900 dark:text-white border-white'
-                                  : 'text-gray-500 dark:text-[#888888] border-transparent hover:text-[#cccccc]'
-                              }`}
-                            >
-                              <Briefcase size={16} weight="regular" />
-                              Positions
-                            </button>
-                          </div>
-
-                          {/* Tab content */}
-                          <div className="p-3.5">
-                            {outcomeTab === 'orderbook' && (
-                              <div>
-                                {/* Order book header */}
-                                <div className="flex items-center justify-between mb-3">
-                                  <span className="text-sm font-bold text-gray-900 dark:text-white">Order Book</span>
-                                </div>
-
-                                {/* YES/NO toggle */}
-                                <div className="flex w-fit mb-3 bg-gray-200 dark:bg-[#1a1a1a] rounded-full p-0.5 border border-gray-200 dark:border-[#2a2a2a]">
-                                  <button 
-                                    onClick={() => {
-                                      setOrderBookSide('yes');
-                                      setOrderSide('buy');
-                                    }} 
-                                    className={`px-6 py-1.5 text-xs font-bold rounded-full transition-colors ${orderBookSide === 'yes' ? 'bg-gray-300 dark:bg-[#2a2a2a] text-gray-900 dark:text-white' : 'text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-white'}`}
-                                  >
-                                    YES
-                                  </button>
-                                  <button 
-                                    onClick={() => {
-                                      setOrderBookSide('no');
-                                      setOrderSide('sell');
-                                    }} 
-                                    className={`px-6 py-1.5 text-xs font-bold rounded-full transition-colors ${orderBookSide === 'no' ? 'bg-gray-300 dark:bg-[#2a2a2a] text-gray-900 dark:text-white' : 'text-gray-500 dark:text-[#888888] hover:text-gray-900 dark:hover:text-white'}`}
-                                  >
-                                    NO
-                                  </button>
-                                </div>
-
-                                {/* Order book table */}
-                                <div className="text-xs">
-                                  {/* Column headers */}
-                                  <div className="grid grid-cols-3 text-[11px] font-semibold text-gray-500 dark:text-[#888888] pb-1.5 border-b border-gray-200 dark:border-[#2a2a2a] mb-1">
-                                    <span>Price</span>
-                                    <span className="text-center">Contracts</span>
-                                    <span className="text-right">Total</span>
-                                  </div>
-
-                                  {/* Order book rows */}
-                                  <OrderBookView marketId={marketId} outcomeIndex={i} side={orderBookSide} />
-                                </div>
-                              </div>
-                            )}
-                            {outcomeTab === 'probability' && (
-                              <div className="min-h-[280px]">
-                                <PriceChart marketId={marketId} outcomes={[o]} timeRange={chartTimeRange} setTimeRange={setChartTimeRange} />
-                              </div>
-                            )}
-                            {outcomeTab === 'orders' && (
-                              <div className="text-xs text-gray-500 dark:text-[#888888] text-center py-4">
-                                {userOrders && userOrders.filter((ord: any) => ord.outcomeIndex === i && ord.status === 'open').length > 0 ? (
-                                  <div className="space-y-2">
-                                    {userOrders.filter((ord: any) => ord.outcomeIndex === i && ord.status === 'open').map((ord: any) => (
-                                      <div key={ord._id} className="flex items-center justify-between text-xs bg-gray-100 dark:bg-[#1c1c1c] p-2 rounded">
-                                        <span className={ord.side === 'buy' ? 'text-[#3fdc8c]' : 'text-[#ff6b35]'}>{ord.side.toUpperCase()}</span>
-                                        <span className="text-gray-900 dark:text-white">{ord.price}c × {ord.quantity}</span>
-                                        <button onClick={() => handleCancelOrder(ord._id)} className="text-[#ff6b35] hover:text-[#ff8555]">Cancel</button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  'No open orders'
-                                )}
-                              </div>
-                            )}
-                            {outcomeTab === 'positions' && (
-                              <div className="text-xs text-gray-500 dark:text-[#888888] text-center py-4">
-                                {marketPositions && marketPositions.filter((pos: any) => pos.outcomeIndex === i).length > 0 ? (
-                                  <div className="space-y-2">
-                                    {marketPositions.filter((pos: any) => pos.outcomeIndex === i).map((pos: any) => (
-                                      <div key={pos._id} className="flex items-center justify-between text-xs bg-gray-100 dark:bg-[#1c1c1c] p-2 rounded">
-                                        <span className="text-gray-900 dark:text-white">Shares: {pos.shares}</span>
-                                        <span className="text-gray-900 dark:text-white">Avg: {pos.averagePrice}c</span>
-                                        <span className="text-gray-900 dark:text-white">Cost: ${pos.costBasis.toFixed(2)}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  'No positions'
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                      {/* Expanded content — shared Order book / Probability / Orders / Positions */}
+                      {isExpanded && !isEliminated && !market.resolved && renderOutcomeTabs(i, o)}
                     </div>
                   );
                 })}
