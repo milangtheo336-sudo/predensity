@@ -1523,18 +1523,18 @@ function GuestHamburgerMenu({
       <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 mx-3" />
 
       {/* Support */}
-      <a href="mailto:support@predensity.com" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
+      <a href="mailto:support@predensity.com" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
         <HelpCircle className="w-4 h-4 text-gray-400 dark:text-gray-500" />
         {t.support}
       </a>
 
       <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 mx-3" />
 
-      <Link href="/privacy" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
+      <Link href="/privacy" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
         <Shield className="w-4 h-4 text-gray-400 dark:text-gray-500" />
         {t.privacyPolicy}
       </Link>
-      <Link href="/terms" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
+      <Link href="/terms" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
         <FileText className="w-4 h-4 text-gray-400 dark:text-gray-500" />
         {t.termsOfUse}
       </Link>
@@ -2347,7 +2347,7 @@ function LanguageFlyout() {
           </span>
           <div className="text-left">
             <div className="text-[11px] text-gray-400 dark:text-gray-500 leading-tight">{t.language}</div>
-            <div className="text-xs font-medium text-gray-800 dark:text-gray-200 leading-tight">
+            <div className="text-xs font-bold text-gray-800 dark:text-gray-200 leading-tight">
               {currentLangMeta?.nativeName ?? 'English'}
             </div>
           </div>
@@ -2386,7 +2386,7 @@ function LanguagePanel({ onClose }: { onClose: () => void }) {
             )}
           >
             <span className="text-xl leading-none flex-shrink-0">{l.flag}</span>
-            <span className="flex-1 font-medium">{l.nativeName}</span>
+            <span className="flex-1 font-bold">{l.nativeName}</span>
             {lang === l.code && (
               <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -2554,7 +2554,7 @@ function ProfileDropdownPortal({
 
       {/* Main menu items */}
       <div className="py-1.5">
-        <Link href="/my-bets" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors">
+        <Link href="/my-bets" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors">
           <Wallet className="w-4 h-4 text-gray-400 dark:text-gray-500" />
           {t.portfolio}
         </Link>
@@ -2567,23 +2567,23 @@ function ProfileDropdownPortal({
       <div className="py-1.5">
         <button
           onClick={() => { window.dispatchEvent(new Event('open-support-chat')); onClose(); }}
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
         >
           <Phone className="w-4 h-4" />
           {t.support}
         </button>
         <button
           onClick={() => showComingSoon(t.helpCenter)}
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
         >
           <FileText className="w-4 h-4" />
           {t.helpCenter}
         </button>
-        <Link href="/privacy" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
+        <Link href="/privacy" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
           <Shield className="w-4 h-4" />
           {t.privacyPolicy}
         </Link>
-        <Link href="/terms" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
+        <Link href="/terms" onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
           <FileText className="w-4 h-4" />
           {t.termsOfUse}
         </Link>
@@ -2599,7 +2599,7 @@ function ProfileDropdownPortal({
               clearWalletUser();
               onClose();
             }}
-            className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
+            className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
           >
             <LogOut className="w-4 h-4" />
             {t.disconnectAndLogOut}
@@ -2610,7 +2610,7 @@ function ProfileDropdownPortal({
             {isConnected && (
               <button
                 onClick={() => { disconnect(); onClose(); }}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
+                className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full text-left"
               >
                 <Wallet className="w-4 h-4" />
                 {t.disconnectWallet}
@@ -2623,7 +2623,7 @@ function ProfileDropdownPortal({
                 logout();
                 onClose();
               }}
-              className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
+              className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
             >
               <LogOut className="w-4 h-4" />
               {t.logout}
