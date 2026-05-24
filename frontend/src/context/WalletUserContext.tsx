@@ -40,6 +40,7 @@ const CACHE_KEY = 'wallet-user-cache';
 export function WalletUserProvider({ children }: { children: ReactNode }) {
   const [walletUser, setWalletUserState] = useState<WalletUser | null>(null);
   const [isWalletUserLoading, setIsWalletUserLoading] = useState(true);
+  const [isWalletAuthenticating, setIsWalletAuthenticating] = useState(false);
 
   // Rehydrate from sessionStorage on mount
   useEffect(() => {
@@ -73,7 +74,7 @@ export function WalletUserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <WalletUserContext.Provider value={{ walletUser, isWalletUserLoading, setWalletUser, clearWalletUser }}>
+    <WalletUserContext.Provider value={{ walletUser, isWalletUserLoading, isWalletAuthenticating, setWalletUser, clearWalletUser, setIsWalletAuthenticating }}>
       {children}
     </WalletUserContext.Provider>
   );
