@@ -209,6 +209,10 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
       const normalizedAddress = address.toLowerCase();
       const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
       const message = `Sign in to Predensity\nAddress: ${normalizedAddress}\nNonce: ${nonce}`;
+
+      // Show "Requesting Signature" overlay while waiting for user to approve
+      setSigningWallet({ name: 'HashPack', icon: '/hashpack.jpg' });
+
       let signerSignature: any;
       try {
         signerSignature = await signHashpack(message);
@@ -218,12 +222,16 @@ export function AuthModal({ isOpen, onClose, triggerRef }: AuthModalProps) {
           throw new Error('Signature cancelled. Please approve the sign-in request in HashPack.');
         }
         throw new Error('Failed to sign message. Please try again.');
+      } finally {
+        setSigningWallet(null);
       }
+
       const sigBytes = signerSignature?._signerSignature?.signature || signerSignature?.signature || signerSignature;
       const signature = typeof sigBytes === 'string' ? sigBytes : ('0x' + Buffer.from(sigBytes).toString('hex'));
       await finishWalletSignIn(normalizedAddress, signature, nonce, 'hashpack');
     } catch (err) {
       console.error('[auth-modal] HashPack error:', err);
+      setSigningWallet(null);
       setError(err instanceof Error ? err.message : 'Failed to connect HashPack');
     } finally { setIsLoading(false); }
   };
