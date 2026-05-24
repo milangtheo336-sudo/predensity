@@ -82,7 +82,7 @@ export function WalletUserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <WalletUserContext.Provider value={{ walletUser, isWalletUserLoading, isWalletAuthenticating, setWalletUser, clearWalletUser, setIsWalletAuthenticating }}>
+    <WalletUserContext.Provider value={{ walletUser, isWalletUserLoading, isWalletAuthenticating, signingWallet, setWalletUser, clearWalletUser, setIsWalletAuthenticating, setSigningWallet }}>
       {children}
     </WalletUserContext.Provider>
   );
