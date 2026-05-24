@@ -1,6 +1,7 @@
 import { action, internalAction, internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { requireServerToken } from "./_lib/auth";
 
 // Immutable startTimestamp for each deployed contract.
 // Must match CONTRACT_START_TIMESTAMPS in contract-config.ts.
@@ -38,8 +39,10 @@ export const createBet = mutation({
     asset: v.optional(v.string()),
     transactionHash: v.optional(v.string()),
     onChainBetId: v.optional(v.number()),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     return await ctx.db.insert("bets", {
       betId: args.betId,
       marketId: args.marketId,
@@ -74,8 +77,10 @@ export const updateBetOnChainId = mutation({
   args: {
     betId: v.string(),
     onChainBetId: v.number(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const bet = await ctx.db
       .query("bets")
       .withIndex("by_bet_id", (q) => q.eq("betId", args.betId))
@@ -91,8 +96,10 @@ export const updateBetOnChainId = mutation({
 export const clearOnChainIds = mutation({
   args: {
     marketId: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const bets = await ctx.db
       .query("bets")
       .withIndex("by_market", (q) => q.eq("marketId", args.marketId.toLowerCase()))
@@ -120,8 +127,10 @@ export const clearOnChainIds = mutation({
 export const deleteAllManagedBets = mutation({
   args: {
     marketId: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const bets = await ctx.db
       .query("bets")
       .withIndex("by_market", (q) => q.eq("marketId", args.marketId.toLowerCase()))
@@ -827,8 +836,10 @@ export const finalizeBetsForBucket = mutation({
     ),
     // Optional per-bet weights from the contract (betId -> weight)
     betWeights: v.optional(v.array(v.object({ betId: v.string(), weight: v.string() }))),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const priceLookup = new Map<number, number>();
     for (const p of args.prices) {
       priceLookup.set(p.targetTimestamp, p.price);
@@ -915,8 +926,9 @@ export const finalizeBetsForBucket = mutation({
 
 // Mark a bet as claimed (after claimBet succeeds on-chain)
 export const markBetClaimed = mutation({
-  args: { betId: v.string() },
+  args: { betId: v.string(), _serverToken: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const bet = await ctx.db
       .query("bets")
       .withIndex("by_bet_id", (q) => q.eq("betId", args.betId))
@@ -953,8 +965,9 @@ export const getAllBetsByMarket = query({
 // sync may have created a separate bet with the operator's EVM address.
 // This mutation finds those duplicates and merges them, preserving the managed address.
 export const repairManagedBets = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { _serverToken: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     // Find all managed bets (both pending and failed)
     const allBets = await ctx.db.query("bets").collect();
     const managedBets = allBets.filter((b) => b.userAddress.startsWith("managed:"));
@@ -1038,8 +1051,10 @@ export const reassignOperatorBets = mutation({
   args: {
     operatorAddress: v.string(),
     userId: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     const operatorAddr = args.operatorAddress.toLowerCase();
     const managedAddr = `managed:${args.userId}`.toLowerCase();
 
@@ -1143,6 +1158,8 @@ export const reassignOperatorBets = mutation({
 // Fix the bucket field on crypto bets that have undefined/missing/wrong bucket values.
 // Uses the on-chain formula: (targetTimestamp - startTimestamp) / 86400
 // Called from the portfolio page auto-repair or can be triggered manually.
+// Note: user-scoped data repair; callable from client for auto-repair UX.
+// Only patches `bucket` field on existing bets -- no privilege escalation.
 export const fixBetBuckets = mutation({
   args: {
     userAddress: v.optional(v.string()),
@@ -1176,6 +1193,8 @@ export const fixBetBuckets = mutation({
 // Fix the asset field on all crypto bets that have wrong/missing asset values.
 // This corrects bets stored with "HBAR" or "UNKNOWN" when they should be "BTC" etc.
 // Called from the portfolio page auto-repair or can be triggered manually.
+// Note: user-scoped data repair; callable from client for auto-repair UX.
+// Only patches `asset` field on existing bets -- no privilege escalation.
 export const fixBetAssets = mutation({
   args: {
     userAddress: v.optional(v.string()),
@@ -1371,8 +1390,10 @@ export const creditManualDeposit = mutation({
     userId: v.string(),
     transactionId: v.string(),
     amount: v.string(),
+    _serverToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerToken(args._serverToken);
     // Check if already processed
     const existing = await ctx.db
       .query("mpesaTransactions")
