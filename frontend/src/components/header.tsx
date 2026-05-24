@@ -2010,10 +2010,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
                     <div className="mb-8 flex justify-center">
                       <div className="relative w-32 h-32 flex items-center justify-center">
                         <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="opacity-80">
-                          <rect x="2" y="5" width="20" height="14" rx="2"/>
-                          <path d="M2 10h20"/>
-                        </svg>
+                        <img src="/predensity-logo.png" alt="Predensity" className="w-14 h-14 object-contain" />
                       </div>
                     </div>
                     <h2 className="text-2xl font-bold text-white mb-3">
