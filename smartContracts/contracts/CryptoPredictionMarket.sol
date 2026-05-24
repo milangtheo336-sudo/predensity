@@ -106,7 +106,9 @@ contract CryptoPredictionMarket is Ownable {
     // ==============================================================
     mapping(uint256 => Bet) public bets;
     mapping(uint256 => BucketInfo) public buckets;
-    mapping(uint256 => uint256) public pricesAtTimestamp; // targetTimestamp => price
+    // (asset symbol => targetTimestamp => price). Per-asset keyed so HBAR/BTC/ETH
+    // resolutions cannot collide on the same bucket day.
+    mapping(string => mapping(uint256 => uint256)) public pricesAtTimestamp;
 
     // ==============================================================
     // |                    Events                                  |
@@ -386,9 +388,10 @@ contract CryptoPredictionMarket is Ownable {
             Bet storage bet = bets[betId];
             
             if (!bet.finalized && !bet.exited) {
-                uint256 price = pricesAtTimestamp[bet.targetTimestamp];
-                require(price > 0, "Price not set for timestamp");
-                
+                string memory asset = bytes(betAssets[betId]).length > 0 ? betAssets[betId] : assetSymbol;
+                uint256 price = pricesAtTimestamp[asset][bet.targetTimestamp];
+                require(price > 0, "Price not set for asset+timestamp");
+
                 bet.finalized = true;
                 bet.actualPrice = price;
                 bet.won = (price >= bet.priceMin && price <= bet.priceMax);
@@ -457,7 +460,9 @@ contract CryptoPredictionMarket is Ownable {
     // ==============================================================
 
     /**
-     * @notice Set prices for multiple timestamps at once (owner only - centralized but scalable)
+     * @notice Set prices for the primary asset across multiple timestamps (owner only).
+     *         Uses the contract's `assetSymbol` (e.g. "HBAR"). For non-primary assets,
+     *         use {setAssetPrices}.
      * @param timestamps Array of target timestamps
      * @param prices Array of corresponding prices
      */
@@ -465,26 +470,42 @@ contract CryptoPredictionMarket is Ownable {
         require(timestamps.length == prices.length, "Lengths must match");
         for (uint256 i = 0; i < timestamps.length; i++) {
             require(prices[i] > 0, "Price must be positive");
-            pricesAtTimestamp[timestamps[i]] = prices[i];
+            pricesAtTimestamp[assetSymbol][timestamps[i]] = prices[i];
             emit BucketPriceSet(timestamps[i], prices[i]);
             emit AssetPriceResolved(assetSymbol, timestamps[i], prices[i]);
         }
     }
 
     /**
-     * @notice Set price for a single timestamp (owner only - centralized but scalable)
+     * @notice Set the price for the primary asset at a single timestamp (owner only).
+     *         For non-primary assets, use {setAssetPrice}.
      * @param timestamp The target timestamp
      * @param price The actual price
      */
     function setPriceForTimestamp(uint256 timestamp, uint256 price) external onlyOwner {
         require(price > 0, "Price must be positive");
-        pricesAtTimestamp[timestamp] = price;
+        pricesAtTimestamp[assetSymbol][timestamp] = price;
         emit BucketPriceSet(timestamp, price);
         emit AssetPriceResolved(assetSymbol, timestamp, price);
     }
 
     /**
-     * @notice Set prices for multiple assets and timestamps (owner only - multi-asset batch)
+     * @notice Set the price for a specific asset at a single timestamp (owner only).
+     * @param asset Asset symbol (e.g. "BTC")
+     * @param timestamp The target timestamp
+     * @param price The actual price
+     */
+    function setAssetPrice(string calldata asset, uint256 timestamp, uint256 price) external onlyOwner {
+        require(price > 0, "Price must be positive");
+        require(bytes(asset).length > 0, "Asset required");
+        pricesAtTimestamp[asset][timestamp] = price;
+        emit BucketPriceSet(timestamp, price);
+        emit AssetPriceResolved(asset, timestamp, price);
+    }
+
+    /**
+     * @notice Set prices for multiple assets and timestamps (owner only - multi-asset batch).
+     *         Each (asset[i], timestamp[i]) tuple gets its own price slot.
      * @param assets Array of asset symbols
      * @param timestamps Array of target timestamps
      * @param prices Array of corresponding prices
@@ -498,10 +519,11 @@ contract CryptoPredictionMarket is Ownable {
             assets.length == timestamps.length && timestamps.length == prices.length,
             "Lengths must match"
         );
-        
+
         for (uint256 i = 0; i < timestamps.length; i++) {
             require(prices[i] > 0, "Price must be positive");
-            pricesAtTimestamp[timestamps[i]] = prices[i];
+            require(bytes(assets[i]).length > 0, "Asset required");
+            pricesAtTimestamp[assets[i]][timestamps[i]] = prices[i];
             emit BucketPriceSet(timestamps[i], prices[i]);
             emit AssetPriceResolved(assets[i], timestamps[i], prices[i]);
         }
@@ -911,11 +933,13 @@ contract CryptoPredictionMarket is Ownable {
     }
 
     /**
-     * @notice Get bucket statistics
+     * @notice Get bucket aggregate stats. The price field is intentionally omitted
+     *         here -- prices are now keyed by (asset, timestamp), not by bucket.
+     *         Use {getPriceAtTimestamp} with the specific asset and target timestamp.
      */
-    function getBucketStats(uint256 bucket) external view returns (uint256 totalStaked, uint256 totalWeight, uint256 price) {
+    function getBucketStats(uint256 bucket) external view returns (uint256 totalStaked, uint256 totalWeight) {
         BucketInfo storage bucketInfo = buckets[bucket];
-        return (bucketInfo.totalStaked, bucketInfo.totalWeight, pricesAtTimestamp[bucket]);
+        return (bucketInfo.totalStaked, bucketInfo.totalWeight);
     }
 
     /**
@@ -995,14 +1019,15 @@ contract CryptoPredictionMarket is Ownable {
     }
 
     /**
-     * @notice Check if all timestamps in a bucket have prices set
+     * @notice Check if every (asset, timestamp) pair for the bets in a bucket has a price set
      */
     function arePricesSetForBucket(uint256 bucket) external view returns (bool) {
         BucketInfo storage bucketInfo = buckets[bucket];
         for (uint256 i = 0; i < bucketInfo.betIds.length; i++) {
             uint256 betId = bucketInfo.betIds[i];
             Bet storage bet = bets[betId];
-            if (pricesAtTimestamp[bet.targetTimestamp] == 0) {
+            string memory asset = bytes(betAssets[betId]).length > 0 ? betAssets[betId] : assetSymbol;
+            if (pricesAtTimestamp[asset][bet.targetTimestamp] == 0) {
                 return false;
             }
         }
@@ -1010,10 +1035,10 @@ contract CryptoPredictionMarket is Ownable {
     }
 
     /**
-     * @notice Get price for a specific timestamp
+     * @notice Get the resolved price for a specific (asset, timestamp) pair
      */
-    function getPriceAtTimestamp(uint256 timestamp) external view returns (uint256) {
-        return pricesAtTimestamp[timestamp];
+    function getPriceAtTimestamp(string calldata asset, uint256 timestamp) external view returns (uint256) {
+        return pricesAtTimestamp[asset][timestamp];
     }
 
     /**
