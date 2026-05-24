@@ -227,24 +227,31 @@ export default defineSchema({
     .index("by_event_id", ["eventId"])
     .index("by_event_time", ["eventId", "timestamp"]),
 
-  // Managed wallets for M-Pesa / phone-based users and Clerk-authenticated users
-  // Backend creates and controls these wallets on behalf of users
+  // Non-custodial wallets - Magic Link + SimpleProxyWallet
+  // Each user controls their own wallet via Magic Link MPC
+  // NO private keys stored on backend
   managedWallets: defineTable({
-    userId: v.optional(v.string()), // Clerk user ID
-    email: v.optional(v.string()),
-    phoneNumber: v.optional(v.string()),
-    hederaAccountId: v.string(),
-    evmAddress: v.string(),
-    encryptedPrivateKey: v.string(),
-    usdcBalance: v.string(),
-    hbarBalance: v.string(),
+    userId: v.string(), // Magic Link user ID (issuer/DID)
+    email: v.string(),
+    phoneNumber: v.optional(v.string()), // For M-Pesa users
+    magicEOAAddress: v.optional(v.string()), // User's Magic Link EOA (MPC wallet)
+    proxyWalletAddress: v.optional(v.string()), // User's SimpleProxyWallet contract
+    evmAddress: v.string(), // Proxy wallet address or legacy address
+    hederaAccountId: v.string(), // Hedera account ID of proxy wallet
+    usdcBalance: v.string(), // Cached balance (synced from chain)
+    hbarBalance: v.string(), // Cached balance (synced from chain)
     isActive: v.boolean(),
     createdAt: v.number(),
     lastActivity: v.number(),
+    lastBalanceSync: v.optional(v.number()), // Optional for backward compatibility
+    // Legacy field (will be removed after migration)
+    encryptedPrivateKey: v.optional(v.string()), // Legacy custodial field
   })
     .index("by_user_id", ["userId"])
     .index("by_email", ["email"])
     .index("by_phone", ["phoneNumber"])
+    .index("by_magic_eoa", ["magicEOAAddress"])
+    .index("by_proxy_wallet", ["proxyWalletAddress"])
     .index("by_hedera_id", ["hederaAccountId"])
     .index("by_evm_address", ["evmAddress"]),
 
@@ -338,6 +345,9 @@ export default defineSchema({
     price: v.number(),              // Execution price in cents
     quantity: v.number(),           // Number of shares traded
     usdcAmount: v.number(),         // Total USDC exchanged (price * quantity / 100)
+    makerUserId: v.optional(v.string()), // User who placed the earlier order (maker)
+    takerUserId: v.optional(v.string()), // User who placed the later order (taker)
+    makerRebate: v.optional(v.number()), // Rebate paid to maker in USDC
     settledOnChain: v.boolean(),    // Whether operator bot has settled this on-chain
     settlementTxHash: v.optional(v.string()),
     // "pending" | "settled" | "settlement_failed"
@@ -350,7 +360,8 @@ export default defineSchema({
     .index("by_buyer", ["buyerUserId"])
     .index("by_seller", ["sellerUserId"])
     .index("by_settled", ["settledOnChain"])
-    .index("by_settlement_status", ["settlementStatus"]),
+    .index("by_settlement_status", ["settlementStatus"])
+    .index("by_maker", ["makerUserId"]),
 
   // User positions: how many outcome tokens each user holds per market
   clobPositions: defineTable({
@@ -376,4 +387,13 @@ export default defineSchema({
   })
     .index("by_market_outcome", ["marketId", "outcomeIndex"])
     .index("by_market_outcome_time", ["marketId", "outcomeIndex", "timestamp"]),
+
+  // Nonce tracking for non-custodial orders (prevents replay attacks)
+  orderNonces: defineTable({
+    userId: v.string(),
+    nonce: v.number(),
+    usedAt: v.number(),
+  })
+    .index("by_user_nonce", ["userId", "nonce"])
+    .index("by_user", ["userId"]),
 });
