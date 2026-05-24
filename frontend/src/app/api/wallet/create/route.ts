@@ -84,8 +84,16 @@ export async function POST(request: NextRequest) {
     let associationSuccess = false;
 
     try {
-      // Step 1: Fund Magic EOA with initial HBAR for gas
-      console.log('[wallet/create] Funding Magic EOA:', magicEOAAddress);
+      // Step 1: Create a proper Hedera account for the Magic Link wallet
+      // This is required for token associations to work
+      console.log('[wallet/create] Creating Hedera account for Magic EOA:', magicEOAAddress);
+      
+      // We need to create an account with the EVM address as an alias
+      // But Hedera requires a public key for account creation
+      // Since we don't have access to the user's private key (Magic Link MPC),
+      // we'll use a workaround: create an account with operator key, then transfer ownership
+      
+      // For now, let's just fund the EVM address and document the limitation
       const fundTx = new TransferTransaction()
         .addHbarTransfer(OPERATOR_ID, new Hbar(-INITIAL_HBAR_FUNDING))
         .addHbarTransfer(AccountId.fromEvmAddress(0, 0, magicEOAAddress), new Hbar(INITIAL_HBAR_FUNDING))
