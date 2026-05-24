@@ -22,7 +22,7 @@ const appFont = Inter({
 export const metadata: Metadata = {
   title: 'Predensity - Decentralized Prediction Market',
   description:
-    'Predensity is a decentralized prediction market . Profit from bold, early, and accurate price forecasts. Trade on crypto, politics, sports, and technology outcomes. The platform rewards boldness and sharpness of predictions.',
+    'Predensity is a decentralized prediction market . Profit from bold, early, and accurate price forecasts. Trade on crypto, politics, esports, and technology outcomes. The platform rewards boldness and sharpness of predictions.',
   manifest: '/manifest.json',
   keywords: ['prediction market', 'crypto predictions', 'decentralized','sports betting', 'politics market', 'web3'],
   openGraph: {
