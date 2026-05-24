@@ -24,13 +24,20 @@ export interface WalletUser {
   userId: string;
 }
 
+export interface SigningWalletInfo {
+  name: string;
+  icon: string; // image src — local path or data URI
+}
+
 interface WalletUserContextType {
   walletUser: WalletUser | null;
   isWalletUserLoading: boolean;
   isWalletAuthenticating: boolean;
+  signingWallet: SigningWalletInfo | null;
   setWalletUser: (user: WalletUser | null) => void;
   clearWalletUser: () => void;
   setIsWalletAuthenticating: (v: boolean) => void;
+  setSigningWallet: (info: SigningWalletInfo | null) => void;
 }
 
 const WalletUserContext = createContext<WalletUserContextType | undefined>(undefined);
