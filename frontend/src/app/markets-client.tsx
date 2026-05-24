@@ -86,7 +86,7 @@ function buildMarkets(
     markets.unshift(...cryptoCards);
   }
 
-  if (clobMarkets) {
+  if (false && clobMarkets) { // CLOB markets hidden — requires liquidity bootstrapping before launch
     const clobCards: MarketCard[] = clobMarkets
       .filter((cm) => {
         const mc = cm.category.toLowerCase();
