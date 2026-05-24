@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   useWallet,
@@ -229,38 +229,54 @@ function PnlSparkline({ data, color }: { data: number[]; color: string }) {
 // ---------------------------------------------------------------------------
 // Activity Row
 // ---------------------------------------------------------------------------
-function ActivityRow({ item, hashscanBase }: { item: any; hashscanBase: string }) {
+function ActivityRow({ item, hashscanBase, getCryptoImage }: { item: any; hashscanBase: string; getCryptoImage: (asset: string) => string | null }) {
   const isDeposit = item.type === 'deposit';
   const isWithdrawal = item.type === 'withdrawal';
   const isBetWon = item.type === 'bet_won';
   const isBetLost = item.type === 'bet_lost';
   const isBetPlaced = item.type === 'bet_placed';
 
-  const icon = isDeposit ? (
-    <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-      <ArrowDownRight className="w-4 h-4 text-green-500" />
+  // Infer correct asset from price data if available
+  const inferredAsset = (() => {
+    if (item.asset && item.asset !== 'HBAR' && item.asset !== 'UNKNOWN') return item.asset;
+    if (item.category === 'crypto' && item.priceMin && item.priceMax) {
+      const mid = (Number(item.priceMin) + Number(item.priceMax)) / 2 / 1e8;
+      if (mid > 20000) return 'BTC';
+      if (mid > 1000) return 'ETH';
+      if (mid > 100) return 'SOL';
+      if (mid > 1) return 'XRP';
+    }
+    return item.asset || null;
+  })();
+
+  const assetImageUrl = inferredAsset ? getCryptoImage(inferredAsset) : null;
+
+  // For non-crypto bets, use the event image from the backend
+  const displayImageUrl = assetImageUrl || item.eventImageUrl || null;
+
+  // Asset image for bet activities, fallback icons for deposits/withdrawals
+  const icon = (isDeposit || isWithdrawal) ? (
+    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isDeposit ? 'bg-green-500/10' : 'bg-orange-500/10'}`}>
+      {isDeposit
+        ? <ArrowDownRight className="w-4 h-4 text-green-500" />
+        : <ArrowUpRight className="w-4 h-4 text-orange-400" />}
     </div>
-  ) : isWithdrawal ? (
-    <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center flex-shrink-0">
-      <ArrowUpRight className="w-4 h-4 text-orange-400" />
-    </div>
-  ) : isBetWon ? (
-    <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-      <CheckCircle className="w-4 h-4 text-green-500" />
-    </div>
-  ) : isBetLost ? (
-    <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
-      <XCircle className="w-4 h-4 text-red-400" />
-    </div>
+  ) : displayImageUrl ? (
+    <img src={displayImageUrl} alt={inferredAsset || item.eventName || ''} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
   ) : (
-    <div className="w-8 h-8 rounded-full bg-vibrant-purple/10 flex items-center justify-center flex-shrink-0">
-      <Clock className="w-4 h-4 text-vibrant-purple" />
+    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+      item.category === 'politics' ? 'bg-blue-500/10 text-blue-400'
+      : item.category === 'sports' ? 'bg-green-500/10 text-green-400'
+      : item.category === 'technology' ? 'bg-purple-500/10 text-purple-400'
+      : 'bg-orange-500/10 text-orange-400'
+    }`}>
+      {(inferredAsset || item.category || 'B').charAt(0).toUpperCase()}
     </div>
   );
 
   const label = isDeposit ? 'Deposit' : isWithdrawal ? 'Withdrawal' : isBetWon ? 'Bet Won' : isBetLost ? 'Bet Lost' : 'Bet Placed';
   const sublabel = item.category
-    ? `${item.category.charAt(0).toUpperCase() + item.category.slice(1)}${item.asset ? ' - ' + item.asset : ''}`
+    ? `${item.category.charAt(0).toUpperCase() + item.category.slice(1)}${item.eventName ? ' - ' + item.eventName : (inferredAsset ? ' - ' + inferredAsset : '')}`
     : item.details || '';
 
   const currency = getStakingCurrency();
@@ -276,8 +292,11 @@ function ActivityRow({ item, hashscanBase }: { item: any; hashscanBase: string }
   const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-  return (
-    <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100 dark:border-neutral-800/50 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors">
+  // Build HashScan link from txHash
+  const hashscanUrl = item.txHash ? `${hashscanBase}/transaction/${item.txHash}` : null;
+
+  const rowContent = (
+    <div className={`flex items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-gray-100 dark:border-neutral-800/50 transition-colors ${hashscanUrl ? 'hover:bg-gray-50 dark:hover:bg-neutral-900/20 cursor-pointer' : ''}`}>
       {icon}
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium text-gray-900 dark:text-white">{label}</div>
@@ -300,23 +319,23 @@ function ActivityRow({ item, hashscanBase }: { item: any; hashscanBase: string }
           {item.status}
         </span>
       </div>
-      <div className="flex-shrink-0">
-        {item.txHash ? (
-          <a
-            href={`${hashscanBase}/transaction/${item.txHash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1 rounded text-gray-400 dark:text-neutral-600 hover:text-vibrant-purple transition-colors"
-            title="View on HashScan"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-        ) : (
-          <div className="w-5" />
-        )}
-      </div>
+      {hashscanUrl && (
+        <div className="flex-shrink-0">
+          <ExternalLink className="w-3.5 h-3.5 text-gray-400 dark:text-neutral-600" />
+        </div>
+      )}
     </div>
   );
+
+  if (hashscanUrl) {
+    return (
+      <a href={hashscanUrl} target="_blank" rel="noopener noreferrer" className="block">
+        {rowContent}
+      </a>
+    );
+  }
+
+  return rowContent;
 }
 
 // ---------------------------------------------------------------------------
@@ -326,10 +345,12 @@ function ActivePositionCard({
   bet,
   livePrice,
   imageUrl,
+  mobile,
 }: {
   bet: Bet;
   livePrice: number | null;
   imageUrl?: string | null;
+  mobile?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -383,6 +404,91 @@ function ActivePositionCard({
 
   const question = getCryptoQuestion(bet);
 
+  const statusBadge = (
+    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
+      isPast
+        ? 'bg-yellow-500/10 text-yellow-400'
+        : inRange
+        ? 'bg-green-500/10 text-green-500'
+        : 'bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400'
+    }`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${isPast ? 'bg-yellow-400' : inRange ? 'bg-green-500' : 'bg-neutral-500'}`} />
+      {isPast ? 'Pending' : inRange ? 'In Range' : 'Active'}
+    </span>
+  );
+
+  const expandedDetail = expanded ? (
+    <div
+      className="mt-3 bg-gray-50 dark:bg-neutral-900/60 rounded-lg p-3 space-y-2.5"
+      onClick={e => e.stopPropagation()}
+    >
+      <div>
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-500 mb-1">
+          <span>{'$' + minPrice.toLocaleString(undefined, { minimumFractionDigits: minPrice >= 1 ? 2 : 4, maximumFractionDigits: minPrice >= 1 ? 2 : 4 })}</span>
+          <span className={`font-bold ${inRange ? 'text-green-500' : 'text-red-400'}`}>
+            {livePrice !== null
+              ? '$' + livePrice.toLocaleString(undefined, { minimumFractionDigits: livePrice >= 1 ? 2 : 4, maximumFractionDigits: livePrice >= 1 ? 2 : 4 })
+              : '--'}
+          </span>
+          <span>{'$' + maxPrice.toLocaleString(undefined, { minimumFractionDigits: maxPrice >= 1 ? 2 : 4, maximumFractionDigits: maxPrice >= 1 ? 2 : 4 })}</span>
+        </div>
+        <div className="relative h-1.5 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+          <div className="absolute inset-0 bg-green-500/15 rounded-full" />
+          {livePrice !== null && (
+            <div
+              className={`absolute top-0 h-full w-1 rounded-full ${inRange ? 'bg-green-500' : 'bg-red-400'}`}
+              style={{ left: `${pricePct}%`, transform: 'translateX(-50%)' }}
+            />
+          )}
+        </div>
+      </div>
+      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-500">
+        <span>Resolves: {resolutionLocal} ({getLocalTimezoneAbbr()})</span>
+        <span className={`font-mono font-medium ${isPast ? 'text-yellow-400' : 'text-gray-900 dark:text-white'}`}>{timeLeft}</span>
+      </div>
+      <div className="relative h-1 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-1000 ${isPast ? 'bg-yellow-400' : 'bg-vibrant-purple'}`}
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
+    </div>
+  ) : null;
+
+  // Mobile card layout
+  if (mobile) {
+    return (
+      <div
+        className="border-b border-gray-100 dark:border-neutral-800/60 px-4 py-3.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors"
+        onClick={() => setExpanded(e => !e)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg flex-shrink-0 overflow-hidden">
+            {imageUrl ? (
+              <img src={imageUrl} alt={asset} className="w-9 h-9 rounded-lg object-cover" />
+            ) : (
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold bg-orange-500/10 text-orange-400">
+                {asset.charAt(0)}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-gray-900 dark:text-white leading-tight truncate">{question}</div>
+            <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
+              {stakeNum.toFixed(2)} {currency.symbol} staked
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            {statusBadge}
+            <span className="text-sm font-medium text-gray-900 dark:text-white">{formatUsd(stakeNum)}</span>
+          </div>
+        </div>
+        {expandedDetail}
+      </div>
+    );
+  }
+
+  // Desktop table row
   return (
     <tr
       className="border-b border-gray-100 dark:border-neutral-800/60 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors cursor-pointer"
@@ -390,16 +496,7 @@ function ActivePositionCard({
     >
       {/* STATUS */}
       <td className="px-5 py-3.5 w-28">
-        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
-          isPast
-            ? 'bg-yellow-500/10 text-yellow-400'
-            : inRange
-            ? 'bg-green-500/10 text-green-500'
-            : 'bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400'
-        }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${isPast ? 'bg-yellow-400' : inRange ? 'bg-green-500' : 'bg-neutral-500'}`} />
-          {isPast ? 'Pending' : inRange ? 'In Range' : 'Active'}
-        </span>
+        {statusBadge}
       </td>
 
       {/* MARKET */}
@@ -421,44 +518,7 @@ function ActivePositionCard({
             </div>
           </div>
         </div>
-        {/* Expanded row detail */}
-        {expanded && (
-          <div
-            className="mt-3 bg-gray-50 dark:bg-neutral-900/60 rounded-lg p-3 space-y-2.5"
-            onClick={e => e.stopPropagation()}
-          >
-            <div>
-              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-500 mb-1">
-                <span>${minPrice.toLocaleString(undefined, { minimumFractionDigits: minPrice >= 1 ? 2 : 4, maximumFractionDigits: minPrice >= 1 ? 2 : 4 })}</span>
-                <span className={`font-bold ${inRange ? 'text-green-500' : 'text-red-400'}`}>
-                  {livePrice !== null
-                    ? '$' + livePrice.toLocaleString(undefined, { minimumFractionDigits: livePrice >= 1 ? 2 : 4, maximumFractionDigits: livePrice >= 1 ? 2 : 4 })
-                    : '--'}
-                </span>
-                <span>${maxPrice.toLocaleString(undefined, { minimumFractionDigits: maxPrice >= 1 ? 2 : 4, maximumFractionDigits: maxPrice >= 1 ? 2 : 4 })}</span>
-              </div>
-              <div className="relative h-1.5 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-                <div className="absolute inset-0 bg-green-500/15 rounded-full" />
-                {livePrice !== null && (
-                  <div
-                    className={`absolute top-0 h-full w-1 rounded-full ${inRange ? 'bg-green-500' : 'bg-red-400'}`}
-                    style={{ left: `${pricePct}%`, transform: 'translateX(-50%)' }}
-                  />
-                )}
-              </div>
-            </div>
-            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-500">
-              <span>Resolves: {resolutionLocal} ({getLocalTimezoneAbbr()})</span>
-              <span className={`font-mono font-medium ${isPast ? 'text-yellow-400' : 'text-gray-900 dark:text-white'}`}>{timeLeft}</span>
-            </div>
-            <div className="relative h-1 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-1000 ${isPast ? 'bg-yellow-400' : 'bg-vibrant-purple'}`}
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-          </div>
-        )}
+        {expandedDetail}
       </td>
 
       {/* TOTAL TRADED */}
@@ -1229,12 +1289,12 @@ export default function PortfolioPage() {
             {/* Filter bar */}
             <div className="flex flex-col gap-3 mb-4">
               {/* Row 1: Active/Closed toggle + Search + Sort */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 {/* Toggle */}
                 <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-lg p-1 flex-shrink-0">
                   <button
                     onClick={() => setPositionSub('active')}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    className={`px-3 sm:px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                       positionSub === 'active'
                         ? 'bg-white dark:bg-neutral-700 text-gray-900 dark:text-white shadow-sm'
                         : 'text-gray-500 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300'
@@ -1244,7 +1304,7 @@ export default function PortfolioPage() {
                   </button>
                   <button
                     onClick={() => setPositionSub('closed')}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    className={`px-3 sm:px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                       positionSub === 'closed'
                         ? 'bg-white dark:bg-neutral-700 text-gray-900 dark:text-white shadow-sm'
                         : 'text-gray-500 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300'
@@ -1316,7 +1376,154 @@ export default function PortfolioPage() {
             {/* Table */}
             {!loading && (
               <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden">
-                <table className="w-full">
+
+                {/* --- Mobile card list (sm and below) --- */}
+                <div className="sm:hidden">
+                  {positionSub === 'active' && (() => {
+                    const cryptoBets = displayBets.filter(b => getBetCategory(b).toUpperCase() === 'CRYPTO');
+                    const otherBets = displayBets.filter(b => getBetCategory(b).toUpperCase() !== 'CRYPTO');
+                    const hasBets = cryptoBets.length > 0 || otherBets.length > 0;
+
+                    if (!hasBets) {
+                      return (
+                        <div className="py-16 text-center text-sm text-gray-400 dark:text-neutral-600">
+                          No active positions.
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <>
+                        {cryptoBets.map(bet => (
+                          <ActivePositionCard
+                            key={bet.id}
+                            bet={bet}
+                            livePrice={livePrices[bet.asset || 'HBAR'] ?? null}
+                            imageUrl={getCryptoImage(bet.asset || 'HBAR')}
+                            mobile
+                          />
+                        ))}
+                        {otherBets.map(bet => {
+                          const cat = getBetCategory(bet);
+                          const marketName = getMarketDisplayName(bet);
+                          const marketImg = getMarketImage(bet);
+                          const stakeVal = Number(formatAmount(bet.stake, 6));
+
+                          return (
+                            <div key={bet.id} className="border-b border-gray-100 dark:border-neutral-800/60 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors">
+                              <div className="flex items-center gap-3">
+                                {marketImg ? (
+                                  <img src={marketImg} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                                ) : (
+                                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                                    cat.toUpperCase() === 'POLITICS' ? 'bg-blue-500/10 text-blue-400'
+                                    : cat.toUpperCase() === 'SPORTS' ? 'bg-green-500/10 text-green-400'
+                                    : 'bg-purple-500/10 text-purple-400'
+                                  }`}>
+                                    {cat.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{marketName}</div>
+                                  <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
+                                    {stakeVal.toFixed(2)} {currency.symbol} staked
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-neutral-500" />
+                                    Active
+                                  </span>
+                                  <span className="text-sm font-medium text-gray-900 dark:text-white">{formatUsd(stakeVal)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+
+                  {positionSub === 'closed' && (
+                    <>
+                      {displayBets.length === 0 ? (
+                        <div className="py-16 text-center text-sm text-gray-400 dark:text-neutral-600">
+                          No closed positions yet.
+                        </div>
+                      ) : (
+                        displayBets.map(bet => {
+                          const cat = getBetCategory(bet);
+                          const marketName = getMarketDisplayName(bet);
+                          const marketImg = getMarketImage(bet);
+                          const { value, pnlAbs, pnlPct } = getPositionValue(bet);
+                          const stakeVal = Number(formatAmount(bet.stake, 6));
+                          const isWon = bet.finalized && bet.won;
+                          const isLost = bet.finalized && !bet.won;
+                          const isUnredeemed = isWon && !bet.claimed;
+                          const marketQuestion = cat.toUpperCase() === 'CRYPTO' ? getCryptoQuestion(bet) : marketName;
+
+                          return (
+                            <div key={bet.id} className="border-b border-gray-100 dark:border-neutral-800/60 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-neutral-900/20 transition-colors">
+                              <div className="flex items-center gap-3">
+                                {marketImg ? (
+                                  <img src={marketImg} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                                ) : (
+                                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                                    cat.toUpperCase() === 'CRYPTO' ? 'bg-orange-500/10 text-orange-400'
+                                    : cat.toUpperCase() === 'POLITICS' ? 'bg-blue-500/10 text-blue-400'
+                                    : cat.toUpperCase() === 'SPORTS' ? 'bg-green-500/10 text-green-400'
+                                    : 'bg-purple-500/10 text-purple-400'
+                                  }`}>
+                                    {cat.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{marketQuestion}</div>
+                                  <div className="text-xs text-gray-500 dark:text-neutral-500 mt-0.5">
+                                    {stakeVal.toFixed(2)} {currency.symbol} staked
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                  {isWon ? (
+                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-500">
+                                      <CheckCircle className="w-3.5 h-3.5" />
+                                      Won
+                                    </span>
+                                  ) : isLost ? (
+                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-400">
+                                      <XCircle className="w-3.5 h-3.5" />
+                                      Lost
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-gray-400 dark:text-neutral-500">--</span>
+                                  )}
+                                  <span className="text-sm font-bold text-gray-900 dark:text-white">{formatUsd(value)}</span>
+                                  {pnlAbs !== 0 && (
+                                    <span className={`text-[11px] font-semibold ${pnlAbs > 0 ? 'text-green-500' : 'text-red-400'}`}>
+                                      {pnlAbs > 0 ? '+' : ''}{formatUsd(pnlAbs)}
+                                    </span>
+                                  )}
+                                  {isUnredeemed && (
+                                    <button
+                                      onClick={() => redeemBet(bet.id)}
+                                      disabled={redeemingBetId === bet.id}
+                                      className="mt-1 text-[11px] font-semibold text-white bg-green-600 hover:bg-green-500 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                      {redeemingBetId === bet.id ? 'Redeeming...' : 'Redeem'}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* --- Desktop table (sm and above) --- */}
+                <table className="w-full hidden sm:table">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-neutral-800">
                       <th className="px-5 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-neutral-500 uppercase tracking-wider w-28">
@@ -1549,6 +1756,7 @@ export default function PortfolioPage() {
                     key={`${item.type}-${item.timestamp}-${idx}`}
                     item={item}
                     hashscanBase={HASHSCAN_BASE}
+                    getCryptoImage={getCryptoImage}
                   />
                 ))}
             </div>
