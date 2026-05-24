@@ -133,7 +133,7 @@ export default function GamePlay({
     <div className="flex-1 flex flex-col items-center justify-between px-6 pt-16 pb-10">
       {/* Question */}
       <div className="text-center mb-6">
-        <p className="text-[#1e3a5f] text-lg font-semibold">{getQuestion()}</p>
+        <p className="text-white text-lg font-semibold">{getQuestion()}</p>
       </div>
 
       {/* Score card */}
