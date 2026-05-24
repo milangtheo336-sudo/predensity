@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { useWallet, useAccountId, useBalance } from '@buidlerlabs/hashgraph-react-wallets';
 import {
   HashpackConnector,
+  MetamaskConnector,
   BladeConnector,
-  KabilaConnector,
+  HWCConnector,
 } from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,14 +17,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Wallet, ChevronDown, User, Check, Coins } from 'lucide-react';
+import { Wallet, ChevronDown, User, Copy, Check, Coins } from 'lucide-react';
 import { formatAddress } from '@/lib/utils';
 import { getStakingCurrency } from '@/lib/contracts/contract-config';
 
-// MetamaskConnector and HWCConnector are excluded — they pull in
-// @walletconnect/ethereum-provider → @reown/appkit → valtio (broken in Next.js 14).
-// EVM wallets are handled via EIP-6963 in auth-modal instead.
-type WalletType = 'hashpack' | 'blade' | 'kabila';
+type WalletType = 'hashpack' | 'metamask' | 'blade' | 'walletconnect';
 
 interface WalletOption {
   name: string;
@@ -42,6 +40,13 @@ const walletOptions: WalletOption[] = [
     connector: HashpackConnector,
   },
   {
+    name: 'MetaMask',
+    type: 'metamask',
+    icon: '🦊',
+    description: 'Ethereum wallet with Hedera support',
+    connector: MetamaskConnector,
+  },
+  {
     name: 'Blade',
     type: 'blade',
     icon: '⚔️',
@@ -49,11 +54,11 @@ const walletOptions: WalletOption[] = [
     connector: BladeConnector,
   },
   {
-    name: 'Kabila',
-    type: 'kabila',
+    name: 'WalletConnect',
+    type: 'walletconnect',
     icon: '🔗',
-    description: 'Hedera wallet',
-    connector: KabilaConnector,
+    description: 'Connect any wallet via QR code',
+    connector: HWCConnector,
   },
 ];
 
@@ -67,19 +72,21 @@ export function WalletSelector() {
 
   const balance = React.useMemo(() => {
     if (!balanceData) return null;
-    if (typeof balanceData === 'object' && 'hbars' in balanceData) return (balanceData as any).hbars.toString();
-    if (typeof balanceData === 'object' && 'value' in balanceData) return (balanceData as any).value.toString();
+    if (typeof balanceData === 'object' && 'hbars' in balanceData) return balanceData.hbars.toString();
+    if (typeof balanceData === 'object' && 'value' in balanceData) return balanceData.value.toString();
     return balanceData.toString();
   }, [balanceData]);
 
   const hashpackWallet = useWallet(HashpackConnector);
+  const metamaskWallet = useWallet(MetamaskConnector);
   const bladeWallet = useWallet(BladeConnector);
-  const kabilaWallet = useWallet(KabilaConnector);
+  const walletConnectWallet = useWallet(HWCConnector);
 
   const wallets: Record<WalletType, any> = {
     hashpack: hashpackWallet,
+    metamask: metamaskWallet,
     blade: bladeWallet,
-    kabila: kabilaWallet,
+    walletconnect: walletConnectWallet,
   };
 
   const handleWalletSelect = async (walletOption: WalletOption) => {
@@ -92,7 +99,11 @@ export function WalletSelector() {
   };
 
   const handleDisconnect = async () => {
-    try { await disconnect(); } catch (error) { console.error('Failed to disconnect wallet:', error); }
+    try {
+      await disconnect();
+    } catch (error) {
+      console.error('Failed to disconnect wallet:', error);
+    }
   };
 
   const handleCopyAddress = async () => {
@@ -107,18 +118,20 @@ export function WalletSelector() {
     if (!connector) return null;
     const name = connector.constructor?.name?.toLowerCase() || '';
     if (name.includes('hashpack')) return 'hashpack';
+    if (name.includes('metamask')) return 'metamask';
     if (name.includes('blade')) return 'blade';
-    if (name.includes('kabila')) return 'kabila';
+    if (name.includes('hwc') || name.includes('walletconnect')) return 'walletconnect';
     return null;
   };
 
-  const currentWalletOption = walletOptions.find((w) => w.type === getWalletType());
+  const currentWalletType = getWalletType();
+  const currentWalletOption = walletOptions.find((w) => w.type === currentWalletType);
 
   const formatBalance = (bal: string | null) => {
     const sym = getStakingCurrency().symbol;
     if (!bal) return `0 ${sym}`;
-    const n = parseFloat(bal);
-    return n >= 1000 ? `${(n / 1000).toFixed(2)}k ${sym}` : `${n.toFixed(2)} ${sym}`;
+    const num = parseFloat(bal);
+    return num >= 1000 ? `${(num / 1000).toFixed(2)}k ${sym}` : `${num.toFixed(2)} ${sym}`;
   };
 
   if (isConnected) {
@@ -137,20 +150,30 @@ export function WalletSelector() {
             </div>
           )}
         </Button>
+
         {accountId && (
-          <Button variant="outline" size="sm" className="flex items-center space-x-2 bg-gray-100 dark:bg-neutral-800 border-gray-300 dark:border-neutral-700 text-light-gray hover:bg-gray-200 dark:hover:bg-neutral-700" onClick={handleCopyAddress}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center space-x-2 bg-gray-100 dark:bg-neutral-800 border-gray-300 dark:border-neutral-700 text-light-gray hover:bg-gray-200 dark:hover:bg-neutral-700"
+            onClick={handleCopyAddress}
+          >
             <User className="w-3 h-3" />
             <span className="text-xs font-mono">{formatAddress(accountId, 4)}</span>
             {copied && <Check className="w-3 h-3 text-green-400" />}
           </Button>
         )}
+
         {currentWalletOption && (
           <Button variant="outline" size="sm" className="flex items-center space-x-2 border-vibrant-purple text-vibrant-purple">
             <span className="text-sm">{currentWalletOption.icon}</span>
             <span className="text-xs font-medium">{currentWalletOption.name}</span>
           </Button>
         )}
-        <Button onClick={handleDisconnect} variant="outline" size="sm">Disconnect</Button>
+
+        <Button onClick={handleDisconnect} variant="outline" size="sm">
+          Disconnect
+        </Button>
       </div>
     );
   }
@@ -167,7 +190,7 @@ export function WalletSelector() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Choose your wallet</DialogTitle>
-          <DialogDescription>Select a Hedera wallet to connect.</DialogDescription>
+          <DialogDescription>Select a wallet provider to connect to Hedera testnet.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {walletOptions.map((wallet) => (
