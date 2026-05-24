@@ -2505,7 +2505,7 @@ function AdminPage() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Select Market Category</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Object.values(CATEGORIES)
-                  .filter((cat) => cat.enabled && isCategoryDeployed(cat.id))
+                  .filter((cat) => cat.enabled && (isCategoryDeployed(cat.id) || cat.id === Category.FINANCE))
                   .map((category) => (
                     <button
                       key={category.id}
