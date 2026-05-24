@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Create a proxy wallet for a user
  * 
  * Flow:
@@ -270,3 +270,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
