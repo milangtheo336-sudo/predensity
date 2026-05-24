@@ -7,13 +7,13 @@ import {
   PrivateKey,
 } from '@hashgraph/sdk';
 import { ethers } from 'ethers';
-import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 import { CONTRACT_IDS, getStakingCurrency, getOnChainBucket } from '@/lib/contracts/contract-config';
 import { Category } from '@/lib/types/categories';
 import { requireAdmin, rateLimit } from '@/lib/api-auth';
+import { getServerConvex } from '@/lib/convex-server';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
 const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || process.env.NEXT_PUBLIC_OPERATOR_ID || '';
 const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || process.env.OPERATOR_PRIVATE_KEY || '';
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         if (!onChainBet.finalized || !onChainBet.won || onChainBet.claimed || onChainBet.exited) {
           // Already claimed or not eligible -- just mark claimed in Convex if on-chain says so
           if (onChainBet.claimed) {
-            await convex.mutation(api.sync.markBetClaimed, { betId: bet.betId });
+            await convex.adminMutation(api.sync.markBetClaimed, { betId: bet.betId });
             claimed++;
           } else {
             const reason = !onChainBet.finalized ? 'not finalized on-chain'
@@ -161,11 +161,11 @@ export async function POST(request: NextRequest) {
           if (wallet) {
             const currentBalance = parseFloat(wallet.usdcBalance || '0');
             const newBalance = (currentBalance + payoutAmount).toFixed(6);
-            await convex.mutation(api.users.updateWalletBalance, { userId, usdcBalance: newBalance });
+            await convex.adminMutation(api.users.updateWalletBalance, { userId, usdcBalance: newBalance });
           }
         }
 
-        await convex.mutation(api.sync.markBetClaimed, { betId: bet.betId });
+        await convex.adminMutation(api.sync.markBetClaimed, { betId: bet.betId });
         claimed++;
       } catch (err) {
         errors.push(`${bet.betId}: ${err instanceof Error ? err.message : 'unknown error'}`);
