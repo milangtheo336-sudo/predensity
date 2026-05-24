@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { MarketStatus, SortOption, MarketCard, Category } from '@/lib/types/categories';
+import { MarketStatus, SortOption, MarketCard } from '@/lib/types/categories';
 import { cn } from '@/lib/utils';
 import { TrendingUp, Flame, Sparkles, Clock } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
@@ -54,37 +54,19 @@ export function MarketFilters({
 }: MarketFiltersProps) {
   const { t } = useLanguage();
   const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [sortPos, setSortPos] = useState({ top: 0, left: 0 });
-  const [statusPos, setStatusPos] = useState({ top: 0, left: 0 });
-  const statusBtnRef = useRef<HTMLButtonElement>(null);
   const sortBtnRef = useRef<HTMLButtonElement>(null);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
-  const statusDropdownRef = useRef<HTMLDivElement>(null);
 
-  const hasActiveFilters = hiddenCategories.size > 0 || status !== MarketStatus.OPEN || sortBy !== SortOption.MOST_ACTIVE_24H;
-
-  const statusOptions = [
-    { value: MarketStatus.ALL, label: t.top },
-    { value: MarketStatus.OPEN, label: t.open },
-    { value: MarketStatus.CLOSED, label: t.closed },
-    { value: MarketStatus.RESOLVED, label: t.resolved },
-  ];
+  const hasActiveFilters = sortBy !== SortOption.MOST_ACTIVE_24H;
 
   const sortOptions = [
     { value: SortOption.NEWEST, label: t.newest, icon: Sparkles },
     { value: SortOption.MOST_ACTIVE_24H, label: t.mostActive, icon: TrendingUp },
     { value: SortOption.HIGH_VOLUME, label: t.highVolume, icon: Flame },
     { value: SortOption.CLOSING_SOON, label: t.closingSoon, icon: Clock },
-  ];
-
-  const categoryToggles: { value: Category; label: string }[] = [
-    { value: Category.CRYPTO, label: t.hideCrypto },
-    { value: Category.POLITICS, label: t.hidePolitics },
-    { value: Category.SPORTS, label: t.hideSports },
-    { value: Category.TECHNOLOGY, label: t.hideTechnology },
   ];
 
   useEffect(() => { setMounted(true); }, []);
@@ -96,33 +78,22 @@ export function MarketFilters({
     }
   }, []);
 
-  const updateStatusPos = useCallback(() => {
-    if (statusBtnRef.current) {
-      const rect = statusBtnRef.current.getBoundingClientRect();
-      setStatusPos({ top: rect.bottom + 4, left: rect.left });
-    }
-  }, []);
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (isStatusOpen && statusBtnRef.current && !statusBtnRef.current.contains(target) && statusDropdownRef.current && !statusDropdownRef.current.contains(target)) {
-        setIsStatusOpen(false);
-      }
       if (isSortOpen && sortBtnRef.current && !sortBtnRef.current.contains(target) && sortDropdownRef.current && !sortDropdownRef.current.contains(target)) {
         setIsSortOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isStatusOpen, isSortOpen]);
+  }, [isSortOpen]);
 
   // Recalculate positions on scroll/resize while open
   useEffect(() => {
-    if (!isSortOpen && !isStatusOpen) return;
+    if (!isSortOpen) return;
     const handleUpdate = () => {
       if (isSortOpen) updateSortPos();
-      if (isStatusOpen) updateStatusPos();
     };
     window.addEventListener('scroll', handleUpdate, true);
     window.addEventListener('resize', handleUpdate);
@@ -130,9 +101,8 @@ export function MarketFilters({
       window.removeEventListener('scroll', handleUpdate, true);
       window.removeEventListener('resize', handleUpdate);
     };
-  }, [isSortOpen, isStatusOpen, updateSortPos, updateStatusPos]);
+  }, [isSortOpen, updateSortPos]);
 
-  const selectedStatusLabel = statusOptions.find(opt => opt.value === status)?.label || 'All';
   const selectedSort = sortOptions.find(opt => opt.value === sortBy) || sortOptions[0];
   const selectedSortLabel = selectedSort.label;
   const SortIcon = selectedSort.icon;
@@ -141,12 +111,6 @@ export function MarketFilters({
     if (!isSortOpen) updateSortPos();
     setIsSortOpen(!isSortOpen);
     setIsStatusOpen(false);
-  };
-
-  const handleStatusToggle = () => {
-    if (!isStatusOpen) updateStatusPos();
-    setIsStatusOpen(!isStatusOpen);
-    setIsSortOpen(false);
   };
 
   return (
@@ -217,40 +181,6 @@ export function MarketFilters({
             </svg>
           </button>
 
-          {/* Status dropdown trigger */}
-          <button
-            ref={statusBtnRef}
-            onClick={handleStatusToggle}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/[0.1] text-sm text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20 transition-colors whitespace-nowrap flex-shrink-0"
-          >
-            {selectedStatusLabel}
-            <svg className={cn('w-3.5 h-3.5 text-gray-400 transition-transform', isStatusOpen && 'rotate-180')} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {/* Category hide toggles -- minimal checkbox style */}
-          {categoryToggles.map((cat) => (
-            <button
-              key={cat.value}
-              onClick={() => onToggleCategory(cat.value)}
-              className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors whitespace-nowrap flex-shrink-0"
-            >
-              <span className={cn(
-                'w-3.5 h-3.5 rounded-sm border flex items-center justify-center flex-shrink-0',
-                hiddenCategories.has(cat.value)
-                  ? 'bg-blue-500 border-blue-500'
-                  : 'border-gray-400 dark:border-gray-600'
-              )}>
-                {hiddenCategories.has(cat.value) && (
-                  <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </span>
-              {cat.label}
-            </button>
-          ))}
 
           {hasActiveFilters && (
             <button onClick={onClearFilters} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors whitespace-nowrap flex-shrink-0 ml-2">
@@ -283,24 +213,6 @@ export function MarketFilters({
         document.body
       )}
 
-      {/* Portal-based Status dropdown */}
-      {mounted && isStatusOpen && createPortal(
-        <div
-          ref={statusDropdownRef}
-          className="fixed min-w-[140px] bg-white dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.08] rounded-xl overflow-hidden z-[9999] shadow-xl py-1"
-          style={{ top: statusPos.top, left: statusPos.left }}
-        >
-          {statusOptions.map((option) => (
-            <button key={option.value} onClick={() => { onStatusChange(option.value); setIsStatusOpen(false); }}
-              className={cn('w-full px-4 py-2.5 text-left text-sm flex items-center justify-between hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors',
-                status === option.value ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400')}>
-              <span>{option.label}</span>
-              {status === option.value && <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />}
-            </button>
-          ))}
-        </div>,
-        document.body
-      )}
     </div>
   );
 }
