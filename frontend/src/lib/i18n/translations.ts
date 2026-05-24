@@ -204,7 +204,7 @@ export function suggestLanguage(countryCode: string): LangCode {
 
 const T: Record<LangCode, Translations> = {
   en: {
-    portfolio: 'Portfolio', balance: 'Bal', deposit: 'Deposit', withdraw: 'Withdraw',
+    portfolio: 'Portfolio', deposit: 'Deposit', withdraw: 'Withdraw',
     notifications: 'Notifications', settings: 'Settings', myBets: 'My Bets',
     signOut: 'Sign Out', signIn: 'Sign In', location: 'Location', language: 'Language',
     switchLanguage: 'Switch Language',
