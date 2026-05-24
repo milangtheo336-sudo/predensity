@@ -1164,18 +1164,18 @@ function GuestHamburgerMenu({
         right: window.innerWidth - rect.right,
         zIndex: 9999,
       }}
-      className="w-56 bg-neutral-950 border border-neutral-800 rounded-xl shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200"
+      className="w-56 bg-white dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200"
     >
       <div className="px-2 py-1">
         <ThemeToggle />
       </div>
-      <div className="h-px bg-neutral-800 my-1" />
-      <Link href="/privacy" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-neutral-900 hover:text-white transition-colors rounded-lg mx-1">
-        <Shield className="w-4 h-4 text-gray-500" />
+      <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1" />
+      <Link href="/privacy" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
+        <Shield className="w-4 h-4 text-gray-400 dark:text-gray-500" />
         Privacy Policy
       </Link>
-      <Link href="/terms" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-neutral-900 hover:text-white transition-colors rounded-lg mx-1">
-        <FileText className="w-4 h-4 text-gray-500" />
+      <Link href="/terms" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
+        <FileText className="w-4 h-4 text-gray-400 dark:text-gray-500" />
         Terms of Use
       </Link>
     </div>,
