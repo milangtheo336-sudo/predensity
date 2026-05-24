@@ -1178,9 +1178,9 @@ export function PoliticsPredictionCard({
               {/* Event identity: image + title + subtitle */}
               <div className="flex gap-3 items-center mb-3">
                 {imageUrl ? (
-                  <img src={imageUrl} alt={eventName} className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-white/[0.06] flex-shrink-0" />
+                  <img src={imageUrl} alt={eventName} className="w-10 h-10 rounded-lg object-cover border border-gray-200 dark:border-white/[0.06] flex-shrink-0" />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.06] flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-white/[0.06] flex items-center justify-center flex-shrink-0">
                     <Users className="w-5 h-5 text-gray-500" />
                   </div>
                 )}
