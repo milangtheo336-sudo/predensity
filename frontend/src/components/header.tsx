@@ -1477,7 +1477,9 @@ function GuestHamburgerMenu({
   parentCloseTimer: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
 }) {
   const [mounted, setMounted] = useState(false);
+  const [langPanelOpen, setLangPanelOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
 
   useEffect(() => setMounted(true), []);
 
@@ -1498,6 +1500,7 @@ function GuestHamburgerMenu({
   const rect = buttonRef.current.getBoundingClientRect();
 
   return createPortal(
+    <LangPanelContext.Provider value={{ open: langPanelOpen, setOpen: setLangPanelOpen }}>
     <div
       ref={menuRef}
       onMouseEnter={() => {
@@ -1512,23 +1515,28 @@ function GuestHamburgerMenu({
         right: window.innerWidth - rect.right,
         zIndex: 9999,
       }}
-      className="w-56 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200"
+      className="relative w-56 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-xl shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden"
     >
+      {/* Language flyout row */}
+      <LanguageFlyout />
+
+      <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 mx-3" />
+
       {/* Support */}
       <a href="mailto:support@predensity.com" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
         <HelpCircle className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        Support
+        {t.support}
       </a>
 
       <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 mx-3" />
 
       <Link href="/privacy" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
         <Shield className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        Privacy Policy
+        {t.privacyPolicy}
       </Link>
       <Link href="/terms" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-900 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg mx-1">
         <FileText className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        Terms of Use
+        {t.termsOfUse}
       </Link>
 
       <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1 mx-3" />
@@ -1536,7 +1544,11 @@ function GuestHamburgerMenu({
       <div className="px-4 py-2">
         <span className="text-[11px] text-gray-400 dark:text-gray-500">© 2026 Predensity</span>
       </div>
-    </div>,
+
+      {/* Language panel overlay */}
+      {langPanelOpen && <LanguagePanel onClose={() => setLangPanelOpen(false)} />}
+    </div>
+    </LangPanelContext.Provider>,
     document.body
   );
 }
