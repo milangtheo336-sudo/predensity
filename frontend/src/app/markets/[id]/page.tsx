@@ -43,8 +43,9 @@ function NotFoundView({ message, onBack }: { message: string; onBack: () => void
     <div className="min-h-screen bg-white dark:bg-black">
       <Header />
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-lg mx-auto text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Market Not Found</h1>
+        <div className="max-w-lg mx-auto text-center flex flex-col items-center">
+          <img src="/500 Internal Server Error-cuate.svg" alt="" className="w-64 h-64 mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Market Not Found</h1>
           <p className="text-gray-500 dark:text-gray-400 mb-6">{message}</p>
           <Button onClick={onBack}>
             <ArrowLeft className="w-4 h-4 mr-2" />
