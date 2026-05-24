@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { usePublicClient } from 'wagmi';
+import { useReadContract } from '@buidlerlabs/hashgraph-react-wallets';
 import CryptoPredictionMarketABI from '../../abi/CryptoPredictionMarket.json';
 import { ethers } from 'ethers';
 import { Category } from '@/lib/types/categories';
@@ -57,15 +57,7 @@ interface ContractStats {
 }
 
 export function useBetSimulation(category?: Category) {
-  const publicClient = usePublicClient();
-
-  const readContract = useCallback(
-    async (params: { address: `0x${string}`; abi: any; functionName: string; args: any[] }) => {
-      if (!publicClient) throw new Error('No public client');
-      return publicClient.readContract(params);
-    },
-    [publicClient]
-  );
+  const { readContract } = useReadContract();
 
   const getContractAddressForCategory = useCallback((cat?: Category): `0x${string}` => {
     if (cat) {
@@ -85,7 +77,7 @@ export function useBetSimulation(category?: Category) {
       try {
         const contractAddress = getContractAddressForCategory(targetCategory || category);
 
-        // Use provided stake or default to 1 USDC
+        // Use provided stake or default to 1 HBAR
         const stake = stakeAmount && parseFloat(stakeAmount) > 0 ? stakeAmount : '1';
 
         // Contract expects basis points (1% = 100 BPS, so $0.15 = 1500 BPS)
