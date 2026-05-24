@@ -7,13 +7,13 @@ import {
   PrivateKey,
 } from '@hashgraph/sdk';
 import { ethers } from 'ethers';
-import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 import { CONTRACT_IDS, getStakingCurrency } from '@/lib/contracts/contract-config';
 import { requireAuthMatchingUser, rateLimit } from '@/lib/api-auth';
 import { Category } from '@/lib/types/categories';
+import { getServerConvex } from '@/lib/convex-server';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
 const OPERATOR_ID = process.env.TESTNET_OPERATOR_ID || process.env.NEXT_PUBLIC_OPERATOR_ID || '';
 const OPERATOR_KEY = process.env.TESTNET_OPERATOR_PRIVATE_KEY || process.env.OPERATOR_PRIVATE_KEY || '';
@@ -126,20 +126,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid category or contract not deployed' }, { status: 400 });
     }
 
-    // Look up the bet in Convex (using DID format and EVM EOA format)
+    // Look up the bet in Convex strictly by the authenticated userId.
+    //
+    // SECURITY (H1): we used to fall back to body.userAddress if the bet was
+    // not found under the caller's DID. That let an attacker claim another
+    // user's bet by passing their address in the body. Removed -- callers
+    // can only claim bets tied to their own authenticated identity.
     const managedAddress = `managed:${userId}`.toLowerCase();
-    let userBets = await convex.query(api.sync.getBetsByUser, { userAddress: managedAddress });
-    
-    // If not found in DID format, try checking if userId is an EVM address already,
-    // or try getting the user's EVM address via profile lookup.
-    // For now, we will allow the frontend to also pass the evmAddress in the request for claiming.
-    let bet = userBets?.find((b: any) => b.betId === betId);
-    
-    if (!bet && body.userAddress) {
-       const managedEoa = `managed:${body.userAddress}`.toLowerCase();
-       const eoaBets = await convex.query(api.sync.getBetsByUser, { userAddress: managedEoa });
-       bet = eoaBets?.find((b: any) => b.betId === betId);
-    }
+    const userBets = await convex.query(api.sync.getBetsByUser, { userAddress: managedAddress });
+    const bet = userBets?.find((b: any) => b.betId === betId);
 
     if (!bet) {
       return NextResponse.json({ error: 'Bet not found in database' }, { status: 404 });
@@ -224,7 +219,7 @@ export async function POST(request: NextRequest) {
 
         // Update Convex with the correct on-chain ID for future calls
         try {
-          await convex.mutation(api.sync.updateBetOnChainId, {
+          await convex.adminMutation(api.sync.updateBetOnChainId, {
             betId,
             onChainBetId: numericBetId,
           });
@@ -260,7 +255,7 @@ export async function POST(request: NextRequest) {
       }
       if (onChainBet.claimed) {
         // Already claimed on-chain -- sync Convex and return success
-        await convex.mutation(api.sync.markBetClaimed, { betId });
+        await convex.adminMutation(api.sync.markBetClaimed, { betId });
         client.close();
         return NextResponse.json({ success: true, betId, alreadyClaimed: true, payoutAmount: '0', newBalance: '' });
       }
@@ -355,11 +350,11 @@ export async function POST(request: NextRequest) {
       if (wallet) {
         const currentBalance = parseFloat(wallet.usdcBalance || '0');
         newBalance = (currentBalance + payoutAmount).toFixed(6);
-        await convex.mutation(api.users.updateWalletBalance, { userId, usdcBalance: newBalance });
+        await convex.adminMutation(api.users.updateWalletBalance, { userId, usdcBalance: newBalance });
         console.log('[bet/claim] Credited', payoutAmount, currency.symbol, '-> new balance:', newBalance);
       }
 
-      await convex.mutation(api.sync.markBetClaimed, { betId });
+      await convex.adminMutation(api.sync.markBetClaimed, { betId });
 
       client.close();
 
