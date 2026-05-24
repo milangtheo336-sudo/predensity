@@ -82,8 +82,8 @@ function PriceChart({ marketId, outcomes }: { marketId: string; outcomes: Outcom
         {histories.map((h, i) => {
           if (h.history.length < 2) return null;
           const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
-          const points = h.history.map((p) => {
-            const x = ((p.timestamp - minTime) / timeRange) * W;
+          const points = h.history.map((p: any) => {
+            const x = ((p.timestamp - minTime) / timeRange_ms) * W;
             const y = H - (p.price / 100) * (H - 10) - 5;
             return `${x},${y}`;
           }).join(' ');
