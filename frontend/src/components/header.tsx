@@ -861,7 +861,6 @@ export function Header({ children }: { children?: React.ReactNode }) {
 
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositInitialView, setDepositInitialView] = useState<DepositView>('menu');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [guestMenuOpen, setGuestMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -1010,7 +1009,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
             )}
           </div>
 
-          {/* Mobile: Login/Signup buttons + hamburger */}
+          {/* Mobile: Login/Signup buttons only */}
           <div className="md:hidden flex items-center gap-2">
             {!isSignedIn && mounted && (
               <>
@@ -1028,12 +1027,6 @@ export function Header({ children }: { children?: React.ReactNode }) {
                 </SignUpButton>
               </>
             )}
-            <button
-              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-neutral-800 transition-colors"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
       </header>
@@ -1056,19 +1049,6 @@ export function Header({ children }: { children?: React.ReactNode }) {
         signOut={signOut}
       />
       <DepositModal isOpen={depositOpen} onClose={() => setDepositOpen(false)} initialView={depositInitialView} />
-      {mobileMenuOpen && (
-        <MobileMenu
-          isSignedIn={!!isSignedIn}
-          isConnected={isConnected}
-          mounted={mounted}
-          platformBalance={platformBalance}
-          openDeposit={() => { setMobileMenuOpen(false); openDeposit(); }}
-          openWithdraw={() => { setMobileMenuOpen(false); openWithdraw(); }}
-          onClose={() => setMobileMenuOpen(false)}
-          disconnect={disconnect}
-          signOut={signOut}
-        />
-      )}
     </DepositModalContext.Provider>
   );
 }
@@ -1254,101 +1234,3 @@ function ProfileDropdownPortal({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Mobile Menu
-// ---------------------------------------------------------------------------
-
-function MobileMenu({
-  isSignedIn,
-  isConnected,
-  mounted,
-  platformBalance,
-  openDeposit,
-  openWithdraw,
-  onClose,
-  disconnect,
-  signOut,
-}: {
-  isSignedIn: boolean;
-  isConnected: boolean;
-  mounted: boolean;
-  platformBalance: number;
-  openDeposit: () => void;
-  openWithdraw: () => void;
-  onClose: () => void;
-  disconnect: () => Promise<any>;
-  signOut: () => Promise<any>;
-}) {
-  return (
-    <div className="md:hidden border-b border-neutral-800 bg-neutral-950 px-4 py-4 space-y-3">
-      {isSignedIn && (
-        <>
-          <Link href="/my-bets" onClick={onClose} className="block px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900">
-            Portfolio
-          </Link>
-          <Link href="/markets" onClick={onClose} className="block px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900">
-            Markets
-          </Link>
-
-          <div className="flex items-center justify-between px-3 py-2">
-            <span className="text-sm text-gray-400">Balance</span>
-            <span className="text-sm font-medium text-vibrant-purple">${platformBalance.toFixed(2)}</span>
-          </div>
-
-          <div className="flex gap-2 px-3">
-            <button onClick={openDeposit} className="flex-1 py-2 rounded-lg bg-vibrant-purple text-white text-sm font-medium">Deposit</button>
-            <button onClick={openWithdraw} className="flex-1 py-2 rounded-lg border border-neutral-700 text-gray-300 text-sm font-medium">Withdraw</button>
-          </div>
-
-          {!isConnected && (
-            <div className="px-3"><WalletSelector /></div>
-          )}
-        </>
-      )}
-
-      {!isSignedIn && mounted && (
-        <>
-          <Link href="/markets" onClick={onClose} className="block px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900">
-            Markets
-          </Link>
-        </>
-      )}
-
-      {/* Common links */}
-      <div className="h-px bg-neutral-800" />
-      <div className="px-2 py-1">
-        <ThemeToggle />
-      </div>
-      <Link href="/privacy" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900">
-        <Shield className="w-4 h-4 text-gray-500" />
-        Privacy Policy
-      </Link>
-      <Link href="/terms" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900">
-        <FileText className="w-4 h-4 text-gray-500" />
-        Terms of Use
-      </Link>
-
-      {isSignedIn && (
-        <>
-          <div className="h-px bg-neutral-800" />
-          <Link href="/settings" onClick={onClose} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900">
-            <Settings className="w-4 h-4 text-gray-500" />
-            Settings
-          </Link>
-          {isConnected && (
-            <button onClick={() => { disconnect(); onClose(); }} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg hover:bg-neutral-900 w-full text-left">
-              <Wallet className="w-4 h-4 text-gray-500" />
-              Disconnect Wallet
-            </button>
-          )}
-          <button onClick={() => { signOut(); onClose(); }} className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg w-full text-left">
-            <LogOut className="w-4 h-4" />
-            Sign out
-          </button>
-        </>
-      )}
-
-
-    </div>
-  );
-}
