@@ -9,10 +9,6 @@
  *
  * Session is stored in sessionStorage under 'wallet-user-cache' so it survives
  * page navigations within the same tab but is cleared when the tab closes.
- *
- * On mount, if the cache exists we restore it immediately. If the wallet library
- * later reports isConnected=false (e.g. user disconnected from the wallet side),
- * the session is cleared automatically via the guard in the Header.
  */
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
