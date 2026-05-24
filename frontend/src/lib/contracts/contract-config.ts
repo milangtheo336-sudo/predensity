@@ -8,37 +8,37 @@ export interface ContractConfig {
   category: Category;
 }
 
-// Staking token configuration — USDC on Arc
+// Staking token configuration — USDC on Arc chain
+// Arc uses USDC as its native gas token, so USDC is a first-class citizen
 export const STAKING_TOKEN_CONFIG = {
-  // USDC on Arc Testnet
-  testnet: process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x3600000000000000000000000000000000000000',
-  // USDC on Arc Mainnet
-  mainnet: process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x3600000000000000000000000000000000000000',
-  // Native mode (not used on Arc — always USDC)
+  // USDC on Arc (update after deployment)
+  mainnet: process.env.NEXT_PUBLIC_USDC_ADDRESS || '',
+  // Native mode disabled — Arc always uses USDC
   none: '0x0000000000000000000000000000000000000000',
 };
 
 // Current staking mode: always USDC on Arc
-export const STAKING_MODE: 'none' | 'testnet' | 'mainnet' =
-  (process.env.NEXT_PUBLIC_STAKING_MODE as 'none' | 'testnet' | 'mainnet') || 'testnet';
+export const STAKING_MODE: 'none' | 'mainnet' =
+  (process.env.NEXT_PUBLIC_STAKING_MODE as 'none' | 'mainnet') || 'mainnet';
 
 // Get the active staking token address (EVM format)
-export function getStakingTokenAddress(): `0x${string}` {
-  return STAKING_TOKEN_CONFIG[STAKING_MODE] as `0x${string}`;
+export function getStakingTokenAddress(): string {
+  return STAKING_TOKEN_CONFIG[STAKING_MODE];
 }
 
-// Whether contracts are in ERC-20 token mode (always true on Arc)
+// Whether contracts are in ERC-20 token mode (USDC) vs native
 export function isTokenMode(): boolean {
   return STAKING_MODE !== 'none';
 }
 
-// Staking currency display info
+// Staking currency display info — always USDC on Arc
 export function getStakingCurrency(): { symbol: string; decimals: number; name: string } {
   return { symbol: 'USDC', decimals: 6, name: 'USD Coin' };
 }
 
-// Deployed contract addresses (EVM format) on Arc
-export const CONTRACT_ADDRESSES: Record<string, string> = {
+// Deployed contract addresses (EVM format)
+// Update these after deploying to Arc chain
+export const CONTRACT_ADDRESSES = {
   [Category.CRYPTO]: process.env.NEXT_PUBLIC_CRYPTO_CONTRACT_ADDRESS || '',
   [Category.POLITICS]: process.env.NEXT_PUBLIC_POLITICS_CONTRACT_ADDRESS || '',
   [Category.SPORTS]: process.env.NEXT_PUBLIC_SPORTS_CONTRACT_ADDRESS || '',
@@ -46,7 +46,7 @@ export const CONTRACT_ADDRESSES: Record<string, string> = {
   [Category.FINANCE]: '',
 };
 
-// Helper to get contract address by category
+// Helper to get contract address by category (EVM format)
 export function getContractAddress(category: Category): `0x${string}` {
   return CONTRACT_ADDRESSES[category] as `0x${string}`;
 }
@@ -73,24 +73,40 @@ export function getOnChainBucket(targetTimestamp: number, category: string): num
   return Math.floor((targetTimestamp - start) / 86400);
 }
 
-// Network configuration for Arc
+// =========================================================================
+// CLOB SYSTEM CONTRACTS (Politics, Sports, Technology, International)
+// MarketManager: multi-outcome markets, split/merge/resolve/redeem
+// ExchangeSettlement: dual-mode operator + EIP-712 signed trades
+// =========================================================================
+export const CLOB_CONTRACTS = {
+  marketManager: {
+    address: process.env.NEXT_PUBLIC_CLOB_MARKET_MANAGER_ADDRESS || '',
+  },
+  exchange: {
+    address: process.env.NEXT_PUBLIC_CLOB_EXCHANGE_ADDRESS || '',
+  },
+};
+
+export function getClobMarketManagerAddress(): string {
+  return CLOB_CONTRACTS.marketManager.address;
+}
+
+export function getClobExchangeAddress(): string {
+  return CLOB_CONTRACTS.exchange.address;
+}
+
+// Network configuration — Arc chain
 export const NETWORK_CONFIG = {
-  testnet: {
-    chainId: 5042002,
+  mainnet: {
+    chainId: 5042002, // Arc Testnet chain ID
     rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.testnet.arc.network',
     explorerUrl: process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://testnet.arcscan.app',
     explorerApiUrl: process.env.EXPLORER_API_URL || 'https://testnet.arcscan.app/api',
   },
-  mainnet: {
-    chainId: 5042002, // Update when mainnet launches
-    rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.arc.network',
-    explorerUrl: process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://arcscan.app',
-    explorerApiUrl: process.env.EXPLORER_API_URL || 'https://arcscan.app/api',
-  },
 };
 
-export const CURRENT_NETWORK: 'testnet' | 'mainnet' =
-  (process.env.NEXT_PUBLIC_NETWORK as 'testnet' | 'mainnet') || 'testnet';
+// Current network
+export const CURRENT_NETWORK: 'mainnet' = 'mainnet';
 
 export function getCurrentNetworkConfig() {
   return NETWORK_CONFIG[CURRENT_NETWORK];
@@ -104,7 +120,6 @@ export function getContractId(category: Category): string {
 
 // Legacy token ID references — on Arc we just use EVM addresses
 export const STAKING_TOKEN_IDS = {
-  testnet: STAKING_TOKEN_CONFIG.testnet,
   mainnet: STAKING_TOKEN_CONFIG.mainnet,
   none: '',
 };
