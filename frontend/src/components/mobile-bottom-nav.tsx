@@ -51,21 +51,6 @@ export function MobileBottomNav() {
         {/* More Menu Dropdown -- only for logged out users */}
         {!isSignedIn && (
           <div id="mobile-more-menu" className="hidden absolute bottom-16 right-4 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-white/10 rounded-lg shadow-lg w-48 py-2 z-50">
-            <div className="px-4 py-2.5 flex items-center gap-2">
-              <button
-                onClick={() => setTheme('light')}
-                className={`p-2 rounded-lg transition-colors ${theme === 'light' ? 'bg-gray-100 dark:bg-neutral-800' : 'hover:bg-gray-100 dark:hover:bg-neutral-800'}`}
-              >
-                <Image src="/lightmode.svg" alt="Light" width={20} height={20} className="dark:brightness-0 dark:invert" />
-              </button>
-              <button
-                onClick={() => setTheme('dark')}
-                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-gray-100 dark:bg-neutral-800' : 'hover:bg-gray-100 dark:hover:bg-neutral-800'}`}
-              >
-                <Image src="/nightmode.svg" alt="Dark" width={20} height={20} className="dark:brightness-0 dark:invert" />
-              </button>
-            </div>
-            <div className="h-px bg-gray-200 dark:bg-neutral-800 my-1" />
             <Link href="/privacy" onClick={() => document.getElementById('mobile-more-menu')?.classList.add('hidden')} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg">
               <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                 <Image src="/privacy policy.svg" alt="Privacy" width={18} height={18} className="dark:brightness-0 dark:invert" />
