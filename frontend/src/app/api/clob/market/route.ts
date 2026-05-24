@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (!Array.isArray(outcomeNames) || outcomeNames.length < 2 || outcomeNames.length > 6) {
-      return NextResponse.json({ error: 'Need 2-6 outcomes' }, { status: 400 });
+    if (!Array.isArray(outcomeNames) || outcomeNames.length < 2 || outcomeNames.length > 20) {
+      return NextResponse.json({ error: 'Need 2-20 outcomes' }, { status: 400 });
     }
 
     await convex.mutation(api.clob.createClobMarket, {
