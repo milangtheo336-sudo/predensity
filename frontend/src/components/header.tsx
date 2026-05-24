@@ -1315,7 +1315,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
     if (managedWallet !== null || walletCreationAttempted.current) return; // already exists or already tried
 
     walletCreationAttempted.current = true;
-    fetch('/api/wallet/create', {
+    fetch('/api/wallet/create-turnkey', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
