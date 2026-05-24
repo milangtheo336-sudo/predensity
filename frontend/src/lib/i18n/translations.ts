@@ -69,6 +69,22 @@ export interface Translations {
   currentLanguage: string;
   cancel: string;
   apply: string;
+
+  // Auth modal extras
+  selectYourWallet: string;
+  lastUsed: string;
+  requestingSignature: string;
+  pleaseSign: string;
+  back: string;
+
+  // Mobile nav
+  home: string;
+  search: string;
+  breaking: string;
+  more: string;
+  support: string;
+  termsOfUse: string;
+  close: string;
 }
 
 export const LANGUAGES: { code: LangCode; name: string; nativeName: string; flag: string; countryCodes: string[] }[] = [
@@ -111,6 +127,8 @@ const T: Record<LangCode, Translations> = {
     agreeTerms: 'By continuing, you agree to our', termsOfService: 'Terms of Service',
     privacyPolicy: 'Privacy Policy', securedBy: 'Secured by', authenticating: 'Authenticating...',
     selectLanguage: 'Select Language', currentLanguage: 'Current Language', cancel: 'Cancel', apply: 'Apply',
+    selectYourWallet: 'Select your wallet', lastUsed: 'Last used', requestingSignature: 'Requesting Signature', pleaseSign: 'Please sign to connect.', back: 'Back',
+    home: 'Home', search: 'Search', breaking: 'Breaking', more: 'More', support: 'Support', termsOfUse: 'Terms of Use', close: 'Close',
   },
   ko: {
     portfolio: '포트폴리오', balance: '잔액', deposit: '입금', withdraw: '출금',
@@ -133,6 +151,8 @@ const T: Record<LangCode, Translations> = {
     agreeTerms: '계속하면 다음에 동의하는 것입니다', termsOfService: '서비스 약관',
     privacyPolicy: '개인정보처리방침', securedBy: '보안 제공', authenticating: '인증 중...',
     selectLanguage: '언어 선택', currentLanguage: '현재 언어', cancel: '취소', apply: '적용',
+    selectYourWallet: '지갑 선택', lastUsed: '최근 사용', requestingSignature: '서명 요청 중', pleaseSign: '지갑에서 서명해 주세요.', back: '뒤로',
+    home: '홈', search: '검색', breaking: '속보', more: '더보기', support: '지원', termsOfUse: '이용약관', close: '닫기',
   },
   zh: {
     portfolio: '投资组合', balance: '余额', deposit: '充值', withdraw: '提现',
@@ -155,6 +175,8 @@ const T: Record<LangCode, Translations> = {
     agreeTerms: '继续即表示您同意我们的', termsOfService: '服务条款',
     privacyPolicy: '隐私政策', securedBy: '安全由', authenticating: '验证中...',
     selectLanguage: '选择语言', currentLanguage: '当前语言', cancel: '取消', apply: '应用',
+    selectYourWallet: '选择钱包', lastUsed: '最近使用', requestingSignature: '请求签名', pleaseSign: '请在钱包中签名。', back: '返回',
+    home: '首页', search: '搜索', breaking: '突发', more: '更多', support: '支持', termsOfUse: '使用条款', close: '关闭',
   },
   ru: {
     portfolio: 'Портфель', balance: 'Баланс', deposit: 'Пополнить', withdraw: 'Вывести',
@@ -177,6 +199,8 @@ const T: Record<LangCode, Translations> = {
     agreeTerms: 'Продолжая, вы соглашаетесь с нашими', termsOfService: 'Условиями использования',
     privacyPolicy: 'Политикой конфиденциальности', securedBy: 'Защищено', authenticating: 'Аутентификация...',
     selectLanguage: 'Выбор языка', currentLanguage: 'Текущий язык', cancel: 'Отмена', apply: 'Применить',
+    selectYourWallet: 'Выберите кошелёк', lastUsed: 'Последний использованный', requestingSignature: 'Запрос подписи', pleaseSign: 'Подпишите запрос в кошельке.', back: 'Назад',
+    home: 'Главная', search: 'Поиск', breaking: 'Срочно', more: 'Ещё', support: 'Поддержка', termsOfUse: 'Условия', close: 'Закрыть',
   },
   es: {
     portfolio: 'Portafolio', balance: 'Saldo', deposit: 'Depositar', withdraw: 'Retirar',
@@ -199,6 +223,8 @@ const T: Record<LangCode, Translations> = {
     agreeTerms: 'Al continuar, aceptas nuestros', termsOfService: 'Términos de servicio',
     privacyPolicy: 'Política de privacidad', securedBy: 'Protegido por', authenticating: 'Autenticando...',
     selectLanguage: 'Seleccionar idioma', currentLanguage: 'Idioma actual', cancel: 'Cancelar', apply: 'Aplicar',
+    selectYourWallet: 'Selecciona tu cartera', lastUsed: 'Último usado', requestingSignature: 'Solicitando firma', pleaseSign: 'Por favor firma en tu cartera.', back: 'Atrás',
+    home: 'Inicio', search: 'Buscar', breaking: 'Urgente', more: 'Más', support: 'Soporte', termsOfUse: 'Términos de uso', close: 'Cerrar',
   },
   fr: {
     portfolio: 'Portefeuille', balance: 'Solde', deposit: 'Déposer', withdraw: 'Retirer',
@@ -221,6 +247,8 @@ const T: Record<LangCode, Translations> = {
     agreeTerms: 'En continuant, vous acceptez nos', termsOfService: 'Conditions d\'utilisation',
     privacyPolicy: 'Politique de confidentialité', securedBy: 'Sécurisé par', authenticating: 'Authentification...',
     selectLanguage: 'Choisir la langue', currentLanguage: 'Langue actuelle', cancel: 'Annuler', apply: 'Appliquer',
+    selectYourWallet: 'Choisissez votre portefeuille', lastUsed: 'Dernièrement utilisé', requestingSignature: 'Demande de signature', pleaseSign: 'Veuillez signer dans votre portefeuille.', back: 'Retour',
+    home: 'Accueil', search: 'Rechercher', breaking: 'Urgent', more: 'Plus', support: 'Assistance', termsOfUse: "Conditions d'utilisation", close: 'Fermer',
   },
 };
 
