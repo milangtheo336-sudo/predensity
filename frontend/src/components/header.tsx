@@ -559,14 +559,12 @@ function WalletConnectView({ onBack, onConnected }: { onBack: () => void; onConn
   const prevConnected = useRef(isConnected);
   const [connecting, setConnecting] = useState<string | null>(null);
 
-  // Import only Hedera-native wallet hooks at top level (React rules)
-  // MetamaskConnector/HWCConnector excluded — they break Next.js 14 via valtio dep conflict
+  // Use directly imported connectors (no dynamic require needed)
   let hashpackWallet: any, bladeWallet: any, kabilaWallet: any;
   try {
-    const connectors = require('@buidlerlabs/hashgraph-react-wallets/connectors');
-    hashpackWallet = useWallet(connectors.HashpackConnector);
-    bladeWallet = useWallet(connectors.BladeConnector);
-    kabilaWallet = useWallet(connectors.KabilaConnector);
+    hashpackWallet = useWallet(HashpackConnector);
+    bladeWallet = useWallet(BladeConnector);
+    kabilaWallet = useWallet(KabilaConnector);
   } catch {
     // Fallback if connectors not available
   }
