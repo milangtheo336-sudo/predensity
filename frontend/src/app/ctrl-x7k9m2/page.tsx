@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { SignInButton, SignOutButton, useUser } from '@clerk/nextjs';
 import { useMutation, useQuery as useConvexQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
@@ -675,6 +675,222 @@ function TechnologyEventFields({ formData, updateField }: any) {
           Use 2 for currency (USD), 0 for counts, 18 for large numbers
         </p>
       </div>
+    </div>
+  );
+}
+
+// CLOB Markets Display Component
+function ClobMarketsDisplay({ category }: { category: Category }) {
+  const { toast } = useToast();
+  const [selectedMarketForElimination, setSelectedMarketForElimination] = useState<string | null>(null);
+  const [selectedMarketForResolution, setSelectedMarketForResolution] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Fetch CLOB markets for current category
+  const allClobMarkets = useConvexQuery(api.clob.getClobMarkets, {});
+  const clobMarkets = useMemo(() => {
+    if (!allClobMarkets) return [];
+    // Filter by category - show all for crypto, filter for others
+    if (category === Category.CRYPTO) return allClobMarkets;
+    return allClobMarkets.filter((m: any) => m.category === category.toLowerCase());
+  }, [allClobMarkets, category]);
+
+  const handleEliminateOutcome = async (marketId: string, outcomeIndex: number) => {
+    setIsProcessing(true);
+    try {
+      const res = await fetch('/api/clob/eliminate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ marketId, outcomeIndex }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to eliminate outcome');
+      toast({ title: 'Outcome eliminated', description: 'The outcome has been marked as eliminated' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to eliminate', description: err instanceof Error ? err.message : 'Unknown error' });
+    } finally {
+      setIsProcessing(false);
+      setSelectedMarketForElimination(null);
+    }
+  };
+
+  const handleResolveMarket = async (marketId: string, winningOutcome: number) => {
+    setIsProcessing(true);
+    try {
+      const res = await fetch('/api/clob/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ marketId, winningOutcome }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to resolve market');
+      toast({ title: 'Market resolved', description: 'The market has been fully resolved' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to resolve', description: err instanceof Error ? err.message : 'Unknown error' });
+    } finally {
+      setIsProcessing(false);
+      setSelectedMarketForResolution(null);
+    }
+  };
+
+  if (!clobMarkets) {
+    return <div className="text-center py-8 text-gray-400">Loading markets...</div>;
+  }
+
+  if (clobMarkets.length === 0) {
+    return <div className="text-center py-8 text-gray-400">No CLOB markets created yet</div>;
+  }
+
+  return (
+    <div className="space-y-4 mt-4">
+      {clobMarkets.map((market: any) => {
+        const eliminated = market.eliminatedOutcomes || [];
+        const activeOutcomes = market.numOutcomes - eliminated.length;
+        return (
+          <div key={market.marketId} className="p-4 bg-gray-50 dark:bg-neutral-900/50 border border-gray-200 dark:border-white/10 rounded-lg">
+            <div className="flex items-start gap-4">
+              {market.imageUrl && (
+                <img src={market.imageUrl} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <h4 className="text-gray-900 dark:text-white font-semibold">{market.question}</h4>
+                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                  <span className="capitalize">{market.category}</span>
+                  <span>{market.numOutcomes} outcomes</span>
+                  {eliminated.length > 0 && (
+                    <span className="text-red-500">{eliminated.length} eliminated</span>
+                  )}
+                  <span className={market.resolved ? 'text-green-500' : 'text-yellow-500'}>
+                    {market.resolved ? 'Resolved' : 'Open'}
+                  </span>
+                  <span>${market.totalVolume.toFixed(2)} vol</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {market.outcomeNames.map((name: string, idx: number) => {
+                    const isEliminated = eliminated.includes(idx);
+                    const isWinner = market.resolved && market.winningOutcome === idx;
+                    return (
+                      <span
+                        key={idx}
+                        className={`text-xs px-2 py-1 rounded ${
+                          isWinner
+                            ? 'bg-green-500 text-white font-semibold'
+                            : isEliminated
+                            ? 'bg-gray-200 dark:bg-neutral-800 text-gray-400 line-through'
+                            : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
+                        }`}
+                      >
+                        {name}
+                        {isEliminated && ' ✕'}
+                        {isWinner && ' ✓'}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 flex-shrink-0">
+                {!market.resolved && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setSelectedMarketForElimination(market.marketId)}
+                      disabled={isProcessing || activeOutcomes <= 1}
+                      className="text-xs"
+                    >
+                      Eliminate Outcome
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="predensity"
+                      onClick={() => setSelectedMarketForResolution(market.marketId)}
+                      disabled={isProcessing}
+                      className="text-xs"
+                    >
+                      Resolve Market
+                    </Button>
+                  </>
+                )}
+                {market.resolved && (
+                  <span className="text-xs text-green-500 font-semibold">Resolved</span>
+                )}
+              </div>
+            </div>
+
+            {/* Elimination Modal */}
+            {selectedMarketForElimination === market.marketId && (
+              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                <div className="bg-white dark:bg-neutral-950 border border-gray-200 dark:border-white/10 rounded-lg max-w-md w-full p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Eliminate Outcome</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Select an outcome to eliminate. The market will stay open for remaining outcomes.
+                  </p>
+                  <div className="space-y-2 mb-4">
+                    {market.outcomeNames.map((name: string, idx: number) => {
+                      const isEliminated = eliminated.includes(idx);
+                      if (isEliminated) return null;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => handleEliminateOutcome(market.marketId, idx)}
+                          disabled={isProcessing}
+                          className="w-full p-3 text-left bg-gray-50 dark:bg-neutral-900 hover:bg-gray-100 dark:hover:bg-neutral-800 border border-gray-200 dark:border-white/10 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          <span className="text-sm text-gray-900 dark:text-white font-medium">{name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedMarketForElimination(null)}
+                    disabled={isProcessing}
+                    className="w-full"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Resolution Modal */}
+            {selectedMarketForResolution === market.marketId && (
+              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                <div className="bg-white dark:bg-neutral-950 border border-gray-200 dark:border-white/10 rounded-lg max-w-md w-full p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Resolve Market</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Select the final winning outcome. This will close the market permanently.
+                  </p>
+                  <div className="space-y-2 mb-4">
+                    {market.outcomeNames.map((name: string, idx: number) => {
+                      const isEliminated = eliminated.includes(idx);
+                      if (isEliminated) return null;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => handleResolveMarket(market.marketId, idx)}
+                          disabled={isProcessing}
+                          className="w-full p-3 text-left bg-gray-50 dark:bg-neutral-900 hover:bg-green-50 dark:hover:bg-green-500/10 border border-gray-200 dark:border-white/10 hover:border-green-500 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          <span className="text-sm text-gray-900 dark:text-white font-medium">{name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedMarketForResolution(null)}
+                    disabled={isProcessing}
+                    className="w-full"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -2146,7 +2362,7 @@ function AdminPage() {
         {/* CLOB Market Management (Politics, Sports, Tech, International) */}
         <Card className="bg-white dark:bg-neutral-950/50 border-gray-200 dark:border-white/10">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">CLOB Market Management</h2>
                 <p className="text-sm text-gray-400 mt-1">Create prediction markets with YES/NO or multi-outcome trading</p>
@@ -2156,6 +2372,7 @@ function AdminPage() {
                 Create CLOB Market
               </Button>
             </div>
+            <ClobMarketsDisplay category={selectedCategory} />
           </CardContent>
         </Card>
 
