@@ -328,6 +328,11 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
         </div>
       </div>
 
+      {/* Sparkline chart (crypto) */}
+      {isCrypto && (
+        <CryptoSparkline convexBets={convexBets} />
+      )}
+
       {/* YES-NO bar (event-based only) */}
       {!isCrypto && (
         <div className="space-y-1">
