@@ -126,10 +126,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid category or contract not deployed' }, { status: 400 });
     }
 
-    // Look up the bet in Convex
+    // Look up the bet in Convex (using DID format and EVM EOA format)
     const managedAddress = `managed:${userId}`.toLowerCase();
-    const userBets = await convex.query(api.sync.getBetsByUser, { userAddress: managedAddress });
-    const bet = userBets?.find((b: any) => b.betId === betId);
+    let userBets = await convex.query(api.sync.getBetsByUser, { userAddress: managedAddress });
+    
+    // If not found in DID format, try checking if userId is an EVM address already,
+    // or try getting the user's EVM address via profile lookup.
+    // For now, we will allow the frontend to also pass the evmAddress in the request for claiming.
+    let bet = userBets?.find((b: any) => b.betId === betId);
+    
+    if (!bet && body.userAddress) {
+       const managedEoa = `managed:${body.userAddress}`.toLowerCase();
+       const eoaBets = await convex.query(api.sync.getBetsByUser, { userAddress: managedEoa });
+       bet = eoaBets?.find((b: any) => b.betId === betId);
+    }
 
     if (!bet) {
       return NextResponse.json({ error: 'Bet not found in database' }, { status: 404 });
