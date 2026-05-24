@@ -294,7 +294,7 @@ function ActivityRow({ item, explorerBase, getCryptoImage }: { item: any; explor
   const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
   // Build HashScan link from txHash
-  const explorerUrl = item.txHash ? `${explorerBase}/transaction/${item.txHash}` : null;
+  const explorerUrl = item.txHash ? `${explorerBase}/tx/${item.txHash}` : null;
 
   const rowContent = (
     <div className={`flex items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-gray-100 dark:border-neutral-800/50 transition-colors ${explorerUrl ? 'hover:bg-gray-50 dark:hover:bg-neutral-900/20 cursor-pointer' : ''}`}>
@@ -719,7 +719,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
   const network = (process.env.NEXT_PUBLIC_NETWORK || 'testnet').toLowerCase();
-  const EXPLORER_BASE = network === 'mainnet' ? 'https://explorer.arc.io' : 'https://testnet-explorer.arc.io';
+  const EXPLORER_BASE = process.env.NEXT_PUBLIC_EXPLORER_URL || (network === 'mainnet' ? 'https://arcscan.app' : 'https://testnet.arcscan.app');
 
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
@@ -930,7 +930,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     BTC: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
     ETH: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
     SOL: 'https://assets.coingecko.com/coins/images/4128/small/solana.png',
-    HBAR: 'https://assets.coingecko.com/coins/images/3688/small/hbar.png',
+    HBAR: 'https://assets.coingecko.com/coins/images/3688/small/USDC .png',
     XRP: 'https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png',
     DOGE: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png',
     ADA: 'https://assets.coingecko.com/coins/images/975/small/cardano.png',
@@ -987,7 +987,7 @@ function PortfolioPageContent({ publicViewUserId }: { publicViewUserId?: string 
     const fetchPrices = async () => {
       for (const asset of activeCryptoAssets) {
         try {
-          const res = await fetch(`/api/hbar-price?symbol=${asset}`);
+          const res = await fetch(`/api/USDC -price?symbol=${asset}`);
           if (res.ok) {
             const data = await res.json();
             if (typeof data.price === 'number' && !cancelled) {
