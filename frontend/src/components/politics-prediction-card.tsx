@@ -26,6 +26,7 @@ import PoliticsPredictionMarketABI from '../../abi/PoliticsPredictionMarket.json
 import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
 import { useUser } from '@clerk/nextjs';
 import { api } from '../../convex/_generated/api';
+import { useBalanceVisibility } from '@/components/header';
 
 // --- Helper Functions ---
 function getThreshold(predType: PoliticsPredictionType): number {
@@ -917,6 +918,7 @@ export function PoliticsPredictionCard({
     isSignedIn && user ? { userId: user.id } : 'skip'
   );
   const effectiveBalance = managedWallet ? parseFloat(managedWallet.usdcBalance || '0') : 0;
+  const { balancesHidden } = useBalanceVisibility();
 
   const contractIdString = getContractId(Category.POLITICS);
   const contractAddress = getContractAddress(Category.POLITICS);
@@ -1439,7 +1441,7 @@ export function PoliticsPredictionCard({
               </Button>
 
               <div className="text-center mt-3">
-                <span className="text-xs text-gray-500">Balance: {effectiveBalance} {getStakingCurrency().symbol}</span>
+                <span className="text-xs text-gray-500">Balance: {balancesHidden ? '****' : `${effectiveBalance} ${getStakingCurrency().symbol}`}</span>
               </div>
             </div>
 
