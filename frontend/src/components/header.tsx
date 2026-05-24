@@ -1192,7 +1192,7 @@ function GuestHamburgerMenu({
 export function Header({ children }: { children?: React.ReactNode }) {
   const { isConnected, disconnect } = useWallet();
   const { data: accountId } = useAccountId();
-  const { user, logout } = useMagic();
+  const { user, logout, isAuthenticating } = useMagic();
   const isSignedIn = !!user;
 
   const [depositOpen, setDepositOpen] = useState(false);
@@ -1575,7 +1575,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
             )}
 
             {/* Non-signed-in: Sign In, Sign Up, hamburger (hover) */}
-            {!isSignedIn && mounted && (
+            {!isSignedIn && !isAuthenticating && mounted && (
               <>
                 <Button 
                   ref={authLoginBtnRef} 
@@ -1614,6 +1614,42 @@ export function Header({ children }: { children?: React.ReactNode }) {
                   </button>
                 </div>
               </>
+            )}
+            
+            {/* Authenticating state */}
+            {isAuthenticating && mounted && createPortal(
+              <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                <div className="bg-[#1a1a1c] rounded-3xl shadow-2xl border border-white/10 w-[480px] max-w-[90vw] p-16">
+                  <div className="text-center">
+                    {/* Magic Logo with spinning ring */}
+                    <div className="mb-8 flex justify-center">
+                      <div className="relative w-32 h-32 flex items-center justify-center">
+                        {/* Spinning ring */}
+                        <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
+                        {/* Magic Logo */}
+                        <Image 
+                          src="/1-Icon_Magic_Color.png" 
+                          alt="Magic" 
+                          width={64} 
+                          height={64}
+                          className="opacity-90"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Title */}
+                    <h2 className="text-2xl font-bold text-white mb-3">
+                      Redirecting...
+                    </h2>
+                    
+                    {/* Subtitle */}
+                    <p className="text-gray-400 text-base">
+                      Please wait as we redirect you.
+                    </p>
+                  </div>
+                </div>
+              </div>,
+              document.body
             )}
           </div>
 
