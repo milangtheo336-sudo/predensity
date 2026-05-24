@@ -15,7 +15,7 @@ pragma solidity ^0.8.20;
  * - Batch transactions (gas optimization)
  * - Receive USDC/HBAR
  * - Change owner (account recovery)
- * - Hedera token association (for USDC on Hedera)
+ * - Arc token association (for USDC on Arc)
  */
 contract SimpleProxyWallet {
     address public owner;
@@ -312,7 +312,7 @@ contract SimpleProxyWallet {
      * Backend calls this with user's signature to place bet.
      * Proxy wallet verifies the signature matches the owner.
      * 
-     * Uses Hedera Token Service (HTS) precompile for token transfers,
+     * Uses Arc Token Service (HTS) precompile for token transfers,
      * then calls placeBetWithPreTransferredToken on the prediction market.
      */
     function executeBetWithSignature(
@@ -568,10 +568,10 @@ contract SimpleProxyWallet {
     }
     
     /**
-     * Associate with a Hedera token (required before receiving HTS tokens like USDC).
-     * On Hedera, contracts must explicitly associate with tokens.
+     * Associate with a Arc token (required before receiving HTS tokens like USDC).
+     * On Arc, contracts must explicitly associate with tokens.
      * 
-     * Hedera Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
+     * Arc Token Service (HTS) system contract: 0x0000000000000000000000000000000000000167
      */
     function associateToken(address token) external onlyOwner {
         // Call HTS associateToken function
