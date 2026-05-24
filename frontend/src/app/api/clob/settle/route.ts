@@ -62,8 +62,8 @@ async function settleTradeWithRetry(
   }
 
   // Use proxy wallet addresses (non-custodial)
-  const buyerAddress = buyerWallet.proxyWalletAddress;
-  const sellerAddress = sellerWallet.proxyWalletAddress;
+  const buyerAddress = (buyerWallet as any).proxyWalletAddress;
+  const sellerAddress = (sellerWallet as any).proxyWalletAddress;
 
   const outcomeToken = market.outcomeTokenAddresses[trade.outcomeIndex];
   const tradeIdBytes = ethers.utils.id(trade.tradeId);
@@ -126,7 +126,7 @@ async function settleTradeWithRetry(
  */
 export async function POST(request: NextRequest) {
   try {
-    const adminResult = await requireAdmin();
+    const adminResult = await requireAdmin(request);
     if (adminResult instanceof NextResponse) return adminResult;
 
     const rateLimitResponse = rateLimit(request, { maxRequests: 10, windowMs: 60_000 });
