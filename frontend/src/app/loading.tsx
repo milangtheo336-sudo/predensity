@@ -1,11 +1,13 @@
 export default function Loading() {
   return (
-    <div className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center">
-      <img src="/predensity-logo.png" alt="Predensity" width={64} height={64} className="mb-5 animate-pulse hidden dark:block" />
-      <img src="/white the loading predensity logo.png" alt="Predensity" width={64} height={64} className="mb-5 animate-pulse dark:hidden" />
-      <span className="text-gray-900 dark:text-white text-2xl font-semibold tracking-wide">
+    <div
+      style={{ minHeight: '100vh', backgroundColor: '#000', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+    >
+      <img src="/predensity-logo.png" alt="Predensity" width={64} height={64} style={{ marginBottom: 20, animation: 'pulse 1.8s ease-in-out infinite' }} />
+      <span style={{ color: '#fff', fontSize: 22, fontWeight: 600, letterSpacing: 3 }}>
         predensity
       </span>
+      <style>{`@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.94)} }`}</style>
     </div>
   );
 }
