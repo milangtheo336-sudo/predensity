@@ -135,13 +135,6 @@ contract CryptoPredictionMarket is Ownable {
         uint256 price
     );
 
-    event SharesSold(
-        uint256 indexed betId,
-        address indexed bettor,
-        uint256 exitPayout,
-        uint256 exitFee
-    );
-
     // ==============================================================
     // |                    Modifiers                               |
     // ==============================================================
