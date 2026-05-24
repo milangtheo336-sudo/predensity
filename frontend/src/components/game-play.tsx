@@ -84,7 +84,7 @@ export default function GamePlay({
 
   useEffect(() => {
     // Total duration: 2000ms for 90 minutes
-    const TOTAL_MS = 2000;
+    const TOTAL_MS = 5000;
     const TICK_MS = Math.floor(TOTAL_MS / 90); // ~22ms per minute
 
     const fs = finalScore.current;
