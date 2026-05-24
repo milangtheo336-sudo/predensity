@@ -1480,6 +1480,8 @@ export function Header({ children }: { children?: React.ReactNode }) {
   });
   
   useEffect(() => {
+    let pollingInterval: NodeJS.Timeout;
+
     const fetchProxyWallet = async () => {
       if (!user?.publicAddress) return;
       
@@ -1511,9 +1513,18 @@ export function Header({ children }: { children?: React.ReactNode }) {
     };
 
     if (isSignedIn && user) {
-      fetchProxyWallet();
+      if (!proxyWalletAddress) {
+        // Fetch immediately
+        fetchProxyWallet();
+        // If not found yet (new user), poll every 5 seconds until it is created
+        pollingInterval = setInterval(fetchProxyWallet, 5000);
+      }
     }
-  }, [isSignedIn, user?.publicAddress]);
+
+    return () => {
+      if (pollingInterval) clearInterval(pollingInterval);
+    };
+  }, [isSignedIn, user?.publicAddress, proxyWalletAddress]);
 
   // Read balance from blockchain (non-custodial) - use proxy wallet address
   const { balance: platformBalance, isLoading: balanceLoading } = useBlockchainBalance(proxyWalletAddress || undefined);
@@ -1625,7 +1636,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
     const totalResolvedStake = resolvedBets.reduce((sum, b) => sum + formatStake(b.stake), 0);
     const unrealizedPnl = totalWonPayout - totalResolvedStake;
     return activeValue + unrealizedPnl;
-  }, [managedBetsRaw, walletBetsRaw, managedEvmBetsRaw]);
+  }, [managedBetsRaw, walletBetsRaw, managedEvmBetsRaw, managedEoaBetsRaw]);
 
   // Auto-create managed wallet for new users who don't have one yet
   const walletCreationAttempted = useRef(false);
