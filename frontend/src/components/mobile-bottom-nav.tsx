@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
-import { useUser } from '@clerk/nextjs';
+import { useMagic } from '@/context/MagicContext';
 
 export function MobileBottomNav() {
   const { theme, setTheme } = useTheme();
-  const { isSignedIn } = useUser();
+  const { user } = useMagic();
+  const isSignedIn = !!user;
 
   return (
     <>
