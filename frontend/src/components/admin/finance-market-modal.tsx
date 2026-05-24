@@ -136,7 +136,7 @@ export function FinanceMarketModal({ open, onClose, onSubmit, isSubmitting }: Pr
     if (!imageUrl) return 'Market image required';
     const resolutionTimestamp = Math.floor(new Date(resolutionDatetime).getTime() / 1000);
     const group = SUBTYPE_GROUP[subtype];
-    const marketId = `finance-${subtype}-${Date.now()}`;
+    const marketId = `clob-finance-${subtype}-${Date.now()}`;
 
     let question = '';
     let outcomesData: { name: string; imageUrl: string }[] = [];
