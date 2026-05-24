@@ -215,6 +215,7 @@ export interface MarketCard {
   // Sidebar taxonomy
   sport?: string;
   league?: string;
+  challengeData?: any;
 }
 
 // Filter and sort options
