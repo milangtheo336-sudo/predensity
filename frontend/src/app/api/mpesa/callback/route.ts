@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              proxyWalletAddress: wallet.proxyWalletAddress,
+              proxyWalletAddress: (wallet as any).proxyWalletAddress,
               amountUSDC,
               mpesaReceiptNumber,
             }),
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
           });
 
           console.log(
-            `[mpesa/callback] Bridged ${amountUSDC} USDC to ${wallet.proxyWalletAddress} (new balance: ${newBalance})`
+            `[mpesa/callback] Bridged ${amountUSDC} USDC to ${(wallet as any).proxyWalletAddress} (new balance: ${newBalance})`
           );
         }
       } catch (balanceError) {
