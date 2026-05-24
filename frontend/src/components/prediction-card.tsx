@@ -1180,9 +1180,16 @@ export function PredictionCard({
         }
 
         setBetError('Signing bet...');
+        // Hex-encode the message — MetaMask accepts plain UTF-8 but HashPack's
+        // EIP-1193 personal_sign implementation requires hex. Both produce the
+        // same Ethereum signed message hash, so ethers.utils.verifyMessage on
+        // the backend still recovers the correct address from the plain string.
+        const hexMessage = '0x' + Array.from(new TextEncoder().encode(message))
+          .map(b => b.toString(16).padStart(2, '0')).join('');
+
         const signature: string = await signingProvider.request({
           method: 'personal_sign',
-          params: [message, ownerAddress],
+          params: [hexMessage, ownerAddress],
         });
 
         setBetError('Placing bet...');
