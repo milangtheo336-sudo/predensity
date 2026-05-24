@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConvexHttpClient } from 'convex/browser';
 import { requireAdmin } from '@/lib/api-auth';
 import { api } from '../../../../../convex/_generated/api';
+import { getServerConvex } from '@/lib/convex-server';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || '');
+const convex = getServerConvex();
 
 /**
  * POST: Fully resolve a CLOB market by declaring the final winner
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing marketId or winningOutcome' }, { status: 400 });
     }
 
-    await convex.mutation(api.clob.resolveClobMarket, {
+    await convex.adminMutation(api.clob.resolveClobMarket, {
       marketId,
       winningOutcome: Number(winningOutcome),
     });
