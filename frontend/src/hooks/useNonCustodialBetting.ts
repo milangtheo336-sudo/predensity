@@ -6,21 +6,8 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
 import { sendTransaction, waitForTransaction, approveToken, getTokenBalance } from '@/lib/magic';
-import { CONTRACT_IDS, CONTRACT_ADDRESSES, STAKING_TOKEN_CONFIG, STAKING_MODE } from '@/lib/contracts/contract-config';
+import { CONTRACT_IDS, CONTRACT_ADDRESSES, STAKING_TOKEN_IDS, STAKING_MODE } from '@/lib/contracts/contract-config';
 import { Category } from '@/lib/types/categories';
-
-// Custom Arc provider that disables ENS (same as in magic.ts)
-class ArcProvider extends ethers.providers.JsonRpcProvider {
-  async getResolver(name: string): Promise<null> {
-    return null;
-  }
-  async resolveName(name: string): Promise<string | null> {
-    if (ethers.utils.isAddress(name)) {
-      return name;
-    }
-    return null;
-  }
-}
 
 // ABI for placeBetWithToken function
 const PLACE_BET_ABI = new ethers.utils.Interface([
@@ -55,22 +42,17 @@ export function useNonCustodialBetting() {
   ): Promise<{ txHash: string; betId?: string; onChainBetId?: number }> => {
     try {
       setIsPlacing(true);
-      console.log('[placeBet] Starting bet placement...', { category, stakeUsdc, userId });
 
       const contractId = CONTRACT_IDS[category];
       const contractAddress = CONTRACT_ADDRESSES[category];
-      const tokenAddress = STAKING_TOKEN_CONFIG[STAKING_MODE]; // Use EVM address format
+      const tokenId = STAKING_TOKEN_IDS[STAKING_MODE];
 
-      if (!contractId || !contractAddress || !tokenAddress) {
-        console.error('[placeBet] Contract not configured:', { contractId, contractAddress, tokenAddress });
+      if (!contractId || !contractAddress || !tokenId) {
         throw new Error('Contract not configured for this category');
       }
 
-      console.log('[placeBet] Contract config:', { contractId, contractAddress, tokenAddress });
-
       // Convert stake to token units (6 decimals for USDC)
       const tokenAmount = ethers.utils.parseUnits(stakeUsdc, 6);
-      console.log('[placeBet] Token amount:', tokenAmount.toString());
 
       // Convert prices based on category
       let priceMinBN, priceMaxBN;
@@ -83,71 +65,35 @@ export function useNonCustodialBetting() {
         priceMinBN = ethers.BigNumber.from(priceMin);
         priceMaxBN = ethers.BigNumber.from(priceMax);
       }
-      console.log('[placeBet] Price range:', { min: priceMinBN.toString(), max: priceMaxBN.toString() });
-
-      // Get user address using getUserInfo (works with Magic extension)
-      const { getUserInfo } = await import('@/lib/magic');
-      
-      console.log('[placeBet] Getting user address...');
-      const userInfo = await getUserInfo();
-      console.log('[placeBet] User info:', userInfo);
-      
-      const userAddress = userInfo?.publicAddress;
-      
-      if (!userAddress) {
-        console.error('[placeBet] No address found in user info');
-        throw new Error('No account found. Please log in again.');
-      }
-
-      console.log('[placeBet] User address:', userAddress);
 
       // Check token balance
-      console.log('[placeBet] Checking token balance...');
-      console.log('[placeBet] Token address:', tokenAddress);
-      console.log('[placeBet] User address for balance check:', userAddress);
-      
-      try {
-        const balance = await getTokenBalance(tokenAddress, userAddress);
-        console.log('[placeBet] Token balance:', ethers.utils.formatUnits(balance, 6), 'USDC');
-        
-        if (ethers.BigNumber.from(balance).lt(tokenAmount)) {
-          throw new Error(`Insufficient USDC balance. You have ${ethers.utils.formatUnits(balance, 6)} USDC`);
-        }
-      } catch (balanceError) {
-        console.error('[placeBet] Balance check failed:', balanceError);
-        // The user's Magic Link wallet doesn't have USDC on-chain
-        // Their balance is in the custodial managed wallet
-        throw new Error(
-          'Your USDC is in the custodial wallet. Non-custodial betting requires USDC in your Magic Link wallet on-chain. ' +
-          'Please contact support to enable non-custodial betting, or use the custodial betting system.'
-        );
+      const balance = await getTokenBalance(tokenId);
+      if (ethers.BigNumber.from(balance).lt(tokenAmount)) {
+        throw new Error(`Insufficient USDC balance. You have ${ethers.utils.formatUnits(balance, 6)} USDC`);
       }
 
       // Check allowance
-      console.log('[placeBet] Checking token allowance...');
       const tokenAbi = ['function allowance(address owner, address spender) view returns (uint256)'];
-      
-      // Use Arc provider directly to avoid ENS issues
-      const arcProvider = new ArcProvider('/api/rpc-proxy');
-      const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, arcProvider);
+      const { getMagicProvider } = await import('@/lib/magic');
+      const provider = new ethers.providers.Web3Provider(getMagicProvider());
+      const tokenContract = new ethers.Contract(tokenId, tokenAbi, provider);
+      const signer = provider.getSigner();
+      const userAddress = await signer.getAddress();
       const allowance = await tokenContract.allowance(userAddress, contractAddress);
-      console.log('[placeBet] Current allowance:', ethers.utils.formatUnits(allowance, 6), 'USDC');
 
       // Approve if needed
       if (allowance.lt(tokenAmount)) {
         setIsApproving(true);
-        console.log('[placeBet] Approving USDC spending...');
+        console.log('Approving USDC spending...');
         
         // Approve a large amount to avoid future approvals (1M USDC)
         const approvalAmount = ethers.utils.parseUnits('1000000', 6);
-        const approveTxHash = await approveToken(tokenAddress, contractAddress, approvalAmount.toString());
+        const approveTxHash = await approveToken(tokenId, contractAddress, approvalAmount.toString());
         
-        console.log('[placeBet] Approval transaction:', approveTxHash);
+        console.log('Approval transaction:', approveTxHash);
         await waitForTransaction(approveTxHash, 1);
-        console.log('[placeBet] Approval confirmed');
+        console.log('Approval confirmed');
         setIsApproving(false);
-      } else {
-        console.log('[placeBet] Sufficient allowance, skipping approval');
       }
 
       // Encode the bet transaction
@@ -158,7 +104,7 @@ export function useNonCustodialBetting() {
         tokenAmount,
       ]);
 
-      console.log('[placeBet] Placing bet...');
+      console.log('Placing bet...');
       
       // User signs and sends transaction
       const txHash = await sendTransaction(
@@ -168,15 +114,14 @@ export function useNonCustodialBetting() {
         1500000 // gas limit
       );
 
-      console.log('[placeBet] Bet transaction:', txHash);
+      console.log('Bet transaction:', txHash);
       setTxHash(txHash);
 
       // Wait for confirmation
       await waitForTransaction(txHash, 1);
-      console.log('[placeBet] Bet confirmed on-chain');
+      console.log('Bet confirmed on-chain');
 
       // Submit to backend for recording
-      console.log('[placeBet] Recording bet in backend...');
       const response = await fetch('/api/bet/place-non-custodial', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -194,21 +139,16 @@ export function useNonCustodialBetting() {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('[placeBet] Backend recording failed:', error);
         throw new Error(error.error || 'Failed to record bet');
       }
 
       const result = await response.json();
-      console.log('[placeBet] Bet recorded successfully:', result);
       
       return {
         txHash,
         betId: result.betId,
         onChainBetId: result.onChainBetId,
       };
-    } catch (error) {
-      console.error('[placeBet] Error:', error);
-      throw error;
     } finally {
       setIsPlacing(false);
       setIsApproving(false);
