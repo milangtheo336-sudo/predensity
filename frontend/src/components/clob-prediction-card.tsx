@@ -117,7 +117,7 @@ function ClobActivitySection({
     try {
       await addCommentMutation({
         marketId,
-        userAddress: `managed:${user.id}`.toLowerCase(),
+        userAddress: `managed:${user.issuer}`.toLowerCase(),
         content: newComment.trim(),
       });
       setNewComment('');
@@ -277,7 +277,7 @@ function ClobActivitySection({
                         </p>
                         <div className="flex items-center gap-4 mt-1.5">
                           {(() => {
-                            const currentAddr = isSignedIn && user ? `managed:${user.id}`.toLowerCase() : '';
+                            const currentAddr = isSignedIn && user ? `managed:${user.issuer}`.toLowerCase() : '';
                             const hasLiked = (comment.likedBy || []).includes(currentAddr);
                             return (
                               <button
@@ -310,7 +310,7 @@ function ClobActivitySection({
                                 if (e.key === 'Enter' && replyText.trim()) {
                                   addCommentMutation({
                                     marketId,
-                                    userAddress: `managed:${user?.id}`.toLowerCase(),
+                                    userAddress: `managed:${user?.issuer}`.toLowerCase(),
                                     content: replyText.trim(),
                                     parentId: comment._id,
                                   }).then(() => { setReplyText(''); setReplyingTo(null); });
@@ -600,19 +600,19 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
   const prices = useConvexQuery(api.clob.getMarketPrices, { marketId });
   const managedWallet = useConvexQuery(
     api.users.getManagedWalletByUserId,
-    isSignedIn && user ? { userId: user.id } : 'skip'
+    isSignedIn && user ? { userId: user.issuer } : 'skip'
   );
   const userPositions = useConvexQuery(
     api.clob.getUserPositions,
-    isSignedIn && user ? { userId: user.id } : 'skip'
+    isSignedIn && user ? { userId: user.issuer } : 'skip'
   );
   const userOrders = useConvexQuery(
     api.clob.getUserOrders,
-    isSignedIn && user ? { userId: user.id, marketId } : 'skip'
+    isSignedIn && user ? { userId: user.issuer, marketId } : 'skip'
   );
   const settlementStatuses = useConvexQuery(
     api.clob.getUserTradeSettlementStatus,
-    isSignedIn && user ? { userId: user.id, marketId } : 'skip'
+    isSignedIn && user ? { userId: user.issuer, marketId } : 'skip'
   );
 
   // UI state
@@ -993,7 +993,7 @@ export function ClobPredictionCard({ marketId }: ClobPredictionCardProps) {
 
             {/* Activity Section (Ideas/Positions/Activity) */}
             <div className="border-t border-gray-200 dark:border-white/[0.06] pt-4 mt-4">
-              <ClobActivitySection marketId={marketId} currentUser={isSignedIn && user ? { id: user.id, name: user.fullName || user.username || '', imageUrl: user.imageUrl } : undefined} />
+              <ClobActivitySection marketId={marketId} currentUser={isSignedIn && user ? { id: user.issuer, name: user.email?.split('@')[0] || '', imageUrl: undefined } : undefined} />
             </div>
           </div>
 
