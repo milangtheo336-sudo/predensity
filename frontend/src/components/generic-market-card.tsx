@@ -6,10 +6,26 @@ import { getContractAddress } from '@/lib/contracts/contract-config';
 import { aggregateForecast } from '@/lib/forecast';
 import { cn } from '@/lib/utils';
 import { TrendingUp } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 import { useQuery as useConvexQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useLanguage } from '@/context/LanguageContext';
+import type { Translations } from '@/lib/i18n/translations';
+
+function localizedTimeLeft(timestamp: number, t: Translations): string {
+  const diff = timestamp * 1000 - Date.now();
+  if (diff <= 0) return t.resolved;
+  const totalSecs = Math.floor(diff / 1000);
+  const mins = Math.floor(totalSecs / 60);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  const months = Math.floor(days / 30);
+  if (months >= 2) return t.aboutMonthsLeft.replace('{n}', String(months));
+  if (months === 1) return t.oneMonthLeft;
+  if (days >= 2) return `${days} ${t.daysLeft}`;
+  if (days === 1) return t.oneDayLeft;
+  if (hours >= 1) return t.hoursRemaining.replace('{n}', String(hours));
+  return t.minutesRemaining.replace('{n}', String(Math.max(1, mins)));
+}
 
 function getDefaultThreshold(category: Category): number {
   switch (category) {
@@ -117,7 +133,7 @@ function CryptoSparkline({ convexBets }: { convexBets: any[] | undefined }) {
 export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
   const { t } = useLanguage();
   const categoryConfig = CATEGORIES[market.category];
-  const timeRemaining = formatDistanceToNow(new Date(market.targetTimestamp * 1000), { addSuffix: false });
+  const timeRemaining = localizedTimeLeft(market.targetTimestamp, t);
 
   const isCrypto = market.category === Category.CRYPTO;
   const isClob = market.isClob === true;
@@ -283,7 +299,7 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
             <TrendingUp className="w-3.5 h-3.5" />
             <span>{volumeStr} {t.vol}.</span>
           </div>
-          <span className="text-gray-400">{timeRemaining} {t.daysLeft}</span>
+          <span className="text-gray-400">{timeRemaining}</span>
         </div>
       </div>
     );
@@ -376,7 +392,7 @@ export function GenericMarketCard({ market, onClick }: GenericMarketCardProps) {
               <span className="text-red-500 font-semibold text-[10px] tracking-wide">{t.live}</span>
             </div>
           )}
-          <span className="text-gray-400">{timeRemaining} {t.remaining}</span>
+          <span className="text-gray-400">{timeRemaining}</span>
         </div>
       </div>
     </div>
