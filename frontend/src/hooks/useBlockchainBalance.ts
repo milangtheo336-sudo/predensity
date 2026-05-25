@@ -9,15 +9,45 @@
  * - Cached in localStorage to prevent flickering
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { ethers } from 'ethers';
-import { getStakingTokenId } from '@/lib/contracts/contract-config';
+import { getStakingTokenId, getStakingCurrency, isTokenMode } from '@/lib/contracts/contract-config';
+import { useQuery as useConvexQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 export function useBlockchainBalance(userAddress: string | undefined) {
-  const [balance, setBalance] = useState('0');
+  const [rawBalance, setRawBalance] = useState('0');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Fetch active bets to calculate locked funds
+  const userAddressKey = userAddress ? `managed:${userAddress}`.toLowerCase() : null;
+  const userBetsRaw = useConvexQuery(
+    api.sync.getBetsByUser,
+    userAddressKey ? { userAddress: userAddressKey } : 'skip'
+  );
+
+  const activeLockedFunds = useMemo(() => {
+    if (!userBetsRaw) return 0;
+    const activeBets = userBetsRaw.filter((b: any) => !b.finalized && b.status !== 'failed');
+    const currency = getStakingCurrency();
+    return activeBets.reduce((sum: number, b: any) => {
+      let val = 0;
+      if (isTokenMode()) {
+        val = Number(b.stake) / Math.pow(10, currency.decimals);
+      } else {
+        val = Number(b.stake) / 1e8;
+      }
+      return sum + val;
+    }, 0);
+  }, [userBetsRaw]);
+
+  // Calculate available balance
+  const balance = useMemo(() => {
+    const raw = parseFloat(rawBalance || '0');
+    return Math.max(0, raw - activeLockedFunds).toString();
+  }, [rawBalance, activeLockedFunds]);
   
   // Use refs to access current values in callbacks
   const balanceRef = useRef(balance);
@@ -33,7 +63,7 @@ export function useBlockchainBalance(userAddress: string | undefined) {
       const handleSync = () => setRefreshTrigger(prev => prev + 1);
       const handleExact = (e: any) => {
         if (e.detail && e.detail.exactBalance !== undefined) {
-          setBalance(e.detail.exactBalance.toString());
+          setRawBalance(e.detail.exactBalance.toString());
         }
       };
       
@@ -73,7 +103,7 @@ export function useBlockchainBalance(userAddress: string | undefined) {
 
   useEffect(() => {
     if (!userAddress) {
-      setBalance('0');
+      setRawBalance('0');
       setIsLoading(false);
       return;
     }
@@ -82,7 +112,7 @@ export function useBlockchainBalance(userAddress: string | undefined) {
 
     const fetchBalance = async () => {
       // Don't show loading if we have cached balance
-      const hasCachedBalance = balance !== '0';
+      const hasCachedBalance = rawBalance !== '0';
       if (!hasCachedBalance) {
         setIsLoading(true);
       }
@@ -127,7 +157,7 @@ export function useBlockchainBalance(userAddress: string | undefined) {
             address: userAddress,
             balance: balanceFormatted,
           });
-          setBalance(balanceFormatted);
+          setRawBalance(balanceFormatted);
           setError(null);
           setIsLoading(false);
         }
@@ -153,7 +183,7 @@ export function useBlockchainBalance(userAddress: string | undefined) {
     return () => {
       isMounted = false;
     };
-  }, [userAddress, refreshTrigger, balance]); // Fetch only on mount or manual refresh
+  }, [userAddress, refreshTrigger]); // Fetch only on mount or manual refresh
 
   console.log('[useBlockchainBalance] Display balance:', balance);
   
