@@ -24,14 +24,7 @@ The platform supports multiple market categories -- crypto, politics, sports, an
 
 ---
 
-## Team
 
-| Name | Role | Profile |
-|------|------|---------|
-| i-mwangi | CEO | [GitHub](https://github.com/i-mwangi) |
-| milangtheo| Co-Founder | [GitHub](https://github.com/i-warukira) |
-
----
 
 ## Key Features
 
