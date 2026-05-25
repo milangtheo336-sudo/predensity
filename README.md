@@ -370,24 +370,11 @@ cd frontend && npx convex dev
 
 ---
 
-## Competitive Advantage
-
-| Feature | Predensity | Polymarket | Augur | Azuro |
-|---------|------------|------------|-------|-------|
-| **Chain** | Arc | Polygon | Ethereum | Gnosis |
-| **Prediction Type** | Price ranges | Binary | Binary | Binary |
-| **Multi-category** | Yes | Yes | Yes | Sports only |
-| **Weighted payouts** | Yes | No | No | No |
-| **Early exit (DPM)** | Yes | Yes | No | No |
-| **M-Pesa deposits** | Yes | No | No | No |
-| **KDE visualization** | Yes | No | No | No |
 
 ### Key Differentiators
 
 - **Price range predictions** -- not just yes/no, but continuous price surfaces
 - **Weighted payout system** -- rewards precision and early conviction
-- **M-Pesa integration** -- onramp for East African users via mobile money
-- **Multi-category markets** -- crypto, politics, sports, technology in one platform
 - **DPM early exit** -- sell shares before resolution with linear surplus pricing
 
 ---
@@ -397,7 +384,6 @@ cd frontend && npx convex dev
 ### Phase 1: Core (Current)
 - [x] Crypto prediction markets with weighted payouts
 - [x] Multi-category support (Politics, Sports, Technology)
-- [x] M-Pesa deposit and withdrawal
 - [x] Subgraph indexing for on-chain events
 - [x] KDE probability visualization
 
