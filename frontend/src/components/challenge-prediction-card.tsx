@@ -276,7 +276,7 @@ export function ChallengePredictionCard({ challengeMatch }: { challengeMatch: an
   
   const challengeAddress = getChallengeMarketAddress();
   const currency = getStakingCurrency();
-  const { balance: platformBalance } = useBlockchainBalance(walletUser?.proxyWalletAddress || undefined);
+  const { balance: platformBalance } = useBlockchainBalance(walletUser?.publicAddress || undefined);
 
   const formatTime = (ts: number) => new Date(ts * 1000).toLocaleString();
   
