@@ -34,11 +34,6 @@ The platform supports multiple market categories -- crypto, politics, sports, an
 - **Weighted payouts**: Sharper ranges and earlier bets earn higher multipliers
 - **Dynamic Parimutuel Market (DPM)**: Early exit via share selling before resolution
 
-### Wallet and Payments
-- **4 wallet connectors**: HashPack, MetaMask, Blade, Kabila
-- **M-Pesa integration**: Deposit and withdraw via mobile money (KES)
-- **USDC staking**: ERC-20 token mode for stable-value betting
-- **Platform balance system**: Custodial balance with Convex backend
 
 ### Data and Visualization
 - **KDE probability charts**: Kernel density estimation of bet distributions
