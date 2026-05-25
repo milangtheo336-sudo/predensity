@@ -29,7 +29,7 @@ export function NotificationBell() {
   const deleteNotif = useMutation(api.notifications.markNotificationRead); // We'll use delete instead
 
   const unreadNotifications = useConvexQuery(
-    user?.issuer ? api.notifications.getUserNotifications : 'skip',
+    api.notifications.getUserNotifications,
     user?.issuer ? { userId: user.issuer, unreadOnly: true } : 'skip'
   );
 

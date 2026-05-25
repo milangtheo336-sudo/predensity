@@ -62,7 +62,7 @@ export function MatchComments({ matchId, className }: MatchCommentsProps) {
   }, [comments]);
 
   const profilesResult = useConvexQuery(
-    uniqueAddresses.length > 0 ? api.social.getProfilesByAddresses : 'skip',
+    api.social.getProfilesByAddresses,
     uniqueAddresses.length > 0 ? { addresses: uniqueAddresses } : 'skip'
   );
 
