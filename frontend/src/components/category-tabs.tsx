@@ -15,7 +15,6 @@ export function CategoryTabs({ activeCategory, onCategoryChange }: CategoryTabsP
   const tabs = [
     { id: 'all' as const, name: t.top },
     { id: Category.CRYPTO, name: t.crypto },
-    { id: Category.SPORTS, name: 'Esports' },
   ];
 
   return (
