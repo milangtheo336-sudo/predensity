@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { ArrowLeft, Clock, Share2, Twitter, Link2, Check as CheckIcon, Trophy, Heart, Activity as ActivityIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useBlockchainBalance } from '@/hooks/useBlockchainBalance';
-import { getStakingCurrency, getChallengeMarketAddress } from '@/lib/contracts/contract-config';
+import { getStakingCurrency, getChallengeMarketAddress, getStakingTokenAddress } from '@/lib/contracts/contract-config';
 import { ChallengeMarketABI } from '@/lib/contracts/challenge-market-abi';
 const ERC20_ABI = [
   {
@@ -326,7 +326,7 @@ export function ChallengePredictionCard({ challengeMatch }: { challengeMatch: an
       const sideEnum = betSide === 'playerA' ? 1 : 2;
 
       const allowance = (await publicClient!.readContract({
-        address: currency.address as `0x${string}`,
+        address: getStakingTokenAddress() as `0x${string}`,
         abi: ERC20_ABI,
         functionName: 'allowance',
         args: [address as `0x${string}`, challengeAddress as `0x${string}`],
@@ -336,7 +336,7 @@ export function ChallengePredictionCard({ challengeMatch }: { challengeMatch: an
         setIsApproving(true);
         const approvalAmount = parseUnits('1000000', currency.decimals);
         const approveHash = await writeContract({
-          address: currency.address as `0x${string}`,
+          address: getStakingTokenAddress() as `0x${string}`,
           abi: ERC20_ABI,
           functionName: 'approve',
           args: [challengeAddress as `0x${string}`, approvalAmount],
