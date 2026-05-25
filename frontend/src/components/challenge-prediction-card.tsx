@@ -188,7 +188,7 @@ function ChallengeActivitySection({ challengeMatch }: { challengeMatch: any }) {
               {displayBets.map((bet) => (
                 <div key={bet._id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <BoringAvatar size={28} name={bet.bettor} variant="beam" palette={getAvatarPalette(bet.bettor)} />
+                    <BoringAvatar size={28} name={bet.bettor} variant="beam" colors={getAvatarPalette(bet.bettor)} />
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
                         {truncateAddrLocal(bet.bettor)} <span className="text-gray-500 font-normal">predicted</span>
@@ -226,7 +226,7 @@ function ChallengeActivitySection({ challengeMatch }: { challengeMatch: any }) {
               {displayBets.map((bet) => (
                 <div key={bet._id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <BoringAvatar size={28} name={bet.bettor} variant="beam" palette={getAvatarPalette(bet.bettor)} />
+                    <BoringAvatar size={28} name={bet.bettor} variant="beam" colors={getAvatarPalette(bet.bettor)} />
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
                         {truncateAddrLocal(bet.bettor)}

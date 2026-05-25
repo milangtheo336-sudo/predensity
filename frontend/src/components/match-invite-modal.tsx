@@ -91,7 +91,7 @@ export function MatchInviteModal({ open, invite, onClose, onAccept }: MatchInvit
                   name={invite.inviterAddress}
                   variant="beam"
                   size={20}
-                  palette={getAvatarPalette(invite.inviterAddress)}
+                  colors={getAvatarPalette(invite.inviterAddress)}
                 />
                 <span className="text-sm text-gray-900 dark:text-white">{inviterAddr}</span>
               </div>

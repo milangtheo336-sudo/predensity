@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const balance = await publicClient.readContract({
-        address: usdcAddress,
+        address: usdcAddress as `0x${string}`,
         abi: USDC_ABI,
         functionName: 'balanceOf',
         args: [proxyWalletAddress as `0x${string}`],

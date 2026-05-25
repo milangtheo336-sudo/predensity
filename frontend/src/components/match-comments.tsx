@@ -140,7 +140,7 @@ export function MatchComments({ matchId, className }: MatchCommentsProps) {
                     name={comment.userAddress}
                     variant="beam"
                     size={28}
-                    palette={getAvatarPalette(comment.userAddress)}
+                    colors={getAvatarPalette(comment.userAddress)}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -211,7 +211,7 @@ export function MatchComments({ matchId, className }: MatchCommentsProps) {
                                 name={reply.userAddress}
                                 variant="beam"
                                 size={20}
-                                palette={getAvatarPalette(reply.userAddress)}
+                                colors={getAvatarPalette(reply.userAddress)}
                               />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
