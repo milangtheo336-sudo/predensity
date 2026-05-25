@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
         abi: CONTRACT_ABI,
         functionName: 'processBatch',
         args: [BigInt(bucket)],
-        gas: 10_000_000n,
+        gas: BigInt(10_000_000),
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
