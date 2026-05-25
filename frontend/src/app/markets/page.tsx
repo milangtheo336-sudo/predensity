@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import MarketsClient from '../markets-client';
 
-export default function MarketsRedirect() {
-  redirect('/');
+export default function MarketsPage() {
+  return <MarketsClient initialEvents={[]} initialCryptoMarkets={[]} />;
 }
