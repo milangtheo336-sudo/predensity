@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     let accountActive = false;
     try {
       const balance = await publicClient.getBalance({ address: magicEOAAddress as `0x${string}` });
-      accountActive = balance > 0n;
+      accountActive = balance > BigInt(0);
     } catch {
       // Address hasn't transacted yet — that's fine
     }

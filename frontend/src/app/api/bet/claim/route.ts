@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
       abi: CONTRACT_ABI,
       functionName: 'claimBet',
       args: [BigInt(numericBetId)],
-      gas: 500_000n,
+      gas: BigInt(500_000),
     });
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });

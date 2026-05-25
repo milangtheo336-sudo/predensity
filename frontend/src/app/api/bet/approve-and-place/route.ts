@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     console.log('[approve-and-place] Message data verified');
 
     // 3. Get contract address for this category
-    const contractAddress = CONTRACT_ADDRESSES[category] as `0x${string}`;
+    const contractAddress = CONTRACT_ADDRESSES[category as keyof typeof CONTRACT_ADDRESSES] as `0x${string}`;
     if (!contractAddress) {
       return NextResponse.json({ error: `Category "${category}" contract not deployed` }, { status: 400 });
     }
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     const tokenAmount = BigInt(Math.floor(parseFloat(stakeUsdc) * 1_000_000)); // 6 decimals
 
     const allowance = await publicClient.readContract({
-      address: usdcAddress,
+      address: usdcAddress as `0x${string}`,
       abi: [{ name: 'allowance', type: 'function', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }],
       functionName: 'allowance',
       args: [userAddress as `0x${string}`, contractAddress],
@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
       abi: MARKET_ABI,
       functionName: 'placeBetWithToken',
       args: [BigInt(targetTimestamp), priceMinBN, priceMaxBN, tokenAmount],
-      gas: 1_500_000n,
+      gas: BigInt(1_500_000),
     });
 
     console.log('[approve-and-place] Bet tx submitted:', txHash);

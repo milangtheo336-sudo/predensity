@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     console.log('[proxy-place-bet] Ownership verified');
 
     // 4. Get contract address for category
-    const predictionContract = CONTRACT_ADDRESSES[category] as `0x${string}`;
+    const predictionContract = CONTRACT_ADDRESSES[category as keyof typeof CONTRACT_ADDRESSES] as `0x${string}`;
     if (!predictionContract) {
       return NextResponse.json({ error: `Invalid category: ${category}` }, { status: 400 });
     }
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
       abi: PROXY_WALLET_ABI,
       functionName: 'executeBetWithSignature',
       args: [predictionContract, tokenAmount, betData as `0x${string}`, message, signature as `0x${string}`],
-      gas: 1_500_000n,
+      gas: BigInt(1_500_000),
     });
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });

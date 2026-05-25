@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const { category } = body;
 
     const usdcAddress = getStakingTokenAddress();
-    const spender = category ? CONTRACT_ADDRESSES[category] : '';
+    const spender = category ? CONTRACT_ADDRESSES[category as keyof typeof CONTRACT_ADDRESSES] : '';
 
     return NextResponse.json({
       success: false,

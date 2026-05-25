@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       abi: FACTORY_ABI,
       functionName: 'createWallet',
       args: [userAddress as `0x${string}`],
-      gas: 500_000n,
+      gas: BigInt(500_000),
     });
 
     console.log('[create-proxy-wallet] Tx submitted:', txHash);
