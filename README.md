@@ -6,7 +6,7 @@
 
 ###  Prediction Markets on Arc
 
-[![Live App](https://img.shields.io/badge/Live-Mainnet-success?style=for-the-badge)](https://predensity.com)
+[![Live App](https://img.shields.io/badge/Live-Testnet-success?style=for-the-badge)](https://predensity.com)
 [![Arc](https://img.shields.io/badge/Built%20on-Arc-purple?style=for-the-badge)](https://arc.io)
 [![Convex](https://img.shields.io/badge/Backend-Convex-blue?style=for-the-badge)](https://convex.dev)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
